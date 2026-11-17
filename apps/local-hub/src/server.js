@@ -289,7 +289,7 @@ function handleMessage(ws, m) {
         const hit = slideSource(it, song, m.slide); if (!hit) break;
         const label = String(m.label || '').trim().slice(0, 30);
         if (!label) return reply({ type: 'error', error: 'Alege un nume pentru secțiune' });
-        const body = core.setSectionLabel(song.body, hit.sec.lines, label);
+        const body = core.setSlideLabel(song.body, hit.sec.lines, hit.from, hit.to, label, hit.sec.label);   // only this slide, even inside a long section
         if (body === song.body && hit.sec.label !== label) return reply({ type: 'error', error: 'Nu am găsit secțiunea în cântare. Schimb-o din Editor.' });
         song.body = body; song.updatedAt = new Date().toISOString();
         save(); break;

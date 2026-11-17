@@ -172,3 +172,14 @@ test('setSectionLabel renames or adds a label above a block', async () => {
   assert.deepEqual(parseSong(added).map(s => s.label), ['Strofa 1', 'Bridge']);
   assert.equal(setSectionLabel(body, ['Nu exista'], 'Refren'), body);
 });
+
+test('setSlideLabel gives one slide of a long section its own tag', async () => {
+  const { setSlideLabel, parseSong, toSlides } = await import('../src/song.ts');
+  const body = 'Strofa 1:\nA\nB\nC\nD';
+  const lines = ['A', 'B', 'C', 'D'];
+  const out = setSlideLabel(body, lines, 2, 4, 'Refren', 'Strofa 1');
+  assert.deepEqual(parseSong(out).map(s => [s.label, s.lines.join('')]), [['Strofa 1', 'AB'], ['Refren', 'CD']]);
+  const mid = setSlideLabel('Refren:\n1\n2\n3\n4\n5\n6', ['1', '2', '3', '4', '5', '6'], 2, 4, 'Bridge', 'Refren');
+  assert.deepEqual(parseSong(mid).map(s => s.label), ['Refren', 'Bridge', 'Refren']);
+  assert.equal(toSlides(parseSong(mid), 2).length, 3, 'still one slide per part');
+});

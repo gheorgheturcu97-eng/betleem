@@ -431,3 +431,33 @@ export function setSectionLabel(body: string, lines: string[], label: string): s
   }
   return body;
 }
+
+/**
+ * Give ONE slide its own section label. When the slide is only part of a longer section
+ * (a section split over several slides), the section is split in the song so that every
+ * slide can have its own tag; the lines before and after keep the old label.
+ */
+export function setSlideLabel(body: string, sectionLines: string[], from: number, to: number, label: string, oldLabel = ''): string {
+  if (from <= 0 && to >= sectionLines.length) return setSectionLabel(body, sectionLines, label);
+  const all = body.replace(/\r\n?/g, '\n').split('\n');
+  const want = sectionLines.map(l => l.trimEnd());
+  const name = String(label).trim().replace(/:+$/, '');
+  if (!want.length || !name) return body;
+  for (let i = 0; i + want.length <= all.length; i++) {
+    if (!want.every((l, k) => all[i + k].trimEnd() === l)) continue;
+    let start = i;
+    const above = i > 0 ? all[i - 1].trim() : '';
+    if (above && SECTION_LABEL.test(above) && above.length < 40) start = i - 1;   // replace the old label line too
+    const part = (lab: string, lines: string[]) => [...(lab ? [lab + ':'] : []), ...lines];
+    const blocks = [
+      from > 0 ? part(oldLabel, want.slice(0, from)) : null,
+      part(name, want.slice(from, to)),
+      to < want.length ? part(oldLabel, want.slice(to)) : null,
+    ].filter(Boolean) as string[][];
+    const block = blocks.flatMap((b, k) => (k ? ['', ...b] : b));
+    const before = start > 0 && all[start - 1].trim() !== '' ? [''] : [];
+    all.splice(start, i + want.length - start, ...before, ...block);
+    return all.join('\n');
+  }
+  return body;
+}
