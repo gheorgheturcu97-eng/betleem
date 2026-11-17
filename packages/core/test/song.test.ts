@@ -81,3 +81,11 @@ test('normalizeImported fixes Romanian cedilla diacritics and converts chords', 
   const t = normalizeImported('C\nŞi ţie\n\n\n\nRefren');
   assert.equal(t, '[C]Și ție\n\nRefren');
 });
+
+test('labelStanzas turns site numbering into section labels', async () => {
+  const { labelStanzas } = await import('../src/song.ts');
+  assert.equal(labelStanzas('1. Ce se-aude\nÎn tăcere\n\nR1: Sfânt și vrednic\nGlorios\n\nR:\nMaranata'),
+    'Strofa 1:\nCe se-aude\nÎn tăcere\n\nRefren 1:\nSfânt și vrednic\nGlorios\n\nRefren:\nMaranata');
+  // chords before the number stay with the line; numbers inside a stanza are left alone
+  assert.equal(labelStanzas('[D]1. Curând\n2. nu e label'), 'Strofa 1:\n[D]Curând\n2. nu e label');
+});

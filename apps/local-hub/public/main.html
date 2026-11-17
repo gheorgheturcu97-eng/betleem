@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ecran principal</title>
+<title>Betleem – Sală</title>
 <style>
   html,body{margin:0;height:100%;background:#000;color:#fff;overflow:hidden;cursor:none;font-family:"Helvetica Neue",Arial,sans-serif}
   #bg,#bg>*{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
@@ -29,7 +29,7 @@
   document.ondblclick = () => document.documentElement.requestFullscreen?.();
   connect(s => {
     const L = s.live, item = s.setlist[L.item];
-    paintBackground($('bg'), (item && item.background) || L.background);
+    paintBackground($('bg'), L.background);
     const slide = L.slides[L.slide];
     const html = slide ? slide.lines.map(l => esc(stripChords(l))).filter(Boolean).join('<br>') : '';
     $('text').classList.toggle('hide', L.blank || !html);

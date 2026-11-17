@@ -171,6 +171,29 @@ export function chordsOverToChordPro(text: string): string {
   return out.join('\n');
 }
 
+/**
+ * Turn the labels used on lyric sites into our section labels:
+ *   "1. Ce se-aude..."  -> "Strofa 1:" + "Ce se-aude..."
+ *   "R:" / "R1:" / "Cor:" -> "Refren:" / "Refren 1:"
+ * Only at the start of a stanza, and chords in front of the number are kept.
+ */
+export function labelStanzas(text: string): string {
+  const out: string[] = [];
+  let atStart = true;
+  for (const line of text.split('\n')) {
+    const t = line.trim();
+    if (!t) { out.push(line); atStart = true; continue; }
+    if (atStart) {
+      const v = t.match(/^((?:\[[^\]]+\]\s*)*)(\d{1,2})[.)]\s+(.*)$/);
+      const r = t.match(/^((?:\[[^\]]+\]\s*)*)(?:R|Ref|Refren|Cor|Chorus)\s*(\d*)\s*[:.]\s*(.*)$/i);
+      if (v) { out.push(`Strofa ${v[2]}:`); if ((v[1] + v[3]).trim()) out.push(v[1] + v[3]); atStart = false; continue; }
+      if (r) { out.push(r[2] ? `Refren ${r[2]}:` : 'Refren:'); if ((r[1] + r[3]).trim()) out.push(r[1] + r[3]); atStart = false; continue; }
+    }
+    out.push(line); atStart = false;
+  }
+  return out.join('\n');
+}
+
 /** Normalise any pasted/imported text into a clean song body. */
 export function normalizeImported(text: string): string {
   let t = text
@@ -182,7 +205,7 @@ export function normalizeImported(text: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   if (t.split("\n").some(isChordLine)) t = chordsOverToChordPro(t); // also fixes mixed pastes
-  return t;
+  return labelStanzas(t);
 }
 
 /** Render one line as HTML with chords placed above the syllables (stage / music stand). */

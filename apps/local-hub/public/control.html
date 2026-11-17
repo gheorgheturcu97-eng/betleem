@@ -3,101 +3,301 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Control — Bethlehem</title>
+<title>Betleem</title>
 <style>
-  :root{--bg:#121316;--panel:#1a1c20;--card:#22252a;--line:#2e3138;--fg:#eceef1;--mute:#8c929a;--acc:#f5b301;--red:#d64545}
+  :root{
+    --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
+    --glass:rgba(255,255,255,.065); --glass-2:rgba(255,255,255,.10); --glass-3:rgba(255,255,255,.17);
+    --stroke:rgba(255,255,255,.14); --stroke-hi:rgba(255,255,255,.32);
+    --acc:#ffbf2f; --acc-2:#ff9d1e; --acc-ink:#1d1300; --red:#ff5a5f; --green:#3ddc84;
+    --r:22px; --r-sm:14px; --r-xs:10px;
+    --blur:saturate(180%) blur(28px);
+    --shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(255,255,255,.04);
+    font-family:-apple-system,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  }
   *{box-sizing:border-box}
-  body{margin:0;height:100vh;display:grid;grid-template:auto 1fr/300px 1fr 340px;background:var(--bg);color:var(--fg);font:14px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif}
-  header{grid-column:1/-1;display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
-  header h1{font-size:15px;margin:0 12px 0 0}
-  header input{background:var(--card);border:1px solid var(--line);color:var(--fg);padding:6px 8px;border-radius:6px}
-  button{background:var(--card);border:1px solid var(--line);color:var(--fg);padding:7px 11px;border-radius:7px;cursor:pointer;font:inherit}
-  button:hover{border-color:var(--mute)}
-  button.on{background:var(--red);border-color:var(--red)}
-  button.acc{background:var(--acc);color:#000;border-color:var(--acc);font-weight:600}
-  .spacer{flex:1}
-  #dot{width:9px;height:9px;border-radius:50%;background:var(--red)} #dot.on{background:#2ecc71}
-  aside,section{overflow:auto;padding:12px;border-right:1px solid var(--line)}
-  h2{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--mute);margin:4px 0 8px}
-  .item{display:flex;align-items:center;gap:6px;padding:8px;border-radius:8px;margin-bottom:4px;background:var(--panel);cursor:pointer}
-  .item.sel{outline:1px solid var(--mute)} .item.live{outline:2px solid var(--acc)}
-  .item .t{flex:1} .item small{color:var(--mute)}
-  .item .x{padding:2px 6px;font-size:12px}
-  #slides{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-  .slide{background:var(--panel);border:2px solid transparent;border-radius:10px;padding:10px;cursor:pointer;min-height:110px;font-size:13px}
-  .slide.live{border-color:var(--acc)}
-  .slide .lb{color:var(--acc);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
-  .slide .n{float:right;color:var(--mute);font-size:11px}
-  textarea,input.f,select{width:100%;background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:7px;font:13px/1.45 ui-monospace,Menlo,monospace}
-  textarea{min-height:300px;resize:vertical}
-  .row{display:flex;gap:6px;margin-bottom:6px} .row>*{flex:1}
-  .hint{color:var(--mute);font-size:12px;margin:4px 0 10px}
-  #results div{padding:6px 8px;border-radius:6px;cursor:pointer} #results div:hover{background:var(--card)}
-  #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);padding:10px 16px;border-radius:8px;display:none}
-  .previews{display:flex;gap:8px;margin-bottom:12px}
-  .previews iframe{width:50%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:6px;background:#000;pointer-events:none}
+  html,body{height:100%}
+  body{margin:0;color:var(--fg);background:var(--bg);font-size:14px;line-height:1.4;overflow:hidden;-webkit-font-smoothing:antialiased}
+  /* soft colour drifting behind the glass */
+  .aurora{position:fixed;inset:-20%;z-index:-1;filter:blur(110px) saturate(130%);opacity:.42;pointer-events:none}
+  .aurora i{position:absolute;border-radius:50%;animation:float 30s ease-in-out infinite alternate}
+  .aurora i:nth-child(1){width:46vw;height:46vw;left:2%;top:4%;background:#5b3cff}
+  .aurora i:nth-child(2){width:40vw;height:40vw;right:4%;top:0;background:#00b3a4;animation-delay:-9s}
+  .aurora i:nth-child(3){width:42vw;height:42vw;left:32%;bottom:-6%;background:#ff8a1e;opacity:.7;animation-delay:-17s}
+  .aurora i:nth-child(4){width:30vw;height:30vw;right:18%;bottom:6%;background:#d23c8c;opacity:.55;animation-delay:-4s}
+  @keyframes float{to{transform:translate(6vw,4vh) scale(1.12)}}
+  @media (prefers-reduced-motion:reduce){.aurora i{animation:none}}
+
+  .glass{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+         border:1px solid var(--stroke);border-radius:var(--r);box-shadow:var(--shadow);position:relative}
+  .glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+         background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,0) 38%,rgba(255,255,255,0) 70%,rgba(255,255,255,.05))}
+
+  button,.btn{font:inherit;color:var(--fg);background:var(--glass-2);border:1px solid var(--stroke);border-radius:999px;
+         padding:8px 14px;cursor:pointer;transition:background .15s,border-color .15s,transform .08s;white-space:nowrap;
+         box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  button:hover,.btn:hover{background:var(--glass-3);border-color:var(--stroke-hi)}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.5;cursor:default}
+  button.acc{background:linear-gradient(180deg,#ffd35c,var(--acc) 45%,var(--acc-2));color:var(--acc-ink);border-color:rgba(255,220,120,.8);font-weight:650;
+         box-shadow:0 6px 22px rgba(255,170,30,.35),inset 0 1px 0 rgba(255,255,255,.6)}
+  button.on{background:rgba(255,90,95,.85);border-color:rgba(255,150,150,.9)}
+  button.icon{width:34px;height:34px;padding:0;display:inline-grid;place-items:center;font-size:14px}
+  input,select,textarea{font:inherit;color:var(--fg);background:rgba(0,0,0,.24);border:1px solid var(--stroke);border-radius:var(--r-xs);
+         padding:9px 12px;outline:none;width:100%;transition:border-color .15s,background .15s}
+  input:focus,select:focus,textarea:focus{border-color:rgba(255,200,80,.7);background:rgba(0,0,0,.34)}
+  input::placeholder,textarea::placeholder{color:var(--faint)}
+  select option{background:#1b1d22}
+  textarea{font:13px/1.55 ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;resize:none}
+  .row{display:flex;gap:8px;align-items:center}
+  .grow{flex:1;min-width:0}
+  .hint{color:var(--mute);font-size:12.5px;margin:0}
+  h2{font-size:11.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0}
+
+  /* ---------- layout */
+  .app{height:100vh;display:grid;grid-template-rows:auto 1fr;gap:14px;padding:14px}
+  .top{display:flex;align-items:center;gap:12px;padding:8px 10px 8px 14px;border-radius:999px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:.01em}
+  .brand .star{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(180deg,#ffd35c,#ff9d1e);
+         color:#fff;font-size:17px;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 14px rgba(255,160,30,.4)}
+  #dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red)}
+  #dot.on{background:var(--green);box-shadow:0 0 10px var(--green)}
+  .transport{display:flex;gap:6px;align-items:center;margin:0 auto;padding:4px;border-radius:999px;background:rgba(0,0,0,.2);border:1px solid var(--stroke)}
+  .transport #bNext{padding:9px 26px}
+  #msg{width:230px;border-radius:999px;padding:8px 14px}
+  #role{font-size:12px;color:var(--mute);padding:0 6px}
+  .login{display:flex;gap:6px;align-items:center}
+  .login input{width:84px;border-radius:999px;padding:7px 12px}
+
+  .main{display:grid;grid-template-columns:300px minmax(0,1fr) 390px;gap:14px;min-height:0}
+  .panel{display:flex;flex-direction:column;min-height:0;padding:16px}
+  .panel-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .scroll{overflow:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+
+  /* ---------- program */
+  .svc input{background:transparent;border-color:transparent;padding:4px 6px}
+  .svc #svcTitle{font-size:18px;font-weight:650}
+  .svc input:hover,.svc input:focus{border-color:var(--stroke);background:rgba(0,0,0,.2)}
+  .svc #svcStart{font-size:13px;color:var(--mute);color-scheme:dark}
+  #setlist{display:flex;flex-direction:column;gap:6px;margin:12px 0 0;flex:1}
+  .item{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 10px;border-radius:var(--r-sm);cursor:pointer;
+        background:rgba(255,255,255,.045);border:1px solid transparent;transition:background .15s,border-color .15s}
+  .item:hover{background:rgba(255,255,255,.09)}
+  .item.sel{background:rgba(255,255,255,.13);border-color:var(--stroke-hi)}
+  .item.live{border-color:rgba(255,191,47,.9);box-shadow:0 0 0 1px rgba(255,191,47,.3),0 0 26px rgba(255,170,30,.18)}
+  .item .num{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:650;background:rgba(255,255,255,.08);color:var(--mute);flex:none}
+  .item.live .num{background:var(--acc);color:var(--acc-ink)}
+  .item .t{flex:1;min-width:0}
+  .item .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item small{color:var(--mute);font-size:12px}
+  .item .acts{display:none;gap:4px}
+  .item:hover .acts{display:flex}
+  .item .acts button{width:28px;height:28px;padding:0;font-size:13px}
+  .item.drag{opacity:.4} .item.over{border-color:var(--acc)}
+  .add-row{display:flex;gap:6px;padding-top:12px}
+  .add-row select{border-radius:999px}
+
+  /* ---------- center */
+  .center{display:flex;flex-direction:column;gap:14px;min-height:0}
+  .screens{padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:none}
+  .screen{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:16/9;background:#000;border:1px solid var(--stroke);
+          box-shadow:0 10px 30px rgba(0,0,0,.4);max-height:32vh}
+  .screen iframe{position:absolute;inset:0;width:400%;height:400%;transform:scale(.25);transform-origin:0 0;border:0;pointer-events:none}
+  .screen .cap{position:absolute;left:10px;top:10px;display:flex;gap:6px;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.1em;
+          padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.45);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15)}
+  .screen .cap i{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
+  .screen .open{position:absolute;right:10px;top:8px;padding:5px 12px;font-size:12px;background:rgba(0,0,0,.45);backdrop-filter:blur(12px)}
+
+  .slides-panel{flex:1;padding:14px 16px 16px;min-height:0}
+  .slides-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .slides-head h3{margin:0;font-size:19px;font-weight:650}
+  #arrRow{gap:6px;flex:1;justify-content:flex-end}
+  #arrRow input{max-width:330px;border-radius:999px;padding:7px 14px}
+  #arrRow select{width:auto;border-radius:999px;padding:7px 10px}
+  #slides{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  .slide{position:relative;border-radius:var(--r-sm);padding:12px 14px;cursor:pointer;min-height:112px;font-size:13.5px;line-height:1.45;
+         background:rgba(0,0,0,.28);border:1px solid var(--stroke);transition:transform .12s,border-color .15s,background .15s}
+  .slide:hover{transform:translateY(-2px);border-color:var(--stroke-hi);background:rgba(0,0,0,.36)}
+  .slide.live{border-color:var(--acc);background:linear-gradient(180deg,rgba(255,191,47,.2),rgba(0,0,0,.3));box-shadow:0 0 0 1px rgba(255,191,47,.4),0 10px 30px rgba(255,160,30,.2)}
+  .slide .lb{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--acc);margin-bottom:4px}
+  .slide .n{position:absolute;right:12px;top:10px;font-size:11px;color:var(--faint)}
+  .empty{display:grid;place-items:center;text-align:center;color:var(--mute);padding:36px 12px;border:1px dashed var(--stroke);border-radius:var(--r-sm);line-height:1.6}
+
+  .bg-panel{padding:12px 14px;flex:none}
+  .bg-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .bg-head .btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:6px 12px}
+  #gallery{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+  .bg{position:relative;flex:none;width:128px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#000;
+      box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .12s}
+  .bg:hover{transform:translateY(-2px)}
+  .bg img,.bg video{width:100%;height:100%;object-fit:cover;display:block}
+  .bg.on{border-color:var(--acc);box-shadow:0 0 0 3px rgba(255,191,47,.25)}
+  .bg span{position:absolute;left:0;right:0;bottom:0;padding:10px 8px 4px;font-size:11px;background:linear-gradient(transparent,rgba(0,0,0,.75));
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bg .pin{position:absolute;top:5px;right:7px;font-size:12px}
+
+  /* ---------- right: tabs */
+  .seg{display:flex;padding:4px;gap:4px;border-radius:999px;background:rgba(0,0,0,.25);border:1px solid var(--stroke);margin-bottom:14px;flex:none}
+  .seg button{flex:1;border:0;background:transparent;box-shadow:none;padding:8px 6px;font-weight:600;color:var(--mute)}
+  .seg button.sel{background:var(--glass-3);color:var(--fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 4px 14px rgba(0,0,0,.25)}
+  .tab{display:none;flex-direction:column;gap:10px;min-height:0;flex:1}
+  .tab.sel{display:flex}
+  .search{position:relative}
+  .search input{padding-left:36px;border-radius:999px}
+  .search::before{content:"⌕";position:absolute;left:13px;top:50%;transform:translateY(-54%);color:var(--faint);font-size:18px;pointer-events:none}
+  #results,#webResults{display:flex;flex-direction:column;gap:2px;flex:1}
+  .lib{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:12px;cursor:pointer;transition:background .12s}
+  .lib:hover{background:rgba(255,255,255,.08)}
+  .lib .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--mute)}
+  .lib .acts{display:flex;gap:4px;opacity:0;transition:opacity .12s}
+  .lib:hover .acts{opacity:1}
+  .lib .acts button{width:30px;height:30px;padding:0}
+  .res{padding:10px 12px;border-radius:12px;cursor:pointer;border:1px solid transparent;background:rgba(255,255,255,.045)}
+  .res:hover{background:rgba(255,255,255,.08)} .res.on{border-color:var(--acc)}
+  .res b{display:block;font-weight:600} .res small{color:var(--mute);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tag{font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(255,191,47,.18);color:var(--acc);margin-left:6px;font-weight:600}
+  .check{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:13px;cursor:pointer}
+  .check input{width:auto;accent-color:var(--acc)}
+  .sep{height:1px;background:var(--stroke);margin:4px 0}
+  #songBody{flex:1;min-height:200px}
+  .editor-actions{display:flex;gap:8px}
+  .editor-actions button{flex:1}
+  a{color:var(--mute)}
+
+  /* ---------- toast + dialog */
+  #toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;padding:12px 20px;border-radius:999px;
+         transition:opacity .2s,transform .2s;z-index:20;max-width:70vw;background:rgba(30,32,40,.7)}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);z-index:30}
+  .modal.show{display:grid}
+  .modal .glass{width:min(420px,90vw);padding:22px;background:rgba(40,42,50,.65)}
+  .modal h3{margin:0 0 14px;font-size:17px}
+  .modal .fields{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+  .modal .fields:empty{display:none}
+  .modal label{font-size:12.5px;color:var(--mute);display:flex;flex-direction:column;gap:5px}
+  .modal .btns{display:flex;gap:8px;justify-content:flex-end}
+
+  @media (max-width:1300px){ .main{grid-template-columns:250px minmax(0,1fr) 330px} #msg{width:140px} }
 </style>
 </head>
 <body>
-<header>
-  <span id="dot"></span><h1>Bethlehem · Control</h1>
-  <button id="bPrev" title="Săgeată stânga">◀</button><button id="bNext" class="acc" title="Spațiu / săgeată dreapta">Înainte ▶</button>
-  <button id="bBlank" title="B">Negru (B)</button><button id="bLogo" title="L">Logo (L)</button>
-  <select id="bg" style="width:180px"></select>
-  <input id="msg" placeholder="Mesaj pe ecran (Enter)" style="width:220px">
-  <span class="spacer"></span>
-  <button id="bMain" title="Deschide o fereastră nouă. Mut-o pe proiector și apasă F11.">Ecran principal ↗</button>
-  <button id="bStage" title="Deschide o fereastră nouă. Mut-o pe monitorul de scenă și apasă F11.">Ecran scenă ↗</button>
-  <input id="pin" type="password" placeholder="PIN" style="width:80px"><button id="bLogin">OK</button><span id="role" class="hint"></span>
-</header>
+<div class="aurora"><i></i><i></i><i></i><i></i></div>
 
-<aside>
-  <h2>Program</h2>
-  <div class="row"><input class="f" id="svcTitle" placeholder="Titlu serviciu"><input class="f" id="svcStart" type="datetime-local"></div>
-  <div id="setlist"></div>
-  <div class="row" style="margin-top:8px">
-    <select id="addKind"><option value="sermon">Predică</option><option value="prayer">Rugăciune</option><option value="announcement">Anunțuri</option><option value="other">Altceva</option></select>
-    <button id="bAddItem">+ Adaugă</button>
-  </div>
-  <p class="hint">Cântările se adaugă din dreapta. Doar liderul poate schimba ordinea.</p>
-</aside>
+<div class="app">
+  <header class="top glass">
+    <div class="brand"><span class="star">✦</span>Betleem</div>
+    <span id="dot" title="Conexiune"></span>
+    <div class="transport">
+      <button id="bPrev" class="icon" title="Înapoi (←)">◀</button>
+      <button id="bNext" class="acc" title="Înainte (Spațiu / →)">Înainte ▶</button>
+      <button id="bBlank" title="Ecran negru (B)">Negru</button>
+      <button id="bLogo" title="Logo (L)">Logo</button>
+      <input id="msg" placeholder="Mesaj pe ecran… (Enter)">
+    </div>
+    <div class="login" id="loginBox">
+      <input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button id="bLogin">OK</button>
+    </div>
+    <span id="role"></span>
+  </header>
 
-<section>
-  <div class="previews"><iframe src="/main.html" title="Ecran principal"></iframe><iframe src="/stage.html" title="Ecran scenă"></iframe></div>
-  <h2 id="slidesTitle">Slide-uri</h2>
-  <div class="row" id="arrRow" style="display:none">
-    <input class="f" id="arrangement" placeholder="Aranjament: Strofa 1, Refren, Strofa 2, Refren">
-    <select id="maxLines" style="max-width:110px"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
-    <button id="bArr">Aplică</button>
-  </div>
-  <div id="slides"></div>
-</section>
+  <div class="main">
+    <!-- left: service order -->
+    <aside class="panel glass">
+      <div class="panel-head"><h2>Programul serviciului</h2></div>
+      <div class="svc">
+        <input id="svcTitle" placeholder="Titlul serviciului">
+        <input id="svcStart" type="datetime-local">
+      </div>
+      <div id="setlist" class="scroll"></div>
+      <div class="add-row">
+        <select id="addKind" class="grow">
+          <option value="sermon">Predică</option><option value="prayer">Rugăciune</option>
+          <option value="announcement">Anunțuri</option><option value="other">Altceva</option>
+        </select>
+        <button id="bAddItem">＋ Adaugă</button>
+      </div>
+    </aside>
 
-<aside style="border-right:0">
-  <h2>Caută în bibliotecă</h2>
-  <input class="f" id="q" placeholder="Titlu sau vers…">
-  <div id="results"></div>
+    <!-- center: screens, slides, backgrounds -->
+    <section class="center">
+      <div class="screens glass">
+        <div class="screen"><iframe src="/main.html" title="Sală" tabindex="-1"></iframe>
+          <span class="cap"><i></i>SALĂ</span><button class="open" id="bMain" title="Deschide pe proiector">Proiector ↗</button></div>
+        <div class="screen"><iframe src="/stage.html" title="Scenă" tabindex="-1"></iframe>
+          <span class="cap"><i></i>SCENĂ</span><button class="open" id="bStage" title="Deschide pe monitorul de scenă">Scenă ↗</button></div>
+      </div>
 
-  <h2 style="margin-top:18px">Import din link</h2>
-  <div class="row"><input class="f" id="importUrl" placeholder="https://www.resursecrestine.ro/…"><button id="bImport" style="flex:0">Ia</button></div>
+      <div class="slides-panel glass scroll">
+        <div class="slides-head">
+          <h3 id="slidesTitle">Alege ceva din program</h3>
+          <div class="row" id="arrRow" style="display:none">
+            <input id="arrangement" placeholder="Ordine: Strofa 1, Refren, Strofa 2, Refren" title="Ordinea secțiunilor pentru acest serviciu">
+            <select id="maxLines" title="Rânduri pe slide"><option value="2">2 rânduri</option><option value="3">3 rânduri</option><option value="4" selected>4 rânduri</option><option value="5">5 rânduri</option><option value="6">6 rânduri</option></select>
+            <button id="bArr">Aplică</button>
+          </div>
+        </div>
+        <div id="slides"></div>
+      </div>
 
-  <h2 style="margin-top:18px">Cântare</h2>
-  <input type="hidden" id="songId">
-  <div class="row"><input class="f" id="songTitle" placeholder="Titlu"><input class="f" id="songKey" placeholder="Ton" style="max-width:60px"></div>
-  <textarea id="songBody" placeholder="Strofa 1:
+      <div class="bg-panel glass">
+        <div class="bg-head">
+          <h2>Fundaluri</h2><span class="grow"></span>
+          <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează pe cântare</button>
+          <label class="btn">＋ Imagine / video<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
+        </div>
+        <div id="gallery"></div>
+      </div>
+    </section>
+
+    <!-- right: library / internet / editor -->
+    <aside class="panel glass">
+      <div class="seg" id="tabs">
+        <button data-t="lib" class="sel">Bibliotecă</button>
+        <button data-t="web">Internet</button>
+        <button data-t="edit">Editor</button>
+      </div>
+
+      <div class="tab sel" id="tab-lib">
+        <div class="search"><input id="q" placeholder="Caută titlu sau vers…" autocomplete="off"></div>
+        <div id="results" class="scroll"></div>
+        <button id="bNew2">＋ Cântare nouă</button>
+      </div>
+
+      <div class="tab" id="tab-web">
+        <div class="row"><div class="search grow"><input id="webQ" placeholder="Titlul sau primul vers…" autocomplete="off"></div><button id="bWeb" class="acc">Caută</button></div>
+        <label class="check"><input type="checkbox" id="webChords"> Cu acorduri (pentru scenă și muzicieni)</label>
+        <div id="webResults" class="scroll"><p class="hint">Caut întâi pe Resurse Creștine, apoi pe alte site-uri, și îți pun doar versurile în Editor.</p></div>
+        <div class="sep"></div>
+        <h2>Din link</h2>
+        <div class="row"><input id="importUrl" placeholder="https://www.resursecrestine.ro/…" class="grow"><button id="bImport">Ia</button></div>
+        <a href="#" id="webManual" class="hint">Caută manual pe orice site…</a>
+      </div>
+
+      <div class="tab" id="tab-edit">
+        <input type="hidden" id="songId">
+        <div class="row"><input id="songTitle" placeholder="Titlul cântării" class="grow"><input id="songKey" placeholder="Ton" style="width:70px"></div>
+        <textarea id="songBody" spellcheck="false" placeholder="Strofa 1:
 [G]Mare e [D]Domnul
 
 Refren:
 [C]Aleluia…
 
-Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textarea>
-  <div class="row" style="margin-top:6px"><button id="bSave" class="acc">Salvează</button><button id="bSaveAdd">Salvează + adaugă în program</button><button id="bNew" style="flex:0">Nou</button></div>
-  <p class="hint">Linie goală = slide nou. Etichete: Strofa, Refren, Punte, Intro, Final.</p>
+Linie goală = slide nou.
+Poți lipi și acorduri deasupra versurilor."></textarea>
+        <div class="editor-actions">
+          <button id="bSave" class="acc">Salvează</button>
+          <button id="bSaveAdd">Salvează + în program</button>
+          <button id="bNew" class="icon" title="Cântare nouă" style="flex:none">＋</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
 
-  <h2 style="margin-top:18px">Fundaluri</h2>
-  <input type="file" id="upload" accept="image/*,video/*">
-</aside>
-<div id="toast"></div>
+<div id="toast" class="glass"></div>
+<div class="modal" id="modal"><div class="glass"><h3 id="mTitle"></h3><div class="fields" id="mFields"></div>
+  <div class="btns"><button id="mCancel">Renunță</button><button id="mOk" class="acc">OK</button></div></div></div>
 
 <script type="module">
   import { connect, esc } from '/client.js';
@@ -107,48 +307,74 @@ Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textar
   let S = null, sel = -1;
   const hub = connect(s => { S = s; if (sel < 0 && s.live.item >= 0) sel = s.live.item; render(); }, e => {
     if (e.type === 'online' || e.type === 'offline') $('dot').classList.toggle('on', e.type === 'online');
-    if (e.role) $('role').textContent = { viewer: 'doar vizualizare', operator: 'operator', leader: 'lider' }[e.role];
+    if (e.role) {
+      $('role').textContent = { viewer: 'doar vizualizare', operator: 'operator', leader: 'lider' }[e.role];
+      $('loginBox').style.display = e.role === 'leader' ? 'none' : 'flex';
+    }
     if (e.type === 'error') toast(e.error);
     if (e.type === 'login') toast(e.ok ? 'Conectat ca ' + e.role : 'PIN greșit');
   });
   const send = o => hub.send(o);
   const api = (url, opt = {}) => fetch(url, { ...opt, headers: { 'x-pin': hub.pin(), ...(opt.headers || {}) } })
     .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j; });
-  function toast(t) { const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 2500); }
+  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2600); }
 
-  // ---- live controls
+  // small dialog — window.prompt/confirm do not work in the desktop app
+  function ask(title, fields = [], okText = 'OK') {
+    return new Promise(done => {
+      $('mTitle').textContent = title; $('mOk').textContent = okText;
+      $('mFields').innerHTML = fields.map((f, i) => `<label>${esc(f.label)}<input data-i="${i}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"></label>`).join('');
+      $('modal').classList.add('show');
+      const inputs = [...$('mFields').querySelectorAll('input')];
+      setTimeout(() => (inputs[0] || $('mOk')).focus(), 30);
+      const close = v => { $('modal').classList.remove('show'); $('mOk').onclick = $('mCancel').onclick = $('modal').onkeydown = null; done(v); };
+      $('mOk').onclick = () => close(inputs.map(i => i.value));
+      $('mCancel').onclick = () => close(null);
+      $('modal').onkeydown = e => { if (e.key === 'Enter') $('mOk').click(); if (e.key === 'Escape') close(null); };
+    });
+  }
+
+  // tabs
+  function showTab(t) {
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('sel', b.dataset.t === t));
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('sel', x.id === 'tab-' + t));
+  }
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.t));
+
+  // live controls
   $('bNext').onclick = () => send({ type: 'next' });
   $('bPrev').onclick = () => send({ type: 'prev' });
   $('bBlank').onclick = () => send({ type: 'blank' });
   $('bLogo').onclick = () => send({ type: 'logo' });
-  $('bg').onchange = e => send({ type: 'background', value: e.target.value });
-  $('msg').onkeydown = e => { if (e.key === 'Enter') send({ type: 'message', value: e.target.value }); };
+  $('msg').onkeydown = e => { if (e.key === 'Enter') { send({ type: 'message', value: e.target.value }); toast(e.target.value ? 'Mesaj afișat' : 'Mesaj șters'); } };
   $('bLogin').onclick = () => hub.login($('pin').value);
-  // each output opens in its OWN window, so it can be dragged to the projector / stage monitor
+  $('pin').onkeydown = e => { if (e.key === 'Enter') hub.login($('pin').value); };
   const openScreen = (url, name) => {
+    if (window.bnc?.openScreen) return window.bnc.openScreen(name === 'bnc-main' ? 'main' : 'stage');
     const w = window.open(url, name, 'popup,width=960,height=540');
     if (!w) toast('Browserul a blocat fereastra. Permite ferestrele pop-up pentru localhost.');
-    else toast('Mută fereastra pe ecranul dorit, apoi apasă F11 sau dublu-clic pe ea.');
+    else toast('Mută fereastra pe ecranul dorit, apoi apasă F11.');
   };
   $('bMain').onclick = () => openScreen('/main.html', 'bnc-main');
   $('bStage').onclick = () => openScreen('/stage.html', 'bnc-stage');
   addEventListener('keydown', e => {
-    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if ($('modal').classList.contains('show') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); send({ type: 'next' }); }
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') send({ type: 'prev' });
     if (e.key === 'b' || e.key === 'B' || e.key === '.') send({ type: 'blank' });
     if (e.key === 'l' || e.key === 'L') send({ type: 'logo' });
   });
 
-  // ---- service + setlist (leader)
+  // service + program
   $('svcTitle').onchange = e => send({ type: 'service', value: { title: e.target.value } });
   $('svcStart').onchange = e => send({ type: 'service', value: { startsAt: e.target.value ? new Date(e.target.value).toISOString() : null } });
-  $('bAddItem').onclick = () => {
-    const kind = $('addKind').value; const title = prompt('Titlu', $('addKind').selectedOptions[0].text); if (!title) return;
-    send({ type: 'addItem', kind, title, minutes: Number(prompt('Minute', '5')) || 5 });
+  $('bAddItem').onclick = async () => {
+    const kind = $('addKind').value, name = $('addKind').selectedOptions[0].text;
+    const v = await ask('Adaugă în program', [{ label: 'Titlu', value: name }, { label: 'Minute', value: 5, type: 'number' }], 'Adaugă');
+    if (v && v[0].trim()) send({ type: 'addItem', kind, title: v[0].trim(), minutes: Number(v[1]) || 5 });
   };
 
-  // ---- slides of the selected item
+  let dragFrom = -1;
   async function render() {
     if (!S) return;
     if (document.activeElement !== $('svcTitle')) $('svcTitle').value = S.service.title || '';
@@ -156,29 +382,34 @@ Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textar
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
     $('bBlank').classList.toggle('on', S.live.blank); $('bLogo').classList.toggle('on', S.live.logo);
-    $('setlist').innerHTML = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}">
-      <span class="t">${esc(it.title || it.kind)}<br><small>${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}</small></span>
-      <button class="x" data-a="up">↑</button><button class="x" data-a="down">↓</button><button class="x" data-a="key" title="Schimbă tonul">♯</button><button class="x" data-a="del">✕</button></div>`).join('')
-      || '<p class="hint">Programul e gol. Caută o cântare în dreapta și apasă pe ea.</p>';
-    document.querySelectorAll('#setlist .item').forEach(el => el.onclick = e => {
-      const i = +el.dataset.i, a = e.target.dataset.a;
-      if (a === 'up' || a === 'down') return send({ type: 'moveItem', item: i, dir: a === 'up' ? -1 : 1 });
-      if (a === 'del') return confirmDel(i);
-      if (a === 'key') { const k = prompt('Ton pentru acest serviciu (ex. A, Bb, F#m)', S.setlist[i].key || ''); if (k !== null) send({ type: 'updateItem', item: i, patch: { key: k.trim() } }); return; }
-      sel = i; render(); loadSongInEditor(S.setlist[i]);
+    $('setlist').innerHTML = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true">
+      <span class="num">${i + 1}</span>
+      <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}</small></span>
+      <span class="acts">${it.kind === 'song' ? '<button data-a="key" title="Schimbă tonul">♯</button>' : ''}<button data-a="del" title="Scoate din program">✕</button></span></div>`).join('')
+      || '<div class="empty">Programul e gol.<br>Alege cântări din Bibliotecă →</div>';
+    document.querySelectorAll('#setlist .item').forEach(el => {
+      const i = +el.dataset.i;
+      el.onclick = async e => {
+        const a = e.target.dataset.a;
+        if (a === 'del') { const ok = await ask('Scoți din program „' + (S.setlist[i].title || KIND[S.setlist[i].kind]) + '”?', [], 'Scoate'); if (ok) send({ type: 'removeItem', item: i }); return; }
+        if (a === 'key') { const v = await ask('Tonul pentru acest serviciu', [{ label: 'Ton (ex. A, Bb, F#m)', value: S.setlist[i].key || '' }]); if (v) send({ type: 'updateItem', item: i, patch: { key: v[0].trim() } }); return; }
+        sel = i; render(); loadSongInEditor(S.setlist[i]);
+      };
+      el.ondragstart = () => { dragFrom = i; el.classList.add('drag'); };
+      el.ondragend = () => el.classList.remove('drag');
+      el.ondragover = e => { e.preventDefault(); el.classList.add('over'); };
+      el.ondragleave = () => el.classList.remove('over');
+      el.ondrop = e => { e.preventDefault(); el.classList.remove('over'); if (dragFrom >= 0 && dragFrom !== i) send({ type: 'moveItem', item: dragFrom, to: i }); dragFrom = -1; };
     });
     await renderSlides();
-    const media = await fetch('/api/media').then(r => r.json()).catch(() => []);
-    const cur = S.live.background;
-    $('bg').innerHTML = '<option value="">Fără fundal</option>' + media.filter(m => m !== 'logo.png').map(m => `<option ${m === cur ? 'selected' : ''}>${esc(m)}</option>`).join('');
+    renderGallery();
   }
-  function confirmDel(i) { if (confirm('Scoți din program: ' + (S.setlist[i].title || S.setlist[i].kind) + '?')) send({ type: 'removeItem', item: i }); }
 
   async function renderSlides() {
     const it = S.setlist[sel];
     $('arrRow').style.display = it && it.kind === 'song' ? 'flex' : 'none';
-    $('slidesTitle').textContent = it ? it.title : 'Slide-uri';
-    if (!it) { $('slides').innerHTML = ''; return; }
+    $('slidesTitle').textContent = it ? (it.title || KIND[it.kind]) : 'Alege ceva din program';
+    if (!it) { $('slides').innerHTML = '<div class="empty" style="grid-column:1/-1">Apasă pe o cântare din program ca să-i vezi slide-urile.<br>Apoi apasă pe un slide ca să-l trimiți pe ecran.</div>'; return; }
     if (document.activeElement !== $('arrangement')) $('arrangement').value = (it.arrangement || []).join(', ');
     $('maxLines').value = String(it.maxLines || 4);
     let slides = sel === S.live.item ? S.live.slides : null;
@@ -187,11 +418,11 @@ Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textar
       $('slides').innerHTML = `<div class="slide ${sel === S.live.item ? 'live' : ''}" data-s="0"><div class="lb">${esc(KIND[it.kind])}</div>${esc(it.title)}</div>`;
     } else {
       $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''}" data-s="${i}">
-        <span class="n">${i + 1}</span><div class="lb">${esc(sl.label)}</div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div>`).join('');
+        <span class="n">${i + 1}</span><div class="lb">${esc(sl.label || ' ')}</div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div>`).join('');
     }
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = () => send({ type: 'go', item: sel, slide: +el.dataset.s }));
+    document.querySelector('#slides .slide.live')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
-  // Slides for a non-live item are computed in the browser with the same engine.
   const songCache = new Map();
   async function previewSlides(it) {
     if (it.kind !== 'song') return [];
@@ -204,23 +435,28 @@ Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textar
   $('bArr').onclick = () => {
     const value = $('arrangement').value.split(',').map(s => s.trim()).filter(Boolean);
     send({ type: 'arrangement', item: sel, value: value.length ? value : null, maxLines: +$('maxLines').value });
+    toast('Aranjament aplicat');
   };
 
-  // ---- library search
+  // library: click = add to program, ✎ = edit
   let qTimer;
-  $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(search, 150); };
+  $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(search, 120); };
   async function search() {
     const list = await fetch('/api/songs?q=' + encodeURIComponent($('q').value)).then(r => r.json());
-    $('results').innerHTML = list.map(s => `<div data-id="${s.id}">${esc(s.title)} <small class="hint">${esc(s.key || '')}</small></div>`).join('') || '<p class="hint">Nimic găsit. Importă din link sau scrie-o mai jos.</p>';
-    document.querySelectorAll('#results div').forEach(el => el.onclick = async () => {
+    $('results').innerHTML = list.map(s => `<div class="lib" data-id="${s.id}" title="Apasă ca s-o adaugi în program">
+        <span class="t">${esc(s.title)}</span>${s.key ? `<span class="chip">${esc(s.key)}</span>` : ''}
+        <span class="acts"><button data-a="edit" title="Editează">✎</button><button data-a="add" title="Adaugă în program">＋</button></span></div>`).join('')
+      || '<p class="hint">Nimic găsit. Caută pe Internet sau scrie o cântare nouă.</p>';
+    document.querySelectorAll('#results .lib').forEach(el => el.onclick = async e => {
       const song = await fetch('/api/songs/' + el.dataset.id).then(r => r.json());
-      fillEditor(song);
-      if (confirm('Adaugi „' + song.title + '” în program?')) send({ type: 'addItem', kind: 'song', songId: song.id, key: song.key, minutes: 5 });
+      if (e.target.dataset.a === 'edit') { fillEditor(song); showTab('edit'); return; }
+      send({ type: 'addItem', kind: 'song', songId: song.id, key: song.key, minutes: 5 });
+      toast('„' + song.title + '” a fost adăugată în program');
     });
   }
   search();
 
-  // ---- editor
+  // editor
   function fillEditor(s) { $('songId').value = s.id || ''; $('songTitle').value = s.title || ''; $('songKey').value = s.key || ''; $('songBody').value = s.body || ''; $('songBody').dataset.source = s.source || ''; }
   async function loadSongInEditor(it) { if (it.kind === 'song') { songCache.delete(it.songId); fillEditor(await fetch('/api/songs/' + it.songId).then(r => r.json())); } }
   function saveSong(addAfter) {
@@ -234,34 +470,99 @@ Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textar
       if (addAfter) {
         const list = await fetch('/api/songs?q=' + encodeURIComponent(song.title)).then(r => r.json());
         const found = list.find(x => x.title === song.title.trim());
-        if (found) send({ type: 'addItem', kind: 'song', songId: found.id, key: found.key, minutes: 5 });
+        if (found) { send({ type: 'addItem', kind: 'song', songId: found.id, key: found.key, minutes: 5 }); toast('Salvată și adăugată în program'); }
       }
     }, 400);
   }
   $('bSave').onclick = () => saveSong(false);
   $('bSaveAdd').onclick = () => saveSong(true);
-  $('bNew').onclick = () => fillEditor({});
+  $('bNew').onclick = () => { fillEditor({}); $('songTitle').focus(); };
+  $('bNew2').onclick = () => { fillEditor({}); showTab('edit'); $('songTitle').focus(); };
 
-  // ---- import from link
+  // import from link
   $('bImport').onclick = async () => {
     const url = $('importUrl').value.trim(); if (!url) return;
     $('bImport').disabled = true; toast('Se descarcă…');
     try {
       const r = await api('/api/import-url', { method: 'POST', body: JSON.stringify({ url }) });
       if (!r.body) throw new Error('Nu am găsit versurile pe pagină. Copiază-le manual.');
-      fillEditor({ title: r.title, body: r.body, source: r.source });
+      fillEditor({ title: r.title, body: r.body, source: r.source }); showTab('edit');
       toast('Verifică versurile, apoi Salvează');
     } catch (e) { toast(e.message); }
     $('bImport').disabled = false;
   };
 
-  // ---- background upload
-  $('upload').onchange = async e => {
-    const f = e.target.files[0]; if (!f) return;
-    toast('Se încarcă ' + f.name + '…');
-    try { await api('/api/media?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }); toast('Încărcat'); render(); }
-    catch (err) { toast(err.message); }
+  // backgrounds
+  let media = null;
+  async function loadMedia() { media = await fetch('/api/media').then(r => r.json()).catch(() => []); renderGallery(); }
+  function renderGallery() {
+    if (!S) return;
+    if (media === null) return loadMedia();
+    const cur = S.live.background, pinned = S.setlist[sel]?.background || '';
+    const tile = (name, label, inner) => `<div class="bg ${name === cur ? 'on' : ''}" data-n="${esc(name)}" title="${esc(label)}">${inner}${name && name === pinned ? '<b class="pin">📌</b>' : ''}<span>${esc(label)}</span></div>`;
+    const html = [tile('', 'Fără fundal', '')].concat(media.filter(m => m !== 'logo.png').map(m => {
+      const src = '/media/' + encodeURIComponent(m);
+      const inner = /\.(mp4|webm|mov)$/i.test(m) ? `<video src="${src}#t=1" muted preload="metadata"></video>` : `<img src="${src}" loading="lazy" alt="">`;
+      return tile(m, m.replace(/\.[^.]+$/, '').replace(/^\d+\s*/, ''), inner);
+    })).join('');
+    if ($('gallery').dataset.html !== html) { $('gallery').innerHTML = html; $('gallery').dataset.html = html; }
+    document.querySelectorAll('#gallery .bg').forEach(el => el.onclick = () => send({ type: 'background', value: el.dataset.n }));
+  }
+  $('bPin').onclick = () => {
+    const it = S && S.setlist[sel];
+    if (!it || it.kind !== 'song') return toast('Alege întâi o cântare din program');
+    send({ type: 'itemBackground', item: sel, value: S.live.background });
+    toast(S.live.background ? 'Fundal fixat pe „' + it.title + '”' : 'Fundalul cântării a fost scos');
   };
+  $('upload').onchange = async e => {
+    for (const f of e.target.files) {
+      toast('Se încarcă ' + f.name + '…');
+      try { await api('/api/media?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }); }
+      catch (err) { toast(err.message); }
+    }
+    toast('Încărcat'); e.target.value = ''; loadMedia();
+  };
+
+  // internet: Resurse Creștine first, then other sites — only the lyrics come back
+  let webList = [];
+  async function webSearch() {
+    const q = $('webQ').value.trim(); if (!q) return;
+    const chords = $('webChords').checked;
+    $('bWeb').disabled = true;
+    $('webResults').innerHTML = '<p class="hint">Caut pe internet…</p>';
+    try {
+      webList = await api('/api/search-lyrics?chords=' + (chords ? 1 : 0) + '&q=' + encodeURIComponent(q));
+      if (!webList.length) { $('webResults').innerHTML = '<p class="hint">N-am găsit versuri. Încearcă primul vers sau caută manual.</p>'; return; }
+      $('webResults').innerHTML = webList.map((r, i) => `<div class="res" data-i="${i}"><b>${esc(r.title)}${r.hasChords ? '<span class="tag">acorduri</span>' : ''}</b><small>${esc(r.site)} · ${esc(r.preview)}</small></div>`).join('');
+      document.querySelectorAll('#webResults .res').forEach(el => el.onclick = () => { useResult(+el.dataset.i, chords); showTab('edit'); });
+      useResult(0, chords, true);
+    } catch (e) { $('webResults').innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
+    finally { $('bWeb').disabled = false; }
+  }
+  function useResult(i, chords, first = false) {
+    const r = webList[i]; if (!r) return;
+    document.querySelectorAll('#webResults .res').forEach(el => el.classList.toggle('on', +el.dataset.i === i));
+    const current = $('songId').value;
+    if (chords && current) {
+      $('songBody').value = r.body; $('songBody').dataset.source = r.url;
+      toast('Acordurile au fost puse în „' + $('songTitle').value + '”. Verifică și Salvează.');
+    } else {
+      fillEditor({ title: r.title, body: r.body, source: r.url });
+      toast(first && webList.length > 1 ? 'Prima variantă e în Editor. Mai ai ' + (webList.length - 1) + ' de ales mai jos.' : 'Versuri de pe ' + r.site + ' puse în Editor.');
+    }
+  }
+  $('bWeb').onclick = webSearch;
+  $('webQ').onkeydown = e => { if (e.key === 'Enter') webSearch(); };
+  $('webManual').onclick = e => {
+    e.preventDefault();
+    const q = $('webQ').value.trim() || $('songTitle').value.trim();
+    if (window.bnc?.webSearch) window.bnc.webSearch(q);
+    else window.open('https://duckduckgo.com/?q=' + encodeURIComponent(q + ' versuri'), '_blank');
+  };
+  window.bnc?.onImport?.(r => {
+    fillEditor({ title: r.title, body: r.body, source: r.source }); showTab('edit');
+    toast(r.body ? 'Importat. Verifică versurile, apoi Salvează.' : 'Nu am găsit text. Selectează versurile pe pagină și încearcă din nou.');
+  });
 </script>
 </body>
 </html>

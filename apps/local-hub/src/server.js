@@ -11,9 +11,10 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { stripTypeScriptTypes } from 'node:module';
+import * as nodeModule from 'node:module';
 import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
+import { searchLyrics } from './websearch.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -24,12 +25,18 @@ const DB_FILE = path.join(DATA_DIR, 'library.json');
 const PORT = Number(process.env.PORT || 4545);
 const PIN = String(process.env.PIN || '');          // operator PIN; empty = no PIN (only for testing)
 const LEADER_PIN = String(process.env.LEADER_PIN || PIN);
+// Desktop app: windows on this same computer are trusted as leader (phones still need a PIN)
+const TRUST_LOCALHOST = process.env.TRUST_LOCALHOST === '1';
+const isLocal = addr => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(String(addr));
 
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 // --- Shared song engine: the same TypeScript file the desktop app uses -------
-const CORE_TS = path.resolve(ROOT, '../../packages/core/src/song.ts');
-const CORE_JS = stripTypeScriptTypes(fs.readFileSync(CORE_TS, 'utf8'));
+// Packaged app ships a pre-built core-dist/song.js; in the repo we strip types from song.ts on start.
+const CORE_DIST = path.join(ROOT, 'core-dist', 'song.js');
+const CORE_JS = fs.existsSync(CORE_DIST)
+  ? fs.readFileSync(CORE_DIST, 'utf8')
+  : nodeModule.stripTypeScriptTypes(fs.readFileSync(path.resolve(ROOT, '../../packages/core/src/song.ts'), 'utf8'));
 const core = await import('data:text/javascript;base64,' + Buffer.from(CORE_JS).toString('base64'));
 
 // --- Storage (simple JSON file, written atomically) -------------------------
@@ -62,6 +69,26 @@ function slidesFor(index) {
   return core.toSlides(core.arrange(core.parseSong(body), it.arrangement || song.arrangement), it.maxLines || 4);
 }
 
+function applyItemBackground(index) {
+  const it = db.setlist[index];
+  if (it && it.background) live.background = it.background;
+}
+
+/** Add songs from an importer (FreeShow etc.). Skips titles already in the library. */
+export function addSongs(list) {
+  const have = new Set(db.songs.map(s => s.title.toLowerCase()));
+  let added = 0;
+  for (const s of list) {
+    if (!s || !s.title || !s.body || have.has(s.title.toLowerCase())) continue;
+    db.songs.push({ id: crypto.randomUUID(), ...s, body: core.normalizeImported(s.body), createdAt: new Date().toISOString() });
+    have.add(s.title.toLowerCase()); added++;
+  }
+  if (added) { save(); broadcast(); }
+  return added;
+}
+
+export { core, extractLyrics };
+
 function snapshot() {
   return {
     service: db.service,
@@ -87,8 +114,8 @@ function broadcast() {
 const ROLE_RANK = { viewer: 0, operator: 1, leader: 2 };
 const need = (ws, role) => ROLE_RANK[sessions.get(ws)?.role ?? 'viewer'] >= ROLE_RANK[role];
 
-wss.on('connection', ws => {
-  sessions.set(ws, { role: PIN ? 'viewer' : 'leader' });
+wss.on('connection', (ws, req) => {
+  sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) ? 'leader' : 'viewer' });
   ws.send(JSON.stringify({ type: 'hello', role: sessions.get(ws).role, state: snapshot() }));
   ws.on('close', () => sessions.delete(ws));
   ws.on('message', raw => {
@@ -105,6 +132,7 @@ wss.on('connection', ws => {
     switch (m.type) {
       case 'go': {                                   // go to item + slide
         const item = clamp(m.item ?? live.item, -1, db.setlist.length - 1);
+        if (item !== live.item) applyItemBackground(item);
         live.item = item;
         live.slide = clamp(m.slide ?? 0, 0, Math.max(0, slidesFor(item).length - 1));
         live.blank = false; live.logo = false;
@@ -117,7 +145,7 @@ wss.on('connection', ws => {
         if (s >= 0 && s < n) live.slide = s;
         else {                                       // jump to neighbouring item
           const item = clamp(live.item + dir, 0, db.setlist.length - 1);
-          if (item !== live.item) { live.item = item; live.slide = dir > 0 ? 0 : Math.max(0, slidesFor(item).length - 1); }
+          if (item !== live.item) { applyItemBackground(item); live.item = item; live.slide = dir > 0 ? 0 : Math.max(0, slidesFor(item).length - 1); }
         }
         live.blank = false; live.logo = false;
         break;
@@ -131,6 +159,12 @@ wss.on('connection', ws => {
         it.arrangement = Array.isArray(m.value) ? m.value.map(String) : undefined;
         if (m.maxLines) it.maxLines = clamp(Number(m.maxLines), 1, 8);
         if ('background' in m) it.background = String(m.background || '');
+        save(); break;
+      }
+      case 'itemBackground': {                       // pin a background to one song in the plan
+        const it = db.setlist[m.item]; if (!it) break;
+        it.background = String(m.value || '');
+        if (m.item === live.item) live.background = it.background;
         save(); break;
       }
       case 'saveSong': {                             // operators fix lyrics
@@ -153,8 +187,10 @@ wss.on('connection', ws => {
         }
         if (m.type === 'removeItem') { db.setlist.splice(m.item, 1); if (live.item >= db.setlist.length) live.item = db.setlist.length - 1; }
         if (m.type === 'moveItem') {
-          const to = clamp(m.item + m.dir, 0, db.setlist.length - 1);
+          const to = clamp('to' in m ? Number(m.to) : m.item + m.dir, 0, db.setlist.length - 1);
+          const liveItem = db.setlist[live.item];
           const [it] = db.setlist.splice(m.item, 1); db.setlist.splice(to, 0, it);
+          if (liveItem) live.item = db.setlist.indexOf(liveItem);
         }
         if (m.type === 'updateItem' && db.setlist[m.item]) {
           const allowed = ['title', 'key', 'minutes', 'leader'];
@@ -203,6 +239,13 @@ async function handle(req, res) {
       const found = extractLyrics(html, u.hostname);
       return json(res, 200, { ...found, body: core.normalizeImported(found.body), source: u.href });
     }
+    if (p === '/api/search-lyrics' && req.method === 'GET') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const results = await searchLyrics(url.searchParams.get('q'), {
+        chords: url.searchParams.get('chords') === '1', normalize: core.normalizeImported,
+      });
+      return json(res, 200, results);
+    }
     if (p === '/api/media' && req.method === 'GET') {
       const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.'));
       return json(res, 200, files);
@@ -223,7 +266,7 @@ async function handle(req, res) {
   }
 }
 
-function checkPin(req) { return !PIN || safeEq(req.headers['x-pin'], PIN) || safeEq(req.headers['x-pin'], LEADER_PIN); }
+function checkPin(req) { return !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) || safeEq(req.headers['x-pin'], PIN) || safeEq(req.headers['x-pin'], LEADER_PIN); }
 function safeEq(a, b) {
   const x = Buffer.from(String(a ?? '')), y = Buffer.from(String(b ?? ''));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
@@ -256,6 +299,9 @@ function file(res, dir, rel, req) {
   fs.createReadStream(full).pipe(res);
 }
 
+// Resolves when listening, rejects (e.g. EADDRINUSE) instead of crashing the desktop app.
+export const ready = new Promise((ok, bad) => { server.once('listening', ok); server.once('error', bad); });
+ready.catch(() => {});
 server.listen(PORT, '0.0.0.0', () => {
   const ips = Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal).map(i => i.address);
   console.log('\n  Bethlehem Network Churches — Local Hub\n');

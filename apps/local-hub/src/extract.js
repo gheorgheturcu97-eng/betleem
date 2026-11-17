@@ -2,19 +2,23 @@
 // Strategy (generic, works on most lyric/chord sites):
 //   1. a <pre> block (chord sites)  2. an element whose class/id says lyrics/versuri/text
 //   3. the largest block of <br>-separated short lines.
-// Site-specific rules (e.g. resursecrestine.ro) go in SITE_RULES once you have
-// checked the real page HTML on the church computer.
+// Site-specific rules go in SITE_RULES.
 
 const SITE_RULES = [
-  // { host: /resursecrestine\.ro$/, select: /<div[^>]+class="[^"]*\bcontent\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i },
+  // resursecrestine.ro: lyrics (/cantece/) and chords (/acorduri/) both live in <div class="resized-text">
+  // (checked on the live site, Nov 2026)
+  { host: /(^|\.)resursecrestine\.ro$/, select: /<div[^>]+class="[^"]*\bresized-text\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i },
 ];
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" };
 
 export function htmlToText(html) {
+  // Source line breaks next to tags are not real breaks (only <br>, </p>, </div> are).
+  // Leave plain text (e.g. the inside of a <pre>) alone.
+  if (/<(br|\/p|\/div|\/li)\b/i.test(html)) html = html.replace(/[ \t]*\r?\n\s*(?=<)|(?<=>)[ \t]*\r?\n\s*/g, '').replace(/\s*\r?\n\s*/g, ' ');
   return html
-    .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, '')
-    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<(script|style|noscript|form|button|select)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\b[^>]*>/gi, '\n')
     .replace(/<\/(p|div|h\d|li|tr)>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&(#\d+|#x[\da-f]+|\w+);/gi, (m, e) =>
