@@ -101,7 +101,8 @@ function save() {
 // --- How text looks on the screens (operators can change it) --------------------
 const DISPLAY_DEFAULTS = {
   main:  { font: 'Segoe UI', size: 6.2, color: '#ffffff', align: 'center', valign: 'middle', weight: 700, upper: false, shadow: true, dim: 35 },
-  stage: { font: 'Segoe UI', size: 5.4, color: '#f2f2f2', chordColor: '#f5b301', align: 'left', next: true },
+  stage: { font: 'Segoe UI', size: 5.4, color: '#f2f2f2', chordColor: '#f5b301', align: 'left', next: true,
+           nextSize: 3.4, nextColor: '#8a8f95', nextShare: 30, labels: true },
 };
 db.display = { main: { ...DISPLAY_DEFAULTS.main, ...(db.display?.main || {}) }, stage: { ...DISPLAY_DEFAULTS.stage, ...(db.display?.stage || {}) } };
 function cleanDisplay(screen, patch) {
@@ -113,8 +114,19 @@ function cleanDisplay(screen, patch) {
   if (['left', 'center', 'right'].includes(p.align)) d.align = p.align;
   if (['top', 'middle', 'bottom'].includes(p.valign)) d.valign = p.valign;
   if ([400, 500, 600, 700, 800].includes(+p.weight)) d.weight = +p.weight;
-  for (const k of ['upper', 'shadow', 'next']) if (typeof p[k] === 'boolean') d[k] = p[k];
+  for (const k of ['upper', 'shadow', 'next', 'italic', 'labels']) if (typeof p[k] === 'boolean') d[k] = p[k];
   if (Number.isFinite(+p.dim)) d.dim = Math.min(90, Math.max(0, +p.dim));
+  if (Number.isFinite(+p.lineHeight)) d.lineHeight = Math.min(2.2, Math.max(0.8, +p.lineHeight));
+  if (Number.isFinite(+p.nextSize)) d.nextSize = Math.min(10, Math.max(1.5, +p.nextSize));
+  if (/^#[0-9a-f]{6}$/i.test(p.nextColor || '')) d.nextColor = p.nextColor;
+  if (Number.isFinite(+p.nextShare)) d.nextShare = Math.min(70, Math.max(10, +p.nextShare));
+  // text area on the screen, in % of width/height (null = whole screen with margins)
+  if (p.box === null) d.box = null;
+  else if (p.box && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(+p.box[k]))) {
+    const c = v => Math.round(Math.min(100, Math.max(0, +v)) * 10) / 10;
+    const x = c(p.box.x), y = c(p.box.y);
+    d.box = { x, y, w: Math.max(5, Math.min(100 - x, c(p.box.w))), h: Math.max(5, Math.min(100 - y, c(p.box.h))) };
+  }
   return d;
 }
 
@@ -129,6 +141,18 @@ function slidesFor(index) {
   const steps = it.key && song.key ? core.keyDistance(song.key, it.key) : 0;
   const body = core.transpose(song.body, steps, core.prefersFlats(it.key || song.key || 'C'));
   return core.toSlides(core.arrange(core.parseSong(body), it.arrangement || song.arrangement), it.maxLines || 4);
+}
+
+/** Which section of the song (and which lines of it) a slide comes from — same split as toSlides. */
+function slideSource(it, song, slide) {
+  const sections = core.arrange(core.parseSong(song.body), it.arrangement || song.arrangement);
+  const max = it.maxLines || 4;
+  let n = 0;
+  for (const sec of sections) {
+    const parts = Math.max(1, Math.ceil(sec.lines.length / max)), size = Math.ceil(sec.lines.length / parts);
+    for (let i = 0; i < sec.lines.length; i += size) { if (n === Number(slide)) return { sec, from: i, to: Math.min(i + size, sec.lines.length) }; n++; }
+  }
+  return null;
 }
 
 function applyItemBackground(index) {
@@ -248,16 +272,32 @@ function handleMessage(ws, m) {
         if (m.item === live.item) live.background = it.background;
         save(); break;
       }
+      case 'slideStyle': {                           // look of one slide, the whole song, or every song
+        const it = db.setlist[m.item]; if (!it) break;
+        if (m.scope === 'all') { Object.assign(db.display.main, cleanDisplay('main', m.patch)); for (const x of db.setlist) { delete x.display; delete x.slideStyles; } }
+        else if (m.scope === 'song') { it.display = m.patch ? cleanDisplay('main', m.patch) : undefined; delete it.slideStyles; }
+        else {
+          const n = Number(m.slide); if (!Number.isInteger(n) || n < 0 || n > 500) break;
+          it.slideStyles ||= {};
+          if (m.patch) it.slideStyles[n] = cleanDisplay('main', m.patch); else delete it.slideStyles[n];
+        }
+        save(); break;
+      }
+      case 'slideSection': {                         // Strofa / Refren / Bridge… for the section this slide belongs to
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const hit = slideSource(it, song, m.slide); if (!hit) break;
+        const label = String(m.label || '').trim().slice(0, 30);
+        if (!label) return reply({ type: 'error', error: 'Alege un nume pentru secțiune' });
+        const body = core.setSectionLabel(song.body, hit.sec.lines, label);
+        if (body === song.body && hit.sec.label !== label) return reply({ type: 'error', error: 'Nu am găsit secțiunea în cântare. Schimb-o din Editor.' });
+        song.body = body; song.updatedAt = new Date().toISOString();
+        save(); break;
+      }
       case 'editSlide': {                            // fix the words of one slide; chords stay on their words
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const song = db.songs.find(x => x.id === it.songId); if (!song) break;
-        const sections = core.arrange(core.parseSong(song.body), it.arrangement || song.arrangement);
-        const max = it.maxLines || 4;
-        let n = 0, hit = null;
-        for (const sec of sections) {                // same split as toSlides, but remember where each slide comes from
-          const parts = Math.max(1, Math.ceil(sec.lines.length / max)), size = Math.ceil(sec.lines.length / parts);
-          for (let i = 0; i < sec.lines.length; i += size) { if (n === m.slide) hit = { sec, from: i, to: Math.min(i + size, sec.lines.length) }; n++; }
-        }
+        const hit = slideSource(it, song, m.slide);
         if (!hit) break;
         const oldLines = hit.sec.lines.slice(hit.from, hit.to);
         const newText = String(m.text || '').replace(/\r/g, '').split('\n').map(l => l.trimEnd()).filter(l => l.trim()).join('\n');
@@ -341,7 +381,7 @@ function handleMessage(ws, m) {
         if (m.type === 'addItem') {
           const kind = ['song', 'sermon', 'prayer', 'announcement', 'other'].includes(m.kind) ? m.kind : 'other';
           const item = m.item && typeof m.item === 'object'                                 // undo of a removal
-            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'notes']), id: m.item.id || crypto.randomUUID() }
+            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes']), id: m.item.id || crypto.randomUUID() }
             : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [] };
           const at = Number.isInteger(m.at) ? Math.min(Math.max(0, m.at), db.setlist.length) : db.setlist.length;
           db.setlist.splice(at, 0, item);

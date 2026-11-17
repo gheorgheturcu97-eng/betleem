@@ -37,11 +37,15 @@
     t.textAlign = d.align; t.alignItems = H[d.align]; t.justifyContent = V[d.valign];
     t.textTransform = d.upper ? 'uppercase' : 'none';
     t.textShadow = d.shadow ? '0 .3vh 1.2vh rgba(0,0,0,.85)' : 'none';
+    t.lineHeight = d.lineHeight || 1.3; t.fontStyle = d.italic ? 'italic' : 'normal';
+    const b = d.box;                                 // text area chosen in the slide editor
+    if (b) Object.assign(t, { inset: 'auto', left: b.x + 'vw', top: b.y + 'vh', width: b.w + 'vw', height: b.h + 'vh' });
+    else Object.assign(t, { inset: '6vh 6vw', left: '', top: '', width: '', height: '' });
     $('shade').style.background = `rgba(0,0,0,${(d.dim ?? 35) / 100})`;
   }
   connect(s => {
     const L = s.live, item = s.setlist[L.item];
-    if (s.display) style({ ...s.display.main, ...(item?.display || {}) });
+    if (s.display) style({ ...s.display.main, ...(item?.display || {}), ...(item?.slideStyles?.[L.slide] || {}) });
     paintBackground($('bg'), L.background);
     const slide = L.slides[L.slide];
     const html = slide ? slide.lines.map(l => esc(stripChords(l))).filter(Boolean).join('<br>') : '';

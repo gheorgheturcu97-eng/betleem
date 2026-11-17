@@ -10,10 +10,13 @@
   header{display:flex;justify-content:space-between;align-items:baseline;padding:1.5vh 3vw;font-size:3vh;color:#9aa0a6;border-bottom:1px solid #222}
   header b{color:#fff}
   #clock{font-variant-numeric:tabular-nums;font-size:4vh;color:#fff}
-  main{display:grid;grid-template-rows:1fr auto;height:calc(100% - 9vh)}
+  main{display:flex;flex-direction:column;height:calc(100% - 9vh)}
+  #now{flex:1;min-height:0}
   #now{padding:3vh 3vw;font-size:5.4vh;line-height:1.15;overflow:hidden}
-  #next{padding:2vh 3vw;font-size:3.4vh;color:#8a8f95;border-top:1px solid #222;line-height:1.15;max-height:30vh;overflow:hidden}
-  .label{font-size:2.6vh;color:#f5b301;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1vh}
+  #next{padding:2vh 3vw;font-size:3.4vh;color:#8a8f95;border-top:1px solid #222;line-height:1.15;max-height:30vh;overflow:hidden;flex:none}
+  .label{font-size:2.6vh;color:var(--lc,#f5b301);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1vh}
+  .label .up{color:#8a8f95;margin-right:1.2vw}
+  body.nolabels #now .label{display:none}
   .line{display:flex;flex-wrap:wrap;margin-bottom:1.2vh}
   #now.center .line,#next.center .line{justify-content:center} #now.center,#next.center{text-align:center}
   #now.right .line,#next.right .line{justify-content:flex-end} #now.right,#next.right{text-align:right}
@@ -32,14 +35,14 @@
 <div id="blank">ECRAN NEGRU</div>
 <script type="module">
   import { connect, esc, stayAwake } from '/client.js';
-  import { chordLineToHtml } from '/core/song.js';
+  import { chordLineToHtml, sectionColor } from '/core/song.js';
   const $ = id => document.getElementById(id);
   stayAwake();
   document.ondblclick = () => document.documentElement.requestFullscreen?.();
   const tick = () => $('clock').textContent = new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
   tick(); setInterval(tick, 1000);
   const render = sl => !sl ? '' :
-    (sl.label ? `<div class="label">${esc(sl.label)}</div>` : '') +
+    (sl.label ? `<div class="label" style="--lc:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : '') +
     sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('');
   function style(d) {
     if (!d) return;
@@ -48,6 +51,10 @@
     $('now').style.fontSize = d.size + 'vh'; $('now').style.color = d.color;
     document.documentElement.style.setProperty('--chord', d.chordColor);
     $('next').style.display = d.next === false ? 'none' : '';
+    const n = $('next').style;                       // the "Urmează" part: its own size, color and share of the screen
+    n.fontSize = (d.nextSize || 3.4) + 'vh'; n.color = d.nextColor || '#8a8f95'; n.maxHeight = (d.nextShare || 30) + 'vh';
+    n.fontFamily = document.body.style.fontFamily;
+    document.body.classList.toggle('nolabels', d.labels === false);
   }
   connect(s => {
     style(s.display?.stage);
@@ -57,8 +64,8 @@
     $('pos').textContent = L.slides.length ? `${L.slide + 1} / ${L.slides.length}` : '';
     $('now').innerHTML = render(L.slides[L.slide]);
     const n = L.slides[L.slide + 1];
-    $('next').innerHTML = n ? `<div class="label">Urmează</div>${render(n)}`
-      : nextItem ? `<div class="label">Urmează</div>${esc(nextItem.title)}` : '';
+    $('next').innerHTML = n ? `<div class="label" style="--lc:${sectionColor(n.label || '')}"><span class="up">Urmează</span>${esc(n.label || '')}</div>${n.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('')}`
+      : nextItem ? `<div class="label"><span class="up">Urmează</span></div>${esc(nextItem.title)}` : '';
     $('blank').style.display = L.blank ? 'block' : 'none';
     $('msg').style.display = L.message ? 'block' : 'none'; $('msg').textContent = L.message;
   });

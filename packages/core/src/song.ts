@@ -385,3 +385,49 @@ export function rankSongs<T extends { title: string; body: string }>(songs: T[],
   }
   return scored.sort((a, b) => b.score - a.score || a.s.title.localeCompare(b.s.title, 'ro')).map(x => x.s);
 }
+
+// ---------------------------------------------------------------------------
+// Section kinds and colors (Strofa, Refren, Bridge…) and renaming a section.
+// ---------------------------------------------------------------------------
+
+export type SectionKind = 'verse' | 'chorus' | 'prechorus' | 'bridge' | 'intro' | 'outro' | 'tag' | '';
+
+export function sectionKind(label: string): SectionKind {
+  const t = String(label || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (/pre-?(chorus|refren)/.test(t)) return 'prechorus';
+  if (/^(chorus|refren)/.test(t)) return 'chorus';
+  if (/^(bridge|punte)/.test(t)) return 'bridge';
+  if (/^intro/.test(t)) return 'intro';
+  if (/^(outro|final|ending)/.test(t)) return 'outro';
+  if (/^tag/.test(t)) return 'tag';
+  if (/^(verse|vers|strofa)/.test(t)) return 'verse';
+  return '';
+}
+
+/** One color per kind of section, same everywhere in the app. */
+export const SECTION_COLORS: Record<string, string> = {
+  verse: '#5aa9ff', chorus: '#ffb13b', prechorus: '#ff7eb6', bridge: '#b38cff', intro: '#4fd1a5', outro: '#8f96a3', tag: '#47d7e6', '': '#8f96a3',
+};
+export const sectionColor = (label: string): string => SECTION_COLORS[sectionKind(label)];
+
+/**
+ * Give the block made of `lines` a new section label. The label line right above it is replaced;
+ * if there is none, the label is written above the block. Returns the body unchanged if the block is not found.
+ */
+export function setSectionLabel(body: string, lines: string[], label: string): string {
+  const all = body.replace(/\r\n?/g, '\n').split('\n');
+  const want = lines.map(l => l.trimEnd());
+  const name = String(label).trim().replace(/:+$/, '');
+  if (!want.length || !name) return body;
+  for (let i = 0; i + want.length <= all.length; i++) {
+    if (!want.every((l, k) => all[i + k].trimEnd() === l)) continue;
+    let j = i - 1;
+    while (j >= 0 && all[j].trim() === '') j--;
+    const above = j >= 0 ? all[j].trim() : '';
+    const isLabel = SECTION_LABEL.test(above) && above.length < 40;
+    if (isLabel && j === i - 1) all[j] = name + ':';
+    else all.splice(i, 0, ...(i > 0 && all[i - 1].trim() !== '' ? ['', name + ':'] : [name + ':']));
+    return all.join('\n');
+  }
+  return body;
+}

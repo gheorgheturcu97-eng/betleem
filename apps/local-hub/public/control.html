@@ -74,9 +74,9 @@
   .churches{position:fixed;top:78px;left:22px;width:320px;padding:14px;display:none;flex-direction:column;gap:6px;z-index:25;background:rgba(36,38,48,.72)}
   .churches.show{display:flex}
   .churches h2{margin:0 0 6px 4px}
-  .ch{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;border:1px solid transparent}
-  .ch:hover{background:rgba(255,255,255,.08)}
-  .ch.on{border-color:var(--acc);background:rgba(255,191,47,.1)}
+  #churchList .ch{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;cursor:pointer;border:1px solid transparent}
+  #churchList .ch:hover{background:rgba(255,255,255,.08)}
+  #churchList .ch.on{border-color:var(--acc);background:rgba(255,191,47,.1)}
   .ch .t{flex:1;min-width:0} .ch .t b{display:block;font-weight:600} .ch small{color:var(--mute);font-size:12px}
   .ch .lock{color:var(--mute)}
   button.ghost{background:transparent;border-color:transparent;box-shadow:none;text-align:left;color:var(--mute);border-radius:12px}
@@ -92,7 +92,14 @@
   .login{display:flex;gap:6px;align-items:center}
   .login input{width:84px;border-radius:999px;padding:7px 12px}
 
-  .main{display:grid;grid-template-columns:300px minmax(0,1fr) 390px;gap:14px;min-height:0}
+  .main{display:grid;grid-template-columns:var(--colL,300px) 10px minmax(0,1fr) 10px var(--colR,390px);gap:2px;min-height:0}
+  /* drag handles between panels (double-click = back to normal) */
+  .gut{position:relative;border-radius:6px;z-index:3}
+  .gut::after{content:"";position:absolute;border-radius:3px;background:rgba(255,255,255,.18);opacity:0;transition:opacity .15s}
+  .gut:hover::after,.gut.on::after{opacity:1;background:var(--acc)}
+  .gut.v{cursor:col-resize} .gut.v::after{left:4px;width:2px;top:30%;bottom:30%}
+  .gut.h{cursor:row-resize;height:10px;flex:none;margin:-2px 0} .gut.h::after{top:4px;height:2px;left:30%;right:30%}
+  body.resizing{user-select:none} body.resizing iframe{pointer-events:none}
   .panel{display:flex;flex-direction:column;min-height:0;padding:16px}
   .panel-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
   .scroll{overflow:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
@@ -121,10 +128,11 @@
   .add-row select{border-radius:999px}
 
   /* ---------- center */
-  .center{display:flex;flex-direction:column;gap:14px;min-height:0}
+  .center{display:flex;flex-direction:column;gap:2px;min-height:0}
   .screens{padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:none}
   .screen{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:16/9;background:#000;border:1px solid var(--stroke);
-          box-shadow:0 10px 30px rgba(0,0,0,.4);max-height:32vh}
+          box-shadow:0 10px 30px rgba(0,0,0,.4);max-height:var(--scrH,32vh)}
+  .screens{justify-content:center;grid-template-columns:repeat(2,minmax(0,calc(var(--scrH,32vh) * 16 / 9)))}
   .screen iframe{position:absolute;inset:0;width:400%;height:400%;transform:scale(.25);transform-origin:0 0;border:0;pointer-events:none}
   .screen .cap{position:absolute;left:10px;top:10px;display:flex;gap:6px;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.1em;
           padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.45);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15)}
@@ -135,9 +143,15 @@
   .slides-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
   .slides-head h3{margin:0;font-size:19px;font-weight:650}
   #arrRow{gap:6px;flex:1;justify-content:flex-end}
-  #arrRow input{max-width:330px;border-radius:999px;padding:7px 14px}
+  #arrRow input{flex:1;min-width:150px;max-width:330px;border-radius:999px;padding:7px 14px}
+  .lib .ch{color:var(--acc);font-size:12px;margin-left:4px}
   #arrRow select{width:auto;border-radius:999px;padding:7px 10px}
-  #slides{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  #slides{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--slideW,210px),1fr));gap:10px}
+  .zoom{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px} .zoom input{width:90px;padding:0;accent-color:var(--acc)}
+  .slide{border-left:4px solid var(--sc,var(--stroke))}
+  .slide .lb{display:inline-block;padding:1px 8px;border-radius:999px;color:#111!important;background:var(--sc,#8f96a3)}
+  .slide .lb.none{background:transparent;color:var(--faint)!important;padding:1px 0}
+  .slide .styled{position:absolute;right:58px;top:10px;font-size:11px;color:var(--acc)}
   .slide{position:relative;border-radius:var(--r-sm);padding:12px 14px;cursor:pointer;min-height:112px;font-size:13.5px;line-height:1.45;
          background:rgba(0,0,0,.28);border:1px solid var(--stroke);transition:transform .12s,border-color .15s,background .15s}
   .slide:hover{transform:translateY(-2px);border-color:var(--stroke-hi);background:rgba(0,0,0,.36)}
@@ -149,11 +163,12 @@
   .modal textarea{width:100%;min-height:150px}
   .empty{display:grid;place-items:center;text-align:center;color:var(--mute);padding:36px 12px;border:1px dashed var(--stroke);border-radius:var(--r-sm);line-height:1.6}
 
-  .bg-panel{padding:12px 14px;flex:none}
+  .bg-panel{padding:12px 14px;flex:none;height:var(--bgH,auto);display:flex;flex-direction:column;min-height:0}
   .bg-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
   .bg-head .btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:6px 12px}
-  #gallery{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
-  .bg{position:relative;flex:none;width:128px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#000;
+  #gallery{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;min-height:0}
+  .bg-panel.tall #gallery{flex-wrap:wrap;overflow-x:hidden;overflow-y:auto;align-content:flex-start}
+  .bg{position:relative;flex:none;width:var(--bgW,128px);aspect-ratio:16/9;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#000;
       box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .12s}
   .bg:hover{transform:translateY(-2px)}
   .bg img,.bg video{width:100%;height:100%;object-fit:cover;display:block}
@@ -242,8 +257,26 @@
   .modal .fields:empty{display:none}
   .modal label{font-size:12.5px;color:var(--mute);display:flex;flex-direction:column;gap:5px}
   .modal .btns{display:flex;gap:8px;justify-content:flex-end}
+  /* ---------- slide editor */
+  .modal .glass.sed{width:min(1180px,96vw);max-height:94vh;overflow:auto;display:flex;flex-direction:column;gap:14px}
+  .sed-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap} .sed-head h3{margin:0}
+  .sed-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px}
+  .pv{position:relative;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--stroke);container-type:size}
+  .pv #pvBg,.pv #pvBg>*{position:absolute;inset:0;width:100%;height:100%;object-fit:cover} .pv #pvShade{position:absolute;inset:0}
+  #pvBox{position:absolute;display:flex;flex-direction:column;outline:1.5px dashed rgba(255,191,47,.85);cursor:move;touch-action:none}
+  #pvBox .h{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border-radius:4px;background:var(--acc);cursor:nwse-resize}
+  #pvText{white-space:pre-wrap;pointer-events:none}
+  .sed-left{display:flex;flex-direction:column;gap:10px} .sed-left textarea{min-height:120px;width:100%}
+  .sed-right{display:flex;flex-direction:column;gap:10px}
+  .sed-right .lf{display:flex;align-items:center;gap:10px} .sed-right .lf>span{width:104px;color:var(--mute);font-size:12.5px;flex:none}
+  .sed-right .lf input[type=range]{flex:1;padding:0;accent-color:var(--acc)} .sed-right .lf b{width:38px;text-align:right;font-weight:500;font-size:12px;color:var(--mute)}
+  .sed-right .lf select{flex:1} .sed-right input[type=color]{width:46px;height:30px;padding:2px;border-radius:8px}
+  .secs{display:flex;flex-wrap:wrap;gap:5px} .secs button{padding:4px 10px;font-size:12px;border-radius:999px;border:1px solid var(--sc);color:var(--fg);background:transparent}
+  .secs button.on{background:var(--sc);color:#111;font-weight:650}
+  .modal .btns .grow{flex:1}
+  @media (max-width:900px){ .sed-body{grid-template-columns:1fr} }
 
-  @media (max-width:1300px){ .main{grid-template-columns:250px minmax(0,1fr) 330px} #msg{width:140px} }
+  @media (max-width:1300px){ #msg{width:140px} }
 </style>
 </head>
 <body>
@@ -289,6 +322,7 @@
         <button id="bAddItem">＋ Adaugă</button>
       </div>
     </aside>
+    <div class="gut v" data-g="colL" title="Trage ca să lărgești · dublu-clic = normal"></div>
 
     <!-- center: screens, slides, backgrounds -->
     <section class="center">
@@ -298,6 +332,7 @@
         <div class="screen"><iframe src="/stage.html" title="Scenă" tabindex="-1"></iframe>
           <span class="cap"><i></i>SCENĂ</span><button class="open" id="bStage" title="Deschide pe monitorul de scenă">Scenă ↗</button></div>
       </div>
+      <div class="gut h" data-g="scrH" title="Trage ca să mărești ecranele · dublu-clic = normal"></div>
 
       <div class="slides-panel glass scroll">
         <div class="slides-head">
@@ -307,19 +342,22 @@
             <select id="maxLines" title="Rânduri pe slide"><option value="2">2 rânduri</option><option value="3">3 rânduri</option><option value="4" selected>4 rânduri</option><option value="5">5 rânduri</option><option value="6">6 rânduri</option></select>
             <button id="bArr">Aplică</button>
           </div>
+          <label class="zoom" title="Mărimea slide-urilor">🔍<input type="range" id="slideZoom" min="150" max="420" step="10"></label>
         </div>
         <div id="slides"></div>
       </div>
+      <div class="gut h" data-g="bgH" title="Trage ca să mărești fundalurile · dublu-clic = normal"></div>
 
-      <div class="bg-panel glass">
+      <div class="bg-panel glass" id="bgPanel">
         <div class="bg-head">
-          <h2>Fundaluri</h2><span class="grow"></span>
+          <h2>Fundaluri</h2><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
           <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează pe cântare</button>
           <label class="btn">＋ Imagine / video<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
         </div>
         <div id="gallery"></div>
       </div>
     </section>
+    <div class="gut v" data-g="colR" title="Trage ca să lărgești · dublu-clic = normal"></div>
 
     <!-- right: library / internet / editor -->
     <aside class="panel glass">
@@ -388,11 +426,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="lf main-only"><span>Poziție</span><div class="seg mini" id="lValign"><button data-v="top">Sus</button><button data-v="middle">Mijloc</button><button data-v="bottom">Jos</button></div></div>
   <div class="lf"><span>Culoare text</span><input type="color" id="lColor"></div>
   <div class="lf stage-only"><span>Culoare acorduri</span><input type="color" id="lChord"></div>
+  <div class="lf main-only"><span>Spațiu rânduri</span><input type="range" id="lLine" min="0.9" max="2" step="0.05"><b id="lLineV"></b></div>
   <div class="lf main-only"><span>Grosime</span><select id="lWeight"><option value="400">Normal</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Foarte gros</option></select></div>
   <div class="lf main-only"><span>Întunecă fundalul</span><input type="range" id="lDim" min="0" max="90" step="5"><b id="lDimV"></b></div>
   <label class="check main-only"><input type="checkbox" id="lUpper"> MAJUSCULE</label>
   <label class="check main-only"><input type="checkbox" id="lShadow"> Umbră la text</label>
-  <label class="check stage-only"><input type="checkbox" id="lNext"> Arată slide-ul următor</label>
+  <label class="check stage-only"><input type="checkbox" id="lLabels"> Arată Strofa / Refren deasupra</label>
+  <label class="check stage-only"><input type="checkbox" id="lNext"> Arată ce urmează</label>
+  <div class="lf stage-only"><span>Urmează · mărime</span><input type="range" id="lNextSize" min="1.5" max="10" step="0.1"><b id="lNextSizeV"></b></div>
+  <div class="lf stage-only"><span>Urmează · loc</span><input type="range" id="lNextShare" min="10" max="70" step="1" title="Cât din înălțimea ecranului"><b id="lNextShareV"></b></div>
+  <div class="lf stage-only"><span>Urmează · culoare</span><input type="color" id="lNextColor"></div>
   <button id="lReset" class="ghost main-only">↺ Scoate setările speciale ale cântării</button>
 </div>
 <button id="aiBtn" class="ai-btn acc" title="Asistentul Betleem">✦ Asistent</button>
@@ -405,12 +448,40 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <form class="ai-in" id="aiForm"><textarea id="aiText" rows="2" placeholder="Scrie aici… (Enter trimite)"></textarea><button class="acc" id="aiSend">➤</button></form>
 </div>
 <div id="toast" class="glass"></div>
+<div class="modal" id="sedModal"><div class="glass sed">
+  <div class="sed-head"><h3 id="sedTitle">Slide</h3><span class="grow"></span>
+    <div class="seg mini" id="sedScope"><button data-s="slide" class="sel">Doar acest slide</button><button data-s="song">Toată cântarea</button><button data-s="all">Toate cântările</button></div></div>
+  <div class="sed-body">
+    <div class="sed-left">
+      <div class="pv" id="pv"><div id="pvBg"></div><div id="pvShade"></div><div id="pvBox"><div id="pvText"></div><i class="h" title="Trage ca să mărești caseta"></i></div></div>
+      <div class="row" style="align-items:center"><span class="hint grow">Trage caseta ca s-o muți; colțul galben o mărește.</span><button id="sedBoxReset" class="ghost">↺ Caseta pe tot ecranul</button></div>
+      <label class="hint">Textul slide-ului (acordurile rămân pe cuvintele lor)<textarea id="sedText" spellcheck="false"></textarea></label>
+    </div>
+    <div class="sed-right">
+      <div class="lf"><span>Secțiune</span><input id="sedSec" list="secList" placeholder="ex. Refren" style="flex:1"></div>
+      <div class="secs" id="sedSecs"></div>
+      <div class="lf"><span>Font</span><select id="sFont"></select></div>
+      <div class="lf"><span>Mărime</span><input type="range" id="sSize" min="2.5" max="14" step="0.1"><b id="sSizeV"></b></div>
+      <div class="lf"><span>Grosime</span><select id="sWeight"><option value="400">Normal</option><option value="500">Medium</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Foarte gros</option></select></div>
+      <div class="lf"><span>Culoare</span><input type="color" id="sColor"><span class="grow"></span>
+        <label class="check"><input type="checkbox" id="sItalic"> <i>Italic</i></label><label class="check"><input type="checkbox" id="sUpper"> MAJ</label></div>
+      <div class="lf"><span>Aliniere</span><div class="seg mini" id="sAlign"><button data-v="left">Stânga</button><button data-v="center">Mijloc</button><button data-v="right">Dreapta</button></div></div>
+      <div class="lf"><span>În casetă</span><div class="seg mini" id="sValign"><button data-v="top">Sus</button><button data-v="middle">Mijloc</button><button data-v="bottom">Jos</button></div></div>
+      <div class="lf"><span>Spațiu rânduri</span><input type="range" id="sLine" min="0.9" max="2" step="0.05"><b id="sLineV"></b></div>
+      <div class="lf"><span>Întunecă fundal</span><input type="range" id="sDim" min="0" max="90" step="5"><b id="sDimV"></b></div>
+      <label class="check"><input type="checkbox" id="sShadow"> Umbră la text</label>
+    </div>
+  </div>
+  <div class="btns"><button id="sedReset" class="ghost" title="Slide-ul arată din nou ca restul cântării">↺ Ca restul</button><span class="grow"></span>
+    <button id="sedCancel">Renunță</button><button id="sedOk" class="acc">Salvează</button></div>
+</div></div>
+<datalist id="secList"></datalist>
 <div class="modal" id="modal"><div class="glass"><h3 id="mTitle"></h3><div class="fields" id="mFields"></div>
   <div class="btns"><button id="mCancel">Renunță</button><button id="mOk" class="acc">OK</button></div></div></div>
 
 <script type="module">
-  import { connect, esc } from '/client.js';
-  import { stripChords } from '/core/song.js';
+  import { connect, esc, paintBackground } from '/client.js';
+  import { stripChords, sectionColor } from '/core/song.js';
   const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva' };
   const $ = id => document.getElementById(id);
   let S = null, sel = -1;
@@ -519,6 +590,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('lColor').value = d.color; $('lChord').value = d.chordColor || '#f5b301';
     $('lWeight').value = String(d.weight || 700); $('lDim').value = d.dim ?? 35; $('lDimV').textContent = (d.dim ?? 35) + '%';
     $('lUpper').checked = !!d.upper; $('lShadow').checked = d.shadow !== false; $('lNext').checked = d.next !== false;
+    $('lLine').value = d.lineHeight || 1.3; $('lLineV').textContent = (+(d.lineHeight || 1.3)).toFixed(2);
+    $('lLabels').checked = d.labels !== false; $('lNextColor').value = d.nextColor || '#8a8f95';
+    $('lNextSize').value = d.nextSize || 3.4; $('lNextSizeV').textContent = (+(d.nextSize || 3.4)).toFixed(1);
+    $('lNextShare').value = d.nextShare || 30; $('lNextShareV').textContent = (d.nextShare || 30) + '%';
     document.querySelectorAll('#lAlign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.align));
     document.querySelectorAll('#lValign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.valign));
   }
@@ -535,6 +610,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('lUpper').onchange = e => setLook({ upper: e.target.checked });
   $('lShadow').onchange = e => setLook({ shadow: e.target.checked });
   $('lNext').onchange = e => setLook({ next: e.target.checked });
+  $('lLabels').onchange = e => setLook({ labels: e.target.checked });
+  $('lLine').oninput = e => { $('lLineV').textContent = (+e.target.value).toFixed(2); setLook({ lineHeight: +e.target.value }); };
+  $('lNextSize').oninput = e => { $('lNextSizeV').textContent = (+e.target.value).toFixed(1); setLook({ nextSize: +e.target.value }); };
+  $('lNextShare').oninput = e => { $('lNextShareV').textContent = e.target.value + '%'; setLook({ nextShare: +e.target.value }); };
+  $('lNextColor').oninput = e => setLook({ nextColor: e.target.value });
   $('lookItem').onchange = fillLook;
   document.querySelectorAll('#lAlign button').forEach(b => b.onclick = () => setLook({ align: b.dataset.v }));
   document.querySelectorAll('#lValign button').forEach(b => b.onclick = () => setLook({ valign: b.dataset.v }));
@@ -610,7 +690,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('bMain').onclick = () => openScreen('/main.html', 'bnc-main');
   $('bStage').onclick = () => openScreen('/stage.html', 'bnc-stage');
   addEventListener('keydown', e => {
-    if ($('modal').classList.contains('show') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if ($('modal').classList.contains('show') || $('sedModal').classList.contains('show') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); send({ type: 'next' }); }
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') send({ type: 'prev' });
     if (e.key === 'b' || e.key === 'B' || e.key === '.') send({ type: 'blank' });
@@ -698,15 +778,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (!slides.length) {
       $('slides').innerHTML = `<div class="slide ${sel === S.live.item ? 'live' : ''}" data-s="0"><div class="lb">${esc(KIND[it.kind])}</div>${esc(it.title)}</div>`;
     } else {
-      $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''}" data-s="${i}">
-        <span class="n">${i + 1}</span>${it.kind === 'song' ? '<button class="edit" title="Corectează textul acestui slide">✎</button>' : ''}<div class="lb">${esc(sl.label || ' ')}</div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div>`).join('');
+      $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''}" data-s="${i}" style="--sc:${sectionColor(sl.label || '')}">
+        <span class="n">${i + 1}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${it.kind === 'song' ? '<button class="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button>' : ''}<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div></div>`).join('');
     }
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
       if (!e.target.classList.contains('edit')) return send({ type: 'go', item: sel, slide: +el.dataset.s });
-      const sl = slides[+el.dataset.s];
-      const v = await ask('Corectează slide-ul ' + (+el.dataset.s + 1) + (sl.label ? ' · ' + sl.label : ''),
-        [{ label: 'Text (acordurile rămân pe cuvintele lor)', type: 'textarea', value: sl.lines.map(l => stripChords(l)).join('\n') }], 'Salvează');
-      if (v) { send({ type: 'editSlide', item: sel, slide: +el.dataset.s, text: v[0] }); songCache.delete(it.songId); toast('Slide corectat'); }
+      openSlideEditor(+el.dataset.s, slides);
     });
     document.querySelector('#slides .slide.live')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
@@ -724,6 +801,133 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     send({ type: 'arrangement', item: sel, value: value.length ? value : null, maxLines: +$('maxLines').value });
     toast('Aranjament aplicat');
   };
+
+  // ---- slide editor: text, section (Strofa/Refren…), font, size, position — for one slide, the song, or all songs
+  const FONTS = ['Segoe UI', 'Inter', 'Arial', 'Bahnschrift', 'Calibri', 'Georgia', 'Trebuchet MS', 'Verdana', 'Tahoma', 'Impact', 'Times New Roman'];
+  const SECS = ['Strofa 1', 'Strofa 2', 'Strofa 3', 'Strofa 4', 'Pre-refren', 'Refren', 'Refren 2', 'Bridge', 'Intro', 'Final', 'Tag'];
+  const FULL_BOX = { x: 6, y: 6, w: 88, h: 88 };
+  $('sFont').innerHTML = FONTS.map(f => `<option>${f}</option>`).join('');
+  $('secList').innerHTML = SECS.map(x => `<option value="${x}">`).join('');
+  let ed = null;                                     // { i, it, st, base, text, label, scope }
+  function openSlideEditor(i, slides) {
+    const it = S.setlist[sel], sl = slides[i];
+    const base = { ...S.display.main, ...(it.display || {}) };
+    const st = { ...base, ...(it.slideStyles?.[i] || {}) };
+    ed = { i, it, base, st, scope: 'slide', text: sl.lines.map(l => stripChords(l)).join('\n'), label: sl.label || '' };
+    $('sedTitle').textContent = `${it.title} · slide ${i + 1}`;
+    $('sedText').value = ed.text; $('sedSec').value = ed.label;
+    document.querySelectorAll('#sedScope button').forEach(b => b.classList.toggle('sel', b.dataset.s === 'slide'));
+    paintBackground($('pvBg'), it.background || S.live.background);
+    $('sedModal').classList.add('show'); fillSlideEditor();
+  }
+  function renderSecs() {
+    const cur = $('sedSec').value.trim();
+    $('sedSecs').innerHTML = SECS.map(x => `<button data-v="${x}" class="${x === cur ? 'on' : ''}" style="--sc:${sectionColor(x)}">${x}</button>`).join('');
+    document.querySelectorAll('#sedSecs button').forEach(b => b.onclick = () => { $('sedSec').value = b.dataset.v; renderSecs(); });
+  }
+  $('sedSec').oninput = renderSecs;
+  function fillSlideEditor() {
+    const d = ed.st;
+    $('sFont').value = d.font; $('sSize').value = d.size; $('sSizeV').textContent = (+d.size).toFixed(1);
+    $('sWeight').value = String(d.weight || 700); $('sColor').value = d.color; $('sItalic').checked = !!d.italic; $('sUpper').checked = !!d.upper;
+    $('sLine').value = d.lineHeight || 1.3; $('sLineV').textContent = (+(d.lineHeight || 1.3)).toFixed(2);
+    $('sDim').value = d.dim ?? 35; $('sDimV').textContent = (d.dim ?? 35) + '%'; $('sShadow').checked = d.shadow !== false;
+    document.querySelectorAll('#sAlign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.align));
+    document.querySelectorAll('#sValign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.valign));
+    renderSecs(); paintPreview();
+  }
+  function paintPreview() {
+    const d = ed.st, b = d.box || FULL_BOX, box = $('pvBox').style, t = $('pvText').style;
+    Object.assign(box, { left: b.x + '%', top: b.y + '%', width: b.w + '%', height: b.h + '%',
+      justifyContent: { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[d.valign] || 'center' });
+    Object.assign(t, { fontFamily: `"${d.font}", "Segoe UI", Arial, sans-serif`, fontSize: d.size + 'cqh', color: d.color, fontWeight: d.weight,
+      fontStyle: d.italic ? 'italic' : 'normal', textTransform: d.upper ? 'uppercase' : 'none', textAlign: d.align, lineHeight: d.lineHeight || 1.3,
+      textShadow: d.shadow !== false ? '0 .3cqh 1.2cqh rgba(0,0,0,.85)' : 'none' });
+    $('pvText').textContent = $('sedText').value;
+    $('pvShade').style.background = `rgba(0,0,0,${(d.dim ?? 35) / 100})`;
+  }
+  const setSt = patch => { Object.assign(ed.st, patch); fillSlideEditor(); };
+  $('sedText').oninput = paintPreview;
+  $('sFont').onchange = e => setSt({ font: e.target.value });
+  $('sSize').oninput = e => setSt({ size: +e.target.value });
+  $('sWeight').onchange = e => setSt({ weight: +e.target.value });
+  $('sColor').oninput = e => setSt({ color: e.target.value });
+  $('sItalic').onchange = e => setSt({ italic: e.target.checked });
+  $('sUpper').onchange = e => setSt({ upper: e.target.checked });
+  $('sLine').oninput = e => setSt({ lineHeight: +e.target.value });
+  $('sDim').oninput = e => setSt({ dim: +e.target.value });
+  $('sShadow').onchange = e => setSt({ shadow: e.target.checked });
+  document.querySelectorAll('#sAlign button').forEach(b => b.onclick = () => setSt({ align: b.dataset.v }));
+  document.querySelectorAll('#sValign button').forEach(b => b.onclick = () => setSt({ valign: b.dataset.v }));
+  document.querySelectorAll('#sedScope button').forEach(b => b.onclick = () => {
+    ed.scope = b.dataset.s; document.querySelectorAll('#sedScope button').forEach(x => x.classList.toggle('sel', x === b));
+  });
+  $('sedBoxReset').onclick = () => setSt({ box: null });
+  // move / resize the text box with the mouse (or finger)
+  $('pvBox').onpointerdown = e => {
+    e.preventDefault();
+    const pv = $('pv').getBoundingClientRect(), start = { ...(ed.st.box || FULL_BOX) }, x0 = e.clientX, y0 = e.clientY;
+    const resize = e.target.classList.contains('h');
+    $('pvBox').setPointerCapture(e.pointerId);
+    $('pvBox').onpointermove = m => {
+      const dx = (m.clientX - x0) / pv.width * 100, dy = (m.clientY - y0) / pv.height * 100, c = (v, a, b) => Math.min(b, Math.max(a, v));
+      const b = resize ? { ...start, w: c(start.w + dx, 8, 100 - start.x), h: c(start.h + dy, 8, 100 - start.y) }
+        : { ...start, x: c(start.x + dx, 0, 100 - start.w), y: c(start.y + dy, 0, 100 - start.h) };
+      ed.st.box = Object.fromEntries(Object.entries(b).map(([k, v]) => [k, Math.round(v * 10) / 10])); paintPreview();
+    };
+    $('pvBox').onpointerup = () => { $('pvBox').onpointermove = null; };
+  };
+  const STYLE_KEYS = ['font', 'size', 'weight', 'color', 'italic', 'upper', 'align', 'valign', 'lineHeight', 'dim', 'shadow', 'box'];
+  const diff = (a, b) => Object.fromEntries(STYLE_KEYS.filter(k => JSON.stringify(a[k] ?? null) !== JSON.stringify(b[k] ?? null)).map(k => [k, a[k] ?? null]));
+  $('sedOk').onclick = () => {
+    const { i, it, st, base, scope } = ed;
+    const label = $('sedSec').value.trim(), text = $('sedText').value;
+    if (label && label !== ed.label) send({ type: 'slideSection', item: sel, slide: i, label });
+    if (text.trim() !== ed.text.trim()) send({ type: 'editSlide', item: sel, slide: i, text });
+    if (scope === 'slide') { const d = diff(st, base); if (Object.keys(d).length || it.slideStyles?.[i]) send({ type: 'slideStyle', item: sel, slide: i, patch: Object.keys(d).length ? d : null }); }
+    else if (scope === 'song') send({ type: 'slideStyle', item: sel, scope: 'song', patch: { ...(it.display || {}), ...diff(st, S.display.main) } });
+    else send({ type: 'slideStyle', item: sel, scope: 'all', patch: st });
+    songCache.delete(it.songId);
+    $('sedModal').classList.remove('show'); ed = null;
+    toast({ slide: 'Slide salvat', song: 'Aspect pus pe toată cântarea', all: 'Aspect pus pe toate cântările' }[scope]);
+  };
+  $('sedReset').onclick = () => { send({ type: 'slideStyle', item: sel, slide: ed.i, patch: null }); $('sedModal').classList.remove('show'); ed = null; toast('Slide-ul arată ca restul cântării'); };
+  $('sedCancel').onclick = () => { $('sedModal').classList.remove('show'); ed = null; };
+  $('sedModal').onkeydown = e => { if (e.key === 'Escape') $('sedCancel').click(); };
+
+  // ---- layout: drag the dividers between panels; zoom slides and backgrounds (remembered on this computer)
+  const LAYOUT_KEY = 'betleem.layout';
+  const DEF = { colL: 300, colR: 390, scrH: 32, bgH: 0, slideW: 210, bgW: 128 };
+  let lay = { ...DEF };
+  try { Object.assign(lay, JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}')); } catch {}
+  function applyLayout() {
+    const r = document.documentElement.style;
+    r.setProperty('--colL', lay.colL + 'px'); r.setProperty('--colR', lay.colR + 'px'); r.setProperty('--scrH', lay.scrH + 'vh');
+    r.setProperty('--slideW', lay.slideW + 'px'); r.setProperty('--bgW', lay.bgW + 'px');
+    r.setProperty('--bgH', lay.bgH ? lay.bgH + 'px' : 'auto'); $('bgPanel').classList.toggle('tall', lay.bgH > 0);
+    $('slideZoom').value = lay.slideW; $('bgZoom').value = lay.bgW;
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(lay)); } catch {}
+  }
+  applyLayout();
+  $('slideZoom').oninput = e => { lay.slideW = +e.target.value; applyLayout(); };
+  $('bgZoom').oninput = e => { lay.bgW = +e.target.value; applyLayout(); };
+  document.querySelectorAll('.gut').forEach(g => {
+    const key = g.dataset.g;
+    g.ondblclick = () => { lay[key] = DEF[key]; applyLayout(); };
+    g.onpointerdown = e => {
+      e.preventDefault(); g.setPointerCapture(e.pointerId); g.classList.add('on'); document.body.classList.add('resizing');
+      const x0 = e.clientX, y0 = e.clientY, start = key === 'bgH' && !lay.bgH ? $('bgPanel').offsetHeight : lay[key];
+      g.onpointermove = m => {
+        const dx = m.clientX - x0, dy = m.clientY - y0, c = (v, a, b) => Math.round(Math.min(b, Math.max(a, v)));
+        if (key === 'colL') lay.colL = c(start + dx, 200, 560);
+        if (key === 'colR') lay.colR = c(start - dx, 260, 700);
+        if (key === 'scrH') lay.scrH = c(start + dy / innerHeight * 100, 12, 60);
+        if (key === 'bgH') lay.bgH = c(start - dy, 110, innerHeight * 0.7);
+        applyLayout();
+      };
+      g.onpointerup = () => { g.onpointermove = null; g.classList.remove('on'); document.body.classList.remove('resizing'); };
+    };
+  });
 
   // library: click = add to program, ✎ = edit
   let qTimer;

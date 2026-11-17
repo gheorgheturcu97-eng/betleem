@@ -354,7 +354,7 @@
     if (!list) {
       try {
         const r = await fetch('/api/search-lyrics?chords=0&q=' + encodeURIComponent(q), { headers: { 'x-pin': hub.pin() } });
-        list = await r.json(); if (!r.ok) throw new Error(list.error); webCache.set(q, list);
+        list = await r.json().catch(() => { throw new Error('răspuns greșit de la laptop'); }); if (!r.ok) throw new Error(list.error); webCache.set(q, list);
       } catch (e) { if ($('webHint')) $('webHint').textContent = 'Nu pot căuta pe internet acum: ' + e.message; return; }
     }
     if ($('songQ').value.trim() !== q || !$('webHint')) return;
@@ -366,7 +366,8 @@
       try {
         const res = await fetch('/api/songs', { method: 'POST', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' },
           body: JSON.stringify({ title: r.title, body: r.body, source: r.url }) });
-        const song = await res.json(); if (!res.ok) throw new Error(song.error);
+        const song = await res.json().catch(() => { throw new Error('Închide și redeschide Betleem pe laptop (are o versiune veche pornită).'); });
+        if (!res.ok) throw new Error(song.error);
         addSongToService(song.id, song.key); toast('„' + song.title + '” e acum în bibliotecă și în program');
       } catch (e) { el.style.opacity = 1; toast(e.message); }
     });

@@ -153,3 +153,22 @@ test('rankSongs: no diacritics, any word order, small typos, title first', async
   assert.deepEqual(rankSongs(songs, 'biru').map(s => s.title), ['Biruitor', 'Ancora'], 'start of a word');
   assert.deepEqual(rankSongs(songs, 'xyz'), []);
 });
+
+test('sectionKind and colors', async () => {
+  const { sectionKind, sectionColor } = await import('../src/song.ts');
+  assert.equal(sectionKind('Strofa 2'), 'verse');
+  assert.equal(sectionKind('Refren 1'), 'chorus');
+  assert.equal(sectionKind('Pre-refren'), 'prechorus');
+  assert.equal(sectionKind('Punte'), 'bridge');
+  assert.equal(sectionKind('Final'), 'outro');
+  assert.notEqual(sectionColor('Refren'), sectionColor('Strofa 1'));
+});
+
+test('setSectionLabel renames or adds a label above a block', async () => {
+  const { setSectionLabel, parseSong } = await import('../src/song.ts');
+  const body = 'Strofa 1:\n[G]Unu\nDoi\n\nTrei\nPatru';
+  assert.equal(setSectionLabel(body, ['[G]Unu', 'Doi'], 'Refren'), 'Refren:\n[G]Unu\nDoi\n\nTrei\nPatru');
+  const added = setSectionLabel(body, ['Trei', 'Patru'], 'Bridge');
+  assert.deepEqual(parseSong(added).map(s => s.label), ['Strofa 1', 'Bridge']);
+  assert.equal(setSectionLabel(body, ['Nu exista'], 'Refren'), body);
+});
