@@ -46,6 +46,44 @@ function load() {
   catch { return structuredClone(EMPTY); }
 }
 let db = load();
+
+// --- Churches --------------------------------------------------------------------
+// Each church has its own program (setlist + service); the song library is shared.
+// db.setlist / db.service always hold the ACTIVE church; the others wait in db.churchData.
+if (!Array.isArray(db.churches) || !db.churches.length) {
+  const id = crypto.randomUUID();
+  db.churches = [{ id, name: 'Betleem', city: '', code: null }];
+  db.activeChurch = id;
+}
+db.churchData ||= {};
+const activeChurch = () => db.churches.find(c => c.id === db.activeChurch) || db.churches[0];
+
+function hashCode(code, salt = crypto.randomBytes(16).toString('hex')) {
+  return { salt, hash: crypto.scryptSync(String(code), salt, 32).toString('hex') };
+}
+function codeOk(church, code) {
+  if (!church.code) return true;
+  const h = Buffer.from(hashCode(code ?? '', church.code.salt).hash, 'hex');
+  return crypto.timingSafeEqual(h, Buffer.from(church.code.hash, 'hex'));
+}
+// slow down guessing: 5 wrong codes per church -> locked for 1 minute
+const failures = new Map();
+function guard(church, code) {
+  const f = failures.get(church.id) || { n: 0, until: 0 };
+  if (Date.now() < f.until) return `Prea multe încercări. Mai încearcă peste ${Math.ceil((f.until - Date.now()) / 1000)} secunde.`;
+  if (codeOk(church, code)) { failures.delete(church.id); return null; }
+  f.n++; if (f.n >= 5) { f.n = 0; f.until = Date.now() + 60_000; }
+  failures.set(church.id, f);
+  return 'Cod greșit';
+}
+function switchChurch(id) {
+  const cur = activeChurch();
+  db.churchData[cur.id] = { setlist: db.setlist, service: db.service };
+  const next = db.churchData[id] || { setlist: [], service: { title: 'Serviciu duminică', startsAt: null } };
+  delete db.churchData[id];
+  db.setlist = next.setlist; db.service = next.service; db.activeChurch = id;
+  Object.assign(live, { item: -1, slide: 0, blank: false, logo: false, background: '', message: '' });
+}
 let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
@@ -92,6 +130,8 @@ export { core, extractLyrics };
 function snapshot() {
   return {
     service: db.service,
+    church: (({ id, name, city }) => ({ id, name, city }))(activeChurch()),
+    churches: db.churches.map(c => ({ id: c.id, name: c.name, city: c.city, locked: !!c.code })),
     setlist: db.setlist.map((it, i) => ({
       ...it,
       title: it.kind === 'song' ? (db.songs.find(s => s.id === it.songId)?.title ?? '(cântare ștearsă)') : it.title,
@@ -179,6 +219,34 @@ wss.on('connection', (ws, req) => {
         save(); break;
       }
       // --- leader only: the service order ---
+      case 'switchChurch': case 'addChurch': case 'editChurch': {
+        if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba biserica.' });
+        const clean = v => String(v || '').trim().slice(0, 60);
+        if (m.type === 'switchChurch') {
+          const c = db.churches.find(x => x.id === m.id);
+          if (!c) return reply({ type: 'error', error: 'Biserica nu există' });
+          if (c.id === db.activeChurch) return reply({ type: 'church', ok: true });
+          const err = guard(c, m.code); if (err) return reply({ type: 'church', ok: false, error: err });
+          switchChurch(c.id);
+        }
+        if (m.type === 'addChurch') {
+          if (!clean(m.name)) return reply({ type: 'church', ok: false, error: 'Scrie numele bisericii' });
+          if (String(m.code || '').length < 4) return reply({ type: 'church', ok: false, error: 'Codul trebuie să aibă cel puțin 4 caractere' });
+          const c = { id: crypto.randomUUID(), name: clean(m.name), city: clean(m.city), code: hashCode(m.code) };
+          db.churches.push(c); switchChurch(c.id);
+        }
+        if (m.type === 'editChurch') {
+          const c = db.churches.find(x => x.id === m.id); if (!c) break;
+          const err = guard(c, m.code); if (err) return reply({ type: 'church', ok: false, error: err });
+          if (clean(m.name)) c.name = clean(m.name);
+          if ('city' in m) c.city = clean(m.city);
+          if (m.newCode) {
+            if (String(m.newCode).length < 4) return reply({ type: 'church', ok: false, error: 'Codul nou trebuie să aibă cel puțin 4 caractere' });
+            c.code = hashCode(m.newCode);
+          }
+        }
+        save(); reply({ type: 'church', ok: true }); break;
+      }
       case 'addItem': case 'removeItem': case 'moveItem': case 'updateItem': case 'deleteSong': case 'service': {
         if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba programul.' });
         if (m.type === 'addItem') {

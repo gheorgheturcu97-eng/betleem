@@ -72,3 +72,32 @@ test('extractLyrics finds the lyric block', () => {
   assert.match(r.body, /^Mare e Domnul și vrednic\nde laudă/);
   assert.match(r.body, /Refren:\nAleluia/);
 });
+
+test('churches: separate programs, code required, guessing is slowed down', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  const first = (await (async () => { a.send({ type: 'blank' }); return a.next(m => m.type === 'state'); })()).state;
+  const home = first.church.id;
+  const homeItems = first.setlist.length;
+
+  a.send({ type: 'addChurch', name: 'Râul Vieții', city: 'Peștera', code: '7391' });
+  assert.equal((await a.next(m => m.type === 'church')).ok, true);
+  const st = await a.next(m => m.type === 'state' && m.state.church.name === 'Râul Vieții');
+  assert.equal(st.state.setlist.length, 0, 'new church starts with an empty program');
+  assert.equal(st.state.churches.find(c => c.name === 'Râul Vieții').locked, true);
+  assert.ok(!JSON.stringify(st.state).includes('7391'), 'code never sent to clients');
+
+  a.send({ type: 'addItem', kind: 'sermon', title: 'Predică Peștera' });
+  await a.next(m => m.type === 'state' && m.state.setlist.length === 1);
+  a.send({ type: 'switchChurch', id: home });
+  assert.equal((await a.next(m => m.type === 'church')).ok, true, 'home church has no code yet');
+  await a.next(m => m.type === 'state' && m.state.church.id === home && m.state.setlist.length === homeItems);
+
+  const pestera = st.state.church.id;
+  a.send({ type: 'switchChurch', id: pestera, code: '0000' });
+  assert.equal((await a.next(m => m.type === 'church')).error, 'Cod greșit');
+  for (let i = 0; i < 4; i++) { a.send({ type: 'switchChurch', id: pestera, code: '1111' }); await a.next(m => m.type === 'church'); }
+  a.send({ type: 'switchChurch', id: pestera, code: '7391' });
+  assert.match((await a.next(m => m.type === 'church')).error, /Prea multe/, 'locked after 5 wrong codes, even with the right one');
+  a.ws.close();
+});
