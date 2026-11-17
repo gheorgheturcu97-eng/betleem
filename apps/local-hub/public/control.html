@@ -522,6 +522,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'login') toast(e.ok ? 'Conectat ca ' + e.role : 'PIN greșit');
     if (e.type === 'church' && !e.ok) toast(e.error);
     if (e.type === 'chords') chordsProgress(e);
+    if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
     if (e.type === 'undone') toast(e.ok ? (e.what === 'undo' ? 'Anulat: ' : 'Refăcut: ') + (e.name || 'ultima schimbare') : (e.what === 'undo' ? 'Nu mai am ce anula' : 'Nu mai am ce reface'));
   });
   const send = o => hub.send(o);
@@ -889,10 +890,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       b.ondragstart = e => { e.dataTransfer.setData('text/x-tag', b.dataset.tag); e.dataTransfer.effectAllowed = 'copy'; };
       b.onclick = () => { paintTag = paintTag === b.dataset.tag ? '' : b.dataset.tag; renderTagBar(); $('slides').classList.toggle('painting', !!paintTag); };
     });
-    $('bAutoTag').onclick = () => { send({ type: 'autoLabel', item: sel }); toast('Am pus etichetele singur. Corectează ce nu e bine trăgând etichete pe slide-uri.'); };
+    $('bAutoTag').onclick = () => {
+      send({ type: 'autoLabel', item: sel });
+      clearTimeout(autoWait);                        // an old Betleem still running does not answer
+      autoWait = setTimeout(() => toast('Betleem nu a răspuns. Închide-l complet și deschide-l din nou.'), 2500);
+    };
     $('tagCascade').onchange = e => { tagCascade = e.target.checked; };
   }
-  let tagCascade = true;
+  let tagCascade = true, autoWait = null;
   const tagSlide = (i, label) => send({ type: 'tagSlides', item: sel, slide: i, label, cascade: tagCascade });
   addEventListener('keydown', e => { if (e.key === 'Escape' && paintTag) { paintTag = ''; renderTagBar(); $('slides').classList.remove('painting'); } });
   renderTagBar();

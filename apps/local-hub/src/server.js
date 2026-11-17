@@ -388,8 +388,10 @@ function handleMessage(ws, m) {
       case 'autoLabel': {                            // name the sections by itself: chorus = what comes back, the rest verses
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const before = core.parseSong(song.body).filter(sec => !sec.label).length;
         const body = core.autoLabel(song.body);
         if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); save(); }
+        reply({ type: 'autoLabeled', named: before, title: song.title });
         break;
       }
       case 'duplicateSlide': {                       // play this slide once more, right after itself (only in this program)

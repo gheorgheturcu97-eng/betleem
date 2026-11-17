@@ -517,6 +517,13 @@ export function autoLabel(body: string): string {
     for (let j = i + 1; j < secs.length; j++) if (group[j] < 0 && w[i].length > 2 && sim(w[i], w[j]) >= 0.8) group[j] = g;
     g++;
   }
+  // two blocks in a row that start with the same two words ("Hey, hey, tu…" / "Hey, hey și…") are one chorus
+  for (let i = 1; i < secs.length; i++) {
+    if (!secs[i].label && w[i].length > 1 && w[i - 1].length > 1 && w[i][0] === w[i - 1][0] && w[i][1] === w[i - 1][1]) {
+      const from = group[i]; for (let j = 0; j < secs.length; j++) if (group[j] === from) group[j] = group[i - 1];
+    }
+  }
+  const repeatMark = (s: Section) => /\/:/.test(s.lines.map(l => stripChords(l)).join(' '));   // "/: … :/" = sung twice, a chorus
   const count = (k: number) => group.filter(x => x === k).length;
   const used = new Set(secs.map(s => s.label.toLowerCase()).filter(Boolean));
   const known = new Map<number, string>();           // a group with a named member: the others get the same name
@@ -529,7 +536,7 @@ export function autoLabel(body: string): string {
     if (s.label) return s.label;
     const k = group[i];
     if (known.has(k)) return known.get(k)!;
-    const isChorus = count(k) > 1 || /^\s*(\[[^\]]*\])?\s*R\s*\d*\s*[:.]/i.test(s.lines[0] || '');
+    const isChorus = count(k) > 1 || repeatMark(s) || /^\s*(\[[^\]]*\])?\s*R\s*\d*\s*[:.]/i.test(s.lines[0] || '');
     if (isChorus) {
       if (!chorusName.has(k)) chorusName.set(k, fresh('Refren', true));
       return chorusName.get(k)!;
