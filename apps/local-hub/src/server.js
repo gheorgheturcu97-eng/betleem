@@ -215,6 +215,8 @@ function snapshot() {
       title: it.kind === 'song' ? (db.songs.find(s => s.id === it.songId)?.title ?? '(cântare ștearsă)') : it.title,
       rev: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.updatedAt || '' : undefined,   // lets screens notice a changed song
       track: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.track || '' : undefined,
+      stems: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.stems || [] : undefined,
+      cues: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.cues || [] : undefined,
       origBpm: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.bpm || 0 : undefined,
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
@@ -255,7 +257,7 @@ wss.on('connection', (ws, req) => {
 
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
-const UNDOABLE = new Set(['setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
+const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
   'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
@@ -272,7 +274,7 @@ function restoreSnapshot(sn) {
   live.item = sn.liveItemId ? db.setlist.findIndex(x => x.id === sn.liveItemId) : -1;
   live.slide = live.item >= 0 ? clamp(sn.slide, 0, Math.max(0, slidesFor(live.item).length - 1)) : 0;
 }
-const UNDO_NAMES = { setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
+const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
   tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
@@ -423,6 +425,23 @@ function handleMessage(ws, m) {
         }
         save(); reply({ type: 'cleaned', changed, ordered, total: db.songs.length });
         break;
+      }
+      case 'setStems': case 'setCues': {             // multitrack: the stems of a song and the moments where each slide starts
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        if (m.type === 'setStems') {
+          song.stems = (Array.isArray(m.stems) ? m.stems : []).slice(0, 24).map(x => ({
+            file: path.basename(String(x.file || '')), name: String(x.name || '').slice(0, 30),
+            vol: Math.min(1.5, Math.max(0, Number(x.vol ?? 1))), muted: !!x.muted, pan: Math.min(1, Math.max(-1, Number(x.pan) || 0)),
+          })).filter(x => x.file && fs.existsSync(path.join(MEDIA_DIR, x.file)));
+        } else {
+          song.cues = (Array.isArray(m.cues) ? m.cues : []).slice(0, 300)
+            .map(c => ({ t: Math.max(0, Math.round(Number(c.t) * 100) / 100), slide: Math.max(0, Math.floor(Number(c.slide) || 0)) }))
+            .filter(c => Number.isFinite(c.t)).sort((a, b) => a.t - b.t);
+          song.cueOrder = it.arrangement || song.arrangement || null;   // the order the cues were made with
+        }
+        song.updatedAt = new Date().toISOString();
+        save(); break;
       }
       case 'setTrack': {                             // a backing track (audio file in the media folder) for the song
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;

@@ -141,3 +141,67 @@ export function tapper() {
     return Math.round(60000 / (gaps.reduce((a, b) => a + b, 0) / gaps.length));
   };
 }
+
+/**
+ * Multitrack player: every stem is its own <audio>, all routed through Web Audio (volume, pan, mute, solo, meter).
+ * They start together and are kept in step with the first stem (drift under ~40 ms is corrected).
+ */
+export class Multitrack {
+  constructor() { this.ctx = null; this.ch = []; this.playing = false; this.onTime = () => {}; this.onEnd = () => {}; this.vol = 1; }
+  init() {
+    if (this.ctx) return;
+    this.ctx = new AudioContext();
+    this.master = this.ctx.createGain(); this.master.gain.value = this.vol;
+    this.masterMeter = this.ctx.createAnalyser(); this.masterMeter.fftSize = 512;
+    this.master.connect(this.masterMeter); this.master.connect(this.ctx.destination);
+  }
+  async load(stems) {
+    this.init(); this.stop(true);
+    for (const c of this.ch) { try { c.el.pause(); c.src.disconnect(); } catch {} }
+    this.ch = stems.map(s => {
+      const el = new Audio(); el.preload = 'auto'; el.src = '/media/' + encodeURIComponent(s.file); el.crossOrigin = 'anonymous';
+      const src = this.ctx.createMediaElementSource(el), gain = this.ctx.createGain(), pan = this.ctx.createStereoPanner(), meter = this.ctx.createAnalyser();
+      meter.fftSize = 512; src.connect(gain); gain.connect(pan); pan.connect(meter); pan.connect(this.master);
+      return { ...s, panValue: Number(s.pan) || 0, el, src, gain, pan, meter, solo: false };
+    });
+    this.apply();
+    await Promise.all(this.ch.map(c => new Promise(ok => { if (c.el.readyState >= 1) ok(); else { c.el.onloadedmetadata = ok; c.el.onerror = ok; } })));
+    if (this.ch[0]) this.ch[0].el.onended = () => { this.playing = false; this.onEnd(); };
+    return this.duration;
+  }
+  get duration() { return Math.max(0, ...this.ch.map(c => c.el.duration || 0)); }
+  get time() { return this.ch[0]?.el.currentTime || 0; }
+  apply() {
+    const anySolo = this.ch.some(c => c.solo);
+    for (const c of this.ch) {
+      const on = !c.muted && (!anySolo || c.solo);
+      c.gain.gain.setTargetAtTime(on ? c.vol : 0, this.ctx.currentTime, 0.02);
+      c.pan.pan.value = c.panValue || 0;
+    }
+    this.master.gain.setTargetAtTime(this.vol, this.ctx.currentTime, 0.02);
+  }
+  async play() {
+    if (!this.ch.length) return;
+    this.init(); await this.ctx.resume();
+    const t = this.time;
+    this.ch.forEach(c => { c.el.currentTime = t; });
+    await Promise.all(this.ch.map(c => c.el.play().catch(() => {})));
+    this.playing = true;
+    clearInterval(this.sync);
+    this.sync = setInterval(() => {                 // keep every stem with the first one
+      const ref = this.ch[0]?.el; if (!ref || ref.paused) return;
+      for (const c of this.ch.slice(1)) if (!c.el.paused && Math.abs(c.el.currentTime - ref.currentTime) > 0.04) c.el.currentTime = ref.currentTime;
+    }, 500);
+    const tick = () => { if (!this.playing) return; this.onTime(this.time); this.raf = requestAnimationFrame(tick); };
+    tick();
+  }
+  pause() { this.playing = false; clearInterval(this.sync); cancelAnimationFrame(this.raf); this.ch.forEach(c => c.el.pause()); this.onTime(this.time); }
+  stop(quiet) { this.pause(); this.seek(0, quiet); }
+  seek(t, quiet) { t = Math.max(0, Math.min(t, this.duration || 0)); this.ch.forEach(c => { try { c.el.currentTime = t; } catch {} }); if (!quiet) this.onTime(t); }
+  level(c) {                                        // 0..1 for the meters
+    const a = c ? c.meter : this.masterMeter; if (!a) return 0;
+    const d = new Float32Array(a.fftSize); a.getFloatTimeDomainData(d);
+    let p = 0; for (const v of d) p = Math.max(p, Math.abs(v)); return Math.min(1, p);
+  }
+  async output(deviceId) { this.init(); return setOutput(this.ctx, deviceId); }
+}
