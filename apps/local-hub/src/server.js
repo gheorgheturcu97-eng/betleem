@@ -89,6 +89,10 @@ function switchChurch(id) {
   db.setlist = next.setlist; db.service = next.service; db.plan = next.plan || defaultPlan(); db.activeChurch = id;
   Object.assign(live, { item: -1, slide: 0, blank: false, logo: false, background: '', message: '' });
 }
+export function logError(where, err) {
+  try { fs.appendFileSync(path.join(DATA_DIR, 'erori.log'), `[${new Date().toISOString()}] ${where}: ${err && err.stack || err}\n`); } catch {}
+  console.error(where, err);
+}
 let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
@@ -235,7 +239,14 @@ wss.on('connection', (ws, req) => {
   sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) ? 'leader' : 'viewer' });
   ws.send(JSON.stringify({ type: 'hello', role: sessions.get(ws).role, state: snapshot() }));
   ws.on('close', () => sessions.delete(ws));
-  ws.on('message', raw => { let m; try { m = JSON.parse(raw); } catch { return; } handleMessage(ws, m); });
+  ws.on('message', raw => {
+    let m; try { m = JSON.parse(raw); } catch { return; }
+    try { handleMessage(ws, m); }
+    catch (e) {                                       // one bad command must not stop the screens
+      logError('comanda ' + m.type, e);
+      try { ws.send(JSON.stringify({ type: 'error', error: 'Ceva n-a mers (' + m.type + '). Am notat eroarea în erori.log.' })); } catch {}
+    }
+  });
 });
 
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
@@ -867,7 +878,8 @@ async function handle(req, res) {
     if (p === '/' ) return redirect(res, '/live.html');
     return file(res, PUBLIC, p.slice(1), req);
   } catch (e) {
-    return json(res, 400, { error: e.message });
+    if (!(e instanceof SyntaxError)) logError('cerere ' + p, e);
+    try { return json(res, 400, { error: e.message }); } catch {}
   }
 }
 

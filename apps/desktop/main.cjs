@@ -41,6 +41,16 @@ for (const f of fs.existsSync(BG_SRC) ? fs.readdirSync(BG_SRC) : []) {
 }
 
 process.env.DATA_DIR = DATA_DIR;
+
+// An error must never close Betleem on a Sunday: write it down (Documents\Betleem\erori.log) and keep going.
+function logError(where, err) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.appendFileSync(path.join(DATA_DIR, 'erori.log'), `[${new Date().toISOString()}] ${where}: ${err && err.stack || err}\n`);
+  } catch {}
+}
+process.on('uncaughtException', e => logError('main', e));
+process.on('unhandledRejection', e => logError('main (promise)', e));
 process.env.PORT = String(PORT);
 process.env.PIN = settings.pin;
 process.env.LEADER_PIN = settings.leaderPin;
@@ -212,6 +222,9 @@ app.whenReady().then(async () => {
     return { action: 'deny' };
   });
   control.loadURL(`${BASE}/control.html`);
+  // if the window's page crashes or freezes, note it and load it again
+  control.webContents.on('render-process-gone', (_e, d) => { logError('fereastra de control', d.reason + ' ' + d.exitCode); if (d.reason !== 'clean-exit') setTimeout(() => control?.loadURL(`${BASE}/control.html`), 500); });
+  control.on('unresponsive', () => logError('fereastra de control', 'nu răspunde'));
   control.once('ready-to-show', () => { control.maximize(); control.show(); });
   if (process.env.BNC_SMOKE) {            // automated check: screenshot the control window + main screen, then quit
     setTimeout(async () => {
