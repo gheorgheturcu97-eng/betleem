@@ -166,7 +166,7 @@ function slideSource(it, song, slide) {
  */
 function splitAtSlide(song, hit, label) {
   const n = 1 + (hit.from > 0 ? 1 : 0) + (hit.to < hit.sec.lines.length ? 1 : 0);
-  const body = core.setSlideLabel(song.body, hit.sec.lines, hit.from, hit.to, label, hit.sec.label);
+  const body = core.setSlideLabel(song.body, hit.sec.lines, hit.from, hit.to, label, hit.sec.label, core.occurrenceOf(hit.parsed, hit.k));
   if (body === song.body) return null;
   if (n > 1) {
     const fix = x => { if (x && x.arrangement?.length) x.arrangement = core.expandArrangement(core.arrangementIndexes(hit.parsed, x.arrangement), hit.k, n); };
@@ -317,6 +317,40 @@ function handleMessage(ws, m) {
         if (splitAtSlide(song, hit, label) === null) return reply({ type: 'error', error: 'Nu am găsit secțiunea în cântare. Schimb-o din Editor.' });
         save(); break;
       }
+      case 'tagSlides': {                            // drop a tag on a slide; with cascade it also goes on the slides after it
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const label = String(m.label || '').trim().slice(0, 30); if (!label) break;
+        const hit = slideSource(it, song, m.slide); if (!hit) break;
+        const old = hit.sec.label;
+        // the slides after it that still have the same tag (or none) get the new tag too, until a different tag starts
+        const next = [];
+        if (m.cascade) {
+          for (let j = Number(m.slide) + 1; ; j++) {
+            const h = slideSource(it, song, j); if (!h) break;
+            if (h.sec === hit.sec) continue;                       // rest of the same section
+            if (h.sec.label !== old && h.sec.label !== '') break;
+            if (old !== '' && h.sec.label === '') break;
+            if (!next.includes(h.sec)) next.push(h.sec);
+          }
+        }
+        const parsedBefore = hit.parsed;
+        const nextLines = next.map(sec => ({ lines: sec.lines, occ: core.occurrenceOf(parsedBefore, parsedBefore.indexOf(sec)) }));
+        if (old !== label || hit.from > 0) {
+          const k = splitAtSlide(song, m.cascade ? { ...hit, to: hit.sec.lines.length } : hit, label);
+          if (k === null) return reply({ type: 'error', error: 'Nu am găsit slide-ul în cântare.' });
+        }
+        for (const { lines, occ } of nextLines) song.body = core.setSectionLabel(song.body, lines, label, occ);
+        song.updatedAt = new Date().toISOString();
+        save(); break;
+      }
+      case 'autoLabel': {                            // name the sections by itself: chorus = what comes back, the rest verses
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const body = core.autoLabel(song.body);
+        if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); save(); }
+        break;
+      }
       case 'duplicateSlide': {                       // play this slide once more, right after itself (only in this program)
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const song = db.songs.find(x => x.id === it.songId); if (!song) break;
@@ -366,6 +400,7 @@ function handleMessage(ws, m) {
           ...(tags ? { tags } : {}), updatedAt: new Date().toISOString() };
         if (existing) Object.assign(existing, data);
         else {
+          if (core.parseSong(data.body).every(sec => !sec.label)) data.body = core.autoLabel(data.body);   // a new song gets its sections named
           const created = { id: crypto.randomUUID(), ...data, createdAt: new Date().toISOString() };
           db.songs.push(created);
           if (m.addToProgram && need(ws, 'leader')) db.setlist.push({ id: crypto.randomUUID(), kind: 'song', songId: created.id, title: '', key: created.key || '', minutes: 5, notes: [] });

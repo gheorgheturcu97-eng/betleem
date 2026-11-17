@@ -192,3 +192,34 @@ test('arrangement by section number, and renumbering after a split', async () =>
   assert.deepEqual(arrangementIndexes(secs, null), ['#0', '#1', '#2']);
   assert.deepEqual(expandArrangement(['#1', '#0', '#2', '#1'], 1, 2), ['#1', '#2', '#0', '#3', '#1', '#2']);
 });
+
+test('autoLabel finds the chorus and numbers the verses', async () => {
+  const { autoLabel, parseSong } = await import('../src/song.ts');
+  const body = 'Unu doi trei patru\nCinci sase\n\n[G]Aleluia slava Lui\nIn veci de veci amin\n\nSapte opt noua zece\nUnspe doispe\n\nAleluia slava Lui\nIn veci de veci amin';
+  assert.deepEqual(parseSong(autoLabel(body)).map(s => s.label), ['Strofa 1', 'Refren', 'Strofa 2', 'Refren']);
+  assert.equal(parseSong(autoLabel(body))[1].lines[0], '[G]Aleluia slava Lui', 'chords kept');
+  const r = autoLabel('Prima strofa aici acum\n\nR: Sfant sfant sfant Domnul\nEste vrednic');
+  assert.deepEqual(parseSong(r).map(s => s.label), ['Strofa 1', 'Refren']);
+  assert.equal(parseSong(r)[1].lines[0], 'Sfant sfant sfant Domnul', '"R:" mark removed');
+  assert.deepEqual(parseSong(autoLabel('Bridge:\nX y z\n\nA b c d')).map(s => s.label), ['Bridge', 'Strofa 1'], 'existing names kept');
+});
+
+test('arrange by name takes the following sections with the same name', async () => {
+  const { arrange, parseSong } = await import('../src/song.ts');
+  const secs = parseSong('Strofa 1:\nA\n\nStrofa 1:\nB\n\nRefren:\nC');
+  assert.deepEqual(arrange(secs, ['Refren', 'Strofa 1']).map(s => s.lines[0]), ['C', 'A', 'B']);
+});
+
+test('labels go on the right copy of a repeated block', async () => {
+  const { setSectionLabel, parseSong, occurrenceOf } = await import('../src/song.ts');
+  const body = 'Strofa 1:\nA\n\nR\n\nB\n\nR';
+  const secs = parseSong(body);
+  assert.equal(occurrenceOf(secs, 3), 1);
+  assert.deepEqual(parseSong(setSectionLabel(body, ['R'], 'Refren', 1)).map(s => s.label), ['Strofa 1', '', '', 'Refren']);
+});
+
+test('autoLabel does not reuse names and follows named copies', async () => {
+  const { autoLabel, parseSong } = await import('../src/song.ts');
+  const body = 'Strofa 1:\nUnu doi trei patru\n\nRefren 1:\nSlava slava aleluia amin\n\nCinci sase sapte opt\n\nSlava slava aleluia amin';
+  assert.deepEqual(parseSong(autoLabel(body)).map(s => s.label), ['Strofa 1', 'Refren 1', 'Strofa 2', 'Refren 1']);
+});

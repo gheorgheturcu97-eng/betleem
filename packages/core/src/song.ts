@@ -123,7 +123,15 @@ export function arrange(sections: Section[], order?: string[]): Section[] {
   const byLabel = new Map<string, Section>();
   for (const s of sections) if (s.label && !byLabel.has(s.label.toLowerCase())) byLabel.set(s.label.toLowerCase(), s);
   // "#3" means the 4th section as written — works for sections with no name or with the same name twice
-  return order.map(l => /^#\d+$/.test(l) ? sections[+l.slice(1)] : byLabel.get(l.toLowerCase())).filter((s): s is Section => !!s);
+  // "#3" means the 4th section as written — works for sections with no name or with the same name twice.
+  // A name brings that section plus the ones right after it with the same name (a verse tagged over several slides).
+  return order.flatMap(l => {
+    if (/^#\d+$/.test(l)) return sections[+l.slice(1)] ? [sections[+l.slice(1)]] : [];
+    const first = byLabel.get(l.toLowerCase()); if (!first) return [];
+    const out = [first];
+    for (let i = sections.indexOf(first) + 1; i < sections.length && sections[i].label.toLowerCase() === l.toLowerCase(); i++) out.push(sections[i]);
+    return out;
+  });
 }
 
 /** An arrangement written with section numbers ("#0", "#2"…), so every chip points at exactly one section. */
@@ -435,13 +443,15 @@ export const sectionColor = (label: string): string => SECTION_COLORS[sectionKin
  * Give the block made of `lines` a new section label. The label line right above it is replaced;
  * if there is none, the label is written above the block. Returns the body unchanged if the block is not found.
  */
-export function setSectionLabel(body: string, lines: string[], label: string): string {
+export function setSectionLabel(body: string, lines: string[], label: string, occurrence = 0): string {
   const all = body.replace(/\r\n?/g, '\n').split('\n');
   const want = lines.map(l => l.trimEnd());
   const name = String(label).trim().replace(/:+$/, '');
   if (!want.length || !name) return body;
+  let skip = occurrence;                             // the same words can be in the song twice (a chorus): pick the right one
   for (let i = 0; i + want.length <= all.length; i++) {
     if (!want.every((l, k) => all[i + k].trimEnd() === l)) continue;
+    if (skip-- > 0) { i += want.length - 1; continue; }
     let j = i - 1;
     while (j >= 0 && all[j].trim() === '') j--;
     const above = j >= 0 ? all[j].trim() : '';
@@ -458,14 +468,16 @@ export function setSectionLabel(body: string, lines: string[], label: string): s
  * (a section split over several slides), the section is split in the song so that every
  * slide can have its own tag; the lines before and after keep the old label.
  */
-export function setSlideLabel(body: string, sectionLines: string[], from: number, to: number, label: string, oldLabel = ''): string {
-  if (from <= 0 && to >= sectionLines.length) return setSectionLabel(body, sectionLines, label);
+export function setSlideLabel(body: string, sectionLines: string[], from: number, to: number, label: string, oldLabel = '', occurrence = 0): string {
+  if (from <= 0 && to >= sectionLines.length) return setSectionLabel(body, sectionLines, label, occurrence);
   const all = body.replace(/\r\n?/g, '\n').split('\n');
   const want = sectionLines.map(l => l.trimEnd());
   const name = String(label).trim().replace(/:+$/, '');
   if (!want.length) return body;                     // an empty name is allowed: it only splits the section
+  let skip = occurrence;
   for (let i = 0; i + want.length <= all.length; i++) {
     if (!want.every((l, k) => all[i + k].trimEnd() === l)) continue;
+    if (skip-- > 0) { i += want.length - 1; continue; }
     let start = i;
     const above = i > 0 ? all[i - 1].trim() : '';
     if (above && SECTION_LABEL.test(above) && above.length < 40) start = i - 1;   // replace the old label line too
@@ -481,4 +493,55 @@ export function setSlideLabel(body: string, sectionLines: string[], from: number
     return all.join('\n');
   }
   return body;
+}
+
+
+/**
+ * Name the sections of a song that has no names yet: a block that comes back (the same words twice or more,
+ * or that starts with "R:") is the chorus — "Refren", a second different one "Refren 2"; the others are "Strofa 1", "Strofa 2"…
+ * Sections that already have a name keep it.
+ */
+export function autoLabel(body: string): string {
+  const text = body.replace(/\r\n?/g, '\n');
+  const meta = text.split('\n').filter(l => /^\s*\{(title|t|artist|key|tempo|time|capo)\s*:/i.test(l));
+  const secs = parseSong(text);
+  if (!secs.length) return body;
+  const words = (s: Section) => s.lines.map(l => stripChords(l)).join(' ').replace(/^\s*R\s*\d*\s*[:.]\s*/i, '').split(/\s+/).map(normWord).filter(Boolean);
+  const sim = (a: string[], b: string[]) => { const A = new Set(a), B = new Set(b); let n = 0; for (const w of A) if (B.has(w)) n++; return n / Math.max(1, Math.max(A.size, B.size)); };
+  const w = secs.map(words);
+  const group: number[] = secs.map(() => -1);                // sections with (almost) the same words share a group
+  let g = 0;
+  for (let i = 0; i < secs.length; i++) {
+    if (group[i] >= 0) continue;
+    group[i] = g;
+    for (let j = i + 1; j < secs.length; j++) if (group[j] < 0 && w[i].length > 2 && sim(w[i], w[j]) >= 0.8) group[j] = g;
+    g++;
+  }
+  const count = (k: number) => group.filter(x => x === k).length;
+  const used = new Set(secs.map(s => s.label.toLowerCase()).filter(Boolean));
+  const known = new Map<number, string>();           // a group with a named member: the others get the same name
+  secs.forEach((s, i) => { if (s.label && !known.has(group[i])) known.set(group[i], s.label); });
+  const fresh = (base: string, first: boolean) => {   // "Strofa 3" if 1 and 2 are taken; "Refren" then "Refren 2"…
+    for (let n = 1; ; n++) { const name = n === 1 && first ? base : base + ' ' + n; if (!used.has(name.toLowerCase())) { used.add(name.toLowerCase()); return name; } }
+  };
+  const chorusName = new Map<number, string>();
+  const names = secs.map((s, i) => {
+    if (s.label) return s.label;
+    const k = group[i];
+    if (known.has(k)) return known.get(k)!;
+    const isChorus = count(k) > 1 || /^\s*(\[[^\]]*\])?\s*R\s*\d*\s*[:.]/i.test(s.lines[0] || '');
+    if (isChorus) {
+      if (!chorusName.has(k)) chorusName.set(k, fresh('Refren', true));
+      return chorusName.get(k)!;
+    }
+    return fresh('Strofa', false);
+  });
+  const out = secs.map((s, i) => [names[i] + ':', ...s.lines.map(l => /^\s*(\[[^\]]*\])?\s*R\s*\d*\s*[:.]\s*/i.test(l) && s.lines[0] === l ? l.replace(/^(\s*(?:\[[^\]]*\])?)\s*R\s*\d*\s*[:.]\s*/i, '$1') : l)].join('\n'));
+  return [...meta, ...(meta.length ? [''] : []), out.join('\n\n')].join('\n');
+}
+
+/** How many sections before section k have exactly the same lines (to find the right copy of a repeated chorus). */
+export function occurrenceOf(sections: Section[], k: number): number {
+  const key = sections[k]?.lines.join('\n');
+  return sections.slice(0, k).filter(s => s.lines.join('\n') === key).length;
 }
