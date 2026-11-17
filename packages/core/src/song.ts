@@ -223,3 +223,115 @@ export function chordLineToHtml(line: string, escape: (s: string) => string): st
   if (pending) html += `<span class="seg"><b>${escape(pending)}</b><i></i></span>`;
   return html;
 }
+
+// ---------------------------------------------------------------------------
+// Put chords from a chord sheet onto OUR lyrics (keeps our sections, order,
+// diacritics and line breaks). Used to add chords to songs imported without them.
+// ---------------------------------------------------------------------------
+
+export type ChordToken = { norm: string; chords: string[] };
+
+/** Word key used for matching: lower case, no diacritics, letters/digits only. */
+export function normWord(w: string): string {
+  return w.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+}
+
+/** A chord sheet (ChordPro) as a stream of words, each with the chords that start on it. */
+export function chordStream(body: string): ChordToken[] {
+  const out: ChordToken[] = [];
+  for (const raw of body.split('\n')) {
+    const line = raw.trim();
+    if (!line || (SECTION_LABEL.test(line) && line.length < 40)) continue;
+    if (!line.replace(/\[[^\]]*\]/g, '').trim()) continue;          // chords only (intro): skip
+    let pending: string[] = [];
+    let word = '', wordChords: string[] = [];
+    const flush = () => {
+      const n = normWord(word);
+      if (n) { out.push({ norm: n, chords: wordChords }); wordChords = []; }
+      else pending = pending.concat(wordChords), wordChords = [];  // e.g. "/:" repeat marks
+      word = '';
+    };
+    for (const part of line.split(/(\[[^\]]*\])/)) {
+      if (/^\[.*\]$/.test(part)) {
+        const c = part.slice(1, -1).trim();
+        if (!c) continue;
+        if (word) wordChords.push(c); else pending.push(c);
+        continue;
+      }
+      for (const ch of part) {
+        if (/\s/.test(ch)) { flush(); continue; }
+        if (!word && pending.length) { wordChords = pending.concat(wordChords); pending = []; }
+        word += ch;
+      }
+    }
+    flush();
+  }
+  return out;
+}
+
+/** Longest common subsequence of two word-key arrays -> pairs [i, j]. */
+function lcsPairs(a: string[], b: string[]): [number, number][] {
+  const n = a.length, m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const pairs: [number, number][] = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { pairs.push([i, j]); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) i++; else j++;
+  }
+  return pairs;
+}
+
+/** Guess the key from the first chord: "Am7" -> "Am", "F#" -> "F#". */
+export function guessKey(body: string): string {
+  const m = body.match(/\[([A-G][b#]?)(m(?!aj))?/);
+  return m ? m[1] + (m[2] ? 'm' : '') : '';
+}
+
+/**
+ * Copy chords from `sheet` onto `lyrics`. Each section of our song is matched on its own
+ * against the whole sheet, so a different section order on the website does not matter.
+ * Returns the new body, how many of our words were found (0..1) and how many chords were placed.
+ */
+export function applyChords(lyrics: string, sheet: string): { body: string; match: number; chords: number } {
+  const src = chordStream(sheet);
+  const srcKeys = src.map(t => t.norm);
+  const lines = lyrics.split('\n');
+  type W = { line: number; col: number; norm: string };
+  const sections: W[][] = [];
+  let cur: W[] = [];
+  lines.forEach((line, li) => {
+    const t = line.trim();
+    if (!t || (SECTION_LABEL.test(t) && t.length < 40)) { if (cur.length) sections.push(cur); cur = []; return; }
+    if (/\[[A-G][^\]]*\]/.test(line)) return;                     // already has chords: leave it
+    for (const m of line.matchAll(/\S+/g)) {
+      const n = normWord(m[0]);
+      if (n) cur.push({ line: li, col: m.index ?? 0, norm: n });
+    }
+  });
+  if (cur.length) sections.push(cur);
+
+  const inserts = new Map<number, { col: number; chords: string[] }[]>();
+  let total = 0, found = 0, placed = 0;
+  for (const sec of sections) {
+    total += sec.length;
+    const pairs = lcsPairs(sec.map(w => w.norm), srcKeys);
+    found += pairs.length;
+    for (const [i, j] of pairs) {
+      const chords = src[j].chords;
+      if (!chords.length) continue;
+      const w = sec[i];
+      if (!inserts.has(w.line)) inserts.set(w.line, []);
+      inserts.get(w.line)!.push({ col: w.col, chords });
+      placed += chords.length;
+    }
+  }
+  const out = lines.map((line, li) => {
+    const ins = (inserts.get(li) || []).sort((a, b) => b.col - a.col);
+    for (const { col, chords } of ins) line = line.slice(0, col) + chords.map(c => `[${c}]`).join('') + line.slice(col);
+    return line;
+  });
+  return { body: out.join('\n'), match: total ? found / total : 0, chords: placed };
+}

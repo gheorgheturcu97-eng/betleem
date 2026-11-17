@@ -15,6 +15,7 @@ import * as nodeModule from 'node:module';
 import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
+import { addChordsToSongs } from './chords.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -94,6 +95,26 @@ function save() {
   }, 200);
 }
 
+// --- How text looks on the screens (operators can change it) --------------------
+const DISPLAY_DEFAULTS = {
+  main:  { font: 'Segoe UI', size: 6.2, color: '#ffffff', align: 'center', valign: 'middle', weight: 700, upper: false, shadow: true, dim: 35 },
+  stage: { font: 'Segoe UI', size: 5.4, color: '#f2f2f2', chordColor: '#f5b301', align: 'left', next: true },
+};
+db.display = { main: { ...DISPLAY_DEFAULTS.main, ...(db.display?.main || {}) }, stage: { ...DISPLAY_DEFAULTS.stage, ...(db.display?.stage || {}) } };
+function cleanDisplay(screen, patch) {
+  const d = {}, p = patch || {};
+  if (typeof p.font === 'string') d.font = p.font.slice(0, 60).replace(/[^\w\s-]/g, '');
+  if (Number.isFinite(+p.size)) d.size = Math.min(16, Math.max(2, +p.size));
+  if (/^#[0-9a-f]{6}$/i.test(p.color || '')) d.color = p.color;
+  if (/^#[0-9a-f]{6}$/i.test(p.chordColor || '')) d.chordColor = p.chordColor;
+  if (['left', 'center', 'right'].includes(p.align)) d.align = p.align;
+  if (['top', 'middle', 'bottom'].includes(p.valign)) d.valign = p.valign;
+  if ([400, 500, 600, 700, 800].includes(+p.weight)) d.weight = +p.weight;
+  for (const k of ['upper', 'shadow', 'next']) if (typeof p[k] === 'boolean') d[k] = p[k];
+  if (Number.isFinite(+p.dim)) d.dim = Math.min(90, Math.max(0, +p.dim));
+  return d;
+}
+
 // --- Live state (what is on the screens right now) ---------------------------
 const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '' };
 
@@ -130,6 +151,7 @@ export { core, extractLyrics };
 function snapshot() {
   return {
     service: db.service,
+    display: db.display,
     church: (({ id, name, city }) => ({ id, name, city }))(activeChurch()),
     churches: db.churches.map(c => ({ id: c.id, name: c.name, city: c.city, locked: !!c.code })),
     setlist: db.setlist.map((it, i) => ({
@@ -201,6 +223,16 @@ wss.on('connection', (ws, req) => {
         if ('background' in m) it.background = String(m.background || '');
         save(); break;
       }
+      case 'display': {                              // look of the main / stage screen
+        const screen = m.screen === 'stage' ? 'stage' : 'main';
+        Object.assign(db.display[screen], cleanDisplay(screen, m.patch));
+        save(); break;
+      }
+      case 'itemDisplay': {                          // a song's own look on the main screen (null = use the general one)
+        const it = db.setlist[m.item]; if (!it) break;
+        it.display = m.patch ? cleanDisplay('main', m.patch) : undefined;
+        save(); break;
+      }
       case 'itemBackground': {                       // pin a background to one song in the plan
         const it = db.setlist[m.item]; if (!it) break;
         it.background = String(m.value || '');
@@ -213,7 +245,9 @@ wss.on('connection', (ws, req) => {
         const body = core.normalizeImported(String(s.body));
         const meta = core.readMeta(body);
         const existing = s.id && db.songs.find(x => x.id === s.id);
-        const data = { title: String(s.title).trim(), author: s.author || '', key: s.key || meta.key || '', body, source: s.source || '' };
+        const tags = Array.isArray(s.tags) ? [...new Set(s.tags.map(t => String(t).trim()).filter(Boolean))].slice(0, 12) : undefined;
+        const data = { title: String(s.title).trim(), author: s.author || '', key: s.key || meta.key || '', body, source: s.source || '',
+          ...(tags ? { tags } : {}), updatedAt: new Date().toISOString() };
         if (existing) Object.assign(existing, data);
         else db.songs.push({ id: crypto.randomUUID(), ...data, createdAt: new Date().toISOString() });
         save(); break;
@@ -276,6 +310,33 @@ wss.on('connection', (ws, req) => {
 
 // Musician notes can be posted by anyone logged in as operator+ (musicians use operator PIN or
 // the future Supabase login). Kept separate so it is easy to open up later.
+// --- Add chords from resursecrestine.ro (runs in the background) ---------------------
+const chordsJob = { running: false, stop: false };
+function chordsEvent(o) {
+  const msg = JSON.stringify({ type: 'chords', ...o });
+  for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
+}
+async function runChordsJob(list) {
+  Object.assign(chordsJob, { running: true, stop: false });
+  try {
+    const result = await addChordsToSongs(list, core, {
+      shouldStop: () => chordsJob.stop,
+      onProgress: p => chordsEvent({ ...p, running: true }),
+      onSong: (song, r) => {
+        song.body = r.body;
+        if (!song.key) song.key = r.key;
+        song.chordsSource = r.url;
+        song.updatedAt = new Date().toISOString();
+        save();
+      },
+    });
+    chordsEvent({ running: false, finished: true, added: result.added.length, missed: result.missed });
+    broadcast();
+  } catch (e) {
+    chordsEvent({ running: false, finished: true, error: e.message });
+  } finally { chordsJob.running = false; }
+}
+
 // --- HTTP ----------------------------------------------------------------------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml',
@@ -287,10 +348,20 @@ async function handle(req, res) {
   try {
     if (p === '/core/song.js') return send(res, 200, CORE_JS, TYPES['.js']);
     if (p === '/api/songs' && req.method === 'GET') {
-      const q = (url.searchParams.get('q') || '').toLowerCase();
-      const list = db.songs.filter(s => !q || s.title.toLowerCase().includes(q) || s.body.toLowerCase().includes(q))
-        .map(({ id, title, key, author }) => ({ id, title, key, author })).slice(0, 50);
+      const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const q = fold(url.searchParams.get('q'));
+      const tag = url.searchParams.get('tag');
+      const list = db.songs
+        .filter(s => !tag || (s.tags || []).includes(tag))
+        .filter(s => !q || fold(s.title).includes(q) || fold(s.body.replace(/\[[^\]]*\]/g, '')).includes(q))
+        .sort((a, b) => a.title.localeCompare(b.title, 'ro'))
+        .map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
       return json(res, 200, list);
+    }
+    if (p === '/api/tags' && req.method === 'GET') {
+      const count = {};
+      for (const s of db.songs) for (const t of s.tags || []) count[t] = (count[t] || 0) + 1;
+      return json(res, 200, Object.entries(count).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n })));
     }
     if (p.startsWith('/api/songs/') && req.method === 'GET') {
       const s = db.songs.find(x => x.id === p.split('/')[3]);
@@ -314,6 +385,18 @@ async function handle(req, res) {
       });
       return json(res, 200, results);
     }
+    if (p === '/api/add-chords' && req.method === 'POST') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      if (chordsJob.running) return json(res, 409, { error: 'Căutarea acordurilor rulează deja' });
+      const { ids } = JSON.parse((await body(req, 100_000)) || '{}');
+      const list = Array.isArray(ids) && ids.length ? db.songs.filter(s => ids.includes(s.id)) : db.songs;
+      // safety copy of the library before changing many songs
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+      if (list.length > 1) fs.writeFileSync(path.join(DATA_DIR, `library.backup-${stamp}.json`), JSON.stringify(db, null, 2));
+      runChordsJob(list);
+      return json(res, 200, { ok: true });
+    }
+    if (p === '/api/add-chords/stop' && req.method === 'POST') { chordsJob.stop = true; return json(res, 200, { ok: true }); }
     if (p === '/api/media' && req.method === 'GET') {
       const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.'));
       return json(res, 200, files);

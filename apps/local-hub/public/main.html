@@ -27,8 +27,20 @@
   const $ = id => document.getElementById(id);
   stayAwake();
   document.ondblclick = () => document.documentElement.requestFullscreen?.();
+  // look of the text: general settings, a song may override them
+  const V = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }, H = { left: 'flex-start', center: 'center', right: 'flex-end' };
+  function style(d) {
+    const t = $('text').style;
+    t.fontFamily = `"${d.font}", "Segoe UI", Arial, sans-serif`;
+    t.fontSize = d.size + 'vh'; t.color = d.color; t.fontWeight = d.weight;
+    t.textAlign = d.align; t.alignItems = H[d.align]; t.justifyContent = V[d.valign];
+    t.textTransform = d.upper ? 'uppercase' : 'none';
+    t.textShadow = d.shadow ? '0 .3vh 1.2vh rgba(0,0,0,.85)' : 'none';
+    $('shade').style.background = `rgba(0,0,0,${(d.dim ?? 35) / 100})`;
+  }
   connect(s => {
     const L = s.live, item = s.setlist[L.item];
+    if (s.display) style({ ...s.display.main, ...(item?.display || {}) });
     paintBackground($('bg'), L.background);
     const slide = L.slides[L.slide];
     const html = slide ? slide.lines.map(l => esc(stripChords(l))).filter(Boolean).join('<br>') : '';

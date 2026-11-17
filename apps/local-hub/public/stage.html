@@ -14,8 +14,10 @@
   #next{padding:2vh 3vw;font-size:3.4vh;color:#8a8f95;border-top:1px solid #222;line-height:1.15;max-height:30vh;overflow:hidden}
   .label{font-size:2.6vh;color:#f5b301;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1vh}
   .line{display:flex;flex-wrap:wrap;margin-bottom:1.2vh}
+  #now.center .line,#next.center .line{justify-content:center} #now.center,#next.center{text-align:center}
+  #now.right .line,#next.right .line{justify-content:flex-end} #now.right,#next.right{text-align:right}
   .seg{display:inline-flex;flex-direction:column;white-space:pre}
-  .seg b{color:#f5b301;font-size:.7em;min-height:1em;font-weight:700}
+  .seg b{color:var(--chord,#f5b301);font-size:.7em;min-height:1em;font-weight:700}
   .seg i{font-style:normal}
   .ly{white-space:pre}
   #blank{position:fixed;top:1vh;right:1vw;background:#b00020;color:#fff;padding:.5vh 1vw;font-size:2.4vh;display:none;border-radius:4px}
@@ -38,7 +40,16 @@
   const render = sl => !sl ? '' :
     (sl.label ? `<div class="label">${esc(sl.label)}</div>` : '') +
     sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('');
+  function style(d) {
+    if (!d) return;
+    for (const el of [$('now'), $('next')]) { el.classList.toggle('center', d.align === 'center'); el.classList.toggle('right', d.align === 'right'); }
+    document.body.style.fontFamily = `"${d.font}", "Segoe UI", Arial, sans-serif`;
+    $('now').style.fontSize = d.size + 'vh'; $('now').style.color = d.color;
+    document.documentElement.style.setProperty('--chord', d.chordColor);
+    $('next').style.display = d.next === false ? 'none' : '';
+  }
   connect(s => {
+    style(s.display?.stage);
     const L = s.live, item = s.setlist[L.item], nextItem = s.setlist[L.item + 1];
     $('title').textContent = item ? item.title : '—';
     $('key').textContent = item && item.key ? `· ton ${item.key}` : '';

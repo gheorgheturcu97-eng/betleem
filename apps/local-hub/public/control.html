@@ -180,6 +180,24 @@
   .editor-actions button{flex:1}
   a{color:var(--mute)}
 
+  .chords-box[hidden]{display:none}
+  .chords-box{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--stroke);font-size:12.5px;color:var(--mute)}
+  .chords-box .bar{height:6px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+  .chords-box .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd35c,#ff9d1e);transition:width .3s}
+  .chords-box button{align-self:flex-start;padding:4px 10px;font-size:12px}
+  .look{position:fixed;top:78px;right:22px;width:360px;padding:14px;display:none;flex-direction:column;gap:10px;z-index:25;background:rgba(36,38,48,.75)}
+  .look.show{display:flex}
+  .look .lf{display:flex;align-items:center;gap:10px} .look .lf>span{width:110px;color:var(--mute);font-size:12.5px;flex:none}
+  .look .lf input[type=range]{flex:1;padding:0;accent-color:var(--acc)} .look .lf b{width:36px;text-align:right;font-weight:500;font-size:12px;color:var(--mute)}
+  .look input[type=color]{width:46px;height:30px;padding:2px;border-radius:8px}
+  .look .lf select{flex:1}
+  .seg.mini{margin:0;flex:1} .seg.mini button{padding:5px 4px;font-size:12px}
+  .look.stage .main-only,.look.main .stage-only{display:none}
+  .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .tagchip{font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--stroke);cursor:pointer;color:var(--mute);box-shadow:none}
+  .tagchip.on{background:rgba(255,191,47,.18);border-color:rgba(255,191,47,.7);color:var(--fg)}
+  .lib .tg{font-size:10.5px;color:var(--acc);margin-left:6px}
+  .lib .ch{font-size:11px;color:var(--mute)}
   /* ---------- toast + dialog */
   #toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;padding:12px 20px;border-radius:999px;
          transition:opacity .2s,transform .2s;z-index:20;max-width:70vw;background:rgba(30,32,40,.7)}
@@ -214,6 +232,7 @@
       <button id="bLogo" title="Logo (L)">Logo</button>
       <input id="msg" placeholder="Mesaj pe ecran… (Enter)">
     </div>
+    <button id="bLook" title="Font, mărime, poziție">Aa Aspect</button>
     <div class="login" id="loginBox">
       <input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button id="bLogin">OK</button>
     </div>
@@ -279,8 +298,10 @@
 
       <div class="tab sel" id="tab-lib">
         <div class="search"><input id="q" placeholder="Caută titlu sau vers…" autocomplete="off"></div>
+        <div class="tags" id="tagFilter"></div>
         <div id="results" class="scroll"></div>
-        <button id="bNew2">＋ Cântare nouă</button>
+        <div id="chordsBox" class="chords-box" hidden><div class="bar"><i id="chordsBar"></i></div><span id="chordsText"></span><button id="bChordsStop" class="ghost">Oprește</button></div>
+        <div class="row"><button id="bNew2" class="grow">＋ Cântare nouă</button><button id="bChordsAll" class="grow" title="Caută pe Resurse Creștine acordurile pentru cântările fără acorduri">♪ Acorduri la toate</button></div>
       </div>
 
       <div class="tab" id="tab-web">
@@ -296,6 +317,7 @@
       <div class="tab" id="tab-edit">
         <input type="hidden" id="songId">
         <div class="row"><input id="songTitle" placeholder="Titlul cântării" class="grow"><input id="songKey" placeholder="Ton" style="width:70px"></div>
+        <div class="tags" id="songTags"></div>
         <textarea id="songBody" spellcheck="false" placeholder="Strofa 1:
 [G]Mare e [D]Domnul
 
@@ -307,6 +329,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <div class="editor-actions">
           <button id="bSave" class="acc">Salvează</button>
           <button id="bSaveAdd">Salvează + în program</button>
+          <button id="bChordsOne" class="icon" title="Caută acorduri pentru această cântare" style="flex:none">♪</button>
           <button id="bNew" class="icon" title="Cântare nouă" style="flex:none">＋</button>
         </div>
       </div>
@@ -320,6 +343,24 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="sep"></div>
   <button id="bAddChurch" class="ghost">＋ Adaugă biserică</button>
   <button id="bEditChurch" class="ghost">⚙ Nume și cod pentru biserica curentă</button>
+</div>
+<div class="look glass" id="look">
+  <div class="seg" id="lookTabs"><button data-s="main" class="sel">Sală (proiector)</button><button data-s="stage">Scenă</button></div>
+  <label class="check" id="lookItemRow"><input type="checkbox" id="lookItem"> Doar pentru cântarea selectată</label>
+  <div class="lf"><span>Font</span><select id="lFont">
+    <option>Segoe UI</option><option>Arial</option><option>Bahnschrift</option><option>Calibri</option><option>Georgia</option>
+    <option>Trebuchet MS</option><option>Verdana</option><option>Tahoma</option><option>Impact</option><option>Times New Roman</option></select></div>
+  <div class="lf"><span>Mărime</span><input type="range" id="lSize" min="2.5" max="12" step="0.1"><b id="lSizeV"></b></div>
+  <div class="lf"><span>Aliniere</span><div class="seg mini" id="lAlign"><button data-v="left">⟸ Stânga</button><button data-v="center">Mijloc</button><button data-v="right">Dreapta ⟹</button></div></div>
+  <div class="lf main-only"><span>Poziție</span><div class="seg mini" id="lValign"><button data-v="top">Sus</button><button data-v="middle">Mijloc</button><button data-v="bottom">Jos</button></div></div>
+  <div class="lf"><span>Culoare text</span><input type="color" id="lColor"></div>
+  <div class="lf stage-only"><span>Culoare acorduri</span><input type="color" id="lChord"></div>
+  <div class="lf main-only"><span>Grosime</span><select id="lWeight"><option value="400">Normal</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Foarte gros</option></select></div>
+  <div class="lf main-only"><span>Întunecă fundalul</span><input type="range" id="lDim" min="0" max="90" step="5"><b id="lDimV"></b></div>
+  <label class="check main-only"><input type="checkbox" id="lUpper"> MAJUSCULE</label>
+  <label class="check main-only"><input type="checkbox" id="lShadow"> Umbră la text</label>
+  <label class="check stage-only"><input type="checkbox" id="lNext"> Arată slide-ul următor</label>
+  <button id="lReset" class="ghost main-only">↺ Scoate setările speciale ale cântării</button>
 </div>
 <div id="toast" class="glass"></div>
 <div class="modal" id="modal"><div class="glass"><h3 id="mTitle"></h3><div class="fields" id="mFields"></div>
@@ -340,6 +381,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'error') toast(e.error);
     if (e.type === 'login') toast(e.ok ? 'Conectat ca ' + e.role : 'PIN greșit');
     if (e.type === 'church' && !e.ok) toast(e.error);
+    if (e.type === 'chords') chordsProgress(e);
   });
   const send = o => hub.send(o);
   const api = (url, opt = {}) => fetch(url, { ...opt, headers: { 'x-pin': hub.pin(), ...(opt.headers || {}) } })
@@ -406,6 +448,49 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     toast('Salvat');
   };
 
+  // ---- Aspect: font, size, alignment, position for the main and stage screens
+  let lookScreen = 'main';
+  const look = $('look');
+  $('bLook').onclick = e => { e.stopPropagation(); look.classList.toggle('show'); fillLook(); };
+  addEventListener('click', e => { if (!look.contains(e.target) && e.target !== $('bLook')) look.classList.remove('show'); });
+  document.querySelectorAll('#lookTabs button').forEach(b => b.onclick = () => {
+    lookScreen = b.dataset.s; document.querySelectorAll('#lookTabs button').forEach(x => x.classList.toggle('sel', x === b)); fillLook();
+  });
+  const itemMode = () => lookScreen === 'main' && $('lookItem').checked && S.setlist[sel];
+  function currentLook() {
+    const base = S.display[lookScreen];
+    return itemMode() ? { ...base, ...(S.setlist[sel].display || {}) } : base;
+  }
+  function fillLook() {
+    if (!S?.display || !look.classList.contains('show')) return;
+    look.classList.toggle('stage', lookScreen === 'stage'); look.classList.toggle('main', lookScreen === 'main');
+    $('lookItemRow').style.display = lookScreen === 'main' && S.setlist[sel] ? 'flex' : 'none';
+    const d = currentLook();
+    $('lFont').value = d.font; $('lSize').value = d.size; $('lSizeV').textContent = (+d.size).toFixed(1);
+    $('lColor').value = d.color; $('lChord').value = d.chordColor || '#f5b301';
+    $('lWeight').value = String(d.weight || 700); $('lDim').value = d.dim ?? 35; $('lDimV').textContent = (d.dim ?? 35) + '%';
+    $('lUpper').checked = !!d.upper; $('lShadow').checked = d.shadow !== false; $('lNext').checked = d.next !== false;
+    document.querySelectorAll('#lAlign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.align));
+    document.querySelectorAll('#lValign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.valign));
+  }
+  function setLook(patch) {
+    if (itemMode()) send({ type: 'itemDisplay', item: sel, patch: { ...(S.setlist[sel].display || {}), ...patch } });
+    else send({ type: 'display', screen: lookScreen, patch });
+  }
+  $('lFont').onchange = e => setLook({ font: e.target.value });
+  $('lSize').oninput = e => { $('lSizeV').textContent = (+e.target.value).toFixed(1); setLook({ size: +e.target.value }); };
+  $('lColor').oninput = e => setLook({ color: e.target.value });
+  $('lChord').oninput = e => setLook({ chordColor: e.target.value });
+  $('lWeight').onchange = e => setLook({ weight: +e.target.value });
+  $('lDim').oninput = e => { $('lDimV').textContent = e.target.value + '%'; setLook({ dim: +e.target.value }); };
+  $('lUpper').onchange = e => setLook({ upper: e.target.checked });
+  $('lShadow').onchange = e => setLook({ shadow: e.target.checked });
+  $('lNext').onchange = e => setLook({ next: e.target.checked });
+  $('lookItem').onchange = fillLook;
+  document.querySelectorAll('#lAlign button').forEach(b => b.onclick = () => setLook({ align: b.dataset.v }));
+  document.querySelectorAll('#lValign button').forEach(b => b.onclick = () => setLook({ valign: b.dataset.v }));
+  $('lReset').onclick = () => { if (S.setlist[sel]) { send({ type: 'itemDisplay', item: sel, patch: null }); toast('Cântarea folosește din nou aspectul general'); } };
+
   // tabs
   function showTab(t) {
     document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('sel', b.dataset.t === t));
@@ -449,7 +534,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   let dragFrom = -1;
   async function render() {
     if (!S) return;
-    churchChanged(); renderChurches();
+    churchChanged(); renderChurches(); fillLook();
     if (document.activeElement !== $('svcTitle')) $('svcTitle').value = S.service.title || '';
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -515,9 +600,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   let qTimer;
   $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(search, 120); };
   async function search() {
-    const list = await fetch('/api/songs?q=' + encodeURIComponent($('q').value)).then(r => r.json());
+    const list = await fetch('/api/songs?q=' + encodeURIComponent($('q').value) + (tagFilter ? '&tag=' + encodeURIComponent(tagFilter) : '')).then(r => r.json());
+    loadTagFilter();
     $('results').innerHTML = list.map(s => `<div class="lib" data-id="${s.id}" title="Apasă ca s-o adaugi în program">
-        <span class="t">${esc(s.title)}</span>${s.key ? `<span class="chip">${esc(s.key)}</span>` : ''}
+        <span class="t">${esc(s.title)}${s.chords ? ' <span class="ch" title="are acorduri">♪</span>' : ''}${(s.tags || []).map(t => `<span class="tg">#${esc(t)}</span>`).join('')}</span>${s.key ? `<span class="chip">${esc(s.key)}</span>` : ''}
         <span class="acts"><button data-a="edit" title="Editează">✎</button><button data-a="add" title="Adaugă în program">＋</button></span></div>`).join('')
       || '<p class="hint">Nimic găsit. Caută pe Internet sau scrie o cântare nouă.</p>';
     document.querySelectorAll('#results .lib').forEach(el => el.onclick = async e => {
@@ -527,13 +613,32 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       toast('„' + song.title + '” a fost adăugată în program');
     });
   }
+  // ---- tags (Laudă, Adorare…): filter the library, set them in the editor
+  const PRESET_TAGS = ['Laudă', 'Adorare', 'Rugăciune', 'Mulțumire', 'Crăciun', 'Paști', 'Cina Domnului', 'Botez', 'Copii', 'Tineret', 'Evanghelizare', 'Închidere'];
+  let tagFilter = '', editorTags = [];
+  async function loadTagFilter() {
+    const used = await fetch('/api/tags').then(r => r.json()).catch(() => []);
+    if (!used.length) { $('tagFilter').innerHTML = ''; return; }
+    $('tagFilter').innerHTML = used.map(t => `<button class="tagchip ${t.name === tagFilter ? 'on' : ''}" data-t="${esc(t.name)}">${esc(t.name)} · ${t.n}</button>`).join('');
+    document.querySelectorAll('#tagFilter .tagchip').forEach(b => b.onclick = () => { tagFilter = tagFilter === b.dataset.t ? '' : b.dataset.t; search(); });
+  }
+  function renderEditorTags() {
+    const all = [...new Set([...PRESET_TAGS, ...editorTags])];
+    $('songTags').innerHTML = all.map(t => `<button class="tagchip ${editorTags.includes(t) ? 'on' : ''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')
+      + '<button class="tagchip" data-new="1">＋ altă etichetă</button>';
+    document.querySelectorAll('#songTags .tagchip').forEach(b => b.onclick = async () => {
+      if (b.dataset.new) { const v = await ask('Etichetă nouă', [{ label: 'Nume', placeholder: 'ex. Rusalii' }]); if (v && v[0].trim()) editorTags.push(v[0].trim()); }
+      else editorTags = editorTags.includes(b.dataset.t) ? editorTags.filter(x => x !== b.dataset.t) : [...editorTags, b.dataset.t];
+      renderEditorTags();
+    });
+  }
   search();
 
   // editor
-  function fillEditor(s) { $('songId').value = s.id || ''; $('songTitle').value = s.title || ''; $('songKey').value = s.key || ''; $('songBody').value = s.body || ''; $('songBody').dataset.source = s.source || ''; }
+  function fillEditor(s) { editorTags = [...(s.tags || [])]; renderEditorTags(); $('songId').value = s.id || ''; $('songTitle').value = s.title || ''; $('songKey').value = s.key || ''; $('songBody').value = s.body || ''; $('songBody').dataset.source = s.source || ''; }
   async function loadSongInEditor(it) { if (it.kind === 'song') { songCache.delete(it.songId); fillEditor(await fetch('/api/songs/' + it.songId).then(r => r.json())); } }
   function saveSong(addAfter) {
-    const song = { id: $('songId').value || undefined, title: $('songTitle').value, key: $('songKey').value, body: $('songBody').value, source: $('songBody').dataset.source };
+    const song = { id: $('songId').value || undefined, title: $('songTitle').value, key: $('songKey').value, body: $('songBody').value, source: $('songBody').dataset.source, tags: editorTags };
     if (!song.title.trim() || !song.body.trim()) return toast('Pune titlu și versuri');
     send({ type: 'saveSong', song });
     if (song.id) songCache.delete(song.id);
@@ -594,6 +699,35 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       catch (err) { toast(err.message); }
     }
     toast('Încărcat'); e.target.value = ''; loadMedia();
+  };
+
+  // chords for the whole library (or one song) from resursecrestine.ro, put on OUR lyrics
+  function chordsProgress(e) {
+    $('chordsBox').hidden = false;
+    if (e.running) {
+      $('chordsBar').style.width = (e.total ? Math.round(e.done / e.total * 100) : 0) + '%';
+      $('chordsText').textContent = `${e.done} din ${e.total} · am pus acorduri la ${e.added}${e.current ? ' · acum: ' + e.current : ''}`;
+      $('bChordsStop').hidden = false;
+    } else if (e.finished) {
+      $('chordsBar').style.width = '100%'; $('bChordsStop').hidden = true;
+      $('chordsText').textContent = e.error ? 'Eroare: ' + e.error
+        : `Gata: acorduri la ${e.added} cântări.` + (e.missed?.length ? ` Fără potrivire sigură (${e.missed.length}): ${e.missed.slice(0, 12).join(', ')}${e.missed.length > 12 ? '…' : ''}` : '');
+      songCache.clear(); search(); render();
+      if ($('songId').value) fetch('/api/songs/' + $('songId').value).then(r => r.json()).then(s => { if (s.id === $('songId').value) fillEditor(s); });
+    }
+  }
+  $('bChordsAll').onclick = async () => {
+    const ok = await ask('Caut acorduri pentru toate cântările fără acorduri pe Resurse Creștine și le pun peste versurile tale. Versurile, etichetele și ordinea rămân la fel. Fac întâi o copie de siguranță a bibliotecii. Durează câteva minute.', [], 'Începe');
+    if (!ok) return;
+    try { $('chordsBox').hidden = false; $('chordsText').textContent = 'Pornesc căutarea…'; await api('/api/add-chords', { method: 'POST', body: '{}' }); }
+    catch (e) { toast(e.message); }
+  };
+  $('bChordsStop').onclick = () => api('/api/add-chords/stop', { method: 'POST' });
+  $('bChordsOne').onclick = async () => {
+    const id = $('songId').value; if (!id) return toast('Salvează întâi cântarea');
+    if (/\[[A-G]/.test($('songBody').value)) return toast('Cântarea are deja acorduri');
+    try { await api('/api/add-chords', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); toast('Caut acorduri pentru „' + $('songTitle').value + '”…'); }
+    catch (e) { toast(e.message); }
   };
 
   // internet: Resurse Creștine first, then other sites — only the lyrics come back

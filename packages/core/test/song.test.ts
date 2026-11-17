@@ -89,3 +89,53 @@ test('labelStanzas turns site numbering into section labels', async () => {
   // chords before the number stay with the line; numbers inside a stanza are left alone
   assert.equal(labelStanzas('[D]1. Curând\n2. nu e label'), 'Strofa 1:\n[D]Curând\n2. nu e label');
 });
+
+// Real shapes from resursecrestine.ro (Nov 2026): a bare chord line above a wrapped line,
+// aligned chords, "/:" repeat marks, no diacritics in places, different section order.
+const RC_SHEET = `C
+Pe câmpul de război Tu ești cu
+mine,
+Am
+Mă-mbărbătezi să lupt ca un
+viteaz.
+
+  F                  C
+/: Biruitor eu voi umbla,
+Am                           G
+Nu e dusman impotriva sa-mi stea!
+F                       C
+Tu mă conduci cu dreapta Ta,
+Am                  G
+Isuse, a Ta e victoria!  :/`;
+
+const OURS = `Strofa 3:
+Biruitor eu voi umbla
+Nu e dușman împotrivă să-mi stea
+Tu mă conduci cu dreapta Ta
+Isuse a Ta e victoria
+
+Strofa 1:
+Pe câmpul de război Tu ești cu mine
+Mă-mbărbătezi să lupt ca un viteaz
+Îmi pui în mână sabia și scutul`;
+
+test('applyChords puts website chords on our own lyrics', async () => {
+  const { applyChords, guessKey } = await import('../src/song.ts');
+  const sheet = normalizeImported(RC_SHEET);
+  const r = applyChords(OURS, sheet);
+  const lines = r.body.split('\n');
+  assert.equal(lines[1], '[F]Biruitor eu voi [C]umbla', 'chord after "/:" lands on the first word');
+  assert.equal(lines[2], '[Am]Nu e dușman împotrivă să-mi [G]stea', 'our diacritics kept, chords matched without them');
+  assert.equal(lines[4], '[Am]Isuse a Ta e [G]victoria');
+  assert.equal(lines[7], '[C]Pe câmpul de război Tu ești cu mine', 'bare chord line above lyrics');
+  assert.equal(lines[9], 'Îmi pui în mână sabia și scutul', 'lines missing on the website stay as they were');
+  assert.equal(lines[0], 'Strofa 3:', 'labels untouched');
+  assert.ok(r.match > 0.8 && r.match < 1, 'match ratio ' + r.match);
+  assert.equal(r.chords, 10);
+  assert.equal(guessKey(r.body), 'F');
+});
+
+test('applyChords does not touch lines that already have chords', async () => {
+  const { applyChords } = await import('../src/song.ts');
+  assert.equal(applyChords('[D]Mare e Domnul', '[G]Mare e Domnul').body, '[D]Mare e Domnul');
+});
