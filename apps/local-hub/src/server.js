@@ -143,8 +143,9 @@ function slidesFor(index) {
   if (!it || it.kind !== 'song') return [];
   const song = db.songs.find(s => s.id === it.songId);
   if (!song) return [];
-  const steps = it.key && song.key ? core.keyDistance(song.key, it.key) : 0;
-  const body = core.transpose(song.body, steps, core.prefersFlats(it.key || song.key || 'C'));
+  const orig = core.originalKey(song.key, song.body);       // songs without a saved key still change key
+  const steps = it.key && orig ? core.keyDistance(orig, it.key) : 0;
+  const body = core.transpose(song.body, steps, core.prefersFlats(it.key || orig || 'C'));
   return core.toSlides(core.arrange(core.parseSong(body), it.arrangement || song.arrangement), it.maxLines || 4);
 }
 
@@ -213,6 +214,7 @@ function snapshot() {
       ...it,
       title: it.kind === 'song' ? (db.songs.find(s => s.id === it.songId)?.title ?? '(cântare ștearsă)') : it.title,
       rev: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.updatedAt || '' : undefined,   // lets screens notice a changed song
+      origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
     })),
     live: { ...live, slides: slidesFor(live.item) },
@@ -251,7 +253,7 @@ wss.on('connection', (ws, req) => {
 
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
-const UNDOABLE = new Set(['addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
+const UNDOABLE = new Set(['setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
   'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
@@ -268,7 +270,7 @@ function restoreSnapshot(sn) {
   live.item = sn.liveItemId ? db.setlist.findIndex(x => x.id === sn.liveItemId) : -1;
   live.slide = live.item >= 0 ? clamp(sn.slide, 0, Math.max(0, slidesFor(live.item).length - 1)) : 0;
 }
-const UNDO_NAMES = { addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
+const UNDO_NAMES = { setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
   tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
@@ -419,6 +421,13 @@ function handleMessage(ws, m) {
         }
         save(); reply({ type: 'cleaned', changed, ordered, total: db.songs.length });
         break;
+      }
+      case 'setKey': {                               // key for this program; chords on the stage follow it
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const k = String(m.key || '').trim();
+        if (k && !core.KEYS.includes(k)) return reply({ type: 'error', error: 'Ton necunoscut: ' + k });
+        it.key = k;
+        save(); break;
       }
       case 'removeSlide': {                          // take one slide out of this program (the song in the library stays whole)
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;

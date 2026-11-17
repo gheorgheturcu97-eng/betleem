@@ -143,10 +143,12 @@
   .slides-panel{flex:1;padding:14px 16px 16px;min-height:0}
   .slides-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
   .slides-head h3{margin:0;font-size:19px;font-weight:650}
-  .slides-head h3{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slides-head h3{flex:1 1 200px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .slides-head{gap:8px}
   .arr{display:flex;flex-wrap:wrap;gap:5px;flex-basis:100%;order:11;min-width:0;align-items:center}
   .arr::before{content:"Ordine";font-size:11px;color:var(--mute);margin-right:4px}
+  .keyctl{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--mute)}
+  .keyctl button{width:28px;height:28px;padding:0} .keyctl select{width:auto;border-radius:999px;padding:6px 8px;font-weight:650}
   .tagbar{display:flex;flex-wrap:wrap;gap:5px;flex-basis:100%;order:10;align-items:center}
   .tagbar>span{font-size:11px;color:var(--mute);margin-right:4px}
   .tagbar .tg{padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;border:1.5px solid var(--sc);color:var(--fg);background:transparent;cursor:grab}
@@ -365,6 +367,8 @@
           <div class="row" id="arrRow" style="display:none">
             <div class="tagbar" id="tagBar"></div>
             <div class="arr" id="arrChips" title="Trage etichetele ca să schimbi ordinea; ✕ scoate o secțiune doar din acest program"></div>
+            <span class="keyctl" title="Tonul pentru acest program; acordurile de pe scenă se schimbă singure">Ton
+              <button id="keyDown" class="icon" title="Un semiton mai jos">−</button><select id="keySel"></select><button id="keyUp" class="icon" title="Un semiton mai sus">＋</button></span>
             <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋ secțiune</option></select>
             <button id="arrReset" class="icon" title="Ordinea din cântare">↺</button>
             <select id="maxLines" title="Rânduri pe slide (se schimbă imediat)"><option value="1">1 rând</option><option value="2">2 rânduri</option><option value="3">3 rânduri</option><option value="4" selected>4 rânduri</option><option value="5">5 rânduri</option><option value="6">6 rânduri</option><option value="8">8 rânduri</option></select>
@@ -416,7 +420,8 @@
 
       <div class="tab" id="tab-edit">
         <input type="hidden" id="songId">
-        <div class="row"><input id="songTitle" placeholder="Titlul cântării" class="grow"><input id="songKey" placeholder="Ton" style="width:70px"></div>
+        <div class="row"><input id="songTitle" placeholder="Titlul cântării" class="grow"><input id="songKey" placeholder="Ton" style="width:70px" title="Tonul în care e scrisă cântarea">
+          <button id="trDown" class="icon" title="Mută toate acordurile un semiton mai jos (apoi Salvează)">−</button><button id="trUp" class="icon" title="Mută toate acordurile un semiton mai sus (apoi Salvează)">＋</button></div>
         <div class="tags" id="songTags"></div>
         <textarea id="songBody" spellcheck="false" placeholder="Strofa 1:
 [G]Mare e [D]Domnul
@@ -824,7 +829,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
           toast('Am scos „' + (title || KIND[it.kind]) + '”', () => send({ type: 'addItem', item, at: i }));
           return;
         }
-        if (a === 'key') { const v = await ask('Tonul pentru acest serviciu', [{ label: 'Ton (ex. A, Bb, F#m)', value: S.setlist[i].key || '' }]); if (v) send({ type: 'updateItem', item: i, patch: { key: v[0].trim() } }); return; }
+        if (a === 'key') { sel = i; render(); setTimeout(() => $('keySel').focus(), 200); return; }
         sel = i; pickedSlide = -1; render(); loadSongInEditor(S.setlist[i]);
       };
       el.ondragstart = () => { dragFrom = i; el.classList.add('drag'); };
@@ -843,7 +848,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('slidesTitle').textContent = it ? (it.title || KIND[it.kind]) : 'Alege ceva din program';
     if (!it) { $('slides').innerHTML = '<div class="empty" style="grid-column:1/-1">Apasă pe o cântare din program ca să-i vezi slide-urile.<br>Apoi apasă pe un slide ca să-l trimiți pe ecran.</div>'; return; }
     $('maxLines').value = String(it.maxLines || 4);
-    if (it.kind === 'song') renderArrangement(it);
+    if (it.kind === 'song') { renderArrangement(it); renderKey(it); }
     let slides = sel === S.live.item ? S.live.slides : null;
     if (!slides) slides = await previewSlides(it);
     if (!slides.length) {
@@ -881,8 +886,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (it.kind !== 'song') return [];
     const core = await import('/core/song.js');
     const song = await getSong(it);
-    const steps = it.key && song.key ? core.keyDistance(song.key, it.key) : 0;
-    return core.toSlides(core.arrange(core.parseSong(core.transpose(song.body, steps)), it.arrangement || song.arrangement), it.maxLines || 4);
+    const orig = core.originalKey(song.key, song.body);
+    const steps = it.key && orig ? core.keyDistance(orig, it.key) : 0;
+    return core.toSlides(core.arrange(core.parseSong(core.transpose(song.body, steps, core.prefersFlats(it.key || orig || 'C'))), it.arrangement || song.arrangement), it.maxLines || 4);
   }
   // ---- tags: drag one onto a slide (or click a tag, then click slides); the slides after it get it too
   let paintTag = '';
@@ -907,6 +913,28 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const tagSlide = (i, label) => send({ type: 'tagSlides', item: sel, slide: i, label, cascade: tagCascade });
   addEventListener('keydown', e => { if (e.key === 'Escape' && paintTag) { paintTag = ''; renderTagBar(); $('slides').classList.remove('painting'); } });
   renderTagBar();
+
+  // ---- key: pick any key, or one semitone up/down; slides and stage chords follow
+  async function renderKey(it) {
+    const core = await import('/core/song.js');
+    const orig = it.origKey || '', cur = it.key || orig;
+    const minor = /m$/.test(orig || cur);
+    const keys = core.KEYS.filter(k => /m$/.test(k) === minor);
+    $('keySel').innerHTML = (orig ? '' : '<option value="">?</option>') + keys.map(k => `<option value="${k}">${k}${k === orig ? ' (original)' : ''}</option>`).join('');
+    $('keySel').value = keys.includes(cur) ? cur : '';
+    $('keySel').disabled = !orig;
+    $('keySel').title = orig ? 'Original: ' + orig : 'Cântarea nu are acorduri, deci nu are ton';
+  }
+  $('keySel').onchange = e => { send({ type: 'setKey', item: sel, key: e.target.value }); toast('Ton: ' + e.target.value); };
+  async function stepKey(d) {
+    const it = S.setlist[sel]; if (!it?.origKey) return toast('Cântarea nu are acorduri, deci nu are ton');
+    const core = await import('/core/song.js');
+    const cur = it.key || it.origKey, minor = /m$/.test(cur);
+    let next = core.transposeChord(cur.replace(/m$/, ''), d, d < 0) + (minor ? 'm' : '');
+    if (!core.KEYS.includes(next)) next = core.transposeChord(cur.replace(/m$/, ''), d, d > 0) + (minor ? 'm' : '');
+    send({ type: 'setKey', item: sel, key: next }); toast('Ton: ' + next);
+  }
+  $('keyUp').onclick = () => stepKey(1); $('keyDown').onclick = () => stepKey(-1);
 
   // ---- order of sections for this program: colored tags you drag around
   let arr = null;                                    // { tokens, parsed }
@@ -1183,7 +1211,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   search();
 
   // editor
-  function fillEditor(s) { editorTags = [...(s.tags || [])]; renderEditorTags(); $('songId').value = s.id || ''; $('songTitle').value = s.title || ''; $('songKey').value = s.key || ''; $('songBody').value = s.body || ''; $('songBody').dataset.source = s.source || ''; }
+  function fillEditor(s) { editorTags = [...(s.tags || [])]; renderEditorTags(); $('songId').value = s.id || ''; $('songTitle').value = s.title || ''; $('songKey').value = s.key || ''; import('/core/song.js').then(c => { $('songKey').placeholder = c.guessKey(s.body || '') || 'Ton'; }); $('songBody').value = s.body || ''; $('songBody').dataset.source = s.source || ''; }
   async function loadSongInEditor(it) { if (it.kind === 'song') { songCache.delete(it.songId); fillEditor(await fetch('/api/songs/' + it.songId).then(r => r.json())); } }
   function saveSong(addAfter) {
     const song = { id: $('songId').value || undefined, title: $('songTitle').value, key: $('songKey').value, body: $('songBody').value, source: $('songBody').dataset.source, tags: editorTags };
@@ -1200,6 +1228,19 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       }
     }, 400);
   }
+  // transpose the song itself (all chords and its key), then Salvează
+  async function transposeEditor(d) {
+    const core = await import('/core/song.js');
+    const body = $('songBody').value;
+    if (!core.hasChords(body)) return toast('Cântarea nu are acorduri');
+    const orig = core.originalKey($('songKey').value, body), minor = /m$/.test(orig);
+    let key = orig ? core.transposeChord(orig.replace(/m$/, ''), d, d < 0) + (minor ? 'm' : '') : '';
+    if (key && !core.KEYS.includes(key)) key = core.transposeChord(orig.replace(/m$/, ''), d, d > 0) + (minor ? 'm' : '');
+    $('songBody').value = core.transpose(body, d, core.prefersFlats(key || 'C'));
+    if (key) $('songKey').value = key;
+    toast('Acum în ' + (key || 'alt ton') + '. Apasă Salvează ca să rămână așa.');
+  }
+  $('trUp').onclick = () => transposeEditor(1); $('trDown').onclick = () => transposeEditor(-1);
   $('bSave').onclick = () => saveSong(false);
   $('bSaveAdd').onclick = () => saveSong(true);
   $('bNew').onclick = () => { fillEditor({}); $('songTitle').focus(); };

@@ -379,6 +379,15 @@ function lcsPairs(a: string[], b: string[]): [number, number][] {
 }
 
 /** Guess the key from the first chord: "Am7" -> "Am", "F#" -> "F#". */
+/** The key a song is written in: the one saved with it, else {key: …}, else its first chord. */
+export function originalKey(key: string | undefined, body: string): string {
+  return (key || '').trim() || readMeta(body).key || guessKey(body);
+}
+
+/** All keys to choose from, major then minor. */
+export const KEYS = ['C', 'C#', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B',
+  'Cm', 'C#m', 'Dm', 'D#m', 'Ebm', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'Bbm', 'Bm'];
+
 export function guessKey(body: string): string {
   const m = body.match(/\[([A-G][b#]?)(m(?!aj))?/);
   return m ? m[1] + (m[2] ? 'm' : '') : '';
