@@ -18,6 +18,7 @@ import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
 import { runAssistant } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings } from './plan.js';
+import * as pco from './pco.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -512,6 +513,91 @@ const aiHub = {
 };
 
 // --- Add chords from resursecrestine.ro (runs in the background) ---------------------
+// --- Planning Center (read only): songs with chords and upcoming plans ------------------------
+const PCO_FILE = path.join(DATA_DIR, 'planningcenter.json');      // the token stays on this computer
+let pcoSettings = { appId: '', secret: '', typeIds: [] };
+try { pcoSettings = { ...pcoSettings, ...JSON.parse(fs.readFileSync(PCO_FILE, 'utf8')) }; } catch {}
+const pcoPublic = () => ({ connected: !!(pcoSettings.appId && pcoSettings.secret), appIdHint: pcoSettings.appId ? pcoSettings.appId.slice(0, 6) + '…' : '',
+  typeIds: pcoSettings.typeIds, lastImport: pcoSettings.lastImport || null });
+const pcoJob = { running: false };
+function pcoEvent(o) {
+  const msg = JSON.stringify({ type: 'pco', ...o });
+  for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
+}
+const foldTitle = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+/** Put Planning Center songs into the library: new ones are added, existing ones only get chords if they had none. */
+export function mergePcoSongs(list) {
+  let added = 0, chords = 0, skipped = 0;
+  for (const x of list) {
+    const body = core.normalizeImported(x.body || '');
+    if (!x.title || !body.trim()) { skipped++; continue; }
+    const have = db.songs.find(s => s.pcoId === x.pcoId) || db.songs.find(s => foldTitle(s.title) === foldTitle(x.title));
+    if (have) {
+      have.pcoId = x.pcoId;
+      if (!core.hasChords(have.body) && core.hasChords(body)) {
+        const r = core.applyChords(have.body, body);
+        if (r.match >= 0.6) { have.body = r.body; have.key ||= x.key || core.guessKey(r.body) || ''; have.updatedAt = new Date().toISOString(); chords++; }
+      }
+      continue;
+    }
+    const labels = core.parseSong(body).map(sec => sec.label.toLowerCase());
+    const order = (x.sequence || []).map(l => String(l)).filter(l => labels.includes(l.toLowerCase()));
+    db.songs.push({ id: crypto.randomUUID(), title: x.title.slice(0, 120), author: x.author || '', key: x.key || core.readMeta(body).key || '', body,
+      source: 'planningcenter', pcoId: x.pcoId, ccli: x.ccli || '', ...(order.length >= 2 ? { arrangement: order } : {}),
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    added++;
+  }
+  return { added, chords, skipped };
+}
+
+/** Planning Center plans become programs of the selected church (the teams stay as they are in Betleem). */
+export function mergePcoPlans(plans) {
+  let added = 0, updated = 0;
+  for (const p of plans) {
+    if (!p.date) continue;
+    let svc = db.plan.services.find(s => s.pcoId === p.pcoId);
+    if (!svc) { svc = { id: crypto.randomUUID(), status: 'draft', items: [], assignments: {}, pcoId: p.pcoId }; db.plan.services.push(svc); added++; } else updated++;
+    svc.title = String(p.title).slice(0, 80); svc.date = new Date(p.date).toISOString();
+    svc.items = p.items.map(it => {
+      const song = it.type === 'song' && db.songs.find(s => s.pcoId === it.songId);
+      const minutes = Math.max(1, Math.round(it.seconds / 60)) || 5;
+      return song ? { id: crypto.randomUUID(), kind: 'song', songId: song.id, key: it.key || '', minutes: it.seconds ? minutes : 5, title: '' }
+        : { id: crypto.randomUUID(), kind: it.type === 'song' ? 'other' : pco.itemKind(it.title), title: it.title.slice(0, 80), minutes: it.seconds ? minutes : 5 };
+    });
+  }
+  db.plan.services.sort((a, b) => a.date.localeCompare(b.date));
+  return { added, updated };
+}
+
+async function runPcoImport({ songs, plans }) {
+  Object.assign(pcoJob, { running: true });
+  const res = {};
+  try {
+    if (songs) {
+      const list = await pco.fetchSongs(pcoSettings, { onProgress: e => pcoEvent({ running: true, step: 'cântări', ...e }) });
+      Object.assign(res, mergePcoSongs(list)); save();
+    }
+    if (plans) {
+      pcoEvent({ running: true, step: 'programe', done: 0, total: 0 });
+      const list = await pco.fetchPlans(pcoSettings, pcoSettings.typeIds || []);
+      // songs used in these plans but not imported yet come along too
+      const missing = [...new Set(list.flatMap(p => p.items.filter(i => i.type === 'song' && i.songId && !db.songs.some(s => s.pcoId === i.songId)).map(i => i.songId)))];
+      if (missing.length) {
+        const extra = [];
+        for (const id of missing) extra.push(...(await pco.fetchSongs(pcoSettings, { onlyIds: [id] }).catch(() => [])));
+        mergePcoSongs(extra);
+      }
+      Object.assign(res, { plans: mergePcoPlans(list) }); save();
+    }
+    pcoSettings.lastImport = new Date().toISOString(); fs.writeFileSync(PCO_FILE, JSON.stringify(pcoSettings, null, 2));
+    pcoEvent({ finished: true, ...res }); broadcast();
+    const msg = JSON.stringify({ type: 'planChanged' });
+    for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
+  } catch (e) { pcoEvent({ finished: true, error: e.message }); }
+  finally { pcoJob.running = false; }
+}
+
 const chordsJob = { running: false, stop: false };
 function chordsEvent(o) {
   const msg = JSON.stringify({ type: 'chords', ...o });
@@ -626,6 +712,30 @@ async function handle(req, res) {
         services: plan.services.map(s => ({ ...s, warnings: serviceWarnings(plan, s),
           items: s.items.map(it => it.kind === 'song' ? { ...it, title: db.songs.find(x => x.id === it.songId)?.title || it.title || '(cântare ștearsă)' } : it) })) });
     }
+    if (p.startsWith('/api/pco/')) {                     // Planning Center: leaders only
+      if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul poate conecta Planning Center (PIN de lider).' });
+      if (p === '/api/pco/settings') {
+        if (req.method === 'POST') {
+          const v = JSON.parse(await body(req, 10_000));
+          if (typeof v.appId === 'string' && v.appId.trim()) pcoSettings.appId = v.appId.trim().slice(0, 200);
+          if (typeof v.secret === 'string' && v.secret.trim()) pcoSettings.secret = v.secret.trim().slice(0, 200);
+          if (Array.isArray(v.typeIds)) pcoSettings.typeIds = v.typeIds.map(String).slice(0, 20);
+          if (v.disconnect) pcoSettings = { appId: '', secret: '', typeIds: [] };
+          fs.writeFileSync(PCO_FILE, JSON.stringify(pcoSettings, null, 2));
+        }
+        return json(res, 200, pcoPublic());
+      }
+      if (p === '/api/pco/types') {
+        try { return json(res, 200, await pco.serviceTypes(pcoSettings)); } catch (e) { return json(res, 400, { error: e.message }); }
+      }
+      if (p === '/api/pco/import' && req.method === 'POST') {
+        if (pcoJob.running) return json(res, 409, { error: 'Importul rulează deja' });
+        const v = JSON.parse((await body(req, 10_000)) || '{}');
+        runPcoImport({ songs: !!v.songs, plans: !!v.plans });
+        return json(res, 200, { started: true });
+      }
+      return json(res, 404, { error: 'Nu există' });
+    }
     if (p === '/api/ai/settings') {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       if (req.method === 'POST') {
@@ -667,6 +777,7 @@ async function handle(req, res) {
   }
 }
 
+function checkLeader(req) { return !LEADER_PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) || safeEq(req.headers['x-pin'], LEADER_PIN); }
 function checkPin(req) { return !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) || safeEq(req.headers['x-pin'], PIN) || safeEq(req.headers['x-pin'], LEADER_PIN); }
 function safeEq(a, b) {
   const x = Buffer.from(String(a ?? '')), y = Buffer.from(String(b ?? ''));

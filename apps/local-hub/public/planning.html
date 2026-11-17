@@ -153,6 +153,7 @@
     <div class="seg views" id="views">
       <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button>
     </div>
+    <button id="bPco" title="Ia cântările și programele din Planning Center">⇄ Planning Center</button>
     <span id="role" class="hint"></span>
   </header>
 
@@ -233,6 +234,7 @@
       if (e.role) { $('signin').classList.toggle('show', e.role !== 'leader'); if (e.role === 'leader' && !P) load(); }
       if (e.type === 'login') { if (e.ok && e.role === 'leader') { load(); toast('Bine ai venit!'); } else toast(e.ok ? 'PIN-ul acesta e de operator. Pentru planificare trebuie PIN-ul de lider.' : 'PIN greșit'); }
       if (e.type === 'planChanged') load();
+      if (e.type === 'pco') pcoProgress(e);
     });
   $('pinGo').onclick = () => hub.login($('pinIn').value);
   $('pinIn').onkeydown = e => { if (e.key === 'Enter') hub.login($('pinIn').value); };
@@ -245,6 +247,61 @@
   const volName = id => P.volunteers.find(v => v.id === id)?.name || '';
   const localDT = iso => { const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
   const hhmm = d => d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+
+  // ---- Planning Center: connect once with a personal token, then import songs (with chords) and upcoming plans
+  const pcoApi = (url, body) => fetch(url, { method: body ? 'POST' : 'GET', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+    .then(async r => { const j = await r.json().catch(() => ({ error: 'Închide și redeschide Betleem pe laptop.' })); if (!r.ok) throw new Error(j.error); return j; });
+  $('bPco').onclick = openPco;
+  async function openPco() {
+    let st; try { st = await pcoApi('/api/pco/settings'); } catch (e) { return toast(e.message); }
+    $('modal').classList.add('show');
+    if (!st.connected) {
+      $('mBox').innerHTML = `<h3>Conectează Planning Center</h3>
+        <p class="hint" style="line-height:1.55">1. Intră pe <b>api.planningcenteronline.com/personal_access_tokens</b> cu contul tău Planning Center.<br>
+        2. Apasă <b>Create token</b> (Services trebuie să fie bifat).<br>3. Copiază aici <b>Client ID</b> și <b>Secret</b>.<br>
+        Betleem doar <b>citește</b> din Planning Center, nu schimbă nimic acolo. Cheia rămâne doar pe acest laptop.</p>
+        <label>Client ID<input id="pcoId" autocomplete="off"></label><label>Secret<input id="pcoSec" type="password" autocomplete="off"></label>
+        <div class="btns"><button id="mNo">Renunță</button><button id="pcoGo" class="acc">Conectează</button></div>`;
+      $('mNo').onclick = () => $('modal').classList.remove('show');
+      $('pcoGo').onclick = async () => {
+        try {
+          await pcoApi('/api/pco/settings', { appId: $('pcoId').value, secret: $('pcoSec').value });
+          await pcoApi('/api/pco/types');            // checks the token right away
+          toast('Conectat la Planning Center'); openPco();
+        } catch (e) { toast(e.message); await pcoApi('/api/pco/settings', { disconnect: true }).catch(() => {}); }
+      };
+      return;
+    }
+    $('mBox').innerHTML = `<h3>Planning Center</h3>
+      <p class="hint">Conectat (${esc(st.appIdHint)})${st.lastImport ? ' · ultimul import ' + new Date(st.lastImport).toLocaleString('ro-RO') : ''}</p>
+      <label>Din ce tipuri de servicii iau programele?</label><div id="pcoTypes" class="hint">Se încarcă…</div>
+      <p class="hint" style="line-height:1.5">Cântările noi intră în bibliotecă cu acorduri și ordinea strofelor. Cântările pe care le ai deja primesc doar acordurile, dacă nu aveau.
+      Programele viitoare apar în biserica <b>${esc($('church').firstChild?.textContent || '')}</b>; echipele rămân cele din Betleem.</p>
+      <div id="pcoProg" class="hint"></div>
+      <div class="btns" style="flex-wrap:wrap"><button id="pcoOff" class="ghost">Deconectează</button><span style="flex:1"></span>
+        <button id="pcoSongs">Ia cântările</button><button id="pcoPlans" class="acc">Ia cântările + programele</button><button id="mNo">Închide</button></div>`;
+    $('mNo').onclick = () => $('modal').classList.remove('show');
+    $('pcoOff').onclick = async () => { await pcoApi('/api/pco/settings', { disconnect: true }); toast('Deconectat'); $('modal').classList.remove('show'); };
+    const go = async plans => {
+      const typeIds = [...document.querySelectorAll('#pcoTypes input:checked')].map(i => i.value);
+      if (plans && !typeIds.length) return toast('Bifează cel puțin un tip de serviciu');
+      try { await pcoApi('/api/pco/settings', { typeIds }); await pcoApi('/api/pco/import', { songs: true, plans }); $('pcoProg').textContent = 'Pornesc…'; }
+      catch (e) { toast(e.message); }
+    };
+    $('pcoSongs').onclick = () => go(false); $('pcoPlans').onclick = () => go(true);
+    try {
+      const types = await pcoApi('/api/pco/types');
+      $('pcoTypes').innerHTML = types.map(t => `<label class="check" style="flex-direction:row;align-items:center"><input type="checkbox" value="${esc(t.id)}" ${st.typeIds.includes(t.id) || (!st.typeIds.length && types.length === 1) ? 'checked' : ''}> ${esc(t.name)}</label>`).join('') || 'Niciun tip de serviciu.';
+    } catch (e) { $('pcoTypes').textContent = e.message; }
+  }
+  function pcoProgress(e) {
+    const el = $('pcoProg'); 
+    if (e.running) { if (el) el.textContent = e.step === 'programe' ? 'Iau programele…' : `Cântări: ${e.done} din ${e.total}${e.current ? ' · ' + e.current : ''}`; return; }
+    if (!e.finished) return;
+    const t = e.error ? 'Eroare: ' + e.error
+      : [e.added != null && `${e.added} cântări noi`, e.chords && `acorduri la ${e.chords} cântări`, e.plans && `${e.plans.added} programe noi, ${e.plans.updated} actualizate`].filter(Boolean).join(' · ') || 'Gata, nimic nou.';
+    if (el) el.textContent = 'Gata: ' + t; toast(t);
+  }
 
   // on a phone, "Live" opens the phone view (lyrics, program, slide control) instead of the big operator screen
   $('toLive').onclick = () => location.href = matchMedia('(max-width: 900px)').matches ? '/live.html' : '/control.html';

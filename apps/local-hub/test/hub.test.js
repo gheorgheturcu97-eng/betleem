@@ -157,3 +157,23 @@ test('programs: several in Live, synced with Planning; undo removal; search with
   assert.equal(st.setlist[0].kind, 'sermon', 'changes in Planning show up in Live');
   a.ws.close();
 });
+
+test('Planning Center songs and plans go into the library and the programs', async () => {
+  const { mergePcoSongs, mergePcoPlans } = await import('../src/server.js');
+  const r = mergePcoSongs([
+    { pcoId: 's1', title: 'Cântare din PCO', key: 'G', body: 'VERSE 1\n[G]Unu [D]doi\n\nCHORUS\n[C]Trei', sequence: ['Verse 1', 'Chorus', 'Chorus', 'Bridge'] },
+    { pcoId: 's2', title: 'MARE E DOMNUL', body: 'Strofa 1:\nG      D\nMare e Domnul' },   // already in the library (it has chords already)
+    { pcoId: 's3', title: 'Goală', body: '' },
+  ]);
+  assert.deepEqual(r, { added: 1, chords: 0, skipped: 1 });
+  const songs = await fetch('http://localhost:4599/api/songs?q=cantare pco').then(x => x.json());
+  const full = await fetch('http://localhost:4599/api/songs/' + songs[0].id).then(x => x.json());
+  assert.deepEqual(full.arrangement, ['Verse 1', 'Chorus', 'Chorus'], 'order kept, unknown sections dropped');
+  assert.equal(mergePcoSongs([{ pcoId: 's1', title: 'Cântare din PCO', body: '[G]x' }]).added, 0, 'no duplicates on a second import');
+  const p = mergePcoPlans([{ pcoId: 'p1', title: 'Crăciun PCO', date: '2027-12-25T10:00:00Z',
+    items: [{ type: 'song', songId: 's1', key: 'A', seconds: 300, title: '' }, { type: 'item', title: 'Predică', seconds: 2100 }] }]);
+  assert.deepEqual(p, { added: 1, updated: 0 });
+  assert.deepEqual(mergePcoPlans([{ pcoId: 'p1', title: 'Crăciun PCO', date: '2027-12-25T10:00:00Z', items: [] }]), { added: 0, updated: 1 });
+  const res = await fetch('http://localhost:4599/api/pco/settings', { headers: { 'x-pin': '1111' } });
+  assert.equal(res.status, 401, 'operators cannot see the Planning Center connection');
+});
