@@ -143,8 +143,19 @@
   .slides-panel{flex:1;padding:14px 16px 16px;min-height:0}
   .slides-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
   .slides-head h3{margin:0;font-size:19px;font-weight:650}
-  #arrRow{gap:6px;flex:1;justify-content:flex-end}
-  #arrRow input{flex:1;min-width:150px;max-width:330px;border-radius:999px;padding:7px 14px}
+  .slides-head h3{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slides-head{gap:8px}
+  .arr{display:flex;flex-wrap:wrap;gap:5px;flex-basis:100%;order:10;min-width:0;align-items:center}
+  .arr .chip{display:inline-flex;align-items:center;gap:4px;padding:4px 6px 4px 10px;border-radius:999px;font-size:12px;font-weight:650;
+             background:var(--sc);color:#111;cursor:grab;user-select:none;border:2px solid transparent}
+  .arr .chip.drag{opacity:.35} .arr .chip.over{border-color:#fff}
+  .arr .chip b{font-weight:500;opacity:.6;font-size:10.5px}
+  .arr .chip button{width:18px;height:18px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.18);color:#111;font-size:10px;line-height:18px}
+  .arr .hint{font-size:11.5px}
+  #arrAdd{max-width:150px}
+  .slide .tools{position:absolute;right:30px;top:6px;display:flex;gap:4px;opacity:0;transition:opacity .12s}
+  .slide:hover .tools{opacity:1}
+  .slide .tools button{width:26px;height:26px;padding:0;font-size:12px}
   .lib .ch{color:var(--acc);font-size:12px;margin-left:4px}
   #arrRow select{width:auto;border-radius:999px;padding:7px 10px}
   #slides{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--slideW,210px),1fr));gap:10px}
@@ -152,7 +163,7 @@
   .slide{border-left:4px solid var(--sc,var(--stroke))}
   .slide .lb{display:inline-block;padding:1px 8px;border-radius:999px;color:#111!important;background:var(--sc,#8f96a3)}
   .slide .lb.none{background:transparent;color:var(--faint)!important;padding:1px 0}
-  .slide .styled{position:absolute;right:58px;top:10px;font-size:11px;color:var(--acc)}
+  .slide .styled{position:absolute;right:30px;top:10px;font-size:11px;color:var(--acc)} .slide:hover .styled{opacity:0}
   .slide{position:relative;border-radius:var(--r-sm);padding:12px 14px;cursor:pointer;min-height:112px;font-size:13.5px;line-height:1.45;
          background:rgba(0,0,0,.28);border:1px solid var(--stroke);transition:transform .12s,border-color .15s,background .15s}
   .slide:hover{transform:translateY(-2px);border-color:var(--stroke-hi);background:rgba(0,0,0,.36)}
@@ -339,9 +350,10 @@
         <div class="slides-head">
           <h3 id="slidesTitle">Alege ceva din program</h3>
           <div class="row" id="arrRow" style="display:none">
-            <input id="arrangement" placeholder="Ordine: Strofa 1, Refren, Strofa 2, Refren" title="Ordinea secțiunilor pentru acest serviciu">
-            <select id="maxLines" title="Rânduri pe slide"><option value="2">2 rânduri</option><option value="3">3 rânduri</option><option value="4" selected>4 rânduri</option><option value="5">5 rânduri</option><option value="6">6 rânduri</option></select>
-            <button id="bArr">Aplică</button>
+            <div class="arr" id="arrChips" title="Trage etichetele ca să schimbi ordinea; ✕ scoate o secțiune doar din acest program"></div>
+            <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋ secțiune</option></select>
+            <button id="arrReset" class="icon" title="Ordinea din cântare">↺</button>
+            <select id="maxLines" title="Rânduri pe slide"><option value="1">1 rând</option><option value="2">2 rânduri</option><option value="3">3 rânduri</option><option value="4" selected>4 rânduri</option><option value="5">5 rânduri</option><option value="6">6 rânduri</option><option value="8">8 rânduri</option></select>
           </div>
           <label class="zoom" title="Mărimea slide-urilor">🔍<input type="range" id="slideZoom" min="150" max="420" step="10"></label>
         </div>
@@ -768,39 +780,81 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   async function renderSlides() {
     const it = S.setlist[sel];
-    $('arrRow').style.display = it && it.kind === 'song' ? 'flex' : 'none';
+    $('arrRow').style.display = it && it.kind === 'song' ? 'contents' : 'none';
     $('slidesTitle').textContent = it ? (it.title || KIND[it.kind]) : 'Alege ceva din program';
     if (!it) { $('slides').innerHTML = '<div class="empty" style="grid-column:1/-1">Apasă pe o cântare din program ca să-i vezi slide-urile.<br>Apoi apasă pe un slide ca să-l trimiți pe ecran.</div>'; return; }
-    if (document.activeElement !== $('arrangement')) $('arrangement').value = (it.arrangement || []).join(', ');
     $('maxLines').value = String(it.maxLines || 4);
+    if (it.kind === 'song') renderArrangement(it);
     let slides = sel === S.live.item ? S.live.slides : null;
     if (!slides) slides = await previewSlides(it);
     if (!slides.length) {
       $('slides').innerHTML = `<div class="slide ${sel === S.live.item ? 'live' : ''}" data-s="0"><div class="lb">${esc(KIND[it.kind])}</div>${esc(it.title)}</div>`;
     } else {
       $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''}" data-s="${i}" style="--sc:${sectionColor(sl.label || '')}">
-        <span class="n">${i + 1}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${it.kind === 'song' ? '<button class="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button>' : ''}<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div></div>`).join('');
+        <span class="n">${i + 1}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${it.kind === 'song' ? `<span class="tools">
+          <button data-t="copy" title="Copiază textul slide-ului">📋</button><button data-t="dup" title="Repetă slide-ul (doar în acest program)">⧉</button><button data-t="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button></span>` : ''}<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div></div>`).join('');
     }
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
-      if (!e.target.classList.contains('edit')) return send({ type: 'go', item: sel, slide: +el.dataset.s });
-      openSlideEditor(+el.dataset.s, slides);
+      const t = e.target.closest('button')?.dataset.t, i = +el.dataset.s;
+      if (!t) return send({ type: 'go', item: sel, slide: i });
+      if (t === 'edit') return openSlideEditor(i, slides);
+      if (t === 'dup') { send({ type: 'duplicateSlide', item: sel, slide: i }); return toast('Slide-ul ' + (i + 1) + ' se repetă acum după el'); }
+      if (t === 'copy') { copyText(slides[i].lines.map(l => stripChords(l)).join('\n')); toast('Text copiat'); }
     });
     document.querySelector('#slides .slide.live')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
   const songCache = new Map();
+  async function getSong(it) {
+    let song = songCache.get(it.songId);
+    if (!song || (it.rev && song.updatedAt !== it.rev)) { song = await fetch('/api/songs/' + it.songId).then(r => r.json()); songCache.set(it.songId, song); }
+    return song;
+  }
   async function previewSlides(it) {
     if (it.kind !== 'song') return [];
     const core = await import('/core/song.js');
-    let song = songCache.get(it.songId);
-    if (!song) { song = await fetch('/api/songs/' + it.songId).then(r => r.json()); songCache.set(it.songId, song); }
+    const song = await getSong(it);
     const steps = it.key && song.key ? core.keyDistance(song.key, it.key) : 0;
     return core.toSlides(core.arrange(core.parseSong(core.transpose(song.body, steps)), it.arrangement || song.arrangement), it.maxLines || 4);
   }
-  $('bArr').onclick = () => {
-    const value = $('arrangement').value.split(',').map(s => s.trim()).filter(Boolean);
-    send({ type: 'arrangement', item: sel, value: value.length ? value : null, maxLines: +$('maxLines').value });
-    toast('Aranjament aplicat');
-  };
+  // ---- order of sections for this program: colored tags you drag around
+  let arr = null;                                    // { tokens, parsed }
+  const setOrder = tokens => send({ type: 'arrangement', item: sel, value: tokens, maxLines: +$('maxLines').value });
+  async function renderArrangement(it) {
+    const core = await import('/core/song.js');
+    const song = await getSong(it), parsed = core.parseSong(song.body);
+    const tokens = core.arrangementIndexes(parsed, it.arrangement || song.arrangement);
+    arr = { tokens, parsed };
+    const name = sec => sec.label || '„' + stripChords(sec.lines[0] || '').split(/\s+/).slice(0, 3).join(' ') + '…”';
+    const html = tokens.map((t, p) => { const sec = parsed[+t.slice(1)];
+      return `<span class="chip" draggable="true" data-p="${p}" style="--sc:${sectionColor(sec.label || '')}">${esc(name(sec))}<button data-x="${p}" title="Scoate din acest program">✕</button></span>`; }).join('')
+      || '<span class="hint">Nicio secțiune. Adaugă din ＋ secțiune.</span>';
+    if ($('arrChips').dataset.html !== html) {
+      $('arrChips').innerHTML = html; $('arrChips').dataset.html = html;
+      let from = -1;
+      document.querySelectorAll('#arrChips .chip').forEach(ch => {
+        const p = +ch.dataset.p;
+        ch.ondragstart = e => { from = p; ch.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; };
+        ch.ondragend = () => ch.classList.remove('drag');
+        ch.ondragover = e => { e.preventDefault(); ch.classList.add('over'); };
+        ch.ondragleave = () => ch.classList.remove('over');
+        ch.ondrop = e => { e.preventDefault(); ch.classList.remove('over'); if (from < 0 || from === p) return;
+          const t = [...arr.tokens]; const [m] = t.splice(from, 1); t.splice(p, 0, m); setOrder(t); };
+      });
+      document.querySelectorAll('#arrChips [data-x]').forEach(b => b.onclick = e => {
+        e.stopPropagation(); const t = [...arr.tokens], [gone] = t.splice(+b.dataset.x, 1); setOrder(t);
+        toast('Am scos „' + name(parsed[+gone.slice(1)]) + '” din acest program', () => setOrder(arr.tokens.slice(0, +b.dataset.x).concat(gone, arr.tokens.slice(+b.dataset.x))));
+      });
+    }
+    $('arrAdd').innerHTML = '<option value="">＋ secțiune</option>' + parsed.map((sec, i) => `<option value="#${i}">${esc(name(sec))}</option>`).join('');
+  }
+  $('arrAdd').onchange = e => { if (e.target.value && arr) setOrder([...arr.tokens, e.target.value]); e.target.value = ''; };
+  $('arrReset').onclick = () => { send({ type: 'arrangement', item: sel, value: null, maxLines: +$('maxLines').value }); toast('Ordinea din cântare'); };
+  $('maxLines').onchange = () => send({ type: 'arrangement', item: sel, value: S.setlist[sel]?.arrangement || null, maxLines: +$('maxLines').value });
+  function copyText(t) {
+    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(t).catch(() => fallback());
+    fallback();
+    function fallback() { const a = Object.assign(document.createElement('textarea'), { value: t }); document.body.append(a); a.select(); document.execCommand('copy'); a.remove(); }
+  }
 
   // ---- slide editor: text, section (Strofa/Refren…), font, size, position — for one slide, the song, or all songs
   const SECS = ['Strofa 1', 'Strofa 2', 'Strofa 3', 'Strofa 4', 'Pre-refren', 'Refren', 'Refren 2', 'Bridge', 'Intro', 'Final', 'Tag'];

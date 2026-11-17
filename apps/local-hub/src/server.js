@@ -145,14 +145,36 @@ function slidesFor(index) {
 
 /** Which section of the song (and which lines of it) a slide comes from — same split as toSlides. */
 function slideSource(it, song, slide) {
-  const sections = core.arrange(core.parseSong(song.body), it.arrangement || song.arrangement);
+  const parsed = core.parseSong(song.body);
+  const sections = core.arrange(parsed, it.arrangement || song.arrangement);
   const max = it.maxLines || 4;
   let n = 0;
-  for (const sec of sections) {
+  for (const [pos, sec] of sections.entries()) {
     const parts = Math.max(1, Math.ceil(sec.lines.length / max)), size = Math.ceil(sec.lines.length / parts);
-    for (let i = 0; i < sec.lines.length; i += size) { if (n === Number(slide)) return { sec, from: i, to: Math.min(i + size, sec.lines.length) }; n++; }
+    for (let i = 0; i < sec.lines.length; i += size) {
+      if (n === Number(slide)) return { sec, from: i, to: Math.min(i + size, sec.lines.length), parsed, k: parsed.indexOf(sec), pos };
+      n++;
+    }
   }
   return null;
+}
+
+/**
+ * Split the section a slide belongs to so the slide is a section of its own (for its own tag, or to repeat just it).
+ * Every arrangement that uses the song is renumbered so nothing goes missing. Returns the new section number of the slide.
+ */
+function splitAtSlide(song, hit, label) {
+  const n = 1 + (hit.from > 0 ? 1 : 0) + (hit.to < hit.sec.lines.length ? 1 : 0);
+  const body = core.setSlideLabel(song.body, hit.sec.lines, hit.from, hit.to, label, hit.sec.label);
+  if (body === song.body) return null;
+  if (n > 1) {
+    const fix = x => { if (x && x.arrangement?.length) x.arrangement = core.expandArrangement(core.arrangementIndexes(hit.parsed, x.arrangement), hit.k, n); };
+    fix(song);
+    for (const it of db.setlist) if (it.songId === song.id) fix(it);
+    for (const svc of db.plan?.services || []) for (const it of svc.items) if (it.songId === song.id) fix(it);
+  }
+  song.body = body; song.updatedAt = new Date().toISOString();
+  return hit.k + (hit.from > 0 ? 1 : 0);
 }
 
 function applyItemBackground(index) {
@@ -184,6 +206,7 @@ function snapshot() {
     setlist: db.setlist.map((it, i) => ({
       ...it,
       title: it.kind === 'song' ? (db.songs.find(s => s.id === it.songId)?.title ?? '(cântare ștearsă)') : it.title,
+      rev: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.updatedAt || '' : undefined,   // lets screens notice a changed song
       slideCount: slidesFor(i).length,
     })),
     live: { ...live, slides: slidesFor(live.item) },
@@ -251,7 +274,7 @@ function handleMessage(ws, m) {
       case 'message': live.message = String(m.value || '').slice(0, 200); break;
       case 'arrangement': {                          // operators may change slide layout only
         const it = db.setlist[m.item]; if (!it) break;
-        it.arrangement = Array.isArray(m.value) ? m.value.map(String) : undefined;
+        it.arrangement = Array.isArray(m.value) ? m.value.map(v => String(v).slice(0, 40)).slice(0, 60) : undefined;
         if (m.maxLines) it.maxLines = clamp(Number(m.maxLines), 1, 8);
         if ('background' in m) it.background = String(m.background || '');
         save(); break;
@@ -289,9 +312,30 @@ function handleMessage(ws, m) {
         const hit = slideSource(it, song, m.slide); if (!hit) break;
         const label = String(m.label || '').trim().slice(0, 30);
         if (!label) return reply({ type: 'error', error: 'Alege un nume pentru secțiune' });
-        const body = core.setSlideLabel(song.body, hit.sec.lines, hit.from, hit.to, label, hit.sec.label);   // only this slide, even inside a long section
-        if (body === song.body && hit.sec.label !== label) return reply({ type: 'error', error: 'Nu am găsit secțiunea în cântare. Schimb-o din Editor.' });
-        song.body = body; song.updatedAt = new Date().toISOString();
+        if (hit.sec.label === label) break;
+        if (splitAtSlide(song, hit, label) === null) return reply({ type: 'error', error: 'Nu am găsit secțiunea în cântare. Schimb-o din Editor.' });
+        save(); break;
+      }
+      case 'duplicateSlide': {                       // play this slide once more, right after itself (only in this program)
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        let hit = slideSource(it, song, m.slide); if (!hit) break;
+        let k = hit.k;
+        const whole = hit.from === 0 && hit.to === hit.sec.lines.length;
+        if (!whole) {                                // part of a longer section: make it a section of its own first
+          k = splitAtSlide(song, hit, hit.sec.label);
+          if (k === null) return reply({ type: 'error', error: 'Nu am putut copia slide-ul. Încearcă din Editor.' });
+          hit = slideSource(it, song, m.slide);
+        }
+        const order = core.arrangementIndexes(core.parseSong(song.body), it.arrangement || song.arrangement);
+        order.splice(hit.pos + 1, 0, '#' + k);
+        it.arrangement = order;
+        if (it.slideStyles) {                        // looks set on later slides move one place down; the copy gets the same look
+          const st = {};
+          for (const [i, v] of Object.entries(it.slideStyles)) st[+i > m.slide ? +i + 1 : i] = v;
+          if (it.slideStyles[m.slide]) st[m.slide + 1] = it.slideStyles[m.slide];
+          it.slideStyles = st;
+        }
         save(); break;
       }
       case 'editSlide': {                            // fix the words of one slide; chords stay on their words

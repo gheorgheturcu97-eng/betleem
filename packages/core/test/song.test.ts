@@ -183,3 +183,12 @@ test('setSlideLabel gives one slide of a long section its own tag', async () => 
   assert.deepEqual(parseSong(mid).map(s => s.label), ['Refren', 'Bridge', 'Refren']);
   assert.equal(toSlides(parseSong(mid), 2).length, 3, 'still one slide per part');
 });
+
+test('arrangement by section number, and renumbering after a split', async () => {
+  const { arrange, parseSong, arrangementIndexes, expandArrangement } = await import('../src/song.ts');
+  const secs = parseSong('Strofa 1:\nA\n\nRefren:\nB\n\nC');
+  assert.deepEqual(arrange(secs, ['#2', 'Refren', '#0', '#9']).map(s => s.lines[0]), ['C', 'B', 'A']);
+  assert.deepEqual(arrangementIndexes(secs, ['Refren', 'Strofa 1', 'nimic']), ['#1', '#0']);
+  assert.deepEqual(arrangementIndexes(secs, null), ['#0', '#1', '#2']);
+  assert.deepEqual(expandArrangement(['#1', '#0', '#2', '#1'], 1, 2), ['#1', '#2', '#0', '#3', '#1', '#2']);
+});

@@ -122,7 +122,28 @@ export function arrange(sections: Section[], order?: string[]): Section[] {
   if (!order || !order.length) return sections;
   const byLabel = new Map<string, Section>();
   for (const s of sections) if (s.label && !byLabel.has(s.label.toLowerCase())) byLabel.set(s.label.toLowerCase(), s);
-  return order.map(l => byLabel.get(l.toLowerCase())).filter((s): s is Section => !!s);
+  // "#3" means the 4th section as written — works for sections with no name or with the same name twice
+  return order.map(l => /^#\d+$/.test(l) ? sections[+l.slice(1)] : byLabel.get(l.toLowerCase())).filter((s): s is Section => !!s);
+}
+
+/** An arrangement written with section numbers ("#0", "#2"…), so every chip points at exactly one section. */
+export function arrangementIndexes(sections: Section[], order?: string[] | null): string[] {
+  if (!order || !order.length) return sections.map((_, i) => '#' + i);
+  return order.map(l => {
+    if (/^#\d+$/.test(l)) return +l.slice(1) < sections.length ? l : '';
+    const i = sections.findIndex(s => s.label && s.label.toLowerCase() === l.toLowerCase());
+    return i >= 0 ? '#' + i : '';
+  }).filter(Boolean);
+}
+
+/** After section k was split into n parts, renumber an index arrangement (the split section plays all its parts). */
+export function expandArrangement(order: string[], k: number, n: number): string[] {
+  return order.flatMap(t => {
+    const i = +t.slice(1);
+    if (i < k) return [t];
+    if (i === k) return Array.from({ length: n }, (_, j) => '#' + (k + j));
+    return ['#' + (i + n - 1)];
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -442,7 +463,7 @@ export function setSlideLabel(body: string, sectionLines: string[], from: number
   const all = body.replace(/\r\n?/g, '\n').split('\n');
   const want = sectionLines.map(l => l.trimEnd());
   const name = String(label).trim().replace(/:+$/, '');
-  if (!want.length || !name) return body;
+  if (!want.length) return body;                     // an empty name is allowed: it only splits the section
   for (let i = 0; i + want.length <= all.length; i++) {
     if (!want.every((l, k) => all[i + k].trimEnd() === l)) continue;
     let start = i;
