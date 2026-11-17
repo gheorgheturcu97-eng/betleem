@@ -461,7 +461,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 </div>
 <div id="toast" class="glass"></div>
 <div class="modal" id="sedModal"><div class="glass sed">
-  <div class="sed-head"><h3 id="sedTitle">Slide</h3><span class="grow"></span>
+  <div class="sed-head"><button id="sedPrev" class="icon" title="Slide-ul anterior (Alt+←)">◀</button><h3 id="sedTitle">Slide</h3><button id="sedNext" class="icon" title="Slide-ul următor (Alt+→)">▶</button><span class="grow"></span>
     <div class="seg mini" id="sedScope"><button data-s="slide" class="sel">Doar acest slide</button><button data-s="song">Toată cântarea</button><button data-s="all">Toate cântările</button></div></div>
   <div class="sed-body">
     <div class="sed-left">
@@ -472,6 +472,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <div class="sed-right">
       <div class="lf"><span>Secțiune</span><input id="sedSec" list="secList" placeholder="ex. Refren" style="flex:1"></div>
       <div class="secs" id="sedSecs"></div>
+      <label class="check"><input type="checkbox" id="sedAuto" checked> După ce alegi secțiunea, treci singur la slide-ul următor</label>
       <div class="lf"><span>Font</span><select id="sFont"></select></div>
       <div class="lf"><span>Mărime</span><input type="range" id="sSize" min="2.5" max="14" step="0.1"><b id="sSizeV"></b></div>
       <div class="lf"><span>Grosime</span><select id="sWeight"><option value="400">Normal</option><option value="500">Medium</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Foarte gros</option></select></div>
@@ -802,6 +803,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       if (t === 'copy') { copyText(slides[i].lines.map(l => stripChords(l)).join('\n')); toast('Text copiat'); }
     });
     document.querySelector('#slides .slide.live')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    lastSlides = slides;
   }
   const songCache = new Map();
   async function getSong(it) {
@@ -862,21 +864,26 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('sFont').innerHTML = $('lFont').innerHTML;
   $('secList').innerHTML = SECS.map(x => `<option value="${x}">`).join('');
   let ed = null;                                     // { i, it, st, base, text, label, scope }
-  function openSlideEditor(i, slides) {
+  let lastSlides = [];                               // the slides shown now, for ◀ ▶ in the editor
+  function openSlideEditor(i, slides, scope) {
     const it = S.setlist[sel], sl = slides[i];
     const base = { ...S.display.main, ...(it.display || {}) };
     const st = { ...base, ...(it.slideStyles?.[i] || {}) };
-    ed = { i, it, base, st, scope: 'slide', text: sl.lines.map(l => stripChords(l)).join('\n'), label: sl.label || '' };
-    $('sedTitle').textContent = `${it.title} · slide ${i + 1}`;
+    ed = { i, it, base, st, scope: scope || 'slide', text: sl.lines.map(l => stripChords(l)).join('\n'), label: sl.label || '', total: slides.length };
+    $('sedTitle').textContent = `${it.title} · slide ${i + 1} din ${slides.length}`;
+    $('sedPrev').disabled = i === 0; $('sedNext').disabled = i >= slides.length - 1;
     $('sedText').value = ed.text; $('sedSec').value = ed.label;
-    document.querySelectorAll('#sedScope button').forEach(b => b.classList.toggle('sel', b.dataset.s === 'slide'));
+    document.querySelectorAll('#sedScope button').forEach(b => b.classList.toggle('sel', b.dataset.s === ed.scope));
     paintBackground($('pvBg'), it.background || S.live.background);
     $('sedModal').classList.add('show'); fillSlideEditor();
   }
   function renderSecs() {
     const cur = $('sedSec').value.trim();
     $('sedSecs').innerHTML = SECS.map(x => `<button data-v="${x}" class="${x === cur ? 'on' : ''}" style="--sc:${sectionColor(x)}">${x}</button>`).join('');
-    document.querySelectorAll('#sedSecs button').forEach(b => b.onclick = () => { $('sedSec').value = b.dataset.v; renderSecs(); });
+    document.querySelectorAll('#sedSecs button').forEach(b => b.onclick = () => {
+      $('sedSec').value = b.dataset.v; renderSecs();
+      if ($('sedAuto').checked && ed && ed.i < ed.total - 1) gotoSlide(ed.i + 1);   // quick tagging: one click and on to the next
+    });
   }
   $('sedSec').oninput = renderSecs;
   function fillSlideEditor() {
@@ -932,21 +939,38 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   };
   const STYLE_KEYS = ['font', 'size', 'weight', 'color', 'italic', 'upper', 'align', 'valign', 'lineHeight', 'dim', 'shadow', 'box'];
   const diff = (a, b) => Object.fromEntries(STYLE_KEYS.filter(k => JSON.stringify(a[k] ?? null) !== JSON.stringify(b[k] ?? null)).map(k => [k, a[k] ?? null]));
-  $('sedOk').onclick = () => {
+  /** Send what changed on the open slide. Returns true if something was sent. */
+  function saveSlideEdit() {
     const { i, it, st, base, scope } = ed;
     const label = $('sedSec').value.trim(), text = $('sedText').value;
-    if (label && label !== ed.label) send({ type: 'slideSection', item: sel, slide: i, label });
-    if (text.trim() !== ed.text.trim()) send({ type: 'editSlide', item: sel, slide: i, text });
-    if (scope === 'slide') { const d = diff(st, base); if (Object.keys(d).length || it.slideStyles?.[i]) send({ type: 'slideStyle', item: sel, slide: i, patch: Object.keys(d).length ? d : null }); }
-    else if (scope === 'song') send({ type: 'slideStyle', item: sel, scope: 'song', patch: { ...(it.display || {}), ...diff(st, S.display.main) } });
-    else send({ type: 'slideStyle', item: sel, scope: 'all', patch: st });
-    songCache.delete(it.songId);
+    let sent = false; const out = o => { send(o); sent = true; };
+    if (label && label !== ed.label) out({ type: 'slideSection', item: sel, slide: i, label });
+    if (text.trim() !== ed.text.trim()) out({ type: 'editSlide', item: sel, slide: i, text });
+    if (scope === 'slide') { const d = diff(st, base); const had = it.slideStyles?.[i]; if (Object.keys(d).length || had) {
+      if (JSON.stringify(Object.keys(d).length ? d : null) !== JSON.stringify(had ? diff({ ...base, ...had }, base) : null)) out({ type: 'slideStyle', item: sel, slide: i, patch: Object.keys(d).length ? d : null }); } }
+    else if (scope === 'song') out({ type: 'slideStyle', item: sel, scope: 'song', patch: { ...(it.display || {}), ...diff(st, S.display.main) } });
+    else out({ type: 'slideStyle', item: sel, scope: 'all', patch: st });
+    if (sent) songCache.delete(it.songId);
+    return sent;
+  }
+  function gotoSlide(i) {                            // save this slide and open the next one right away (slide numbers stay the same)
+    const scope = ed.scope; saveSlideEdit();
+    openSlideEditor(Math.min(i, lastSlides.length - 1), lastSlides, scope);
+  }
+  $('sedPrev').onclick = () => ed && ed.i > 0 && gotoSlide(ed.i - 1);
+  $('sedNext').onclick = () => ed && ed.i < ed.total - 1 && gotoSlide(ed.i + 1);
+  $('sedOk').onclick = () => {
+    const scope = ed.scope; saveSlideEdit();
     $('sedModal').classList.remove('show'); ed = null;
     toast({ slide: 'Slide salvat', song: 'Aspect pus pe toată cântarea', all: 'Aspect pus pe toate cântările' }[scope]);
   };
   $('sedReset').onclick = () => { send({ type: 'slideStyle', item: sel, slide: ed.i, patch: null }); $('sedModal').classList.remove('show'); ed = null; toast('Slide-ul arată ca restul cântării'); };
   $('sedCancel').onclick = () => { $('sedModal').classList.remove('show'); ed = null; };
-  $('sedModal').onkeydown = e => { if (e.key === 'Escape') $('sedCancel').click(); };
+  $('sedModal').onkeydown = e => {
+    if (e.key === 'Escape') $('sedCancel').click();
+    if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); $('sedNext').click(); }
+    if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); $('sedPrev').click(); }
+  };
 
   // ---- layout: drag the dividers between panels; zoom slides and backgrounds (remembered on this computer)
   const LAYOUT_KEY = 'betleem.layout';
