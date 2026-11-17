@@ -2,6 +2,13 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Betleem">
+
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/fonts/inter.css">
 <title>Betleem – Planificare</title>
@@ -237,7 +244,8 @@
   const localDT = iso => { const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
   const hhmm = d => d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
 
-  $('toLive').onclick = () => location.href = '/control.html';
+  // on a phone, "Live" opens the phone view (lyrics, program, slide control) instead of the big operator screen
+  $('toLive').onclick = () => location.href = matchMedia('(max-width: 900px)').matches ? '/live.html' : '/control.html';
   document.querySelectorAll('#views button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#views button').forEach(x => x.classList.toggle('sel', x === b));
     document.querySelectorAll('.view').forEach(v => v.classList.toggle('sel', v.id === 'v-' + b.dataset.v));
