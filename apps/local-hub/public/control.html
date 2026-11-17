@@ -228,6 +228,12 @@
   #toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;padding:12px 20px;border-radius:999px;
          transition:opacity .2s,transform .2s;z-index:20;max-width:70vw;background:rgba(30,32,40,.7)}
   #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast.has-btn{pointer-events:auto;display:flex;align-items:center;gap:14px}
+  #toast .undo{padding:5px 12px;border-radius:999px;font-weight:600;color:var(--acc);background:rgba(255,255,255,.08);border:0;cursor:pointer}
+  .rep{font-size:10px;font-weight:600;color:var(--acc);border:1px solid currentColor;border-radius:999px;padding:0 6px;margin-right:2px}
+  #progSel{min-width:0;max-width:100%;margin-left:8px}
+  .web-head{font-size:12px;color:var(--mute);margin:10px 4px 6px}
+  .lib.web small{display:block;color:var(--mute);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);z-index:30}
   .modal.show{display:grid}
   .modal .glass{width:min(420px,90vw);padding:22px;background:rgba(40,42,50,.65)}
@@ -269,7 +275,7 @@
   <div class="main">
     <!-- left: service order -->
     <aside class="panel glass">
-      <div class="panel-head"><h2>Programul serviciului</h2></div>
+      <div class="panel-head"><h2>Program</h2><select id="progSel" class="grow" title="Alege programul (duminică, Crăciun…)"></select></div>
       <div class="svc">
         <input id="svcTitle" placeholder="Titlul serviciului">
         <input id="svcStart" type="datetime-local">
@@ -422,7 +428,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const send = o => hub.send(o);
   const api = (url, opt = {}) => fetch(url, { ...opt, headers: { 'x-pin': hub.pin(), ...(opt.headers || {}) } })
     .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j; });
-  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2600); }
+  function toast(t, undo) {
+    const el = $('toast'); el.textContent = t; el.classList.toggle('has-btn', !!undo);
+    if (undo) { const b = document.createElement('button'); b.className = 'undo'; b.textContent = 'Anulează'; b.onclick = () => { undo(); el.classList.remove('show'); }; el.append(b); }
+    el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), undo ? 6000 : 2600);
+  }
 
   // small dialog — window.prompt/confirm do not work in the desktop app
   function ask(title, fields = [], okText = 'OK') {
@@ -616,10 +626,33 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (v && v[0].trim()) send({ type: 'addItem', kind, title: v[0].trim(), minutes: Number(v[1]) || 5 });
   };
 
+  // ---- programs: Sunday, Christmas, November… — the same ones as in Planning
+  const fmtDay = iso => new Date(iso).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' });
+  function renderPrograms() {
+    const cur = S.service.planId || '';
+    const opts = (cur ? [] : [`<option value="">${esc(S.service.title || 'Program nesalvat')}</option>`])
+      .concat((S.programs || []).map(p => `<option value="${p.id}" ${p.id === cur ? 'selected' : ''}>${esc(fmtDay(p.date) + ' · ' + p.title)}${p.count ? ' (' + p.count + ')' : ''}</option>`))
+      .concat('<option value="+new">＋ Program nou…</option>').join('');
+    if ($('progSel').dataset.html !== opts) { $('progSel').innerHTML = opts; $('progSel').dataset.html = opts; }
+    $('progSel').value = cur;
+  }
+  $('progSel').onchange = async e => {
+    const v = e.target.value;
+    if (v === '+new') {
+      const d = new Date(); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); d.setHours(10, 0, 0, 0);
+      const local = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      const r = await ask('Program nou', [{ label: 'Nume', placeholder: 'ex. Crăciun, Seara de laudă' }, { label: 'Data și ora', type: 'datetime-local', value: local }], 'Creează');
+      if (r && r[0].trim()) { sel = -1; send({ type: 'newProgram', title: r[0].trim(), date: r[1] ? new Date(r[1]).toISOString() : undefined }); }
+      else renderPrograms();
+      return;
+    }
+    if (v) { sel = -1; send({ type: 'openProgram', id: v }); }
+  };
+
   let dragFrom = -1;
   async function render() {
     if (!S) return;
-    churchChanged(); renderChurches(); fillLook();
+    churchChanged(); renderChurches(); fillLook(); renderPrograms();
     if (document.activeElement !== $('svcTitle')) $('svcTitle').value = S.service.title || '';
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -627,14 +660,19 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('bBlank').classList.toggle('on', S.live.blank); $('bLogo').classList.toggle('on', S.live.logo);
     $('setlist').innerHTML = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true">
       <span class="num">${i + 1}</span>
-      <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}</small></span>
+      <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${it.kind === 'song' && S.setlist.filter(x => x.songId === it.songId).length > 1 ? '<span class="rep" title="Cântarea apare de mai multe ori în program">repetată</span> ' : ''}${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}</small></span>
       <span class="acts">${it.kind === 'song' ? '<button data-a="key" title="Schimbă tonul">♯</button>' : ''}<button data-a="del" title="Scoate din program">✕</button></span></div>`).join('')
       || '<div class="empty">Programul e gol.<br>Alege cântări din Bibliotecă →</div>';
     document.querySelectorAll('#setlist .item').forEach(el => {
       const i = +el.dataset.i;
       el.onclick = async e => {
         const a = e.target.dataset.a;
-        if (a === 'del') { const ok = await ask('Scoți din program „' + (S.setlist[i].title || KIND[S.setlist[i].kind]) + '”?', [], 'Scoate'); if (ok) send({ type: 'removeItem', item: i }); return; }
+        if (a === 'del') {
+          const it = S.setlist[i], { title, slideCount, ...item } = it;
+          send({ type: 'removeItem', item: i }); if (sel === i) sel = -1; else if (sel > i) sel--;
+          toast('Am scos „' + (title || KIND[it.kind]) + '”', () => send({ type: 'addItem', item, at: i }));
+          return;
+        }
         if (a === 'key') { const v = await ask('Tonul pentru acest serviciu', [{ label: 'Ton (ex. A, Bb, F#m)', value: S.setlist[i].key || '' }]); if (v) send({ type: 'updateItem', item: i, patch: { key: v[0].trim() } }); return; }
         sel = i; render(); loadSongInEditor(S.setlist[i]);
       };
@@ -689,21 +727,57 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   // library: click = add to program, ✎ = edit
   let qTimer;
-  $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(search, 120); };
+  $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(search, 150); };
+  const webCache = new Map(); let webTimer;
   async function search() {
     const list = await fetch('/api/songs?q=' + encodeURIComponent($('q').value) + (tagFilter ? '&tag=' + encodeURIComponent(tagFilter) : '')).then(r => r.json());
     loadTagFilter();
     $('results').innerHTML = list.map(s => `<div class="lib" data-id="${s.id}" title="Apasă ca s-o adaugi în program">
         <span class="t">${esc(s.title)}${s.chords ? ' <span class="ch" title="are acorduri">♪</span>' : ''}${(s.tags || []).map(t => `<span class="tg">#${esc(t)}</span>`).join('')}</span>${s.key ? `<span class="chip">${esc(s.key)}</span>` : ''}
         <span class="acts"><button data-a="edit" title="Editează">✎</button><button data-a="add" title="Adaugă în program">＋</button></span></div>`).join('')
-      || '<p class="hint">Nimic găsit. Caută pe Internet sau scrie o cântare nouă.</p>';
-    document.querySelectorAll('#results .lib').forEach(el => el.onclick = async e => {
+      || '<p class="hint" id="noHit">Nu e în bibliotecă.</p>';
+    clearTimeout(webTimer);
+    const q = $('q').value.trim();
+    if (!list.length && q.length >= 3 && !tagFilter) {
+      $('noHit').textContent = 'Nu e în bibliotecă. Caut pe internet…';
+      webTimer = setTimeout(() => webFallback(q), 600);
+    }
+    document.querySelectorAll('#results .lib:not(.web)').forEach(el => el.onclick = async e => {
       const song = await fetch('/api/songs/' + el.dataset.id).then(r => r.json());
       if (e.target.dataset.a === 'edit') { fillEditor(song); showTab('edit'); return; }
-      send({ type: 'addItem', kind: 'song', songId: song.id, key: song.key, minutes: 5 });
-      toast('„' + song.title + '” a fost adăugată în program');
+      addSongToProgram(song);
     });
   }
+  // adds the song; if it is already in the program it says so (and offers to take the new one out)
+  function addSongToProgram(song) {
+    const at = S.setlist.findIndex(it => it.kind === 'song' && it.songId === song.id);
+    const n = S.setlist.length;
+    send({ type: 'addItem', kind: 'song', songId: song.id, key: song.key, minutes: 5 });
+    if (at < 0) return toast('„' + song.title + '” a fost adăugată în program');
+    toast('Atenție: „' + song.title + '” e deja în program, la nr. ' + (at + 1) + '. Am pus-o încă o dată.', () => send({ type: 'removeItem', item: n }));
+  }
+
+  // nothing in the library → the same search on the internet; one click saves it and puts it in the program
+  async function webFallback(q) {
+    let list = webCache.get(q);
+    if (!list) {
+      try { list = await api('/api/search-lyrics?chords=0&q=' + encodeURIComponent(q)); webCache.set(q, list); }
+      catch (e) { if ($('q').value.trim() === q && $('noHit')) $('noHit').textContent = 'Nu e în bibliotecă, iar pe internet nu pot căuta acum (' + e.message + ').'; return; }
+    }
+    if ($('q').value.trim() !== q) return;          // the user kept typing
+    if (!list.length) { $('noHit').textContent = 'N-am găsit nici pe internet. Încearcă primul vers.'; return; }
+    $('results').innerHTML = `<div class="web-head">Nu e în bibliotecă · găsite pe internet:</div>` + list.map((r, i) => `<div class="lib web" data-i="${i}" title="Apasă ca s-o salvezi în bibliotecă și s-o pui în program">
+        <span class="t">${esc(r.title)}${r.hasChords ? ' <span class="ch">♪</span>' : ''}<small>${esc(r.site)} · ${esc(r.preview || '')}</small></span>
+        <span class="acts"><button data-a="edit" title="Vezi în Editor înainte">✎</button><button data-a="add" title="Salvează și adaugă în program">＋</button></span></div>`).join('');
+    document.querySelectorAll('#results .lib.web').forEach(el => el.onclick = e => {
+      const r = list[+el.dataset.i];
+      if (e.target.dataset.a === 'edit') { fillEditor({ title: r.title, body: r.body, source: r.url }); showTab('edit'); return; }
+      send({ type: 'saveSong', song: { title: r.title, body: r.body, source: r.url }, addToProgram: true });
+      toast('„' + r.title + '” e acum în bibliotecă și în program');
+      webCache.delete(q); setTimeout(search, 400);
+    });
+  }
+
   // ---- tags (Laudă, Adorare…): filter the library, set them in the editor
   const PRESET_TAGS = ['Laudă', 'Adorare', 'Rugăciune', 'Mulțumire', 'Crăciun', 'Paști', 'Cina Domnului', 'Botez', 'Copii', 'Tineret', 'Evanghelizare', 'Închidere'];
   let tagFilter = '', editorTags = [];
@@ -731,12 +805,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function saveSong(addAfter) {
     const song = { id: $('songId').value || undefined, title: $('songTitle').value, key: $('songKey').value, body: $('songBody').value, source: $('songBody').dataset.source, tags: editorTags };
     if (!song.title.trim() || !song.body.trim()) return toast('Pune titlu și versuri');
-    send({ type: 'saveSong', song });
+    send({ type: 'saveSong', song, addToProgram: addAfter && !song.id });
     if (song.id) songCache.delete(song.id);
-    toast('Salvat');
+    toast(addAfter && !song.id ? 'Salvată și adăugată în program' : 'Salvat');
     setTimeout(async () => {
       await search();
-      if (addAfter) {
+      if (addAfter && song.id) {
         const list = await fetch('/api/songs?q=' + encodeURIComponent(song.title)).then(r => r.json());
         const found = list.find(x => x.title === song.title.trim());
         if (found) { send({ type: 'addItem', kind: 'song', songId: found.id, key: found.key, minutes: 5 }); toast('Salvată și adăugată în program'); }

@@ -117,3 +117,43 @@ test('editSlide fixes words and keeps chords on them', async () => {
   assert.equal(song.body, 'Strofa 1:\n[G]Mare e [D]Domnul nostru\n[C]Sfânt e Numele Lui');
   a.ws.close();
 });
+
+test('programs: several in Live, synced with Planning; undo removal; search without diacritics', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  const songs = await fetch('http://localhost:4599/api/songs?q=domnu mar').then(r => r.json());
+  assert.equal(songs[0].title, 'Mare e Domnul', 'words in any order, start of words');
+  assert.equal((await fetch('http://localhost:4599/api/songs?q=aleluia').then(r => r.json())).length, 1, 'searches lyrics too');
+
+  a.send({ type: 'newProgram', title: 'Crăciun', date: '2026-12-25T08:00:00Z' });
+  let st = (await a.next(m => m.type === 'state' && m.state.service.title === 'Crăciun')).state;
+  assert.ok(st.programs.some(p => p.title === 'Crăciun'), 'listed');
+  assert.ok(st.programs.length >= 2, 'the earlier Live program was kept as its own program');
+  const xmas = st.service.planId;
+
+  a.send({ type: 'addItem', kind: 'song', songId: songs[0].id });
+  a.send({ type: 'addItem', kind: 'song', songId: songs[0].id });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist.length === 2)).state;
+  const removed = st.setlist[0];
+  a.send({ type: 'removeItem', item: 0 });
+  await a.next(m => m.type === 'state' && m.state.setlist.length === 1 && !m.state.setlist.some(x => x.id === removed.id));
+  a.send({ type: 'addItem', item: removed, at: 0 });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist[0]?.id === removed.id)).state;
+  assert.equal(st.setlist[0].id, removed.id, 'undo puts it back in the same place');
+
+  const plan = await fetch('http://localhost:4599/api/plan', { headers: { 'x-pin': '2222' } }).then(r => r.json());
+  assert.equal(plan.services.find(s => s.id === xmas).items.length, 2, 'Live edits saved into the planned program');
+
+  const other = st.programs.find(p => p.id !== xmas);
+  a.send({ type: 'openProgram', id: other.id });
+  st = (await a.next(m => m.type === 'state' && m.state.service.planId === other.id)).state;
+  a.send({ type: 'openProgram', id: xmas });
+  st = (await a.next(m => m.type === 'state' && m.state.service.planId === xmas)).state;
+  assert.equal(st.setlist.length, 2, 'back to Crăciun with its songs');
+
+  await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: { 'x-pin': '2222', 'content-type': 'application/json' },
+    body: JSON.stringify({ op: 'setItems', id: xmas, items: [{ kind: 'sermon', title: 'Predică', minutes: 30 }] }) });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist.length === 1)).state;
+  assert.equal(st.setlist[0].kind, 'sermon', 'changes in Planning show up in Live');
+  a.ws.close();
+});

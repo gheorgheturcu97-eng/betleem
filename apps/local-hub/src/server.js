@@ -163,6 +163,9 @@ function snapshot() {
       slideCount: slidesFor(i).length,
     })),
     live: { ...live, slides: slidesFor(live.item) },
+    // the planned programs of this church (titles and dates only — teams and phone numbers stay out)
+    programs: (db.plan?.services || []).slice().sort((a, b) => a.date.localeCompare(b.date))
+      .map(s => ({ id: s.id, title: s.title, date: s.date, count: s.items.length })),
   };
 }
 
@@ -277,7 +280,11 @@ function handleMessage(ws, m) {
         const data = { title: String(s.title).trim(), author: s.author || '', key: s.key || meta.key || '', body, source: s.source || '',
           ...(tags ? { tags } : {}), updatedAt: new Date().toISOString() };
         if (existing) Object.assign(existing, data);
-        else db.songs.push({ id: crypto.randomUUID(), ...data, createdAt: new Date().toISOString() });
+        else {
+          const created = { id: crypto.randomUUID(), ...data, createdAt: new Date().toISOString() };
+          db.songs.push(created);
+          if (m.addToProgram && need(ws, 'leader')) db.setlist.push({ id: crypto.randomUUID(), kind: 'song', songId: created.id, title: '', key: created.key || '', minutes: 5, notes: [] });
+        }
         save(); break;
       }
       // --- leader only: the service order ---
@@ -309,13 +316,42 @@ function handleMessage(ws, m) {
         }
         save(); reply({ type: 'church', ok: true }); break;
       }
+      case 'openProgram': case 'newProgram': {        // pick which program is on the Live screen
+        if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba programul.' });
+        // a program made only in Live (not planned) is kept, so nothing is lost when switching
+        if (!db.service.planId && (db.setlist.length || db.service.title)) {
+          db.plan.services.push({ id: crypto.randomUUID(), date: db.service.startsAt || new Date().toISOString(),
+            title: db.service.title || 'Program fără nume', status: 'draft', items: db.setlist.map(({ notes, ...it }) => structuredClone(it)), assignments: {} });
+        }
+        let target;
+        if (m.type === 'newProgram') {
+          const before = new Set(db.plan.services.map(x => x.id));
+          const err = applyPlanOp(db.plan, { op: 'addService', title: m.title, date: m.date || new Date().toISOString() });
+          if (err) return reply({ type: 'error', error: err });
+          target = db.plan.services.find(x => !before.has(x.id));
+        } else target = db.plan.services.find(x => x.id === m.id);
+        if (!target) return reply({ type: 'error', error: 'Programul nu există' });
+        db.setlist = target.items.map(it => ({ ...structuredClone(it), notes: [] }));
+        db.service = { title: target.title, startsAt: target.date, planId: target.id };
+        Object.assign(live, { item: -1, slide: 0, blank: false, logo: false });
+        save(); break;
+      }
       case 'addItem': case 'removeItem': case 'moveItem': case 'updateItem': case 'deleteSong': case 'service': {
         if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba programul.' });
         if (m.type === 'addItem') {
           const kind = ['song', 'sermon', 'prayer', 'announcement', 'other'].includes(m.kind) ? m.kind : 'other';
-          db.setlist.push({ id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [] });
+          const item = m.item && typeof m.item === 'object'                                 // undo of a removal
+            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'notes']), id: m.item.id || crypto.randomUUID() }
+            : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [] };
+          const at = Number.isInteger(m.at) ? Math.min(Math.max(0, m.at), db.setlist.length) : db.setlist.length;
+          db.setlist.splice(at, 0, item);
+          if (live.item >= at && live.item >= 0 && Number.isInteger(m.at)) live.item++;
         }
-        if (m.type === 'removeItem') { db.setlist.splice(m.item, 1); if (live.item >= db.setlist.length) live.item = db.setlist.length - 1; }
+        if (m.type === 'removeItem') {
+          db.setlist.splice(m.item, 1);
+          if (m.item < live.item) live.item--; else if (m.item === live.item) { live.item = -1; live.slide = 0; }
+          if (live.item >= db.setlist.length) live.item = db.setlist.length - 1;
+        }
         if (m.type === 'moveItem') {
           const to = clamp('to' in m ? Number(m.to) : m.item + m.dir, 0, db.setlist.length - 1);
           const liveItem = db.setlist[live.item];
@@ -332,19 +368,42 @@ function handleMessage(ws, m) {
       }
       default: return;
     }
+    syncLiveToPlan();
     broadcast();
+}
+
+/** A change made in Planning to the program that is on Live shows up in Live too. */
+function planToLive() {
+  if (!db.service.planId) return;
+  const s = db.plan.services.find(x => x.id === db.service.planId);
+  if (!s) { db.service = { ...db.service, planId: undefined }; return; }
+  db.service = { ...db.service, title: s.title, startsAt: s.date };
+  const strip = list => JSON.stringify(list.map(({ notes, ...it }) => it));
+  if (strip(s.items) !== strip(db.setlist)) {
+    const liveId = db.setlist[live.item]?.id;
+    db.setlist = s.items.map(it => ({ ...structuredClone(it), notes: db.setlist.find(x => x.id === it.id)?.notes || [] }));
+    live.item = liveId ? db.setlist.findIndex(x => x.id === liveId) : -1;
+    if (live.item < 0) live.slide = 0;
+  }
+}
+
+/** When the Live program came from a planned service, keep that service up to date. */
+function syncLiveToPlan() {
+  const s = db.service.planId && db.plan?.services.find(x => x.id === db.service.planId);
+  if (!s) return;
+  s.items = db.setlist.map(({ notes, ...it }) => structuredClone(it));
+  s.title = db.service.title || s.title;
+  if (db.service.startsAt) s.date = db.service.startsAt;
 }
 
 // Musician notes can be posted by anyone logged in as operator+ (musicians use operator PIN or
 // the future Supabase login). Kept separate so it is easy to open up later.
 function searchSongs(query, tag) {
-  const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const q = fold(query);
-  return db.songs
-    .filter(s => !tag || (s.tags || []).includes(tag))
-    .filter(s => !q || fold(s.title).includes(q) || fold(s.body.replace(/\[[^\]]*\]/g, '')).includes(q))
-    .sort((a, b) => a.title.localeCompare(b.title, 'ro'))
-    .map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
+  const list = db.songs.filter(s => !tag || (s.tags || []).includes(tag));
+  const ranked = query && String(query).trim()
+    ? core.rankSongs(list, query)
+    : list.sort((a, b) => a.title.localeCompare(b.title, 'ro'));
+  return ranked.map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
 }
 const mediaList = () => fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.') && f !== 'logo.png');
 
@@ -461,7 +520,8 @@ async function handle(req, res) {
         } else {
           const err = applyPlanOp(db.plan, op);
           if (err) return json(res, 400, { error: err });
-          save();
+          planToLive();
+          save(); broadcast();
         }
         const msg = JSON.stringify({ type: 'planChanged' });
         for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role === 'leader') ws.send(msg);

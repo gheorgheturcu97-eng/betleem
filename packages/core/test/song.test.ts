@@ -139,3 +139,17 @@ test('applyChords does not touch lines that already have chords', async () => {
   const { applyChords } = await import('../src/song.ts');
   assert.equal(applyChords('[D]Mare e Domnul', '[G]Mare e Domnul').body, '[D]Mare e Domnul');
 });
+
+test('rankSongs: no diacritics, any word order, small typos, title first', async () => {
+  const { rankSongs } = await import('../src/song.ts');
+  const songs = [
+    { title: 'Iubirea Ta este atât de mare', body: 'Iubirea Ta' },
+    { title: 'Biruitor', body: 'Pe câmpul de război Tu ești cu mine' },
+    { title: 'Ancora', body: 'Ești ancora mea, biruitor în viață' },
+  ];
+  assert.deepEqual(rankSongs(songs, 'atat de mare iubirea').map(s => s.title), ['Iubirea Ta este atât de mare']);
+  assert.deepEqual(rankSongs(songs, 'razboi campul').map(s => s.title), ['Biruitor'], 'lyrics, other order, no diacritics');
+  assert.deepEqual(rankSongs(songs, 'biruitr').map(s => s.title), ['Biruitor', 'Ancora'], 'one typo; title match ranks first');
+  assert.deepEqual(rankSongs(songs, 'biru').map(s => s.title), ['Biruitor', 'Ancora'], 'start of a word');
+  assert.deepEqual(rankSongs(songs, 'xyz'), []);
+});

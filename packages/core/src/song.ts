@@ -335,3 +335,53 @@ export function applyChords(lyrics: string, sheet: string): { body: string; matc
   });
   return { body: out.join('\n'), match: total ? found / total : 0, chords: placed };
 }
+
+// ---------------------------------------------------------------------------
+// Search that forgives: no diacritics needed, words in any order, small typos.
+// ---------------------------------------------------------------------------
+
+function editDistanceAtMost1(a: string, b: string): boolean {
+  if (a === b) return true;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < la && j < lb) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (la > lb) i++; else if (lb > la) j++; else { i++; j++; }
+  }
+  return edits + (la - i) + (lb - j) <= 1;
+}
+
+/** Does query word q match text word w? prefix ("biru" -> "biruitor"), or one typo for longer words. */
+function wordMatches(q: string, w: string): boolean {
+  if (w.startsWith(q)) return true;
+  if (q.length >= 4 && editDistanceAtMost1(q, w.slice(0, Math.max(q.length, Math.min(w.length, q.length + 1))))) return true;
+  return q.length >= 5 && editDistanceAtMost1(q, w);
+}
+
+/** Songs where every query word is found (title counts more). Best matches first. */
+export function rankSongs<T extends { title: string; body: string }>(songs: T[], query: string): T[] {
+  const qs = String(query).split(/\s+/).map(normWord).filter(Boolean);
+  if (!qs.length) return songs;
+  const scored: { s: T; score: number }[] = [];
+  for (const s of songs) {
+    const tw = s.title.split(/\s+/).map(normWord).filter(Boolean);
+    const bw = s.body.replace(/\[[^\]]*\]/g, '').split(/\s+/).map(normWord).filter(Boolean);
+    let score = 0, ok = true;
+    for (const q of qs) {
+      if (tw.some(w => w === q)) score += 6;
+      else if (tw.some(w => wordMatches(q, w))) score += 4;
+      else if (bw.some(w => w === q)) score += 2;
+      else if (bw.some(w => wordMatches(q, w))) score += 1;
+      else { ok = false; break; }
+    }
+    if (ok) {
+      const tn = tw.join(' '), qn = qs.join(' ');
+      if (tn.startsWith(qn)) score += 5;
+      else if (tn.includes(qn)) score += 3;
+      scored.push({ s, score });
+    }
+  }
+  return scored.sort((a, b) => b.score - a.score || a.s.title.localeCompare(b.s.title, 'ro')).map(x => x.s);
+}
