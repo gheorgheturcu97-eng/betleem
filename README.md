@@ -15,6 +15,12 @@ biblioteca de cântări comună, proiecția versurilor (înlocuiește ProPresent
 | `/stage.html` | ecranul de pe scenă | versuri cu acorduri, slide-ul următor, ceasul |
 | `/live.html` | telefoanele oamenilor | versuri live, acorduri, programul; cu PIN, controlează slide-urile |
 
+## Pornire pe Windows
+
+Dublu-clic pe **`start-windows.bat`**. Prima dată instalează ce trebuie, apoi deschide singur pagina de control.
+PIN-urile se schimbă din fișier (clic dreapta → Edit). Dacă Windows întreabă de firewall, apasă **Allow**,
+ca telefoanele din rețea să se poată conecta.
+
 ## Pornire pe Mac Mini
 
 1. Instalează **Node.js 22.18 sau mai nou** (de pe nodejs.org, varianta LTS).
