@@ -214,6 +214,8 @@ function snapshot() {
       ...it,
       title: it.kind === 'song' ? (db.songs.find(s => s.id === it.songId)?.title ?? '(cântare ștearsă)') : it.title,
       rev: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.updatedAt || '' : undefined,   // lets screens notice a changed song
+      track: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.track || '' : undefined,
+      origBpm: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.bpm || 0 : undefined,
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
     })),
@@ -253,7 +255,7 @@ wss.on('connection', (ws, req) => {
 
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
-const UNDOABLE = new Set(['setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
+const UNDOABLE = new Set(['setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
   'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
@@ -270,7 +272,7 @@ function restoreSnapshot(sn) {
   live.item = sn.liveItemId ? db.setlist.findIndex(x => x.id === sn.liveItemId) : -1;
   live.slide = live.item >= 0 ? clamp(sn.slide, 0, Math.max(0, slidesFor(live.item).length - 1)) : 0;
 }
-const UNDO_NAMES = { setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
+const UNDO_NAMES = { setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
   tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
@@ -422,6 +424,20 @@ function handleMessage(ws, m) {
         save(); reply({ type: 'cleaned', changed, ordered, total: db.songs.length });
         break;
       }
+      case 'setTrack': {                             // a backing track (audio file in the media folder) for the song
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const name = path.basename(String(m.track || ''));
+        if (name && !fs.existsSync(path.join(MEDIA_DIR, name))) return reply({ type: 'error', error: 'Fișierul nu există' });
+        song.track = name || undefined; song.updatedAt = new Date().toISOString();
+        save(); break;
+      }
+      case 'setBpm': {                               // tempo for this program (the library keeps its own)
+        const it = db.setlist[m.item]; if (!it) break;
+        const b = Math.round(Number(m.bpm));
+        it.bpm = b >= 30 && b <= 300 ? b : undefined;
+        save(); break;
+      }
       case 'setKey': {                               // key for this program; chords on the stage follow it
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const k = String(m.key || '').trim();
@@ -493,7 +509,9 @@ function handleMessage(ws, m) {
         const meta = core.readMeta(body);
         const existing = s.id && db.songs.find(x => x.id === s.id);
         const tags = Array.isArray(s.tags) ? [...new Set(s.tags.map(t => String(t).trim()).filter(Boolean))].slice(0, 12) : undefined;
+        const bpm = Math.round(Number(s.bpm ?? meta.tempo)); 
         const data = { title: String(s.title).trim(), author: s.author || '', key: s.key || meta.key || '', body, source: s.source || '',
+          ...(bpm >= 30 && bpm <= 300 ? { bpm } : 'bpm' in s ? { bpm: undefined } : {}),
           ...(tags ? { tags } : {}), updatedAt: new Date().toISOString() };
         if (existing) Object.assign(existing, data);
         else {
@@ -623,7 +641,7 @@ function searchSongs(query, tag) {
     : list.sort((a, b) => a.title.localeCompare(b.title, 'ro'));
   return ranked.map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
 }
-const mediaList = () => fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.') && f !== 'logo.png');
+const mediaList = () => fs.readdirSync(MEDIA_DIR).filter(f => /^(image|video)\//.test(TYPES[path.extname(f).toLowerCase()] || '') && !f.startsWith('.') && f !== 'logo.png');
 
 // --- AI assistant -------------------------------------------------------------------
 const AI_FILE = path.join(DATA_DIR, 'ai.json');
@@ -677,6 +695,7 @@ export function mergePcoSongs(list) {
     const labels = core.parseSong(body).map(sec => sec.label.toLowerCase());
     const order = (x.sequence || []).map(l => String(l)).filter(l => labels.includes(l.toLowerCase()));
     db.songs.push({ id: crypto.randomUUID(), title: x.title.slice(0, 120), author: x.author || '', key: x.key || core.readMeta(body).key || '', body,
+      ...(x.bpm >= 30 && x.bpm <= 300 ? { bpm: Math.round(x.bpm) } : {}),
       source: 'planningcenter', pcoId: x.pcoId, ccli: x.ccli || '', ...(order.length >= 2 ? { arrangement: order } : core.autoArrangement(body) ? { arrangement: core.autoArrangement(body) } : {}),
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     added++;
@@ -760,7 +779,9 @@ async function runChordsJob(list) {
 // --- HTTP ----------------------------------------------------------------------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.webm': 'video/webm', '.mov': 'video/quicktime', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
+  '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.webm': 'video/webm', '.mov': 'video/quicktime', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.aac': 'audio/aac' };
+const MEDIA_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.mp4', '.webm', '.mov', '.mp3', '.wav', '.m4a', '.ogg', '.aac'];   // what may be uploaded
 
 async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
@@ -897,7 +918,7 @@ async function handle(req, res) {
     if (p === '/api/media' && req.method === 'POST') {      // upload background (raw body, ?name=)
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       const name = path.basename(url.searchParams.get('name') || '').replace(/[^\w.\- ]/g, '_');
-      if (!name || !TYPES[path.extname(name).toLowerCase()]) return json(res, 400, { error: 'Tip de fișier nepermis' });
+      if (!name || !MEDIA_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Tip de fișier nepermis (doar imagini, video sau audio)' });
       const buf = await body(req, 500 * 1024 * 1024, true);
       fs.writeFileSync(path.join(MEDIA_DIR, name), buf);
       return json(res, 200, { ok: true, name });

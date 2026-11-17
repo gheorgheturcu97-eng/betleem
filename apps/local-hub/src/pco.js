@@ -60,7 +60,7 @@ export async function fetchSongs(creds, { onProgress = () => {}, onlyIds = null,
     const body = cleanChordChart(a.chord_chart || a.lyrics || '');
     out.push({
       pcoId: s.id, arrangementId: pick?.id || '', title: (s.attributes.title || '').trim(), author: s.attributes.author || '',
-      ccli: s.attributes.ccli_number ? String(s.attributes.ccli_number) : '', key: a.chord_chart_key || '',
+      ccli: s.attributes.ccli_number ? String(s.attributes.ccli_number) : '', key: a.chord_chart_key || '', bpm: Number(a.bpm) || 0,
       body, sequence: Array.isArray(a.sequence) ? a.sequence : [],
     });
   }
