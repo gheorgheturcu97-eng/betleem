@@ -21,6 +21,10 @@ Dublu-clic pe **`start-windows.bat`**. Prima dată instalează ce trebuie, apoi 
 PIN-urile se schimbă din fișier (clic dreapta → Edit). Dacă Windows întreabă de firewall, apasă **Allow**,
 ca telefoanele din rețea să se poată conecta.
 
+### Cântări din FreeShow
+Dublu-clic pe **`importa-freeshow.bat`** aduce cântările din `Documente\FreeShow\Shows`, cu etichetele (Strofă, Refren…) și ordinea lor.
+Cântările care există deja nu se dublează, deci îl poți rula oricând. FreeShow rămâne neatins.
+
 ## Pornire pe Mac Mini
 
 1. Instalează **Node.js 22.18 sau mai nou** (de pe nodejs.org, varianta LTS).

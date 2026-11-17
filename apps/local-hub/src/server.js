@@ -59,7 +59,7 @@ function slidesFor(index) {
   if (!song) return [];
   const steps = it.key && song.key ? core.keyDistance(song.key, it.key) : 0;
   const body = core.transpose(song.body, steps, core.prefersFlats(it.key || song.key || 'C'));
-  return core.toSlides(core.arrange(core.parseSong(body), it.arrangement), it.maxLines || 4);
+  return core.toSlides(core.arrange(core.parseSong(body), it.arrangement || song.arrangement), it.maxLines || 4);
 }
 
 function snapshot() {

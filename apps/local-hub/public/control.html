@@ -191,7 +191,7 @@ Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textar
     let song = songCache.get(it.songId);
     if (!song) { song = await fetch('/api/songs/' + it.songId).then(r => r.json()); songCache.set(it.songId, song); }
     const steps = it.key && song.key ? core.keyDistance(song.key, it.key) : 0;
-    return core.toSlides(core.arrange(core.parseSong(core.transpose(song.body, steps)), it.arrangement), it.maxLines || 4);
+    return core.toSlides(core.arrange(core.parseSong(core.transpose(song.body, steps)), it.arrangement || song.arrangement), it.maxLines || 4);
   }
   $('bArr').onclick = () => {
     const value = $('arrangement').value.split(',').map(s => s.trim()).filter(Boolean);
