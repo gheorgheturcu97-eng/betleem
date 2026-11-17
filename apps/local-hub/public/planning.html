@@ -82,7 +82,9 @@
   .it .t b{font-weight:600} .it .t small{display:block;color:var(--mute);font-size:11.5px;text-transform:capitalize}
   .it input{padding:5px 8px;font-size:13px}
   .add{display:flex;gap:8px;align-items:center}
-  .found{display:flex;flex-direction:column;gap:2px;max-height:220px}
+  .found{display:flex;flex-direction:column;gap:2px;max-height:380px}
+  .found .prev{display:block;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .found a{color:var(--acc)}
   .found div{padding:7px 10px;border-radius:10px;cursor:pointer} .found div:hover{background:rgba(255,255,255,.08)}
   .found div small{color:var(--acc);margin-left:6px;font-size:11px}
   .empty{display:grid;place-items:center;text-align:center;color:var(--mute);padding:30px 12px;border:1px dashed var(--stroke);border-radius:var(--r-sm);line-height:1.6}
@@ -329,18 +331,46 @@
         const [m] = s.items.splice(dragFrom, 1); s.items.splice(i, 0, m); dragFrom = -1; op({ op: 'setItems', id: s.id, items: s.items }); };
     });
   }
-  let qT;
+  let qT; const webCache = new Map();
+  function addSongToService(id, key) {
+    const s = P.services.find(x => x.id === selId);
+    s.items.push({ kind: 'song', songId: id, key: key || '', minutes: 5 });
+    $('songQ').value = ''; $('found').innerHTML = ''; op({ op: 'setItems', id: s.id, items: s.items });
+  }
   $('songQ').oninput = () => { clearTimeout(qT); qT = setTimeout(async () => {
     const q = $('songQ').value.trim(); if (q.length < 2) { $('found').innerHTML = ''; return; }
     const list = await fetch('/api/songs?q=' + encodeURIComponent(q)).then(r => r.json());
+    if ($('songQ').value.trim() !== q) return;
     $('found').innerHTML = list.slice(0, 12).map(x => `<div data-id="${x.id}" data-key="${esc(x.key || '')}">${esc(x.title)}${x.key ? `<small>${esc(x.key)}</small>` : ''}${(x.tags || []).map(t => `<small>#${esc(t)}</small>`).join('')}</div>`).join('')
-      || '<p class="hint">Nu e în bibliotecă. Adaug-o din Live → Internet.</p>';
-    document.querySelectorAll('#found div').forEach(el => el.onclick = () => {
-      const s = P.services.find(x => x.id === selId);
-      s.items.push({ kind: 'song', songId: el.dataset.id, key: el.dataset.key, minutes: 5 });
-      $('songQ').value = ''; $('found').innerHTML = ''; op({ op: 'setItems', id: s.id, items: s.items });
+      + `<p class="hint" id="webHint">${list.length ? '<a href="#" id="webGo">Nu e aici? Caută pe internet</a>' : 'Nu e în bibliotecă. Caut pe internet…'}</p>`;
+    document.querySelectorAll('#found div[data-id]').forEach(el => el.onclick = () => addSongToService(el.dataset.id, el.dataset.key));
+    if ($('webGo')) $('webGo').onclick = e => { e.preventDefault(); webSongs(q); };
+    if (!list.length && q.length >= 3) webSongs(q);
+  }, 250); };
+  // not in the library → search the internet; one tap saves it in the library and puts it in this service
+  async function webSongs(q) {
+    $('webHint').textContent = 'Caut pe internet…';
+    let list = webCache.get(q);
+    if (!list) {
+      try {
+        const r = await fetch('/api/search-lyrics?chords=0&q=' + encodeURIComponent(q), { headers: { 'x-pin': hub.pin() } });
+        list = await r.json(); if (!r.ok) throw new Error(list.error); webCache.set(q, list);
+      } catch (e) { if ($('webHint')) $('webHint').textContent = 'Nu pot căuta pe internet acum: ' + e.message; return; }
+    }
+    if ($('songQ').value.trim() !== q || !$('webHint')) return;
+    if (!list.length) { $('webHint').textContent = 'N-am găsit nici pe internet. Încearcă primul vers.'; return; }
+    $('webHint').outerHTML = '<p class="hint">De pe internet · apasă ca s-o salvezi în bibliotecă și s-o pui în program:</p>'
+      + list.map((r, i) => `<div data-w="${i}">🌐 ${esc(r.title)}${r.hasChords ? '<small>♪ acorduri</small>' : ''}<small>${esc(r.site)}</small><span class="prev">${esc(r.preview || '')}</span></div>`).join('');
+    document.querySelectorAll('#found div[data-w]').forEach(el => el.onclick = async () => {
+      const r = list[+el.dataset.w]; el.style.opacity = .5;
+      try {
+        const res = await fetch('/api/songs', { method: 'POST', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' },
+          body: JSON.stringify({ title: r.title, body: r.body, source: r.url }) });
+        const song = await res.json(); if (!res.ok) throw new Error(song.error);
+        addSongToService(song.id, song.key); toast('„' + song.title + '” e acum în bibliotecă și în program');
+      } catch (e) { el.style.opacity = 1; toast(e.message); }
     });
-  }, 150); };
+  }
   $('bAddItem').onclick = () => {
     const kind = $('addKind').value, name = $('addKind').selectedOptions[0].text;
     dialog('Adaugă în program', `<label>Titlu<input id="iT" value="${esc(name)}"></label><label>Minute<input id="iM" type="number" value="${kind === 'sermon' ? 35 : 5}"></label><label>Cine<input id="iL" placeholder="ex. Pastor Ion"></label>`,

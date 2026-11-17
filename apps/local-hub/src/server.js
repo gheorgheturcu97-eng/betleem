@@ -488,6 +488,17 @@ async function handle(req, res) {
       const found = extractLyrics(html, u.hostname);
       return json(res, 200, { ...found, body: core.normalizeImported(found.body), source: u.href });
     }
+    if (p === '/api/songs' && req.method === 'POST') {         // save a song found on the internet (phone planning)
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const s = JSON.parse((await body(req, 300_000)) || '{}');
+      if (!s.title || !s.body) return json(res, 400, { error: 'Titlu și versuri obligatorii' });
+      const bodyText = core.normalizeImported(String(s.body));
+      const same = db.songs.find(x => x.title.trim().toLowerCase() === String(s.title).trim().toLowerCase() && x.source && x.source === s.source);
+      const song = same || { id: crypto.randomUUID(), title: String(s.title).trim().slice(0, 120), author: '', key: core.readMeta(bodyText).key || '',
+        body: bodyText, source: String(s.source || ''), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      if (!same) { db.songs.push(song); save(); broadcast(); }
+      return json(res, 200, { id: song.id, title: song.title, key: song.key });
+    }
     if (p === '/api/search-lyrics' && req.method === 'GET') {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       const results = await searchLyrics(url.searchParams.get('q'), {

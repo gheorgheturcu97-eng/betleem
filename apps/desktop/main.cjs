@@ -135,7 +135,7 @@ async function importFreeShow() {
     try { const s = convertShow(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')), f); if (s) songs.push(s); } catch {}
   }
   const added = hub.addSongs(songs);
-  dialog.showMessageBox(control, { type: 'info', message: `Am adăugat ${added} cântări noi din FreeShow.`, detail: added ? '' : 'Toate cântările erau deja în bibliotecă.' });
+  dialog.showMessageBox(control, { title: 'Betleem', type: 'info', message: `Am adăugat ${added} cântări noi din FreeShow.`, detail: added ? '' : 'Toate cântările erau deja în bibliotecă.' });
 }
 
 // ---------------------------------------------------------------- menu
@@ -162,7 +162,7 @@ function buildMenu() {
       { label: 'Deschide folderul cu date', click: () => shell.openPath(DATA_DIR) },
     ] },
     { label: 'Telefoane', submenu: [
-      { label: 'Adrese și PIN-uri…', click: () => dialog.showMessageBox(control, {
+      { label: 'Adrese și PIN-uri…', click: () => dialog.showMessageBox(control, { title: 'Betleem',
         type: 'info', message: 'Telefoanele din aceeași rețea Wi-Fi',
         detail: `Deschide în browserul telefonului:\n${lanAddresses().join('\n') || '(nu ești conectat la o rețea)'}\n\nPIN operator: ${settings.pin}\nPIN lider: ${settings.leaderPin}\n\nPIN-urile se pot schimba în ${SETTINGS_FILE}`,
       }) },
