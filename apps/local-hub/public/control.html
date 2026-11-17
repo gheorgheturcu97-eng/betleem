@@ -166,6 +166,7 @@
   .slide .tools{position:absolute;right:30px;top:6px;display:flex;gap:4px;opacity:0;transition:opacity .12s}
   .slide:hover .tools{opacity:1}
   .slide .tools button{width:26px;height:26px;padding:0;font-size:12px}
+  .slide.picked{box-shadow:0 0 0 2px rgba(255,255,255,.55)}
   .lib .ch{color:var(--acc);font-size:12px;margin-left:4px}
   #arrRow select{width:auto;border-radius:999px;padding:7px 10px}
   #slides{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--slideW,210px),1fr));gap:10px}
@@ -732,7 +733,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     ['→  /  Spațiu  /  Page Down', 'Slide-ul următor'], ['←  /  Page Up', 'Slide-ul anterior'],
     ['B', 'Ecran negru'], ['L', 'Logo'], ['F2  /  F3', 'Deschide ecranul principal / de scenă'],
     [`${MOD}+F`, 'Caută în bibliotecă'], [`${MOD}+N`, 'Cântare nouă'], [`${MOD}+S`, 'Salvează (în Editor sau în editorul de slide)'],
-    [`${MOD}+E`, 'Editează slide-ul de pe ecran'], [`${MOD}+D`, 'Repetă slide-ul de pe ecran'], [`${MOD}+Shift+C`, 'Copiază textul slide-ului de pe ecran'],
+    [`${MOD}+E`, 'Editează slide-ul de pe ecran'], ['Delete', 'Șterge slide-ul pe care ai apăsat (din acest program)'], [`${MOD}+D`, 'Repetă slide-ul de pe ecran'], [`${MOD}+Shift+C`, 'Copiază textul slide-ului de pe ecran'],
     ['Alt+←  /  Alt+→', 'În editorul de slide: slide-ul anterior / următor'], ['Esc', 'Închide fereastra sau ieși din modul etichete'],
     [`${MOD}+/`, 'Arată această listă'],
   ];
@@ -763,6 +764,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); send({ type: 'next' }); }
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') send({ type: 'prev' });
     if (e.key === 'b' || e.key === 'B' || e.key === '.') send({ type: 'blank' });
+    if ((e.key === 'Delete' || e.key === 'Backspace') && pickedSlide >= 0) { e.preventDefault(); removeSlide(pickedSlide); }
     if (e.key === 'l' || e.key === 'L') send({ type: 'logo' });
   });
 
@@ -823,7 +825,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
           return;
         }
         if (a === 'key') { const v = await ask('Tonul pentru acest serviciu', [{ label: 'Ton (ex. A, Bb, F#m)', value: S.setlist[i].key || '' }]); if (v) send({ type: 'updateItem', item: i, patch: { key: v[0].trim() } }); return; }
-        sel = i; render(); loadSongInEditor(S.setlist[i]);
+        sel = i; pickedSlide = -1; render(); loadSongInEditor(S.setlist[i]);
       };
       el.ondragstart = () => { dragFrom = i; el.classList.add('drag'); };
       el.ondragend = () => el.classList.remove('drag');
@@ -847,9 +849,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (!slides.length) {
       $('slides').innerHTML = `<div class="slide ${sel === S.live.item ? 'live' : ''}" data-s="0"><div class="lb">${esc(KIND[it.kind])}</div>${esc(it.title)}</div>`;
     } else {
-      $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''}" data-s="${i}" style="--sc:${sectionColor(sl.label || '')}">
+      $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''} ${i === pickedSlide ? 'picked' : ''}" data-s="${i}" style="--sc:${sectionColor(sl.label || '')}">
         <span class="n">${i + 1}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${it.kind === 'song' ? `<span class="tools">
-          <button data-t="copy" title="Copiază textul slide-ului">📋</button><button data-t="dup" title="Repetă slide-ul (doar în acest program)">⧉</button><button data-t="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button></span>` : ''}<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div></div>`).join('');
+          <button data-t="copy" title="Copiază textul slide-ului">📋</button><button data-t="dup" title="Repetă slide-ul (doar în acest program)">⧉</button><button data-t="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button><button data-t="del" title="Șterge slide-ul din acest program (Delete)">🗑</button></span>` : ''}<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div></div>`).join('');
     }
     document.querySelectorAll('#slides .slide').forEach(el => {
       el.ondragover = e => { if (e.dataTransfer.types.includes('text/x-tag')) { e.preventDefault(); el.classList.add('drop'); } };
@@ -858,6 +860,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     });
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
       const t = e.target.closest('button')?.dataset.t, i = +el.dataset.s;
+      pickedSlide = i; document.querySelectorAll('#slides .slide').forEach(x => x.classList.toggle('picked', x === el));
+      if (t === 'del') return removeSlide(i);
       if (!t && paintTag && it.kind === 'song') return tagSlide(i, paintTag);
       if (!t) return send({ type: 'go', item: sel, slide: i });
       if (t === 'edit') return openSlideEditor(i, slides);
@@ -952,7 +956,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('sFont').innerHTML = $('lFont').innerHTML;
   $('secList').innerHTML = SECS.map(x => `<option value="${x}">`).join('');
   let ed = null;                                     // { i, it, st, base, text, label, scope }
-  let lastSlides = [];                               // the slides shown now, for ◀ ▶ in the editor
+  let lastSlides = [], pickedSlide = -1;               // the slide clicked last: Delete removes it
+  function removeSlide(i) {
+    const it = S.setlist[sel]; if (!it || it.kind !== 'song' || !lastSlides[i]) return;
+    send({ type: 'removeSlide', item: sel, slide: i }); pickedSlide = -1;
+    toast('Am șters slide-ul ' + (i + 1) + ' din acest program', () => send({ type: 'undo' }));
+  }                               // the slides shown now, for ◀ ▶ in the editor
   function openSlideEditor(i, slides, scope) {
     const it = S.setlist[sel], sl = slides[i];
     const base = { ...S.display.main, ...(it.display || {}) };

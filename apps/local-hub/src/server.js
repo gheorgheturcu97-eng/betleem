@@ -252,7 +252,7 @@ wss.on('connection', (ws, req) => {
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 const UNDOABLE = new Set(['addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
@@ -270,7 +270,7 @@ function restoreSnapshot(sn) {
 }
 const UNDO_NAMES = { addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -419,6 +419,25 @@ function handleMessage(ws, m) {
         }
         save(); reply({ type: 'cleaned', changed, ordered, total: db.songs.length });
         break;
+      }
+      case 'removeSlide': {                          // take one slide out of this program (the song in the library stays whole)
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        let hit = slideSource(it, song, m.slide); if (!hit) break;
+        if (!(hit.from === 0 && hit.to === hit.sec.lines.length)) {      // part of a longer section: make it its own section first
+          if (splitAtSlide(song, hit, hit.sec.label) === null) return reply({ type: 'error', error: 'Nu am putut scoate slide-ul.' });
+          hit = slideSource(it, song, m.slide);
+        }
+        const order = core.arrangementIndexes(core.parseSong(song.body), it.arrangement || song.arrangement);
+        order.splice(hit.pos, 1);
+        it.arrangement = order;
+        if (it.slideStyles) {
+          const st = {};
+          for (const [i, v] of Object.entries(it.slideStyles)) if (+i !== m.slide) st[+i > m.slide ? +i - 1 : i] = v;
+          it.slideStyles = st;
+        }
+        if (live.item === m.item && live.slide >= slidesFor(m.item).length) live.slide = Math.max(0, slidesFor(m.item).length - 1);
+        save(); break;
       }
       case 'duplicateSlide': {                       // play this slide once more, right after itself (only in this program)
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
