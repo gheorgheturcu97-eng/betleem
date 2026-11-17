@@ -1,0 +1,15 @@
+{
+  "name": "@bnc/local-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bethlehem Network Churches - local Sunday hub: presenter, stage screen and phone sync over the church LAN",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test --test-force-exit test/*.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

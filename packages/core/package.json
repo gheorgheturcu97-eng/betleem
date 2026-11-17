@@ -1,0 +1,7 @@
+{
+  "name": "@bnc/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/song.ts",
+  "scripts": { "test": "node --test test/*.test.ts" }
+}

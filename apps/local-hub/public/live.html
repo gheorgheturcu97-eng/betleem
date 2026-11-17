@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111214">
+<title>Live — Bethlehem</title>
+<style>
+  :root{--bg:#111214;--card:#1b1d21;--line:#2a2d33;--fg:#f1f1f1;--mute:#8d939b;--acc:#f5b301}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;padding-bottom:84px}
+  header{position:sticky;top:0;background:var(--bg);padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;z-index:2}
+  header h1{font-size:17px;margin:0}
+  #dot{width:9px;height:9px;border-radius:50%;background:#c33;display:inline-block;margin-right:6px}
+  #dot.on{background:#2ecc71}
+  nav{display:flex;gap:6px;padding:10px 16px}
+  nav button{flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:inherit}
+  nav button.sel{background:var(--acc);color:#000;border-color:var(--acc);font-weight:600}
+  .order{list-style:none;margin:0;padding:0 16px}
+  .order li{display:flex;gap:12px;padding:12px;border-radius:10px;margin-bottom:6px;background:var(--card)}
+  .order li.now{outline:2px solid var(--acc)}
+  .order time{color:var(--mute);font-variant-numeric:tabular-nums;min-width:44px}
+  .order small{color:var(--mute);display:block}
+  #lyrics{padding:8px 16px;font-size:22px;line-height:1.35}
+  .label{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 4px}
+  .slide{padding:10px 12px;border-radius:10px;margin-bottom:4px;opacity:.45}
+  .slide.now{opacity:1;background:var(--card)}
+  .line{display:flex;flex-wrap:wrap}
+  .seg{display:inline-flex;flex-direction:column;white-space:pre}
+  .seg b{color:var(--acc);font-size:.65em;min-height:1em}
+  .seg i{font-style:normal}
+  .ly{white-space:pre-wrap}
+  #pad{position:fixed;left:0;right:0;bottom:0;display:none;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+  #pad button{flex:1;padding:16px;border:0;border-radius:12px;font:600 17px system-ui;background:var(--card);color:var(--fg)}
+  #pad .go{background:var(--acc);color:#000}
+  .login{padding:16px;color:var(--mute);font-size:14px}
+  .login input{width:110px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+  .login button{padding:8px 12px;border-radius:8px;border:0;background:var(--acc)}
+</style>
+</head>
+<body>
+<header><h1><span id="dot"></span><span id="title">Bethlehem</span></h1><span id="now" style="color:var(--mute);font-size:14px"></span></header>
+<nav>
+  <button data-v="lyrics" class="sel">Versuri</button>
+  <button data-v="chords">Acorduri</button>
+  <button data-v="order">Program</button>
+</nav>
+<div id="lyrics"></div>
+<ul class="order" id="order" hidden></ul>
+<div class="login" id="login">Faci parte din echipa media? <input id="pin" type="password" inputmode="numeric" placeholder="PIN"> <button id="ok">Intră</button></div>
+<div id="pad"><button id="prev">◀ Înapoi</button><button id="blank">Negru</button><button class="go" id="next">Înainte ▶</button></div>
+<script type="module">
+  import { connect, esc, stayAwake } from '/client.js';
+  import { stripChords, chordLineToHtml } from '/core/song.js';
+  const $ = id => document.getElementById(id);
+  let view = 'lyrics', S = null;
+  stayAwake();
+  const hub = connect(s => { S = s; render(); }, e => {
+    if (e.type === 'online' || e.type === 'offline') $('dot').classList.toggle('on', e.type === 'online');
+    if (e.role) { const ctl = e.role !== 'viewer'; $('pad').style.display = ctl ? 'flex' : 'none'; $('login').hidden = ctl; }
+    if (e.type === 'login' && !e.ok) alertBox('PIN greșit');
+    if (e.type === 'error') alertBox(e.error);
+  });
+  function alertBox(t) { $('now').textContent = t; setTimeout(render, 2500); }
+  document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+    view = b.dataset.v; document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x === b)); render();
+  });
+  $('ok').onclick = () => hub.login($('pin').value);
+  $('next').onclick = () => hub.send({ type: 'next' });
+  $('prev').onclick = () => hub.send({ type: 'prev' });
+  $('blank').onclick = () => hub.send({ type: 'blank' });
+
+  function times(s) {
+    let t = s.service.startsAt ? new Date(s.service.startsAt).getTime() : null;
+    return s.setlist.map(it => { const at = t; if (t) t += (it.minutes || 0) * 60000; return at; });
+  }
+  function render() {
+    if (!S) return;
+    const L = S.live, item = S.setlist[L.item];
+    $('title').textContent = S.service.title || 'Bethlehem';
+    $('now').textContent = item ? item.title : '';
+    $('lyrics').hidden = view === 'order'; $('order').hidden = view !== 'order';
+    if (view === 'order') {
+      const ts = times(S);
+      $('order').innerHTML = S.setlist.map((it, i) => `<li class="${i === L.item ? 'now' : ''}">
+        <time>${ts[i] ? new Date(ts[i]).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
+        <div>${esc(it.title || it.kind)}<small>${esc([it.key && 'ton ' + it.key, it.leader, it.minutes && it.minutes + ' min'].filter(Boolean).join(' · '))}</small></div></li>`).join('');
+      return;
+    }
+    const chords = view === 'chords';
+    let last = null;
+    $('lyrics').innerHTML = L.slides.map((sl, i) => {
+      const head = sl.label && sl.label !== last ? `<div class="label">${esc(sl.label)}</div>` : ''; last = sl.label;
+      const body = sl.lines.map(l => chords ? `<div class="line">${chordLineToHtml(l, esc)}</div>` : `<div>${esc(stripChords(l))}</div>`).join('');
+      return `${head}<div class="slide ${i === L.slide ? 'now' : ''}" data-i="${i}">${body}</div>`;
+    }).join('') || `<p style="color:var(--mute)">Nimic pe ecran acum.</p>`;
+    document.querySelector('.slide.now')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (hub.role !== 'viewer') document.querySelectorAll('.slide').forEach(el => el.onclick = () => hub.send({ type: 'go', item: L.item, slide: +el.dataset.i }));
+  }
+</script>
+</body>
+</html>

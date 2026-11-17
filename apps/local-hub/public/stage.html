@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ecran scenă</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0b0d;color:#f2f2f2;font-family:"Helvetica Neue",Arial,sans-serif;overflow:hidden;cursor:none}
+  header{display:flex;justify-content:space-between;align-items:baseline;padding:1.5vh 3vw;font-size:3vh;color:#9aa0a6;border-bottom:1px solid #222}
+  header b{color:#fff}
+  #clock{font-variant-numeric:tabular-nums;font-size:4vh;color:#fff}
+  main{display:grid;grid-template-rows:1fr auto;height:calc(100% - 9vh)}
+  #now{padding:3vh 3vw;font-size:5.4vh;line-height:1.15;overflow:hidden}
+  #next{padding:2vh 3vw;font-size:3.4vh;color:#8a8f95;border-top:1px solid #222;line-height:1.15;max-height:30vh;overflow:hidden}
+  .label{font-size:2.6vh;color:#f5b301;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1vh}
+  .line{display:flex;flex-wrap:wrap;margin-bottom:1.2vh}
+  .seg{display:inline-flex;flex-direction:column;white-space:pre}
+  .seg b{color:#f5b301;font-size:.7em;min-height:1em;font-weight:700}
+  .seg i{font-style:normal}
+  .ly{white-space:pre}
+  #blank{position:fixed;top:1vh;right:1vw;background:#b00020;color:#fff;padding:.5vh 1vw;font-size:2.4vh;display:none;border-radius:4px}
+  #msg{background:#f5b301;color:#000;padding:1vh 3vw;font-size:3vh;display:none}
+</style>
+</head>
+<body>
+<header><span><b id="title">—</b> <span id="key"></span></span><span id="pos"></span><span id="clock"></span></header>
+<div id="msg"></div>
+<main><div id="now"></div><div id="next"></div></main>
+<div id="blank">ECRAN NEGRU</div>
+<script type="module">
+  import { connect, esc, stayAwake } from '/client.js';
+  import { chordLineToHtml } from '/core/song.js';
+  const $ = id => document.getElementById(id);
+  stayAwake();
+  document.ondblclick = () => document.documentElement.requestFullscreen?.();
+  const tick = () => $('clock').textContent = new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+  tick(); setInterval(tick, 1000);
+  const render = sl => !sl ? '' :
+    (sl.label ? `<div class="label">${esc(sl.label)}</div>` : '') +
+    sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('');
+  connect(s => {
+    const L = s.live, item = s.setlist[L.item], nextItem = s.setlist[L.item + 1];
+    $('title').textContent = item ? item.title : '—';
+    $('key').textContent = item && item.key ? `· ton ${item.key}` : '';
+    $('pos').textContent = L.slides.length ? `${L.slide + 1} / ${L.slides.length}` : '';
+    $('now').innerHTML = render(L.slides[L.slide]);
+    const n = L.slides[L.slide + 1];
+    $('next').innerHTML = n ? `<div class="label">Urmează</div>${render(n)}`
+      : nextItem ? `<div class="label">Urmează</div>${esc(nextItem.title)}` : '';
+    $('blank').style.display = L.blank ? 'block' : 'none';
+    $('msg').style.display = L.message ? 'block' : 'none'; $('msg').textContent = L.message;
+  });
+</script>
+</body>
+</html>
