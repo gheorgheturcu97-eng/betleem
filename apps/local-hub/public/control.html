@@ -46,8 +46,8 @@
   <select id="bg" style="width:180px"></select>
   <input id="msg" placeholder="Mesaj pe ecran (Enter)" style="width:220px">
   <span class="spacer"></span>
-  <a href="/main.html" target="_blank"><button>Ecran principal</button></a>
-  <a href="/stage.html" target="_blank"><button>Ecran scenă</button></a>
+  <button id="bMain" title="Deschide o fereastră nouă. Mut-o pe proiector și apasă F11.">Ecran principal ↗</button>
+  <button id="bStage" title="Deschide o fereastră nouă. Mut-o pe monitorul de scenă și apasă F11.">Ecran scenă ↗</button>
   <input id="pin" type="password" placeholder="PIN" style="width:80px"><button id="bLogin">OK</button><span id="role" class="hint"></span>
 </header>
 
@@ -124,6 +124,14 @@ Poți lipi și acorduri deasupra versurilor — se convertesc automat."></textar
   $('bg').onchange = e => send({ type: 'background', value: e.target.value });
   $('msg').onkeydown = e => { if (e.key === 'Enter') send({ type: 'message', value: e.target.value }); };
   $('bLogin').onclick = () => hub.login($('pin').value);
+  // each output opens in its OWN window, so it can be dragged to the projector / stage monitor
+  const openScreen = (url, name) => {
+    const w = window.open(url, name, 'popup,width=960,height=540');
+    if (!w) toast('Browserul a blocat fereastra. Permite ferestrele pop-up pentru localhost.');
+    else toast('Mută fereastra pe ecranul dorit, apoi apasă F11 sau dublu-clic pe ea.');
+  };
+  $('bMain').onclick = () => openScreen('/main.html', 'bnc-main');
+  $('bStage').onclick = () => openScreen('/stage.html', 'bnc-stage');
   addEventListener('keydown', e => {
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); send({ type: 'next' }); }
