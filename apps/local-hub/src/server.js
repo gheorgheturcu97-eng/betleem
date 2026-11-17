@@ -16,6 +16,7 @@ import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
+import { runAssistant } from './ai.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -180,8 +181,11 @@ wss.on('connection', (ws, req) => {
   sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) ? 'leader' : 'viewer' });
   ws.send(JSON.stringify({ type: 'hello', role: sessions.get(ws).role, state: snapshot() }));
   ws.on('close', () => sessions.delete(ws));
-  ws.on('message', raw => {
-    let m; try { m = JSON.parse(raw); } catch { return; }
+  ws.on('message', raw => { let m; try { m = JSON.parse(raw); } catch { return; } handleMessage(ws, m); });
+});
+
+/** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
+function handleMessage(ws, m) {
     const reply = o => ws.send(JSON.stringify(o));
 
     if (m.type === 'login') {
@@ -327,11 +331,41 @@ wss.on('connection', (ws, req) => {
       default: return;
     }
     broadcast();
-  });
-});
+}
 
 // Musician notes can be posted by anyone logged in as operator+ (musicians use operator PIN or
 // the future Supabase login). Kept separate so it is easy to open up later.
+function searchSongs(query, tag) {
+  const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const q = fold(query);
+  return db.songs
+    .filter(s => !tag || (s.tags || []).includes(tag))
+    .filter(s => !q || fold(s.title).includes(q) || fold(s.body.replace(/\[[^\]]*\]/g, '')).includes(q))
+    .sort((a, b) => a.title.localeCompare(b.title, 'ro'))
+    .map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
+}
+const mediaList = () => fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.') && f !== 'logo.png');
+
+// --- AI assistant -------------------------------------------------------------------
+const AI_FILE = path.join(DATA_DIR, 'ai.json');
+let aiSettings = { provider: 'auto', claudeModel: 'claude-sonnet-5-5', ollamaUrl: 'http://localhost:11434', ollamaModel: 'qwen2.5:7b' };
+try { aiSettings = { ...aiSettings, ...JSON.parse(fs.readFileSync(AI_FILE, 'utf8')) }; } catch {}
+const aiPublic = () => ({ ...aiSettings, claudeKey: undefined, hasKey: !!aiSettings.claudeKey, keyHint: aiSettings.claudeKey ? '…' + aiSettings.claudeKey.slice(-4) : '' });
+const aiSocket = { send(t) { try { const o = JSON.parse(t); if (o.type === 'error' || (o.type === 'church' && !o.ok)) this.last = o.error; } catch {} } };
+sessions.set(aiSocket, { role: 'leader' });
+const aiHub = {
+  state: () => ({
+    church: activeChurch().name, service: db.service,
+    program: db.setlist.map((it, i) => ({ position: i + 1, kind: it.kind,
+      title: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.title : it.title, key: it.key || '', minutes: it.minutes, display: it.display, background: it.background })),
+    live: { position: live.item + 1, slide: live.slide + 1, blank: live.blank, background: live.background },
+    display: db.display,
+  }),
+  run(m) { aiSocket.last = null; handleMessage(aiSocket, m); return aiSocket.last; },
+  searchSongs, media: mediaList,
+  song: id => db.songs.find(s => s.id === id),
+};
+
 // --- Add chords from resursecrestine.ro (runs in the background) ---------------------
 const chordsJob = { running: false, stop: false };
 function chordsEvent(o) {
@@ -370,14 +404,7 @@ async function handle(req, res) {
   try {
     if (p === '/core/song.js') return send(res, 200, CORE_JS, TYPES['.js']);
     if (p === '/api/songs' && req.method === 'GET') {
-      const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const q = fold(url.searchParams.get('q'));
-      const tag = url.searchParams.get('tag');
-      const list = db.songs
-        .filter(s => !tag || (s.tags || []).includes(tag))
-        .filter(s => !q || fold(s.title).includes(q) || fold(s.body.replace(/\[[^\]]*\]/g, '')).includes(q))
-        .sort((a, b) => a.title.localeCompare(b.title, 'ro'))
-        .map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
+      const list = searchSongs(url.searchParams.get('q'), url.searchParams.get('tag'));
       return json(res, 200, list);
     }
     if (p === '/api/tags' && req.method === 'GET') {
@@ -419,6 +446,27 @@ async function handle(req, res) {
       return json(res, 200, { ok: true });
     }
     if (p === '/api/add-chords/stop' && req.method === 'POST') { chordsJob.stop = true; return json(res, 200, { ok: true }); }
+    if (p === '/api/ai/settings') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      if (req.method === 'POST') {
+        const v = JSON.parse(await body(req, 10_000));
+        for (const k of ['provider', 'claudeModel', 'ollamaUrl', 'ollamaModel']) if (typeof v[k] === 'string' && v[k].length < 200) aiSettings[k] = v[k].trim();
+        if (typeof v.claudeKey === 'string' && v.claudeKey.trim()) aiSettings.claudeKey = v.claudeKey.trim();
+        if (v.clearKey) delete aiSettings.claudeKey;
+        fs.writeFileSync(AI_FILE, JSON.stringify(aiSettings, null, 2));
+      }
+      return json(res, 200, aiPublic());
+    }
+    if (p === '/api/ai/chat' && req.method === 'POST') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const { history } = JSON.parse(await body(req, 200_000));
+      const clean = (Array.isArray(history) ? history : []).slice(-16)
+        .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+        .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }));
+      if (!clean.length || clean.at(-1).role !== 'user') return json(res, 400, { error: 'Scrie un mesaj' });
+      try { return json(res, 200, await runAssistant(aiSettings, clean, aiHub)); }
+      catch (e) { return json(res, 200, { error: e.message }); }
+    }
     if (p === '/api/media' && req.method === 'GET') {
       const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.'));
       return json(res, 200, files);

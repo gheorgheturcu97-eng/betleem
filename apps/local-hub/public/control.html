@@ -201,6 +201,20 @@
   .tagchip.on{background:rgba(255,191,47,.18);border-color:rgba(255,191,47,.7);color:var(--fg)}
   .lib .tg{font-size:10.5px;color:var(--acc);margin-left:6px}
   .lib .ch{font-size:11px;color:var(--mute)}
+  .ai-btn{position:fixed;right:26px;bottom:26px;z-index:22;padding:11px 18px;font-size:14px}
+  .ai{position:fixed;right:22px;bottom:22px;width:400px;height:min(560px,70vh);display:none;flex-direction:column;z-index:26;background:rgba(32,34,44,.78);padding:12px}
+  .ai.show{display:flex}
+  .ai-head{display:flex;align-items:center;gap:8px;margin-bottom:8px} .ai-head b{font-size:15px}
+  .ai-log{flex:1;display:flex;flex-direction:column;gap:8px;padding:4px 2px}
+  .msg{max-width:88%;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.45;white-space:pre-wrap}
+  .ai-log .msg:first-child{white-space:normal}
+  .msg.me{align-self:flex-end;background:linear-gradient(180deg,#ffd35c,#ff9d1e);color:var(--acc-ink)}
+  .msg.bot{align-self:flex-start;background:rgba(255,255,255,.09);border:1px solid var(--stroke)}
+  .msg.err{border-color:rgba(255,90,95,.6)}
+  .msg .did{display:block;margin-top:4px;font-size:11.5px;color:var(--acc)}
+  .msg a.ex{color:var(--acc);text-decoration:none} .msg a.ex:hover{text-decoration:underline}
+  .ai-in{display:flex;gap:8px;margin-top:8px} .ai-in textarea{flex:1;font:inherit;font-size:13.5px;resize:none;border-radius:14px}
+  .ai-in button{border-radius:14px;padding:0 16px}
   /* ---------- toast + dialog */
   #toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;padding:12px 20px;border-radius:999px;
          transition:opacity .2s,transform .2s;z-index:20;max-width:70vw;background:rgba(30,32,40,.7)}
@@ -365,6 +379,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <label class="check stage-only"><input type="checkbox" id="lNext"> Arată slide-ul următor</label>
   <button id="lReset" class="ghost main-only">↺ Scoate setările speciale ale cântării</button>
 </div>
+<button id="aiBtn" class="ai-btn acc" title="Asistentul Betleem">✦ Asistent</button>
+<div class="ai glass" id="ai">
+  <div class="ai-head"><b>✦ Asistent</b><span class="grow"></span><span id="aiProv" class="hint"></span>
+    <button id="aiSet" class="icon" title="Setări">⚙</button><button id="aiClose" class="icon" title="Închide">✕</button></div>
+  <div class="ai-log scroll" id="aiLog"><div class="msg bot">Salut! Scrie-mi ce să fac, de exemplu:<br>
+    <a href="#" class="ex">pune versurile pe scenă pe mijloc</a><br><a href="#" class="ex">fă textul de pe proiector mai mare și jos</a><br>
+    <a href="#" class="ex">adaugă 3 cântări de laudă în program</a><br><a href="#" class="ex">pune fundalul Noapte violet</a></div></div>
+  <form class="ai-in" id="aiForm"><textarea id="aiText" rows="2" placeholder="Scrie aici… (Enter trimite)"></textarea><button class="acc" id="aiSend">➤</button></form>
+</div>
 <div id="toast" class="glass"></div>
 <div class="modal" id="modal"><div class="glass"><h3 id="mTitle"></h3><div class="fields" id="mFields"></div>
   <div class="btns"><button id="mCancel">Renunță</button><button id="mOk" class="acc">OK</button></div></div></div>
@@ -495,6 +518,52 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   document.querySelectorAll('#lAlign button').forEach(b => b.onclick = () => setLook({ align: b.dataset.v }));
   document.querySelectorAll('#lValign button').forEach(b => b.onclick = () => setLook({ valign: b.dataset.v }));
   $('lReset').onclick = () => { if (S.setlist[sel]) { send({ type: 'itemDisplay', item: sel, patch: null }); toast('Cântarea folosește din nou aspectul general'); } };
+
+  // ---- AI assistant (Claude or local model, chosen in ⚙)
+  const aiHistory = [];
+  const ACT = { add_song_to_program: 'am adăugat în program', add_item_to_program: 'am adăugat în program', remove_from_program: 'am scos din program',
+    move_in_program: 'am mutat în program', set_key: 'am schimbat tonul', set_display: 'am schimbat aspectul', set_song_tags: 'am pus etichete',
+    set_background: 'am schimbat fundalul', show_slide: 'am trimis pe ecran', set_service: 'am schimbat serviciul' };
+  const PROV = { auto: 'automat', claude: 'Claude', ollama: 'AI local' };
+  async function aiLoadSettings() { try { const st = await api('/api/ai/settings'); $('aiProv').textContent = PROV[st.provider] || ''; return st; } catch { return {}; } }
+  function aiMsg(text, who, extra = '') {
+    const d = document.createElement('div'); d.className = 'msg ' + who; d.textContent = text;
+    if (extra) { const s = document.createElement('span'); s.className = 'did'; s.textContent = extra; d.append(s); }
+    $('aiLog').append(d); $('aiLog').scrollTop = 1e9; return d;
+  }
+  $('aiBtn').onclick = () => { $('ai').classList.add('show'); $('aiBtn').style.display = 'none'; $('aiText').focus(); aiLoadSettings(); };
+  $('aiClose').onclick = () => { $('ai').classList.remove('show'); $('aiBtn').style.display = ''; };
+  document.querySelectorAll('#aiLog a.ex').forEach(a => a.onclick = e => { e.preventDefault(); $('aiText').value = a.textContent; aiSend(); });
+  $('aiText').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aiSend(); } };
+  $('aiForm').onsubmit = e => { e.preventDefault(); aiSend(); };
+  async function aiSend() {
+    const text = $('aiText').value.trim(); if (!text) return;
+    $('aiText').value = ''; aiMsg(text, 'me'); aiHistory.push({ role: 'user', content: text });
+    const wait = aiMsg('…', 'bot'); $('aiSend').disabled = true;
+    try {
+      const r = await api('/api/ai/chat', { method: 'POST', body: JSON.stringify({ history: aiHistory }) });
+      wait.remove();
+      if (r.error) { aiMsg(r.error, 'bot err'); aiHistory.pop(); return; }
+      const did = [...new Set((r.actions || []).map(a => ACT[a]).filter(Boolean))].join(', ');
+      aiMsg(r.reply || 'Gata.', 'bot', did ? '✓ ' + did : '');
+      aiHistory.push({ role: 'assistant', content: r.reply || 'Gata.' });
+    } catch (e) { wait.remove(); aiMsg(e.message, 'bot err'); aiHistory.pop(); }
+    finally { $('aiSend').disabled = false; $('aiText').focus(); }
+  }
+  $('aiSet').onclick = async () => {
+    const st = await aiLoadSettings();
+    const v = await ask('Setările asistentului', [
+      { label: 'Ce AI folosesc: auto / claude / ollama  (auto = Claude când are cheie și internet, altfel AI local)', value: st.provider || 'auto' },
+      { label: 'Cheia Claude (de pe console.anthropic.com)' + (st.hasKey ? ' — salvată ' + st.keyHint + ', lasă gol ca s-o păstrezi' : ''), type: 'password' },
+      { label: 'Model Claude: claude-sonnet-5-5 (cel mai bun) sau claude-haiku-5-5 (mai ieftin)', value: st.claudeModel || 'claude-sonnet-5-5' },
+      { label: 'Model local (Ollama)', value: st.ollamaModel || 'qwen2.5:7b' },
+      { label: 'Adresa Ollama', value: st.ollamaUrl || 'http://localhost:11434' },
+    ], 'Salvează');
+    if (!v) return;
+    const provider = ['auto', 'claude', 'ollama'].includes(v[0].trim().toLowerCase()) ? v[0].trim().toLowerCase() : 'auto';
+    await api('/api/ai/settings', { method: 'POST', body: JSON.stringify({ provider, claudeKey: v[1], claudeModel: v[2], ollamaModel: v[3], ollamaUrl: v[4] }) });
+    aiLoadSettings(); toast('Setări salvate');
+  };
 
   // tabs
   function showTab(t) {
