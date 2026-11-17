@@ -399,6 +399,7 @@
         <div class="tags" id="tagFilter"></div>
         <div id="results" class="scroll"></div>
         <div id="chordsBox" class="chords-box" hidden><div class="bar"><i id="chordsBar"></i></div><span id="chordsText"></span><button id="bChordsStop" class="ghost">Oprește</button></div>
+        <button id="bClean" class="ghost" title="Pune etichete din semnele site-urilor (1., R:, Str2), scoate /: :/ și pune refrenul după fiecare strofă">🧹 Curăță toată biblioteca</button>
         <div class="row"><button id="bNew2" class="grow">＋ Cântare nouă</button><button id="bChordsAll" class="grow" title="Caută pe Resurse Creștine acordurile pentru cântările fără acorduri">♪ Acorduri la toate</button></div>
       </div>
 
@@ -522,6 +523,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'login') toast(e.ok ? 'Conectat ca ' + e.role : 'PIN greșit');
     if (e.type === 'church' && !e.ok) toast(e.error);
     if (e.type === 'chords') chordsProgress(e);
+    if (e.type === 'cleaned') { songCache.clear(); search(); render(); toast(`Am curățat ${e.changed} din ${e.total} cântări; la ${e.ordered} am pus refrenul după fiecare strofă.`); }
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
     if (e.type === 'undone') toast(e.ok ? (e.what === 'undo' ? 'Anulat: ' : 'Refăcut: ') + (e.name || 'ultima schimbare') : (e.what === 'undo' ? 'Nu mai am ce anula' : 'Nu mai am ce reface'));
   });
@@ -1144,6 +1146,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       webCache.delete(q); setTimeout(search, 400);
     });
   }
+
+  $('bClean').onclick = async () => {
+    const ok = await ask('Curăț toate cântările: semnele de pe site-uri (1., Str2, R:, Ref, Bridge) devin etichete și nu se mai văd pe ecran, dispar „/:” și „:/”, secțiunile fără nume primesc nume, iar refrenul scris o singură dată se cântă după fiecare strofă. Fac întâi o copie de siguranță; poți anula cu Ctrl+Z.', [], 'Curăță');
+    if (ok) send({ type: 'cleanLibrary' });
+  };
 
   // ---- tags (Laudă, Adorare…): filter the library, set them in the editor
   const PRESET_TAGS = ['Laudă', 'Adorare', 'Rugăciune', 'Mulțumire', 'Crăciun', 'Paști', 'Cina Domnului', 'Botez', 'Copii', 'Tineret', 'Evanghelizare', 'Închidere'];

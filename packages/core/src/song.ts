@@ -19,6 +19,12 @@ function normalizeNote(n: string): string {
 }
 
 /** Clean a section label: "{c: Refren:}" -> "Refren" */
+/** A line that is only a section name ("Refren", "Strofa 2:", "{c: Bridge}") — not a lyric that starts with such a word. */
+function isLabelLine(t: string): boolean {
+  if (!SECTION_LABEL.test(t) || t.length >= 40) return false;
+  return /:\s*$/.test(t) || /^\{/.test(t) || /^(verse|vers|strofa|strofă|chorus|refren|bridge|punte|pre-?chorus|pre-?refren|intro|outro|final|tag|ending)\s*\d*\s*$/i.test(t);
+}
+
 function cleanLabel(raw: string): string {
   return raw.replace(/^\s*\{(?:c|comment|soc|sov|sob)?:?\s*/i, '').replace(/[}:]+\s*$/, '').trim();
 }
@@ -33,7 +39,7 @@ export function parseSong(body: string): Section[] {
     const t = line.trim();
     if (/^\{(eoc|eov|eob|end_of_\w+)\}$/i.test(t)) continue; // ChordPro end markers
     if (/^\{(title|t|artist|key|tempo|time|capo)\s*:/i.test(t)) continue; // metadata lines
-    if (SECTION_LABEL.test(t) && t.length < 40) {
+    if (isLabelLine(t)) {
       push();
       cur = { label: cleanLabel(t), lines: [] };
     } else if (t === '') {
@@ -201,26 +207,80 @@ export function chordsOverToChordPro(text: string): string {
 }
 
 /**
- * Turn the labels used on lyric sites into our section labels:
- *   "1. Ce se-aude..."  -> "Strofa 1:" + "Ce se-aude..."
- *   "R:" / "R1:" / "Cor:" -> "Refren:" / "Refren 1:"
- * Only at the start of a stanza, and chords in front of the number are kept.
+ * Turn the labels used on lyric sites into our section labels (only at the start of a stanza;
+ * chords in front of the mark are kept, the mark itself is not shown on screen):
+ *   "1." "1)" "Str1" "Str. 1" "Strofa 1" "V1:" -> "Strofa 1:"
+ *   "R:" "R1:" "Ref:" "Refren 2" "Cor:" "Chorus" -> "Refren:" / "Refren 2:"
+ *   "Bridge:" "Punte" "Pod:" -> "Bridge:"; "Pre-refren:" -> "Pre-refren:"; "Intro", "Final"/"Outro"/"Coda", "Tag"
  */
 export function labelStanzas(text: string): string {
+  const CH = '((?:\\[[^\\]]+\\]\\s*)*)';                        // chords before the mark
+  const RULES: [RegExp, (n: string) => string][] = [
+    [new RegExp('^' + CH + '(\\d{1,2})[.)]\\s+(.*)$'), n => 'Strofa ' + n],
+    [new RegExp('^' + CH + '(?:str(?:ofa|ofă)?|vers(?:e|ul)?|v)\\.?\\s*(\\d{1,2})\\s*[:.)]?\\s*(.*)$', 'i'), n => 'Strofa ' + n],
+    [new RegExp('^' + CH + '(?:pre-?\\s?refren|pre-?\\s?chorus)\\s*(\\d*)\\s*(?:[:.]\\s*(.*))?$', 'i'), n => 'Pre-refren' + (n ? ' ' + n : '')],
+    [new RegExp('^' + CH + '(?:r|ref|refren|refrain|cor|chorus)\\s*(\\d*)\\s*[:.]\\s*(.*)$', 'i'), n => 'Refren' + (n ? ' ' + n : '')],
+    [new RegExp('^' + CH + '(?:refren|chorus)\\s*(\\d*)()$', 'i'), n => 'Refren' + (n ? ' ' + n : '')],
+    [new RegExp('^' + CH + '(?:bridge|punte|pod)\\s*(\\d*)\\s*(?:[:.]\\s*(.*))?$', 'i'), n => 'Bridge' + (n ? ' ' + n : '')],
+    [new RegExp('^' + CH + '(?:intro)\\s*(\\d*)\\s*(?:[:.]\\s*(.*))?$', 'i'), () => 'Intro'],
+    [new RegExp('^' + CH + '(?:final|outro|coda|încheiere|incheiere)\\s*(\\d*)\\s*(?:[:.]\\s*(.*))?$', 'i'), () => 'Final'],
+    [new RegExp('^' + CH + '(?:tag)\\s*(\\d*)\\s*[:.]\\s*(.*)$', 'i'), () => 'Tag'],
+  ];
   const out: string[] = [];
   let atStart = true;
   for (const line of text.split('\n')) {
     const t = line.trim();
     if (!t) { out.push(line); atStart = true; continue; }
-    if (atStart) {
-      const v = t.match(/^((?:\[[^\]]+\]\s*)*)(\d{1,2})[.)]\s+(.*)$/);
-      const r = t.match(/^((?:\[[^\]]+\]\s*)*)(?:R|Ref|Refren|Cor|Chorus)\s*(\d*)\s*[:.]\s*(.*)$/i);
-      if (v) { out.push(`Strofa ${v[2]}:`); if ((v[1] + v[3]).trim()) out.push(v[1] + v[3]); atStart = false; continue; }
-      if (r) { out.push(r[2] ? `Refren ${r[2]}:` : 'Refren:'); if ((r[1] + r[3]).trim()) out.push(r[1] + r[3]); atStart = false; continue; }
+    if (atStart && !isLabelLine(t)) {
+      const hit = RULES.map(([re, name]) => { const m = t.match(re); return m && { m, name }; }).find(Boolean);
+      if (hit) {
+        const [, chords, n, rest = ''] = hit.m;
+        out.push(hit.name(n || '') + ':');
+        if ((chords + rest).trim()) out.push((chords + rest).trimEnd());
+        atStart = false; continue;
+      }
     }
     out.push(line); atStart = false;
   }
   return out.join('\n');
+}
+
+const REPEAT_MARK = /\/{1,2}:|:\/{1,2}|\((?:x\s*\d|bis|\d\s*x)\)|\s(?:x\s?\d|bis)\s*$/gi;
+
+/** "/: … :/" means "sing twice". The marks are not shown on screen. */
+export function stripRepeatMarks(body: string): string {
+  return body.split('\n').map(l => {
+    if (!REPEAT_MARK.test(l)) return l;
+    REPEAT_MARK.lastIndex = 0;
+    return l.replace(REPEAT_MARK, ' ').replace(/(\])\s+(?=\S)/g, '$1').replace(/[ \t]{2,}/g, ' ').trim();
+  }).join('\n');
+}
+
+/**
+ * When the chorus is written only once (as on most lyric sites), sing it after every verse and bridge:
+ * Strofa 1, Refren, Strofa 2, Refren… Returns section numbers ("#0", "#1"…), or null when nothing changes.
+ */
+export function autoArrangement(body: string): string[] | null {
+  const secs = parseSong(body);
+  const kinds = secs.map(s => sectionKind(s.label));
+  const c = kinds.indexOf('chorus');
+  if (c < 0) return null;
+  const chorusLabel = secs[c].label.toLowerCase();
+  const group: number[] = [];                                   // the chorus may span several sections with the same name
+  for (let i = c; i < secs.length && secs[i].label.toLowerCase() === chorusLabel; i++) group.push(i);
+  if (secs.some((s, i) => !group.includes(i) && s.label.toLowerCase() === chorusLabel)) return null;   // already written out
+  if (kinds.filter(k => k === 'verse').length < 2) return null;
+  const order: string[] = [];
+  for (let i = 0; i < secs.length; i++) {
+    if (group.includes(i) && i !== group[0]) continue;
+    if (i === group[0]) { group.forEach(g => order.push('#' + g)); i = group[group.length - 1]; continue; }
+    order.push('#' + i);
+    const nextKind = kinds[i + 1];
+    if ((kinds[i] === 'verse' || kinds[i] === 'bridge') && i > group[0] && nextKind !== 'chorus' && nextKind !== 'prechorus') group.forEach(g => order.push('#' + g));
+    if (kinds[i] === 'prechorus' && i > group[0] && nextKind !== 'chorus') group.forEach(g => order.push('#' + g));
+  }
+  const same = order.length === secs.length && order.every((t, i) => t === '#' + i);
+  return same ? null : order;
 }
 
 /** Normalise any pasted/imported text into a clean song body. */
@@ -234,7 +294,10 @@ export function normalizeImported(text: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   if (t.split("\n").some(isChordLine)) t = chordsOverToChordPro(t); // also fixes mixed pastes
-  return labelStanzas(t);
+  t = labelStanzas(t);
+  // blocks without a name get one (the "/: :/" marks help find the chorus), then the marks are dropped
+  if (parseSong(t).some(sec => !sec.label)) t = autoLabel(t);
+  return stripRepeatMarks(t);
 }
 
 /** Render one line as HTML with chords placed above the syllables (stage / music stand). */

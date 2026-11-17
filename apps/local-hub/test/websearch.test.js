@@ -38,5 +38,5 @@ Refren:<br>
 &nbsp;&nbsp;&nbsp;${a('D')}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${a('G')}&nbsp;<br \\="">
 Sa&nbsp;cantam&nbsp;Maranata<br></span></div>`;
   const body = normalizeImported(extractLyrics(html, 'resursecrestine.ro').body);
-  assert.equal(body, '[D]Curand [A]Domnul Slavei\n\nRefren:\nSa [D]cantam Ma[G]ranata');
+  assert.equal(body, 'Strofa 1:\n[D]Curand [A]Domnul Slavei\n\nRefren:\nSa [D]cantam Ma[G]ranata');
 });

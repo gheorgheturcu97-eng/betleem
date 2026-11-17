@@ -79,7 +79,7 @@ test('chordsOverToChordPro places chords at their columns', () => {
 
 test('normalizeImported fixes Romanian cedilla diacritics and converts chords', () => {
   const t = normalizeImported('C\nŞi ţie\n\n\n\nRefren');
-  assert.equal(t, '[C]Și ție\n\nRefren');
+  assert.equal(t, 'Strofa 1:\n[C]Și ție', 'a block with no name gets one; an empty label is dropped');
 });
 
 test('labelStanzas turns site numbering into section labels', async () => {
@@ -222,4 +222,16 @@ test('autoLabel does not reuse names and follows named copies', async () => {
   const { autoLabel, parseSong } = await import('../src/song.ts');
   const body = 'Strofa 1:\nUnu doi trei patru\n\nRefren 1:\nSlava slava aleluia amin\n\nCinci sase sapte opt\n\nSlava slava aleluia amin';
   assert.deepEqual(parseSong(autoLabel(body)).map(s => s.label), ['Strofa 1', 'Refren 1', 'Strofa 2', 'Refren 1']);
+});
+
+test('lyric sites: marks become tags, repeat marks go away, chorus after every verse', async () => {
+  const { normalizeImported, autoArrangement, parseSong, stripRepeatMarks } = await import('../src/song.ts');
+  const site = '1. Ce se-aude\nÎn tăcere\n\nR: /: Sfânt și vrednic\nGlorios :/\n\n2. A doua\nRând\n\nStr3 A treia\nrând (x2)\n\nBridge: Punte aici\ngata\n\nFinalul vine curând';
+  const n = normalizeImported(site);
+  assert.deepEqual(parseSong(n).map(s => s.label), ['Strofa 1', 'Refren', 'Strofa 2', 'Strofa 3', 'Bridge', 'Strofa 4']);
+  assert.ok(!/\/:|:\/|x2/.test(n), 'no repeat marks left');
+  assert.equal(parseSong(n)[1].lines[0], 'Sfânt și vrednic');
+  assert.deepEqual(autoArrangement(n), ['#0', '#1', '#2', '#1', '#3', '#1', '#4', '#1', '#5', '#1']);
+  assert.equal(stripRepeatMarks('[A]/:[E] S-a născut'), '[A][E]S-a născut');
+  assert.equal(autoArrangement('Strofa 1:\nA\n\nRefren:\nB\n\nStrofa 2:\nC\n\nRefren:\nB'), null, 'already written out');
 });

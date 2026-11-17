@@ -189,7 +189,8 @@ export function addSongs(list) {
   let added = 0;
   for (const s of list) {
     if (!s || !s.title || !s.body || have.has(s.title.toLowerCase())) continue;
-    db.songs.push({ id: crypto.randomUUID(), ...s, body: core.normalizeImported(s.body), createdAt: new Date().toISOString() });
+    const body = core.normalizeImported(s.body), order = s.arrangement ? null : core.autoArrangement(body);
+    db.songs.push({ id: crypto.randomUUID(), ...s, body, ...(order ? { arrangement: order } : {}), createdAt: new Date().toISOString() });
     have.add(s.title.toLowerCase()); added++;
   }
   if (added) { save(); broadcast(); }
@@ -240,7 +241,7 @@ wss.on('connection', (ws, req) => {
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 const UNDOABLE = new Set(['addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'duplicateSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
@@ -258,7 +259,7 @@ function restoreSnapshot(sn) {
 }
 const UNDO_NAMES = { addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', duplicateSlide: 'repetarea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -389,9 +390,23 @@ function handleMessage(ws, m) {
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const song = db.songs.find(x => x.id === it.songId); if (!song) break;
         const before = core.parseSong(song.body).filter(sec => !sec.label).length;
-        const body = core.autoLabel(song.body);
-        if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); save(); }
+        const body = core.stripRepeatMarks(core.autoLabel(core.labelStanzas(song.body)));   // site marks ("1.", "R:", "/: :/") become tags
+        if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); }
+        if (!song.arrangement?.length) { const order = core.autoArrangement(song.body); if (order) song.arrangement = order; }
+        save();
         reply({ type: 'autoLabeled', named: before, title: song.title });
+        break;
+      }
+      case 'cleanLibrary': {                         // every song: site marks -> tags, no "/: :/", names for blocks, chorus after each verse
+        if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate curăța toată biblioteca.' });
+        try { fs.writeFileSync(path.join(DATA_DIR, `library.backup-${Date.now()}.json`), JSON.stringify(db)); } catch {}
+        let changed = 0, ordered = 0;
+        for (const song of db.songs) {
+          const body = core.normalizeImported(song.body);
+          if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); changed++; }
+          if (!song.arrangement?.length) { const order = core.autoArrangement(song.body); if (order) { song.arrangement = order; ordered++; } }
+        }
+        save(); reply({ type: 'cleaned', changed, ordered, total: db.songs.length });
         break;
       }
       case 'duplicateSlide': {                       // play this slide once more, right after itself (only in this program)
@@ -443,8 +458,8 @@ function handleMessage(ws, m) {
           ...(tags ? { tags } : {}), updatedAt: new Date().toISOString() };
         if (existing) Object.assign(existing, data);
         else {
-          if (core.parseSong(data.body).every(sec => !sec.label)) data.body = core.autoLabel(data.body);   // a new song gets its sections named
-          const created = { id: crypto.randomUUID(), ...data, createdAt: new Date().toISOString() };
+          const order = core.autoArrangement(data.body);                 // chorus written once: sing it after every verse
+          const created = { id: crypto.randomUUID(), ...data, ...(order ? { arrangement: order } : {}), createdAt: new Date().toISOString() };
           db.songs.push(created);
           if (m.addToProgram && need(ws, 'leader')) db.setlist.push({ id: crypto.randomUUID(), kind: 'song', songId: created.id, title: '', key: created.key || '', minutes: 5, notes: [] });
         }
@@ -623,7 +638,7 @@ export function mergePcoSongs(list) {
     const labels = core.parseSong(body).map(sec => sec.label.toLowerCase());
     const order = (x.sequence || []).map(l => String(l)).filter(l => labels.includes(l.toLowerCase()));
     db.songs.push({ id: crypto.randomUUID(), title: x.title.slice(0, 120), author: x.author || '', key: x.key || core.readMeta(body).key || '', body,
-      source: 'planningcenter', pcoId: x.pcoId, ccli: x.ccli || '', ...(order.length >= 2 ? { arrangement: order } : {}),
+      source: 'planningcenter', pcoId: x.pcoId, ccli: x.ccli || '', ...(order.length >= 2 ? { arrangement: order } : core.autoArrangement(body) ? { arrangement: core.autoArrangement(body) } : {}),
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     added++;
   }
