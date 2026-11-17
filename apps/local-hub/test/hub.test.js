@@ -101,3 +101,19 @@ test('churches: separate programs, code required, guessing is slowed down', asyn
   assert.match((await a.next(m => m.type === 'church')).error, /Prea multe/, 'locked after 5 wrong codes, even with the right one');
   a.ws.close();
 });
+
+test('editSlide fixes words and keeps chords on them', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'saveSong', song: { title: 'Slide test', body: 'Strofa 1:\n[G]Mare e [D]Domnul\n[C]Sfânt e Numele' } });
+  await a.next(m => m.type === 'state');
+  const id = (await fetch('http://localhost:4599/api/songs?q=slide test').then(r => r.json()))[0].id;
+  a.send({ type: 'addItem', kind: 'song', songId: id });
+  const st = await a.next(m => m.type === 'state' && m.state.setlist.some(i => i.songId === id));
+  const item = st.state.setlist.findIndex(i => i.songId === id);
+  a.send({ type: 'editSlide', item, slide: 0, text: 'Mare e Domnul nostru\nSfânt e Numele Lui' });
+  await a.next(m => m.type === 'state');
+  const song = await fetch('http://localhost:4599/api/songs/' + id).then(r => r.json());
+  assert.equal(song.body, 'Strofa 1:\n[G]Mare e [D]Domnul nostru\n[C]Sfânt e Numele Lui');
+  a.ws.close();
+});

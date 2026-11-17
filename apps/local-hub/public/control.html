@@ -136,6 +136,9 @@
   .slide.live{border-color:var(--acc);background:linear-gradient(180deg,rgba(255,191,47,.2),rgba(0,0,0,.3));box-shadow:0 0 0 1px rgba(255,191,47,.4),0 10px 30px rgba(255,160,30,.2)}
   .slide .lb{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--acc);margin-bottom:4px}
   .slide .n{position:absolute;right:12px;top:10px;font-size:11px;color:var(--faint)}
+  .slide .edit{position:absolute;right:30px;top:6px;width:26px;height:26px;padding:0;font-size:12px;opacity:0;transition:opacity .12s}
+  .slide:hover .edit{opacity:1}
+  .modal textarea{width:100%;min-height:150px}
   .empty{display:grid;place-items:center;text-align:center;color:var(--mute);padding:36px 12px;border:1px dashed var(--stroke);border-radius:var(--r-sm);line-height:1.6}
 
   .bg-panel{padding:12px 14px;flex:none}
@@ -392,14 +395,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function ask(title, fields = [], okText = 'OK') {
     return new Promise(done => {
       $('mTitle').textContent = title; $('mOk').textContent = okText;
-      $('mFields').innerHTML = fields.map((f, i) => `<label>${esc(f.label)}<input data-i="${i}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"></label>`).join('');
+      $('mFields').innerHTML = fields.map((f, i) => f.type === 'textarea'
+        ? `<label>${esc(f.label)}<textarea data-i="${i}" rows="${f.rows || 6}" spellcheck="false">${esc(f.value ?? '')}</textarea></label>`
+        : `<label>${esc(f.label)}<input data-i="${i}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"></label>`).join('');
       $('modal').classList.add('show');
-      const inputs = [...$('mFields').querySelectorAll('input')];
+      const inputs = [...$('mFields').querySelectorAll('input,textarea')];
       setTimeout(() => (inputs[0] || $('mOk')).focus(), 30);
       const close = v => { $('modal').classList.remove('show'); $('mOk').onclick = $('mCancel').onclick = $('modal').onkeydown = null; done(v); };
       $('mOk').onclick = () => close(inputs.map(i => i.value));
       $('mCancel').onclick = () => close(null);
-      $('modal').onkeydown = e => { if (e.key === 'Enter') $('mOk').click(); if (e.key === 'Escape') close(null); };
+      $('modal').onkeydown = e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') $('mOk').click(); if (e.key === 'Escape') close(null); };
     });
   }
 
@@ -576,9 +581,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       $('slides').innerHTML = `<div class="slide ${sel === S.live.item ? 'live' : ''}" data-s="0"><div class="lb">${esc(KIND[it.kind])}</div>${esc(it.title)}</div>`;
     } else {
       $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''}" data-s="${i}">
-        <span class="n">${i + 1}</span><div class="lb">${esc(sl.label || ' ')}</div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div>`).join('');
+        <span class="n">${i + 1}</span>${it.kind === 'song' ? '<button class="edit" title="Corectează textul acestui slide">✎</button>' : ''}<div class="lb">${esc(sl.label || ' ')}</div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div>`).join('');
     }
-    document.querySelectorAll('#slides .slide').forEach(el => el.onclick = () => send({ type: 'go', item: sel, slide: +el.dataset.s }));
+    document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
+      if (!e.target.classList.contains('edit')) return send({ type: 'go', item: sel, slide: +el.dataset.s });
+      const sl = slides[+el.dataset.s];
+      const v = await ask('Corectează slide-ul ' + (+el.dataset.s + 1) + (sl.label ? ' · ' + sl.label : ''),
+        [{ label: 'Text (acordurile rămân pe cuvintele lor)', type: 'textarea', value: sl.lines.map(l => stripChords(l)).join('\n') }], 'Salvează');
+      if (v) { send({ type: 'editSlide', item: sel, slide: +el.dataset.s, text: v[0] }); songCache.delete(it.songId); toast('Slide corectat'); }
+    });
     document.querySelector('#slides .slide.live')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
   const songCache = new Map();

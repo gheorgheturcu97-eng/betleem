@@ -239,6 +239,28 @@ wss.on('connection', (ws, req) => {
         if (m.item === live.item) live.background = it.background;
         save(); break;
       }
+      case 'editSlide': {                            // fix the words of one slide; chords stay on their words
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const sections = core.arrange(core.parseSong(song.body), it.arrangement || song.arrangement);
+        const max = it.maxLines || 4;
+        let n = 0, hit = null;
+        for (const sec of sections) {                // same split as toSlides, but remember where each slide comes from
+          const parts = Math.max(1, Math.ceil(sec.lines.length / max)), size = Math.ceil(sec.lines.length / parts);
+          for (let i = 0; i < sec.lines.length; i += size) { if (n === m.slide) hit = { sec, from: i, to: Math.min(i + size, sec.lines.length) }; n++; }
+        }
+        if (!hit) break;
+        const oldLines = hit.sec.lines.slice(hit.from, hit.to);
+        const newText = String(m.text || '').replace(/\r/g, '').split('\n').map(l => l.trimEnd()).filter(l => l.trim()).join('\n');
+        if (!newText) return reply({ type: 'error', error: 'Slide-ul nu poate fi gol' });
+        const withChords = /\[[A-G]/.test(newText) ? newText : core.applyChords(newText, oldLines.join('\n')).body;
+        const oldBlock = hit.sec.lines.join('\n');
+        const newBlock = [...hit.sec.lines.slice(0, hit.from), ...withChords.split('\n'), ...hit.sec.lines.slice(hit.to)].join('\n');
+        if (!song.body.includes(oldBlock)) return reply({ type: 'error', error: 'Nu am găsit slide-ul în cântare. Editează-l din Editor.' });
+        song.body = song.body.replace(oldBlock, newBlock);
+        song.updatedAt = new Date().toISOString();
+        save(); break;
+      }
       case 'saveSong': {                             // operators fix lyrics
         const s = m.song || {};
         if (!s.title || !s.body) return reply({ type: 'error', error: 'Titlu și versuri obligatorii' });
