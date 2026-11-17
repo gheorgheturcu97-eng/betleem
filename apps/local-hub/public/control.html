@@ -11,6 +11,7 @@
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/fonts/inter.css">
+<link rel="stylesheet" href="/fonts/display/display.css">
 <title>Betleem</title>
 <style>
   :root{
@@ -419,8 +420,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="seg" id="lookTabs"><button data-s="main" class="sel">Sală (proiector)</button><button data-s="stage">Scenă</button></div>
   <label class="check" id="lookItemRow"><input type="checkbox" id="lookItem"> Doar pentru cântarea selectată</label>
   <div class="lf"><span>Font</span><select id="lFont">
-    <option>Segoe UI</option><option>Inter</option><option>Arial</option><option>Bahnschrift</option><option>Calibri</option><option>Georgia</option>
-    <option>Trebuchet MS</option><option>Verdana</option><option>Tahoma</option><option>Impact</option><option>Times New Roman</option></select></div>
+    <optgroup label="Simple"><option value="Montserrat" style="font-family:'Montserrat'">Montserrat</option><option value="Figtree" style="font-family:'Figtree'">Figtree · ca Proxima Nova</option><option value="Poppins" style="font-family:'Poppins'">Poppins</option><option value="Inter" style="font-family:'Inter'">Inter</option><option value="Raleway" style="font-family:'Raleway'">Raleway</option><option value="Arial" style="font-family:'Arial'">Arial</option><option value="Segoe UI" style="font-family:'Segoe UI'">Segoe UI</option><option value="Bahnschrift" style="font-family:'Bahnschrift'">Bahnschrift</option><option value="Calibri" style="font-family:'Calibri'">Calibri</option><option value="Verdana" style="font-family:'Verdana'">Verdana</option></optgroup><optgroup label="Titluri"><option value="Oswald" style="font-family:'Oswald'">Oswald</option><option value="Bebas Neue" style="font-family:'Bebas Neue'">Bebas Neue · MAJUSCULE</option><option value="Impact" style="font-family:'Impact'">Impact</option></optgroup><optgroup label="Elegante"><option value="Playfair Display" style="font-family:'Playfair Display'">Playfair Display</option><option value="Lora" style="font-family:'Lora'">Lora</option><option value="Georgia" style="font-family:'Georgia'">Georgia</option><option value="Times New Roman" style="font-family:'Times New Roman'">Times New Roman</option></optgroup><optgroup label="Scris de mână"><option value="Caveat" style="font-family:'Caveat'">Caveat</option><option value="Kalam" style="font-family:'Kalam'">Kalam</option><option value="Patrick Hand" style="font-family:'Patrick Hand'">Patrick Hand</option><option value="Dancing Script" style="font-family:'Dancing Script'">Dancing Script</option><option value="Great Vibes" style="font-family:'Great Vibes'">Great Vibes</option><option value="Pacifico" style="font-family:'Pacifico'">Pacifico</option><option value="Amatic SC" style="font-family:'Amatic SC'">Amatic SC</option></optgroup></select></div>
   <div class="lf"><span>Mărime</span><input type="range" id="lSize" min="2.5" max="12" step="0.1"><b id="lSizeV"></b></div>
   <div class="lf"><span>Aliniere</span><div class="seg mini" id="lAlign"><button data-v="left">⟸ Stânga</button><button data-v="center">Mijloc</button><button data-v="right">Dreapta ⟹</button></div></div>
   <div class="lf main-only"><span>Poziție</span><div class="seg mini" id="lValign"><button data-v="top">Sus</button><button data-v="middle">Mijloc</button><button data-v="bottom">Jos</button></div></div>
@@ -803,10 +803,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   };
 
   // ---- slide editor: text, section (Strofa/Refren…), font, size, position — for one slide, the song, or all songs
-  const FONTS = ['Segoe UI', 'Inter', 'Arial', 'Bahnschrift', 'Calibri', 'Georgia', 'Trebuchet MS', 'Verdana', 'Tahoma', 'Impact', 'Times New Roman'];
   const SECS = ['Strofa 1', 'Strofa 2', 'Strofa 3', 'Strofa 4', 'Pre-refren', 'Refren', 'Refren 2', 'Bridge', 'Intro', 'Final', 'Tag'];
   const FULL_BOX = { x: 6, y: 6, w: 88, h: 88 };
-  $('sFont').innerHTML = FONTS.map(f => `<option>${f}</option>`).join('');
+  $('sFont').innerHTML = $('lFont').innerHTML;
   $('secList').innerHTML = SECS.map(x => `<option value="${x}">`).join('');
   let ed = null;                                     // { i, it, st, base, text, label, scope }
   function openSlideEditor(i, slides) {

@@ -27,7 +27,7 @@ export const TOOLS = [
     params: {
       screen: { type: 'string', enum: ['main', 'stage'] },
       position: { type: 'number', description: 'opțional: doar pentru cântarea de la această poziție din program (doar main)' },
-      font: { type: 'string', enum: ['Segoe UI', 'Inter', 'Arial', 'Bahnschrift', 'Calibri', 'Georgia', 'Trebuchet MS', 'Verdana', 'Tahoma', 'Impact', 'Times New Roman'] },
+      font: { type: 'string', enum: ['Montserrat', 'Figtree', 'Poppins', 'Inter', 'Raleway', 'Arial', 'Segoe UI', 'Bahnschrift', 'Calibri', 'Verdana', 'Oswald', 'Bebas Neue', 'Impact', 'Playfair Display', 'Lora', 'Georgia', 'Times New Roman', 'Caveat', 'Kalam', 'Patrick Hand', 'Dancing Script', 'Great Vibes', 'Pacifico', 'Amatic SC'] },
       size: { type: 'number' }, color: { type: 'string', description: '#rrggbb' }, chord_color: { type: 'string', description: '#rrggbb, doar stage' },
       align: { type: 'string', enum: ['left', 'center', 'right'] }, valign: { type: 'string', enum: ['top', 'middle', 'bottom'], description: 'doar main' },
       weight: { type: 'number', enum: [400, 600, 700, 800] }, upper: { type: 'boolean' }, shadow: { type: 'boolean' },
