@@ -324,6 +324,8 @@
     <div class="login" id="loginBox">
       <input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button id="bLogin">OK</button>
     </div>
+    <button id="bUndo" class="icon" title="Anulează">↶</button><button id="bRedo" class="icon" title="Refă">↷</button>
+    <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
     <span id="role"></span>
   </header>
 
@@ -364,7 +366,8 @@
             <div class="arr" id="arrChips" title="Trage etichetele ca să schimbi ordinea; ✕ scoate o secțiune doar din acest program"></div>
             <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋ secțiune</option></select>
             <button id="arrReset" class="icon" title="Ordinea din cântare">↺</button>
-            <select id="maxLines" title="Rânduri pe slide"><option value="1">1 rând</option><option value="2">2 rânduri</option><option value="3">3 rânduri</option><option value="4" selected>4 rânduri</option><option value="5">5 rânduri</option><option value="6">6 rânduri</option><option value="8">8 rânduri</option></select>
+            <select id="maxLines" title="Rânduri pe slide (se schimbă imediat)"><option value="1">1 rând</option><option value="2">2 rânduri</option><option value="3">3 rânduri</option><option value="4" selected>4 rânduri</option><option value="5">5 rânduri</option><option value="6">6 rânduri</option><option value="8">8 rânduri</option></select>
+            <button id="bArr" title="Aplică din nou ordinea și rândurile">Aplică</button>
           </div>
           <label class="zoom" title="Mărimea slide-urilor">🔍<input type="range" id="slideZoom" min="150" max="420" step="10"></label>
         </div>
@@ -519,6 +522,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'login') toast(e.ok ? 'Conectat ca ' + e.role : 'PIN greșit');
     if (e.type === 'church' && !e.ok) toast(e.error);
     if (e.type === 'chords') chordsProgress(e);
+    if (e.type === 'undone') toast(e.ok ? (e.what === 'undo' ? 'Anulat: ' : 'Refăcut: ') + (e.name || 'ultima schimbare') : (e.what === 'undo' ? 'Nu mai am ce anula' : 'Nu mai am ce reface'));
   });
   const send = o => hub.send(o);
   const api = (url, opt = {}) => fetch(url, { ...opt, headers: { 'x-pin': hub.pin(), ...(opt.headers || {}) } })
@@ -533,6 +537,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function ask(title, fields = [], okText = 'OK') {
     return new Promise(done => {
       $('mTitle').textContent = title; $('mOk').textContent = okText;
+      $('mFields').style.display = '';
       $('mFields').innerHTML = fields.map((f, i) => f.type === 'textarea'
         ? `<label>${esc(f.label)}<textarea data-i="${i}" rows="${f.rows || 6}" spellcheck="false">${esc(f.value ?? '')}</textarea></label>`
         : `<label>${esc(f.label)}<input data-i="${i}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"></label>`).join('');
@@ -713,6 +718,43 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   };
   $('bMain').onclick = () => openScreen('/main.html', 'bnc-main');
   $('bStage').onclick = () => openScreen('/stage.html', 'bnc-stage');
+  // ---- shortcuts: Ctrl on Windows, ⌘ Cmd on Mac
+  const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const MOD = MAC ? '⌘' : 'Ctrl';
+  const undo = () => send({ type: 'undo' }), redo = () => send({ type: 'redo' });
+  $('bUndo').onclick = undo; $('bRedo').onclick = redo;
+  $('bUndo').title = `Anulează (${MOD}+Z)`; $('bRedo').title = `Refă (${MOD}+Shift+Z)`;
+  const KEYS = [
+    [`${MOD}+Z`, 'Anulează ultima schimbare'], [`${MOD}+Shift+Z  sau  ${MOD}+Y`, 'Refă'],
+    ['→  /  Spațiu  /  Page Down', 'Slide-ul următor'], ['←  /  Page Up', 'Slide-ul anterior'],
+    ['B', 'Ecran negru'], ['L', 'Logo'], ['F2  /  F3', 'Deschide ecranul principal / de scenă'],
+    [`${MOD}+F`, 'Caută în bibliotecă'], [`${MOD}+N`, 'Cântare nouă'], [`${MOD}+S`, 'Salvează (în Editor sau în editorul de slide)'],
+    [`${MOD}+E`, 'Editează slide-ul de pe ecran'], [`${MOD}+D`, 'Repetă slide-ul de pe ecran'], [`${MOD}+Shift+C`, 'Copiază textul slide-ului de pe ecran'],
+    ['Alt+←  /  Alt+→', 'În editorul de slide: slide-ul anterior / următor'], ['Esc', 'Închide fereastra sau ieși din modul etichete'],
+    [`${MOD}+/`, 'Arată această listă'],
+  ];
+  function showKeys() {
+    ask('Scurtături de tastatură', [], 'Am înțeles');
+    $('mFields').style.display = 'block';
+    $('mFields').innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px">' + KEYS.map(([k, v]) => `<tr><td style="padding:5px 12px 5px 0;white-space:nowrap"><b>${esc(k)}</b></td><td style="color:var(--mute)">${esc(v)}</td></tr>`).join('') + '</table>';
+  }
+  $('bKeys').onclick = showKeys;
+  addEventListener('keydown', e => {
+    const mod = MAC ? e.metaKey : e.ctrlKey;
+    if (!mod) return;
+    const k = e.key.toLowerCase(), typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    const sedOpen = $('sedModal').classList.contains('show');
+    if (k === 's') { e.preventDefault(); if (sedOpen) $('sedOk').click(); else if (document.querySelector('#tab-edit.sel')) $('bSave').click(); return; }
+    if (k === '/') { e.preventDefault(); showKeys(); return; }
+    if (typing || sedOpen || $('modal').classList.contains('show')) return;     // in a text box Ctrl+Z undoes the typing
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
+    else if (k === 'f') { e.preventDefault(); showTab('lib'); $('q').focus(); $('q').select(); }
+    else if (k === 'n') { e.preventDefault(); $('bNew2').click(); }
+    else if (k === 'e' && S.live.item >= 0 && S.live.slides.length) { e.preventDefault(); sel = S.live.item; openSlideEditor(S.live.slide, S.live.slides); }
+    else if (k === 'd' && S.live.item >= 0 && S.live.slides.length) { e.preventDefault(); send({ type: 'duplicateSlide', item: S.live.item, slide: S.live.slide }); toast('Slide-ul se repetă'); }
+    else if (k === 'c' && e.shiftKey && S.live.slides[S.live.slide]) { e.preventDefault(); copyText(S.live.slides[S.live.slide].lines.map(l => stripChords(l)).join('\n')); toast('Text copiat'); }
+  });
   addEventListener('keydown', e => {
     if ($('modal').classList.contains('show') || $('sedModal').classList.contains('show') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); send({ type: 'next' }); }
@@ -825,7 +867,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const songCache = new Map();
   async function getSong(it) {
     let song = songCache.get(it.songId);
-    if (!song || (it.rev && song.updatedAt !== it.rev)) { song = await fetch('/api/songs/' + it.songId).then(r => r.json()); songCache.set(it.songId, song); }
+    if (!song || (it.rev !== undefined && (song.updatedAt || '') !== it.rev)) { song = await fetch('/api/songs/' + it.songId).then(r => r.json()); songCache.set(it.songId, song); }
     return song;
   }
   async function previewSlides(it) {
@@ -888,7 +930,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   $('arrAdd').onchange = e => { if (e.target.value && arr) setOrder([...arr.tokens, e.target.value]); e.target.value = ''; };
   $('arrReset').onclick = () => { send({ type: 'arrangement', item: sel, value: null, maxLines: +$('maxLines').value }); toast('Ordinea din cântare'); };
-  $('maxLines').onchange = () => send({ type: 'arrangement', item: sel, value: S.setlist[sel]?.arrangement || null, maxLines: +$('maxLines').value });
+  const applyLines = () => { if (S.setlist[sel]) send({ type: 'arrangement', item: sel, value: S.setlist[sel].arrangement || null, maxLines: +$('maxLines').value }); };
+  $('maxLines').onchange = applyLines;
+  $('bArr').onclick = () => { applyLines(); toast('Aplicat: ' + $('maxLines').selectedOptions[0].text + ' pe slide'); };
   function copyText(t) {
     if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(t).catch(() => fallback());
     fallback();

@@ -238,8 +238,49 @@ wss.on('connection', (ws, req) => {
 });
 
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
+// --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
+const UNDOABLE = new Set(['addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
+  'tagSlides', 'autoLabel', 'duplicateSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
+function takeSnapshot() {
+  return {
+    setlist: structuredClone(db.setlist), service: structuredClone(db.service), display: structuredClone(db.display),
+    plan: structuredClone(db.plan?.services || []),
+    songs: db.songs.map(x => ({ ...x, ...(x.arrangement ? { arrangement: [...x.arrangement] } : {}), ...(x.tags ? { tags: [...x.tags] } : {}) })),
+    liveItemId: db.setlist[live.item]?.id || null, slide: live.slide,
+  };
+}
+function restoreSnapshot(sn) {
+  db.setlist = sn.setlist; db.service = sn.service; db.display = sn.display; db.songs = sn.songs;
+  if (db.plan) db.plan.services = sn.plan;
+  live.item = sn.liveItemId ? db.setlist.findIndex(x => x.id === sn.liveItemId) : -1;
+  live.slide = live.item >= 0 ? clamp(sn.slide, 0, Math.max(0, slidesFor(live.item).length - 1)) : 0;
+}
+const UNDO_NAMES = { addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
+  deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', duplicateSlide: 'repetarea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
+  itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
+
 function handleMessage(ws, m) {
     const reply = o => ws.send(JSON.stringify(o));
+    if (history.church !== db.activeChurch) { history.undo = []; history.redo = []; history.church = db.activeChurch; }
+    if ((m.type === 'undo' || m.type === 'redo') && need(ws, 'operator')) {
+      const from = history[m.type], to = history[m.type === 'undo' ? 'redo' : 'undo'];
+      const step = from.pop();
+      if (!step) return reply({ type: 'undone', ok: false, what: m.type });
+      to.push({ snap: takeSnapshot(), name: step.name });
+      restoreSnapshot(step.snap); history.last = { key: '', at: 0 };
+      save(); syncLiveToPlan(); broadcast();
+      return reply({ type: 'undone', ok: true, what: m.type, name: step.name });
+    }
+    // one step per change; a slider moved continuously (same setting, within 1.5 s) is one step
+    let before = null;
+    if (UNDOABLE.has(m.type)) {
+      const key = m.type + ':' + (m.screen || '') + ':' + Object.keys(m.patch || {}).join(',') + ':' + (m.item ?? '') + ':' + (m.slide ?? '');
+      const merge = ['display', 'itemDisplay', 'slideStyle'].includes(m.type) && history.last.key === key && Date.now() - history.last.at < 1500;
+      history.last = { key, at: Date.now() };
+      if (!merge) before = takeSnapshot();
+    }
 
     if (m.type === 'login') {
       const role = safeEq(m.pin, LEADER_PIN) && LEADER_PIN ? 'leader' : safeEq(m.pin, PIN) && PIN ? 'operator' : null;
@@ -488,6 +529,7 @@ function handleMessage(ws, m) {
       }
       default: return;
     }
+    if (before) { history.undo.push({ snap: before, name: UNDO_NAMES[m.type] || '' }); if (history.undo.length > 60) history.undo.shift(); history.redo = []; }
     syncLiveToPlan();
     broadcast();
 }

@@ -148,7 +148,17 @@ function buildMenu() {
     label: displayLabel(d, i), type: 'radio', checked: displayFor(kind).id === d.id,
     click: () => { settings[kind + 'Display'] = d.id; saveSettings(); if (outputs[kind]) openOutput(kind); else buildMenu(); },
   }));
+  const page = id => () => control?.webContents.executeJavaScript(`document.getElementById('${id}')?.click()`).catch(() => {});
   Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu', label: 'Betleem' }] : []),
+    { label: 'Editare', submenu: [   // Ctrl on Windows, ⌘ on Mac; undo/redo are handled by the page so text boxes keep their own undo
+      { label: 'Anulează', accelerator: 'CmdOrCtrl+Z', registerAccelerator: false, click: page('bUndo') },
+      { label: 'Refă', accelerator: 'CmdOrCtrl+Shift+Z', registerAccelerator: false, click: page('bRedo') },
+      { type: 'separator' },
+      { role: 'cut', label: 'Taie' }, { role: 'copy', label: 'Copiază' }, { role: 'paste', label: 'Lipește' }, { role: 'selectAll', label: 'Selectează tot' },
+      { type: 'separator' },
+      { label: 'Scurtături de tastatură', accelerator: 'CmdOrCtrl+/', registerAccelerator: false, click: page('bKeys') },
+    ] },
     { label: 'Ecrane', submenu: [
       { label: outputs.main ? 'Închide ecranul principal' : 'Deschide ecranul principal', accelerator: 'F2', click: () => outputs.main ? closeOutput('main') : openOutput('main') },
       { label: outputs.stage ? 'Închide ecranul de scenă' : 'Deschide ecranul de scenă', accelerator: 'F3', click: () => outputs.stage ? closeOutput('stage') : openOutput('stage') },

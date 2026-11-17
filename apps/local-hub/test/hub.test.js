@@ -177,3 +177,19 @@ test('Planning Center songs and plans go into the library and the programs', asy
   const res = await fetch('http://localhost:4599/api/pco/settings', { headers: { 'x-pin': '1111' } });
   assert.equal(res.status, 401, 'operators cannot see the Planning Center connection');
 });
+
+test('undo and redo', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'newProgram', title: 'Undo test' });
+  let st = (await a.next(m => m.type === 'state' && m.state.service.title === 'Undo test')).state;
+  a.send({ type: 'addItem', kind: 'sermon', title: 'Predică' });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist.length === 1)).state;
+  a.send({ type: 'undo' });
+  assert.equal((await a.next(m => m.type === 'undone')).name, 'adăugarea în program');
+  st = (await a.next(m => m.type === 'state' && m.state.setlist.length === 0)).state;
+  a.send({ type: 'redo' }); await a.next(m => m.type === 'undone');
+  st = (await a.next(m => m.type === 'state' && m.state.setlist.length === 1)).state;
+  assert.equal(st.setlist[0].title, 'Predică');
+  a.ws.close();
+});
