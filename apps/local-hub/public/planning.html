@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/fonts/inter.css">
+<title>Betleem – Planificare</title>
+<style>
+  :root{
+    --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
+    --glass:rgba(255,255,255,.065); --glass-2:rgba(255,255,255,.10); --glass-3:rgba(255,255,255,.17);
+    --stroke:rgba(255,255,255,.14); --stroke-hi:rgba(255,255,255,.32);
+    --acc:#ffbf2f; --acc-2:#ff9d1e; --acc-ink:#1d1300; --red:#ff5a5f; --green:#3ddc84;
+    --r:22px; --r-sm:14px; --r-xs:10px; --blur:saturate(180%) blur(28px);
+    --shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(255,255,255,.04);
+    font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;font-feature-settings:"cv11","ss01";letter-spacing:-.011em;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;color:var(--fg);background:var(--bg);font-size:14px;line-height:1.4;overflow:hidden;-webkit-font-smoothing:antialiased}
+  .aurora{position:fixed;inset:-20%;z-index:-1;filter:blur(110px) saturate(130%);opacity:.42;pointer-events:none}
+  .aurora i{position:absolute;border-radius:50%;animation:float 30s ease-in-out infinite alternate}
+  .aurora i:nth-child(1){width:46vw;height:46vw;left:2%;top:4%;background:#5b3cff}
+  .aurora i:nth-child(2){width:40vw;height:40vw;right:4%;top:0;background:#00b3a4;animation-delay:-9s}
+  .aurora i:nth-child(3){width:42vw;height:42vw;left:32%;bottom:-6%;background:#ff8a1e;opacity:.7;animation-delay:-17s}
+  @keyframes float{to{transform:translate(6vw,4vh) scale(1.12)}}
+  .glass{background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--stroke);border-radius:var(--r);box-shadow:var(--shadow);position:relative}
+  .glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,0) 38%,rgba(255,255,255,0) 70%,rgba(255,255,255,.05))}
+  button,.btn{font:inherit;color:var(--fg);background:var(--glass-2);border:1px solid var(--stroke);border-radius:999px;padding:8px 14px;cursor:pointer;white-space:nowrap;
+    transition:background .15s,border-color .15s;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  button:hover{background:var(--glass-3);border-color:var(--stroke-hi)}
+  button.acc{background:linear-gradient(180deg,#ffd35c,var(--acc) 45%,var(--acc-2));color:var(--acc-ink);border-color:rgba(255,220,120,.8);font-weight:650;box-shadow:0 6px 22px rgba(255,170,30,.35),inset 0 1px 0 rgba(255,255,255,.6)}
+  button.ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--mute)} button.ghost:hover{color:var(--fg);background:rgba(255,255,255,.07)}
+  button.icon{width:30px;height:30px;padding:0;display:inline-grid;place-items:center}
+  input,select,textarea{font:inherit;color:var(--fg);background:rgba(0,0,0,.24);border:1px solid var(--stroke);border-radius:var(--r-xs);padding:8px 11px;outline:none;width:100%}
+  input:focus,select:focus,textarea:focus{border-color:rgba(255,200,80,.7)}
+  select option,select optgroup{background:#1b1d22} input[type=datetime-local],input[type=date]{color-scheme:dark}
+  h2{font-size:13.5px;font-weight:600;letter-spacing:-.01em;color:rgba(235,238,245,.72);margin:0}
+  .hint{color:var(--mute);font-size:12.5px;margin:0} .grow{flex:1;min-width:0} .row{display:flex;gap:8px;align-items:center}
+  .scroll{overflow:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent}
+
+  .app{height:100vh;display:grid;grid-template-rows:auto 1fr;gap:14px;padding:14px}
+  .top{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 14px;border-radius:999px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+  .brand .star{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(180deg,#ffd35c,#ff9d1e);color:#fff;font-size:17px}
+  .brand small{display:block;font-size:11.5px;font-weight:500;color:var(--mute)}
+  .seg{display:flex;padding:4px;gap:4px;border-radius:999px;background:rgba(0,0,0,.25);border:1px solid var(--stroke)}
+  .seg button{border:0;background:transparent;box-shadow:none;padding:7px 16px;font-weight:600;color:var(--mute)}
+  .seg button.sel{background:var(--glass-3);color:var(--fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 4px 14px rgba(0,0,0,.25)}
+  .nav{margin-left:14px} .views{margin:0 auto}
+
+  .view{display:none;min-height:0} .view.sel{display:grid}
+  #v-services{grid-template-columns:290px minmax(0,1fr) 390px;gap:14px}
+  .panel{display:flex;flex-direction:column;min-height:0;padding:16px;gap:10px}
+
+  /* services list */
+  .svc{display:flex;gap:10px;align-items:center;padding:10px;border-radius:var(--r-sm);cursor:pointer;background:rgba(255,255,255,.045);border:1px solid transparent}
+  .svc:hover{background:rgba(255,255,255,.09)} .svc.sel{background:rgba(255,255,255,.13);border-color:var(--stroke-hi)}
+  .svc .day{width:46px;flex:none;text-align:center;border-radius:12px;padding:5px 0;background:rgba(0,0,0,.25);line-height:1.1}
+  .svc .day b{display:block;font-size:19px} .svc .day small{font-size:10.5px;color:var(--mute);text-transform:uppercase}
+  .svc .t{flex:1;min-width:0} .svc .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .svc small{color:var(--mute);font-size:12px}
+  .pill{font-size:10.5px;padding:2px 8px;border-radius:99px;font-weight:600}
+  .pill.live{background:rgba(61,220,132,.18);color:var(--green)} .pill.pub{background:rgba(63,167,255,.18);color:#7cc4ff} .pill.draft{background:rgba(255,255,255,.08);color:var(--mute)}
+  .warn{color:#ffb35c}
+
+  /* service editor */
+  .ed-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .ed-head #sTitle{font-size:19px;font-weight:650;background:transparent;border-color:transparent;flex:1;min-width:200px}
+  .ed-head #sTitle:hover,.ed-head #sTitle:focus{border-color:var(--stroke);background:rgba(0,0,0,.2)}
+  .ed-head #sDate{width:auto}
+  #items{display:flex;flex-direction:column;gap:6px}
+  .it{display:grid;grid-template-columns:52px 1fr 78px 64px 120px 30px;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid transparent}
+  .it:hover{border-color:var(--stroke)} .it.drag{opacity:.4} .it.over{border-color:var(--acc)}
+  .it time{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px}
+  .it .t b{font-weight:600} .it .t small{display:block;color:var(--mute);font-size:11.5px;text-transform:capitalize}
+  .it input{padding:5px 8px;font-size:13px}
+  .add{display:flex;gap:8px;align-items:center}
+  .found{display:flex;flex-direction:column;gap:2px;max-height:220px}
+  .found div{padding:7px 10px;border-radius:10px;cursor:pointer} .found div:hover{background:rgba(255,255,255,.08)}
+  .found div small{color:var(--acc);margin-left:6px;font-size:11px}
+  .empty{display:grid;place-items:center;text-align:center;color:var(--mute);padding:30px 12px;border:1px dashed var(--stroke);border-radius:var(--r-sm);line-height:1.6}
+
+  /* team for a service */
+  .dept{border-radius:var(--r-sm);padding:10px 12px;background:rgba(0,0,0,.2);border:1px solid var(--stroke)}
+  .dept h3{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:8px} .dept h3 i{width:10px;height:10px;border-radius:50%}
+  .slot{display:grid;grid-template-columns:110px 1fr 44px;gap:6px;align-items:center;margin-bottom:6px}
+  .slot span{font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot select{padding:5px 8px;font-size:13px} .slot .st{padding:5px 2px;text-align:center}
+
+  /* month grid */
+  #v-grid{grid-template-rows:auto 1fr;gap:14px}
+  .grid-wrap{padding:14px;min-height:0}
+  table{border-collapse:separate;border-spacing:0;width:100%}
+  th,td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left;font-size:13px}
+  th{position:sticky;top:0;background:rgba(20,22,30,.85);backdrop-filter:blur(10px);z-index:1;font-weight:600}
+  td.pos{color:var(--mute);white-space:nowrap} td.dep{font-weight:650;color:var(--fg);padding-top:14px}
+  td select{padding:4px 6px;font-size:12.5px;min-width:130px} td select.conflict{border-color:var(--red)}
+
+  /* teams */
+  #v-teams{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px}
+  .vol{display:grid;grid-template-columns:1fr 130px 30px 30px;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045)}
+  .vol small{display:block;color:var(--mute);font-size:11.5px}
+  .posrow{display:grid;grid-template-columns:1fr 70px 30px;gap:6px;margin-bottom:6px}
+
+  .signin{position:fixed;inset:0;display:none;place-items:center;z-index:50;background:rgba(5,6,10,.55);backdrop-filter:blur(8px)}
+  .signin.show{display:grid}
+  .signin>.glass{width:min(360px,90vw);padding:26px;display:flex;flex-direction:column;gap:12px;text-align:center;background:rgba(36,38,48,.75)}
+  .signin h3{margin:0;font-size:19px} .signin input{text-align:center;font-size:22px;letter-spacing:.3em;padding:12px}
+  .signin button{padding:12px;font-size:16px}
+
+  /* ---------- phone */
+  @media (max-width: 900px){
+    body{overflow:auto} .app{height:auto;min-height:100vh;padding:10px;gap:10px}
+    .top{flex-wrap:wrap;border-radius:22px;gap:8px} .nav{margin-left:auto} .views{order:3;width:100%;margin:0} .views button{flex:1}
+    #v-services,#v-teams{grid-template-columns:minmax(0,1fr)} .panel{min-height:auto;min-width:0} .app{grid-template-columns:minmax(0,1fr)}
+    .view.sel{display:grid;min-width:0} .top{min-width:0} body{overflow-x:hidden}
+    #svcList{flex-direction:row !important;overflow-x:auto;max-height:none} .svc{flex:none;min-width:220px}
+    #items,#team,#vols,#depts{max-height:none}
+    .it{grid-template-columns:44px 1fr 64px 30px;grid-template-areas:"time title min del" ". who key ."}
+    .it time{grid-area:time} .it .t{grid-area:title} .it [data-f=leader]{grid-area:who} .it [data-f=key]{grid-area:key} .it .row{grid-area:min} .it [data-del]{grid-area:del}
+    .it .row .hint{display:none} .it [data-f=minutes]{width:56px !important}
+    .ed-head #sDate{width:100%} .add{flex-wrap:wrap} .slot{grid-template-columns:95px 1fr 44px}
+    .grid-wrap{overflow:auto} .vol{grid-template-columns:1fr 30px 30px} .vol>.hint{display:none}
+    input,select,textarea{font-size:16px}   /* no zoom-in on iPhone */
+  }
+  #toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;padding:12px 20px;border-radius:999px;transition:opacity .2s,transform .2s;z-index:40;background:rgba(30,32,40,.75)}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);z-index:30}
+  .modal.show{display:grid}
+  .modal>.glass{width:min(520px,92vw);max-height:86vh;overflow:auto;padding:22px;background:rgba(40,42,50,.7)}
+  .modal h3{margin:0 0 14px;font-size:17px}
+  .modal label{font-size:12.5px;color:var(--mute);display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:12px}
+  .checks label{flex-direction:row;align-items:center;gap:8px;margin:0;color:var(--fg)} .checks input{width:auto;accent-color:var(--acc)}
+  .modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="aurora"><i></i><i></i><i></i></div>
+<div class="app">
+  <header class="top glass">
+    <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
+    <div class="seg nav"><button id="toLive">Live</button><button class="sel">Planificare</button></div>
+    <div class="seg views" id="views">
+      <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button>
+    </div>
+    <span id="role" class="hint"></span>
+  </header>
+
+  <!-- SERVICES -->
+  <section class="view sel" id="v-services">
+    <aside class="panel glass">
+      <div class="row"><h2 class="grow">Servicii</h2><button id="bSundays" title="Adaugă următoarele 8 duminici">＋ 8 duminici</button></div>
+      <div id="svcList" class="scroll" style="display:flex;flex-direction:column;gap:6px;flex:1"></div>
+      <button id="bAddSvc" class="ghost">＋ Alt serviciu (seară, eveniment…)</button>
+    </aside>
+
+    <section class="panel glass" id="editor">
+      <div class="ed-head">
+        <input id="sTitle" placeholder="Titlul serviciului">
+        <input id="sDate" type="datetime-local">
+        <select id="sStatus" style="width:auto"><option value="draft">Ciornă</option><option value="published">Publicat</option></select>
+        <button id="bLive" class="acc" title="Programul acesta apare pe ecrane, în Live">▶ Pune pe Live</button>
+      </div>
+      <div class="row">
+        <span class="hint">Copiază programul de la:</span><select id="copyFrom" style="width:auto"></select>
+        <span class="grow"></span><span class="hint" id="total"></span>
+        <button id="bDelSvc" class="ghost" title="Șterge serviciul">🗑</button>
+      </div>
+      <div id="items" class="scroll" style="flex:1"></div>
+      <div class="add">
+        <input id="songQ" class="grow" placeholder="＋ Adaugă cântare: scrie titlul…" autocomplete="off">
+        <select id="addKind" style="width:auto"><option value="sermon">Predică</option><option value="prayer">Rugăciune</option><option value="reading">Citire</option><option value="announcement">Anunțuri</option><option value="other">Altceva</option></select>
+        <button id="bAddItem">＋</button>
+      </div>
+      <div class="found scroll" id="found"></div>
+    </section>
+
+    <aside class="panel glass">
+      <div class="row"><h2 class="grow">Echipa pentru acest serviciu</h2></div>
+      <div id="warnings" class="hint warn"></div>
+      <div id="team" class="scroll" style="display:flex;flex-direction:column;gap:10px;flex:1"></div>
+    </aside>
+  </section>
+
+  <!-- MONTH GRID -->
+  <section class="view" id="v-grid">
+    <div class="row"><button id="mPrev" class="icon">◀</button><h2 id="mName" style="min-width:150px;text-align:center"></h2><button id="mNext" class="icon">▶</button>
+      <span class="hint">Alege oamenii pentru fiecare duminică. Roșu = aceeași persoană de două ori în aceeași zi.</span></div>
+    <div class="grid-wrap glass scroll"><table id="grid"></table></div>
+  </section>
+
+  <!-- TEAMS -->
+  <section class="view" id="v-teams">
+    <section class="panel glass">
+      <div class="row"><h2 class="grow">Departamente și poziții</h2><button id="bAddDept">＋ Departament</button></div>
+      <div id="depts" class="scroll" style="display:flex;flex-direction:column;gap:10px"></div>
+    </section>
+    <section class="panel glass">
+      <div class="row"><h2 class="grow">Voluntari</h2><input id="volQ" placeholder="Caută…" style="width:180px"><button id="bAddVol" class="acc">＋ Voluntar</button></div>
+      <div id="vols" class="scroll" style="display:flex;flex-direction:column;gap:6px"></div>
+    </section>
+  </section>
+</div>
+<div class="signin" id="signin"><div class="glass">
+  <div class="brand" style="justify-content:center;margin-bottom:6px"><span class="star">✦</span>Betleem</div>
+  <h3>Intră în Planificare</h3>
+  <p class="hint">Scrie PIN-ul de lider. Îl găsești în aplicația de pe PC: Telefoane → Adrese și PIN-uri.</p>
+  <input id="pinIn" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
+  <button id="pinGo" class="acc">Intră</button>
+</div></div>
+<div id="toast" class="glass"></div>
+<div class="modal" id="modal"><div class="glass" id="mBox"></div></div>
+
+<script type="module">
+  import { connect, esc } from '/client.js';
+  const $ = id => document.getElementById(id);
+  const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', reading: 'citire', announcement: 'anunțuri', other: 'altceva' };
+  const DAYS = ['dum', 'lun', 'mar', 'mie', 'joi', 'vin', 'sâm'];
+  const MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+  let P = null, selId = null, month = new Date(); month.setDate(1);
+  const hub = connect(s => { const c = s.church; if (c) $('church').innerHTML = esc(c.name) + `<small>${esc(c.city || '')}</small>`; },
+    e => {
+      if (e.role) { $('signin').classList.toggle('show', e.role !== 'leader'); if (e.role === 'leader' && !P) load(); }
+      if (e.type === 'login') { if (e.ok && e.role === 'leader') { load(); toast('Bine ai venit!'); } else toast(e.ok ? 'PIN-ul acesta e de operator. Pentru planificare trebuie PIN-ul de lider.' : 'PIN greșit'); }
+      if (e.type === 'planChanged') load();
+    });
+  $('pinGo').onclick = () => hub.login($('pinIn').value);
+  $('pinIn').onkeydown = e => { if (e.key === 'Enter') hub.login($('pinIn').value); };
+  const api = (body) => fetch('/api/plan', { method: body ? 'POST' : 'GET', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+    .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j; });
+  const op = async o => { try { P = await api(o); render(); } catch (e) { toast(e.message); } };
+  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2600); }
+  async function load() { try { P = await api(); if (!selId || !P.services.find(s => s.id === selId)) selId = upcoming()?.id || P.services[0]?.id; render(); } catch (e) { toast(e.message); } }
+  const upcoming = () => P.services.find(s => new Date(s.date) >= new Date(Date.now() - 6 * 3600e3));
+  const volName = id => P.volunteers.find(v => v.id === id)?.name || '';
+  const localDT = iso => { const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+  const hhmm = d => d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+
+  $('toLive').onclick = () => location.href = '/control.html';
+  document.querySelectorAll('#views button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#views button').forEach(x => x.classList.toggle('sel', x === b));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('sel', v.id === 'v-' + b.dataset.v));
+    render();
+  });
+
+  // ---------- dialog
+  function dialog(title, html, onOk, okText = 'Salvează') {
+    $('mBox').innerHTML = `<h3>${esc(title)}</h3>${html}<div class="btns"><button id="mNo">Renunță</button><button id="mOk" class="acc">${esc(okText)}</button></div>`;
+    $('modal').classList.add('show');
+    $('mNo').onclick = () => $('modal').classList.remove('show');
+    $('mOk').onclick = async () => { if (await onOk() !== false) $('modal').classList.remove('show'); };
+    setTimeout(() => $('mBox').querySelector('input')?.focus(), 30);
+  }
+
+  function render() {
+    if (!P) return;
+    const view = document.querySelector('#views .sel').dataset.v;
+    if (view === 'services') renderServices();
+    if (view === 'grid') renderGrid();
+    if (view === 'teams') renderTeams();
+  }
+
+  // ================= SERVICES
+  function renderServices() {
+    $('svcList').innerHTML = P.services.map(s => {
+      const d = new Date(s.date);
+      const pill = s.id === P.currentPlanId ? '<span class="pill live">pe Live</span>' : s.status === 'published' ? '<span class="pill pub">publicat</span>' : '<span class="pill draft">ciornă</span>';
+      return `<div class="svc ${s.id === selId ? 'sel' : ''}" data-id="${s.id}"><div class="day"><small>${DAYS[d.getDay()]}</small><b>${d.getDate()}</b><small>${MONTHS[d.getMonth()].slice(0, 3)}</small></div>
+        <div class="t"><b>${esc(s.title)}</b><small>${hhmm(d)} · ${s.items.length} în program ${s.warnings.length ? '· <span class="warn">⚠ ' + s.warnings.length + '</span>' : ''}</small></div>${pill}</div>`;
+    }).join('') || '<div class="empty">Niciun serviciu planificat.<br>Apasă „＋ 8 duminici”.</div>';
+    document.querySelectorAll('#svcList .svc').forEach(el => el.onclick = () => { selId = el.dataset.id; render(); });
+    const s = P.services.find(x => x.id === selId);
+    $('editor').style.visibility = s ? 'visible' : 'hidden';
+    if (!s) { $('team').innerHTML = ''; $('warnings').textContent = ''; return; }
+    if (document.activeElement !== $('sTitle')) $('sTitle').value = s.title;
+    if (document.activeElement !== $('sDate')) $('sDate').value = localDT(s.date);
+    $('sStatus').value = s.status === 'published' ? 'published' : 'draft';
+    $('copyFrom').innerHTML = '<option value="">—</option>' + P.services.filter(x => x.id !== s.id && x.items.length)
+      .map(x => `<option value="${x.id}">${new Date(x.date).toLocaleDateString('ro-RO')} · ${esc(x.title)}</option>`).join('');
+    renderItems(s);
+    renderTeamFor(s);
+  }
+  $('bSundays').onclick = () => op({ op: 'addSundays', count: 8, time: '10:00' });
+  $('bAddSvc').onclick = () => dialog('Serviciu nou', `<label>Titlu<input id="nT" value="Serviciu de seară"></label><label>Data și ora<input id="nD" type="datetime-local"></label>`,
+    () => { if (!$('nD').value) { toast('Alege data'); return false; } op({ op: 'addService', title: $('nT').value, date: new Date($('nD').value).toISOString() }); }, 'Adaugă');
+  $('sTitle').onchange = () => op({ op: 'updateService', id: selId, title: $('sTitle').value });
+  $('sDate').onchange = () => $('sDate').value && op({ op: 'updateService', id: selId, date: new Date($('sDate').value).toISOString() });
+  $('sStatus').onchange = () => op({ op: 'updateService', id: selId, status: $('sStatus').value });
+  $('copyFrom').onchange = () => { const from = $('copyFrom').value; if (!from) return;
+    dialog('Copiez programul?', '<p class="hint">Programul acestui serviciu va fi înlocuit cu cel ales.</p>', () => op({ op: 'copyItems', id: selId, from }), 'Copiază'); };
+  $('bDelSvc').onclick = () => dialog('Ștergi serviciul?', '<p class="hint">Se șterg programul și echipa acestui serviciu.</p>', () => { op({ op: 'deleteService', id: selId }); selId = null; }, 'Șterge');
+  $('bLive').onclick = async () => { try { P = await api({ op: 'goLive', id: selId }); render(); toast('Programul e acum pe Live'); } catch (e) { toast(e.message); } };
+
+  // program items
+  let dragFrom = -1, saveT;
+  function renderItems(s) {
+    let t = new Date(s.date), total = 0;
+    $('items').innerHTML = s.items.map((it, i) => {
+      const at = hhmm(t); t = new Date(t.getTime() + (it.minutes || 0) * 60000); total += it.minutes || 0;
+      return `<div class="it" draggable="true" data-i="${i}"><time>${at}</time>
+        <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${KIND[it.kind]}</small></span>
+        <input data-f="leader" value="${esc(it.leader || '')}" placeholder="Cine">
+        ${it.kind === 'song' ? `<input data-f="key" value="${esc(it.key || '')}" placeholder="Ton">` : '<span></span>'}
+        <div class="row"><input data-f="minutes" type="number" min="0" value="${it.minutes || 0}" style="width:64px"><span class="hint">min</span></div>
+        <button class="icon ghost" data-del="1" title="Scoate">✕</button></div>`;
+    }).join('') || '<div class="empty">Programul e gol.<br>Adaugă cântări și momente mai jos, sau copiază de la alt serviciu.</div>';
+    $('total').textContent = s.items.length ? `durată ${Math.floor(total / 60) ? Math.floor(total / 60) + ' h ' : ''}${total % 60} min · se termină la ${hhmm(t)}` : '';
+    document.querySelectorAll('#items .it').forEach(el => {
+      const i = +el.dataset.i;
+      el.querySelectorAll('input').forEach(inp => inp.oninput = () => {
+        s.items[i][inp.dataset.f] = inp.dataset.f === 'minutes' ? +inp.value : inp.value;
+        clearTimeout(saveT); saveT = setTimeout(() => op({ op: 'setItems', id: s.id, items: s.items }), 600);
+      });
+      el.querySelector('[data-del]').onclick = () => { s.items.splice(i, 1); op({ op: 'setItems', id: s.id, items: s.items }); };
+      el.ondragstart = () => { dragFrom = i; el.classList.add('drag'); };
+      el.ondragend = () => el.classList.remove('drag');
+      el.ondragover = e => { e.preventDefault(); el.classList.add('over'); };
+      el.ondragleave = () => el.classList.remove('over');
+      el.ondrop = e => { e.preventDefault(); el.classList.remove('over'); if (dragFrom < 0 || dragFrom === i) return;
+        const [m] = s.items.splice(dragFrom, 1); s.items.splice(i, 0, m); dragFrom = -1; op({ op: 'setItems', id: s.id, items: s.items }); };
+    });
+  }
+  let qT;
+  $('songQ').oninput = () => { clearTimeout(qT); qT = setTimeout(async () => {
+    const q = $('songQ').value.trim(); if (q.length < 2) { $('found').innerHTML = ''; return; }
+    const list = await fetch('/api/songs?q=' + encodeURIComponent(q)).then(r => r.json());
+    $('found').innerHTML = list.slice(0, 12).map(x => `<div data-id="${x.id}" data-key="${esc(x.key || '')}">${esc(x.title)}${x.key ? `<small>${esc(x.key)}</small>` : ''}${(x.tags || []).map(t => `<small>#${esc(t)}</small>`).join('')}</div>`).join('')
+      || '<p class="hint">Nu e în bibliotecă. Adaug-o din Live → Internet.</p>';
+    document.querySelectorAll('#found div').forEach(el => el.onclick = () => {
+      const s = P.services.find(x => x.id === selId);
+      s.items.push({ kind: 'song', songId: el.dataset.id, key: el.dataset.key, minutes: 5 });
+      $('songQ').value = ''; $('found').innerHTML = ''; op({ op: 'setItems', id: s.id, items: s.items });
+    });
+  }, 150); };
+  $('bAddItem').onclick = () => {
+    const kind = $('addKind').value, name = $('addKind').selectedOptions[0].text;
+    dialog('Adaugă în program', `<label>Titlu<input id="iT" value="${esc(name)}"></label><label>Minute<input id="iM" type="number" value="${kind === 'sermon' ? 35 : 5}"></label><label>Cine<input id="iL" placeholder="ex. Pastor Ion"></label>`,
+      () => { const s = P.services.find(x => x.id === selId); s.items.push({ kind, title: $('iT').value, minutes: +$('iM').value, leader: $('iL').value }); op({ op: 'setItems', id: s.id, items: s.items }); }, 'Adaugă');
+  };
+
+  // team of one service
+  function volunteerOptions(posId, current) {
+    const can = P.volunteers.filter(v => v.positions.includes(posId)), others = P.volunteers.filter(v => !v.positions.includes(posId));
+    const o = v => `<option value="${v.id}" ${v.id === current ? 'selected' : ''}>${esc(v.name)}</option>`;
+    return `<option value="">—</option>${can.map(o).join('')}${others.length ? `<optgroup label="Alții">${others.map(o).join('')}</optgroup>` : ''}`;
+  }
+  function renderTeamFor(s) {
+    $('warnings').innerHTML = s.warnings.map(w => '⚠ ' + esc(w)).join('<br>');
+    $('team').innerHTML = P.departments.map(d => `<div class="dept"><h3><i style="background:${d.color}"></i>${esc(d.name)}</h3>${
+      d.positions.flatMap(p => Array.from({ length: p.needed }, (_, slot) => {
+        const a = s.assignments[`${p.id}#${slot}`];
+        return `<div class="slot"><span title="${esc(p.name)}">${esc(p.name)}${p.needed > 1 ? ' ' + (slot + 1) : ''}</span>
+          <select data-p="${p.id}" data-s="${slot}">${volunteerOptions(p.id, a?.volunteer)}</select>
+          <select class="st" data-p="${p.id}" data-s="${slot}" ${a ? '' : 'disabled'} title="Confirmare">
+            <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option></select></div>`;
+      })).join('')}</div>`).join('') + (P.volunteers.length ? '' : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
+    document.querySelectorAll('#team select').forEach(sel => sel.onchange = () => {
+      const p = sel.dataset.p, slot = +sel.dataset.s, row = sel.parentElement.querySelectorAll('select');
+      op({ op: 'assign', id: s.id, position: p, slot, volunteer: row[0].value, status: row[1].value || 'pending' });
+    });
+  }
+
+  // ================= MONTH GRID
+  $('mPrev').onclick = () => { month.setMonth(month.getMonth() - 1); renderGrid(); };
+  $('mNext').onclick = () => { month.setMonth(month.getMonth() + 1); renderGrid(); };
+  function renderGrid() {
+    $('mName').textContent = MONTHS[month.getMonth()] + ' ' + month.getFullYear();
+    const svcs = P.services.filter(s => { const d = new Date(s.date); return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear(); });
+    if (!svcs.length) { $('grid').innerHTML = '<tr><td class="hint">Niciun serviciu în luna asta. Adaugă duminicile din „Servicii”.</td></tr>'; return; }
+    const dup = s => { const c = {}; for (const a of Object.values(s.assignments)) c[a.volunteer] = (c[a.volunteer] || 0) + 1; return c; };
+    const dups = svcs.map(dup);
+    let html = '<tr><th>Poziție</th>' + svcs.map(s => { const d = new Date(s.date); return `<th>${DAYS[d.getDay()]} ${d.getDate()} · ${hhmm(d)}<br><small class="hint">${esc(s.title)}</small></th>`; }).join('') + '</tr>';
+    for (const d of P.departments) {
+      html += `<tr><td class="dep" colspan="${svcs.length + 1}"><span style="color:${d.color}">●</span> ${esc(d.name)}</td></tr>`;
+      for (const p of d.positions) for (let slot = 0; slot < p.needed; slot++) {
+        html += `<tr><td class="pos">${esc(p.name)}${p.needed > 1 ? ' ' + (slot + 1) : ''}</td>` + svcs.map((s, si) => {
+          const a = s.assignments[`${p.id}#${slot}`];
+          const bad = a && (dups[si][a.volunteer] > 1 || (P.volunteers.find(v => v.id === a.volunteer)?.away || []).includes(s.date.slice(0, 10)));
+          return `<td><select class="${bad ? 'conflict' : ''}" data-id="${s.id}" data-p="${p.id}" data-s="${slot}">${volunteerOptions(p.id, a?.volunteer)}</select></td>`;
+        }).join('') + '</tr>';
+      }
+    }
+    $('grid').innerHTML = html;
+    document.querySelectorAll('#grid select').forEach(sel => sel.onchange = () => op({ op: 'assign', id: sel.dataset.id, position: sel.dataset.p, slot: +sel.dataset.s, volunteer: sel.value }));
+  }
+
+  // ================= TEAMS
+  function renderTeams() {
+    $('depts').innerHTML = P.departments.map(d => `<div class="dept"><h3><i style="background:${d.color}"></i><span class="grow">${esc(d.name)}</span>
+      <button class="icon ghost" data-edit="${d.id}" title="Editează">✎</button></h3>
+      <p class="hint">${d.positions.map(p => esc(p.name) + (p.needed > 1 ? ' ×' + p.needed : '')).join(' · ') || 'fără poziții'}</p></div>`).join('');
+    document.querySelectorAll('#depts [data-edit]').forEach(b => b.onclick = () => editDept(P.departments.find(d => d.id === b.dataset.edit)));
+    const q = $('volQ').value.toLowerCase();
+    const posName = id => P.departments.flatMap(d => d.positions).find(p => p.id === id)?.name;
+    $('vols').innerHTML = P.volunteers.filter(v => !q || v.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'ro')).map(v =>
+      `<div class="vol"><span><b>${esc(v.name)}</b><small>${v.positions.map(posName).filter(Boolean).map(esc).join(', ') || '—'}</small></span>
+        <span class="hint">${esc(v.phone || '')}</span><button class="icon ghost" data-vol="${v.id}" title="Editează">✎</button><button class="icon ghost" data-dv="${v.id}" title="Șterge">✕</button></div>`).join('')
+      || '<div class="empty">Niciun voluntar încă.<br>Apasă „＋ Voluntar”.</div>';
+    document.querySelectorAll('#vols [data-vol]').forEach(b => b.onclick = () => editVol(P.volunteers.find(v => v.id === b.dataset.vol)));
+    document.querySelectorAll('#vols [data-dv]').forEach(b => b.onclick = () => { const v = P.volunteers.find(x => x.id === b.dataset.dv);
+      dialog('Ștergi pe ' + v.name + '?', '<p class="hint">Va fi scos și din serviciile unde era pus.</p>', () => op({ op: 'deleteVolunteer', id: v.id }), 'Șterge'); });
+  }
+  $('volQ').oninput = renderTeams;
+  $('bAddVol').onclick = () => editVol({ name: '', phone: '', email: '', positions: [], away: [] });
+  $('bAddDept').onclick = () => editDept({ name: '', color: '#8c929a', positions: [{ name: '', needed: 1 }] });
+  function editVol(v) {
+    const checks = P.departments.map(d => `<h2 style="margin:8px 0 6px">${esc(d.name)}</h2><div class="checks">${d.positions.map(p =>
+      `<label><input type="checkbox" value="${p.id}" ${v.positions.includes(p.id) ? 'checked' : ''}>${esc(p.name)}</label>`).join('')}</div>`).join('');
+    dialog(v.id ? 'Editează voluntar' : 'Voluntar nou', `<label>Nume<input id="vN" value="${esc(v.name)}"></label>
+      <div class="row"><label class="grow">Telefon<input id="vP" value="${esc(v.phone || '')}"></label><label class="grow">Email<input id="vE" value="${esc(v.email || '')}"></label></div>
+      <p class="hint" style="margin:4px 0">Unde poate sluji:</p>${checks}
+      <label>Zile când lipsește (AAAA-LL-ZZ, separate prin virgulă)<input id="vA" value="${esc((v.away || []).join(', '))}" placeholder="2026-12-24, 2026-12-31"></label>`,
+      () => op({ op: 'saveVolunteer', volunteer: { id: v.id, name: $('vN').value, phone: $('vP').value, email: $('vE').value,
+        positions: [...$('mBox').querySelectorAll('.checks input:checked')].map(i => i.value), away: $('vA').value.split(/[,\s]+/).filter(Boolean) } }));
+  }
+  function editDept(d) {
+    const rows = () => [...$('mBox').querySelectorAll('.posrow')].map(r => ({ id: r.dataset.id || undefined, name: r.querySelector('.pn').value, needed: +r.querySelector('.pq').value })).filter(p => p.name.trim());
+    const rowHtml = p => `<div class="posrow" data-id="${p.id || ''}"><input class="pn" value="${esc(p.name)}" placeholder="Poziție (ex. Vocal)"><input class="pq" type="number" min="1" max="10" value="${p.needed || 1}" title="Câți oameni"><button class="icon ghost" onclick="this.parentElement.remove()">✕</button></div>`;
+    dialog(d.id ? 'Editează departament' : 'Departament nou', `<div class="row"><label class="grow">Nume<input id="dN" value="${esc(d.name)}"></label><label>Culoare<input id="dC" type="color" value="${d.color}" style="width:56px;height:38px;padding:2px"></label></div>
+      <p class="hint" style="margin:0 0 8px">Poziții și câți oameni trebuie:</p><div id="pRows">${d.positions.map(rowHtml).join('')}</div>
+      <button class="ghost" id="pAdd">＋ poziție</button>${d.id ? '<button class="ghost" id="dDel" style="float:right">🗑 Șterge departamentul</button>' : ''}`,
+      () => op({ op: 'saveDepartment', department: { id: d.id, name: $('dN').value, color: $('dC').value, positions: rows() } }));
+    $('pAdd').onclick = () => $('pRows').insertAdjacentHTML('beforeend', rowHtml({ name: '', needed: 1 }));
+    if (d.id) $('dDel').onclick = () => { $('modal').classList.remove('show'); op({ op: 'deleteDepartment', id: d.id }); };
+  }
+
+</script>
+</body>
+</html>

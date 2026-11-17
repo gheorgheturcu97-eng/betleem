@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/fonts/inter.css">
 <title>Betleem</title>
 <style>
   :root{
@@ -13,7 +14,7 @@
     --r:22px; --r-sm:14px; --r-xs:10px;
     --blur:saturate(180%) blur(28px);
     --shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(255,255,255,.04);
-    font-family:-apple-system,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+    font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;font-feature-settings:"cv11","ss01";letter-spacing:-.011em;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -52,7 +53,7 @@
   .row{display:flex;gap:8px;align-items:center}
   .grow{flex:1;min-width:0}
   .hint{color:var(--mute);font-size:12.5px;margin:0}
-  h2{font-size:11.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0}
+  h2{font-size:13.5px;font-weight:600;letter-spacing:-.01em;color:rgba(235,238,245,.72);margin:0}
 
   /* ---------- layout */
   .app{height:100vh;display:grid;grid-template-rows:auto 1fr;gap:14px;padding:14px}
@@ -215,6 +216,7 @@
   .msg a.ex{color:var(--acc);text-decoration:none} .msg a.ex:hover{text-decoration:underline}
   .ai-in{display:flex;gap:8px;margin-top:8px} .ai-in textarea{flex:1;font:inherit;font-size:13.5px;resize:none;border-radius:14px}
   .ai-in button{border-radius:14px;padding:0 16px}
+  .navtabs{margin:0;padding:3px;flex:none} .navtabs button{padding:6px 14px;font-size:13px}
   /* ---------- toast + dialog */
   #toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;padding:12px 20px;border-radius:999px;
          transition:opacity .2s,transform .2s;z-index:20;max-width:70vw;background:rgba(30,32,40,.7)}
@@ -242,6 +244,7 @@
       <span class="caret">▾</span>
     </button>
     <span id="dot" title="Conexiune"></span>
+    <div class="seg navtabs"><button class="sel">Live</button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button></div>
     <div class="transport">
       <button id="bPrev" class="icon" title="Înapoi (←)">◀</button>
       <button id="bNext" class="acc" title="Înainte (Spațiu / →)">Înainte ▶</button>
@@ -365,7 +368,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="seg" id="lookTabs"><button data-s="main" class="sel">Sală (proiector)</button><button data-s="stage">Scenă</button></div>
   <label class="check" id="lookItemRow"><input type="checkbox" id="lookItem"> Doar pentru cântarea selectată</label>
   <div class="lf"><span>Font</span><select id="lFont">
-    <option>Segoe UI</option><option>Arial</option><option>Bahnschrift</option><option>Calibri</option><option>Georgia</option>
+    <option>Segoe UI</option><option>Inter</option><option>Arial</option><option>Bahnschrift</option><option>Calibri</option><option>Georgia</option>
     <option>Trebuchet MS</option><option>Verdana</option><option>Tahoma</option><option>Impact</option><option>Times New Roman</option></select></div>
   <div class="lf"><span>Mărime</span><input type="range" id="lSize" min="2.5" max="12" step="0.1"><b id="lSizeV"></b></div>
   <div class="lf"><span>Aliniere</span><div class="seg mini" id="lAlign"><button data-v="left">⟸ Stânga</button><button data-v="center">Mijloc</button><button data-v="right">Dreapta ⟹</button></div></div>
@@ -479,6 +482,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // ---- Aspect: font, size, alignment, position for the main and stage screens
   let lookScreen = 'main';
   const look = $('look');
+  $('toPlan').onclick = () => location.href = '/planning.html';
   $('bLook').onclick = e => { e.stopPropagation(); look.classList.toggle('show'); fillLook(); };
   addEventListener('click', e => { if (!look.contains(e.target) && e.target !== $('bLook')) look.classList.remove('show'); });
   document.querySelectorAll('#lookTabs button').forEach(b => b.onclick = () => {

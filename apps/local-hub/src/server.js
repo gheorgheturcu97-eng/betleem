@@ -17,6 +17,7 @@ import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
 import { runAssistant } from './ai.js';
+import { defaultPlan, applyPlanOp, serviceWarnings } from './plan.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -58,6 +59,7 @@ if (!Array.isArray(db.churches) || !db.churches.length) {
   db.activeChurch = id;
 }
 db.churchData ||= {};
+db.plan ||= defaultPlan();          // planning of the ACTIVE church (others wait in churchData)
 const activeChurch = () => db.churches.find(c => c.id === db.activeChurch) || db.churches[0];
 
 function hashCode(code, salt = crypto.randomBytes(16).toString('hex')) {
@@ -80,10 +82,10 @@ function guard(church, code) {
 }
 function switchChurch(id) {
   const cur = activeChurch();
-  db.churchData[cur.id] = { setlist: db.setlist, service: db.service };
+  db.churchData[cur.id] = { setlist: db.setlist, service: db.service, plan: db.plan };
   const next = db.churchData[id] || { setlist: [], service: { title: 'Serviciu duminică', startsAt: null } };
   delete db.churchData[id];
-  db.setlist = next.setlist; db.service = next.service; db.activeChurch = id;
+  db.setlist = next.setlist; db.service = next.service; db.plan = next.plan || defaultPlan(); db.activeChurch = id;
   Object.assign(live, { item: -1, slide: 0, blank: false, logo: false, background: '', message: '' });
 }
 let saveTimer = null;
@@ -396,7 +398,7 @@ async function runChordsJob(list) {
 // --- HTTP ----------------------------------------------------------------------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.json': 'application/json' };
+  '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.webm': 'video/webm', '.mov': 'video/quicktime', '.json': 'application/json' };
 
 async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
@@ -446,6 +448,29 @@ async function handle(req, res) {
       return json(res, 200, { ok: true });
     }
     if (p === '/api/add-chords/stop' && req.method === 'POST') { chordsJob.stop = true; return json(res, 200, { ok: true }); }
+    if (p === '/api/plan') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      if (req.method === 'POST') {
+        const op = JSON.parse(await body(req, 500_000));
+        if (op.op === 'goLive') {                       // make this service the program on the screens
+          const s = db.plan.services.find(x => x.id === op.id); if (!s) return json(res, 404, { error: 'Serviciul nu există' });
+          db.setlist = s.items.map(it => ({ ...structuredClone(it), notes: [] }));
+          db.service = { title: s.title, startsAt: s.date, planId: s.id };
+          Object.assign(live, { item: -1, slide: 0, blank: false, logo: false });
+          save(); broadcast();
+        } else {
+          const err = applyPlanOp(db.plan, op);
+          if (err) return json(res, 400, { error: err });
+          save();
+        }
+        const msg = JSON.stringify({ type: 'planChanged' });
+        for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role === 'leader') ws.send(msg);
+      }
+      const plan = db.plan;
+      return json(res, 200, { ...plan, currentPlanId: db.service.planId || null,
+        services: plan.services.map(s => ({ ...s, warnings: serviceWarnings(plan, s),
+          items: s.items.map(it => it.kind === 'song' ? { ...it, title: db.songs.find(x => x.id === it.songId)?.title || it.title || '(cântare ștearsă)' } : it) })) });
+    }
     if (p === '/api/ai/settings') {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       if (req.method === 'POST') {
