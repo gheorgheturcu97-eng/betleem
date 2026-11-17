@@ -541,7 +541,7 @@ function file(res, dir, rel, req) {
     res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes', 'content-length': end - start + 1 });
     return fs.createReadStream(full, { start, end }).pipe(res);
   }
-  res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
+  res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes', ...(/\.(html|js|css)$/.test(full) ? { 'cache-control': 'no-cache' } : {}) });
   fs.createReadStream(full).pipe(res);
 }
 
