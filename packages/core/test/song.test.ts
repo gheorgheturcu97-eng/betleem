@@ -235,3 +235,13 @@ test('lyric sites: marks become tags, repeat marks go away, chorus after every v
   assert.equal(stripRepeatMarks('[A]/:[E] S-a născut'), '[A][E]S-a născut');
   assert.equal(autoArrangement('Strofa 1:\nA\n\nRefren:\nB\n\nStrofa 2:\nC\n\nRefren:\nB'), null, 'already written out');
 });
+
+test('autoLabel: pre-chorus before each chorus, bridge late, B: is a bridge', async () => {
+  const { autoLabel, parseSong, normalizeImported } = await import('../src/song.ts');
+  const V = n => n === 'a' ? 'Noaptea nu va domni\nRaul se va sfarsi' : 'Peste toti va domni\nSi nu se va sfarsi niciodata';
+  const P = 'Si acum ne ridicam\nspre cer privim';
+  const C = 'Aleluia slava Lui\nIn veci de veci amin';
+  const body = [V('a'), P, C, V('b'), P, C, 'Doar Tu esti Domn\nDoar Tu esti Rege\nPentru totdeauna', C].join('\n\n');
+  assert.deepEqual(parseSong(autoLabel(body)).map(s => s.label), ['Strofa 1', 'Pre-refren', 'Refren', 'Strofa 2', 'Pre-refren', 'Refren', 'Bridge', 'Refren']);
+  assert.deepEqual(parseSong(normalizeImported('1. Unu doi trei\npatru\n\nB: Punte aici\nsi aici')).map(s => s.label), ['Strofa 1', 'Bridge']);
+});

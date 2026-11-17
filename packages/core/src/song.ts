@@ -222,6 +222,8 @@ export function labelStanzas(text: string): string {
     [new RegExp('^' + CH + '(?:r|ref|refren|refrain|cor|chorus)\\s*(\\d*)\\s*[:.]\\s*(.*)$', 'i'), n => 'Refren' + (n ? ' ' + n : '')],
     [new RegExp('^' + CH + '(?:refren|chorus)\\s*(\\d*)()$', 'i'), n => 'Refren' + (n ? ' ' + n : '')],
     [new RegExp('^' + CH + '(?:bridge|punte|pod)\\s*(\\d*)\\s*(?:[:.]\\s*(.*))?$', 'i'), n => 'Bridge' + (n ? ' ' + n : '')],
+    [new RegExp('^' + CH + 'B\\s*(\\d*)\\s*[:.]\\s*(.*)$'), n => 'Bridge' + (n ? ' ' + n : '')],
+    [new RegExp('^' + CH + '(?:PR|Pre)\\s*(\\d*)\\s*[:.]\\s*(.*)$', 'i'), n => 'Pre-refren' + (n ? ' ' + n : '')],
     [new RegExp('^' + CH + '(?:intro)\\s*(\\d*)\\s*(?:[:.]\\s*(.*))?$', 'i'), () => 'Intro'],
     [new RegExp('^' + CH + '(?:final|outro|coda|încheiere|incheiere)\\s*(\\d*)\\s*(?:[:.]\\s*(.*))?$', 'i'), () => 'Final'],
     [new RegExp('^' + CH + '(?:tag)\\s*(\\d*)\\s*[:.]\\s*(.*)$', 'i'), () => 'Tag'],
@@ -594,16 +596,40 @@ export function autoLabel(body: string): string {
   const fresh = (base: string, first: boolean) => {   // "Strofa 3" if 1 and 2 are taken; "Refren" then "Refren 2"…
     for (let n = 1; ; n++) { const name = n === 1 && first ? base : base + ' ' + n; if (!used.has(name.toLowerCase())) { used.add(name.toLowerCase()); return name; } }
   };
+  const rMark = (s: Section) => /^\s*(\[[^\]]*\])?\s*R\s*\d*\s*[:.]/i.test(s.lines[0] || '');
+  const chorusLike = (k: number) => count(k) > 1 || secs.some((s, i) => group[i] === k && !s.label && (repeatMark(s) || rMark(s)))
+    || /^(refren|chorus)/i.test(known.get(k) || '');
+  // a block that comes back and every time is followed right away by the chorus is the pre-chorus
+  const isPre = (k: number) => {
+    if (count(k) < 2 || known.has(k)) return false;
+    const at = group.map((x, i) => x === k ? i : -1).filter(i => i >= 0);
+    return at.every(i => i + 1 < secs.length && group[i + 1] !== k && chorusLike(group[i + 1]) && count(group[i + 1]) >= count(k));
+  };
+  const firstChorus = group.findIndex((k, i) => chorusLike(k) && !isPre(k) && !secs[i].label?.match(/^pre/i));
+  const chorusRuns = firstChorus < 0 ? 0 : group.filter((k, i) => k === group[firstChorus] && (i === 0 || group[i - 1] !== k)).length;
+  const uniqueIdx = secs.map((s, i) => i).filter(i => !secs[i].label && !chorusLike(group[i]) && !known.has(group[i]));
+  const lineCount = (i: number) => secs[i].lines.length;
+  const usual = (() => { const c = new Map<number, number>(); uniqueIdx.forEach(i => c.set(lineCount(i), (c.get(lineCount(i)) || 0) + 1));
+    return [...c.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0; })();
+  // the bridge comes late: after the chorus was sung twice, or the last odd block once the verses are done
+  const bridgeOrFinal = (i: number): string => {
+    if (firstChorus < 0 || i < firstChorus) return '';
+    const runsBefore = group.filter((k, j) => j < i && k === group[firstChorus] && (j === 0 || group[j - 1] !== k)).length;
+    const last = i === uniqueIdx[uniqueIdx.length - 1];
+    if (last && i === secs.length - 1 && lineCount(i) <= 2 && uniqueIdx.length >= 3) return 'Final';
+    if (chorusRuns >= 2 && runsBefore >= 2) return 'Bridge';
+    if (chorusRuns < 2 && last && uniqueIdx.length >= 4 && lineCount(i) !== usual) return 'Bridge';
+    return '';
+  };
   const chorusName = new Map<number, string>();
   const names = secs.map((s, i) => {
     if (s.label) return s.label;
     const k = group[i];
     if (known.has(k)) return known.get(k)!;
-    const isChorus = count(k) > 1 || repeatMark(s) || /^\s*(\[[^\]]*\])?\s*R\s*\d*\s*[:.]/i.test(s.lines[0] || '');
-    if (isChorus) {
-      if (!chorusName.has(k)) chorusName.set(k, fresh('Refren', true));
-      return chorusName.get(k)!;
-    }
+    if (isPre(k)) { if (!chorusName.has(k)) chorusName.set(k, fresh('Pre-refren', true)); return chorusName.get(k)!; }
+    if (chorusLike(k)) { if (!chorusName.has(k)) chorusName.set(k, fresh('Refren', true)); return chorusName.get(k)!; }
+    const late = bridgeOrFinal(i);
+    if (late) return fresh(late, true);
     return fresh('Strofa', false);
   });
   const out = secs.map((s, i) => [names[i] + ':', ...s.lines.map(l => /^\s*(\[[^\]]*\])?\s*R\s*\d*\s*[:.]\s*/i.test(l) && s.lines[0] === l ? l.replace(/^(\s*(?:\[[^\]]*\])?)\s*R\s*\d*\s*[:.]\s*/i, '$1') : l)].join('\n'));
