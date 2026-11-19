@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 
 const id = () => crypto.randomUUID();
-const KINDS = ['song', 'sermon', 'prayer', 'announcement', 'reading', 'other'];
+const KINDS = ['song', 'sermon', 'prayer', 'announcement', 'reading', 'other', 'media'];
 const STATUS = ['pending', 'confirmed', 'declined'];
 
 export function defaultPlan() {
@@ -46,6 +46,7 @@ function cleanItems(items) {
     minutes: Math.min(240, Math.max(0, Number(it.minutes) || 0)),
     ...(Array.isArray(it.arrangement) ? { arrangement: it.arrangement.map(x => str(x, 40)) } : {}),
     ...(it.maxLines ? { maxLines: it.maxLines } : {}), ...(it.background ? { background: str(it.background, 200) } : {}),
+    ...(it.kind === 'media' && Array.isArray(it.slides) ? { slides: it.slides.slice(0, 400).map(x => str(x, 200)).filter(x => x.startsWith('/media/')) } : {}),
   }));
 }
 

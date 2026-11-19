@@ -193,3 +193,26 @@ test('undo and redo', async () => {
   assert.equal(st.setlist[0].title, 'Predică');
   a.ws.close();
 });
+
+test('presentations: pages are slides; the stage timer starts when an item goes live; stage options', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'addItem', kind: 'media', title: 'Anunțuri', minutes: 2, at: 0,
+    slides: ['/media/pres-a-001.jpg', '/media/pres-a-002.png', '/media/../secret.jpg', 'http://elsewhere/x.png', '/media/pres-a.exe'] });
+  const st = await a.next(m => m.type === 'state' && m.state.setlist[0]?.kind === 'media');
+  assert.equal(st.state.setlist[0].slideCount, 2, 'only pictures from our media folder');
+  const t0 = Date.now();
+  a.send({ type: 'go', item: 0, slide: 1 });
+  const live = await a.next(m => m.type === 'state' && m.state.live.item === 0);
+  assert.equal(live.state.live.slides[1].image, '/media/pres-a-002.png');
+  assert.ok(live.state.live.since >= t0 && live.state.now >= live.state.live.since);
+  a.send({ type: 'prev' });
+  const same = await a.next(m => m.type === 'state' && m.state.live.slide === 0);
+  assert.equal(same.state.live.since, live.state.live.since, 'another slide of the same item keeps the timer');
+  a.send({ type: 'display', screen: 'stage', patch: { upNext: 9, timer: false, headSize: 50 } });
+  const d = await a.next(m => m.type === 'state' && m.state.display.stage.timer === false);
+  assert.equal(d.state.display.stage.upNext, 5); assert.equal(d.state.display.stage.headSize, 8);
+  const r = await fetch('http://localhost:4599/api/convert?name=x.pptx', { method: 'POST', body: 'x' });
+  assert.equal(r.status, 401, 'converting needs the PIN');
+  a.ws.close();
+});

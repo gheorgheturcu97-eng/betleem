@@ -100,7 +100,7 @@
     let last = null;
     $('lyrics').innerHTML = L.slides.map((sl, i) => {
       const head = sl.label && sl.label !== last ? `<div class="label" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : ''; last = sl.label;
-      const body = sl.lines.map(l => chords ? `<div class="line">${chordLineToHtml(l, esc)}</div>` : `<div>${esc(stripChords(l))}</div>`).join('');
+      const body = sl.image ? (/\.(mp4|webm|mov)$/i.test(sl.image) ? '▶ video' : `<img src="${esc(sl.image)}" alt="" style="width:100%;border-radius:8px">`) : sl.lines.map(l => chords ? `<div class="line">${chordLineToHtml(l, esc)}</div>` : `<div>${esc(stripChords(l))}</div>`).join('');
       return `${head}<div class="slide ${i === L.slide ? 'now' : ''}" data-i="${i}">${body}</div>`;
     }).join('') || `<p style="color:var(--mute)">Nimic pe ecran acum.</p>`;
     document.querySelector('.slide.now')?.scrollIntoView({ block: 'center', behavior: 'smooth' });

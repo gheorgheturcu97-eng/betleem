@@ -425,6 +425,66 @@
   @media (max-width:900px){ .sed-body{grid-template-columns:1fr} }
 
   @media (max-width:1300px){ #msg{width:140px} }
+  /* ---------- compact */
+  body{font-size:13.5px}
+  .app{gap:10px;padding:10px}
+  .top{padding:5px 8px 5px 10px;gap:10px}
+  button,.btn{padding:6px 12px}
+  button.icon{width:30px;height:30px;font-size:13px}
+  .transport #bNext{padding:7px 22px}
+  #msg{padding:6px 12px}
+  .navtabs button{padding:5px 12px;font-size:12.5px}
+  .brand .star{width:26px;height:26px;font-size:15px}
+  .main{grid-template-columns:var(--colL,270px) 8px minmax(0,1fr) 8px var(--colR,340px)}
+  .panel{padding:12px}
+  .panel-head{margin-bottom:6px}
+  .svc #svcTitle{font-size:16px} .svc #svcStart{font-size:12px}
+  #setlist{gap:3px;margin-top:8px}
+  .item{padding:6px 8px;gap:8px;border-radius:11px}
+  .item .num{width:22px;height:22px;font-size:11px;border-radius:7px}
+  .item .t b{font-size:13px} .item small{font-size:11px}
+  .item .acts button{width:24px;height:24px;font-size:11px}
+  .add-row{padding-top:8px;gap:5px} .add-row select{padding:6px 10px} .add-row .btn{font-size:12.5px}
+  .screens{padding:8px;gap:8px}
+  .screen{border-radius:12px;cursor:pointer} .screen:hover{border-color:var(--acc)}
+  .screen .cap{left:7px;top:7px;font-size:9.5px;padding:3px 8px}
+  .screen .open{right:7px;top:6px;padding:3px 9px;font-size:11px}
+  .slides-panel{padding:10px 12px 12px}
+  .slides-head{margin-bottom:8px;gap:6px} .slides-head h3{font-size:16px}
+  .slides-head .tool{padding:2px 3px 2px 8px} .slides-head .tool select{padding:2px 3px;font-size:12.5px}
+  .slides-head .tool .icon{width:22px;height:22px;font-size:11px}
+  .lineup{padding-top:0} .lineup .line{gap:5px} .lineup .icon{width:24px;height:24px;font-size:11px} .lineup select{padding:2px 6px;font-size:12px}
+  .lineup .arr{mask-image:linear-gradient(90deg,#000 94%,transparent)}
+  .arr .chip{white-space:nowrap;padding:2px 3px 2px 9px;font-size:11.5px;flex:none}
+  .arr .chip button{width:15px;height:15px;font-size:8.5px;line-height:15px}
+  .slide{padding:9px 11px;min-height:86px;font-size:12.5px;line-height:1.4}
+  .slide .lb{font-size:9.5px;margin-bottom:3px}
+  .slide .pic{margin:-9px -11px;border-radius:inherit;overflow:hidden;aspect-ratio:16/9;background:#000}
+  .slide .pic img,.slide .pic video{width:100%;height:100%;object-fit:contain;display:block}
+  .slide:has(.pic){padding:9px 11px;min-height:0}
+  .slide:has(.pic) .n{z-index:2;background:rgba(0,0,0,.55);padding:1px 6px;border-radius:6px;color:#fff}
+  #slides{gap:8px}
+  .bg-panel{padding:8px 12px} .bg-head{margin-bottom:6px} .bg-head .btn{padding:4px 10px;font-size:12px}
+  .bg{width:var(--bgW,104px);border-radius:9px}
+  .seg{margin-bottom:10px} .seg button{padding:6px 6px;font-size:12.5px}
+  .search input{padding-top:7px;padding-bottom:7px}
+  .lib{padding:6px 8px;font-size:13px}
+  .libbar .icon{width:30px;height:30px;font-size:13px}
+  input,select,textarea{padding:7px 10px}
+  /* ---------- Ecrane */
+  .look{top:62px;right:auto;left:50%;transform:translateX(-50%);width:min(520px,94vw);max-height:calc(100vh - 80px);overflow:auto;gap:8px;padding:14px 16px}
+  .look-head{display:flex;align-items:center;gap:8px} .look-head b{font-size:15px}
+  .look .seg{margin:0}
+  .look-pv{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--stroke);background:#000;flex:none}
+  .look-pv iframe{position:absolute;inset:0;width:400%;height:400%;transform:scale(.25);transform-origin:0 0;border:0;pointer-events:none}
+  .look .mini{padding:4px 11px;font-size:12px}
+  .look-sec{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-top:6px}
+  .look .checks{display:flex;flex-wrap:wrap;gap:6px 14px} .look .checks .check{font-size:12.5px}
+  .look .lf>span{width:96px}
+  #bLook.sel{background:var(--glass-3);color:var(--fg)}
+  .slides-head .zoom{order:1;margin-left:auto} .slides-head .zoom input{width:64px}
+  .lib .acts button{width:24px;height:24px;font-size:11px} #results{gap:0}
+  .modal label.check{flex-direction:row;align-items:center;font-size:12.5px} #sedAutoTag{align-self:flex-start;padding:5px 12px;font-size:12px}
 </style>
 </head>
 <body>
@@ -438,7 +498,7 @@
       <span class="caret">▾</span>
     </button>
     <span id="dot" title="Conexiune"></span>
-    <div class="seg navtabs"><button class="sel" id="toLive">Live</button><button id="toMusic" title="Ton, tempo, metronom, pad și track pentru trupă">Muzică <i class="playing-dot"></i></button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button></div>
+    <div class="seg navtabs"><button class="sel" id="toLive">Live</button><button id="toMusic" title="Ton, tempo, metronom, pad și track pentru trupă">Muzică <i class="playing-dot"></i></button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button><button id="bLook" title="Ecranele: sală și scenă — aspect, ce apare pe ele, timer">Ecrane</button></div>
     <div class="transport">
       <button id="bPrev" class="icon" title="Înapoi (←)">◀</button>
       <button id="bNext" class="acc" title="Înainte (Spațiu / →)">Înainte ▶</button>
@@ -446,7 +506,6 @@
       <button id="bLogo" title="Logo (L)">Logo</button>
       <input id="msg" placeholder="Mesaj pe ecran… (Enter)">
     </div>
-    <button id="bLook" title="Font, mărime, poziție">Aa Aspect</button>
     <div class="login" id="loginBox">
       <input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button id="bLogin">OK</button>
     </div>
@@ -470,7 +529,8 @@
           <option value="sermon">Predică</option><option value="prayer">Rugăciune</option>
           <option value="announcement">Anunțuri</option><option value="other">Altceva</option>
         </select>
-        <button id="bAddItem">＋ Adaugă</button>
+        <button id="bAddItem" class="icon" title="Adaugă în program">＋</button>
+        <label class="btn" title="PowerPoint, Keynote, PDF, imagini sau video: fiecare pagină devine un slide">⇪ Media<input type="file" id="importMedia" accept=".pdf,.pptx,.ppt,.key,.odp,.pps,.ppsx,image/*,video/*" multiple hidden></label>
       </div>
     </aside>
     <div class="gut v" data-g="colL" title="Trage ca să lărgești · dublu-clic = normal"></div>
@@ -494,10 +554,8 @@
             <span class="tool" title="Rânduri pe slide (se schimbă imediat)"><small>Rânduri</small>
               <select id="maxLines"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option></select>
               <button id="bArr" class="mini" title="Aplică din nou ordinea și rândurile">Aplică</button></span>
-            <button id="bStruct" class="tool toggle on" title="Arată / ascunde etichetele și ordinea">🏷 Structură</button>
             <div class="lineup" id="structBox">
-              <div class="line"><small>Etichete</small><div class="tagbar" id="tagBar"></div></div>
-              <div class="line"><small>Ordine</small><div class="arr" id="arrChips" title="Trage etichetele ca să schimbi ordinea; ✕ scoate o secțiune doar din acest program"></div>
+              <div class="line"><div class="arr" id="arrChips" title="Ordinea secțiunilor în acest program: trage ca s-o schimbi; ✕ scoate o secțiune. Etichetele le pui din ✎ pe slide."></div>
                 <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋</option></select><button id="arrReset" class="icon" title="Ordinea din cântare">↺</button></div>
             </div>
           </div>
@@ -615,7 +673,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <button id="bEditChurch" class="ghost">⚙ Nume și cod pentru biserica curentă</button>
 </div>
 <div class="look glass" id="look">
-  <div class="seg" id="lookTabs"><button data-s="main" class="sel">Sală (proiector)</button><button data-s="stage">Scenă</button></div>
+  <div class="look-head"><b>Ecrane</b><span class="grow"></span><button id="lookClose" class="icon" title="Închide">✕</button></div>
+  <div class="seg" id="lookTabs"><button data-s="main" class="sel">Sală · proiector</button><button data-s="stage">Scenă · monitor</button></div>
+  <div class="look-pv"><iframe id="lookPv" title="Previzualizare" tabindex="-1"></iframe></div>
+  <div class="row"><button id="lookOpen" class="mini">Deschide pe ecran ↗</button><span class="grow"></span><button id="lTimerReset" class="mini stage-only" title="Timer-ul pornește din nou pentru ce e acum pe ecran">⟲ Timer de la zero</button></div>
+  <div class="look-sec stage-only">Ce apare pe scenă</div>
+  <div class="checks stage-only">
+    <label class="check"><input type="checkbox" id="lTitle"> Titlu, ton, lider</label>
+    <label class="check"><input type="checkbox" id="lClock"> Ceas</label>
+    <label class="check"><input type="checkbox" id="lTimer" title="Minutele din program: galben spre final, portocaliu în ultimele clipe, roșu când trece timpul"> Timer</label>
+    <label class="check"><input type="checkbox" id="lLabels"> Strofa / Refren</label>
+    <label class="check"><input type="checkbox" id="lNext"> Slide-ul următor</label>
+  </div>
+  <div class="lf stage-only"><span>În program</span><select id="lUpNext" title="Câte momente din program se văd înainte"><option value="0">ascuns</option><option value="1">următorul</option><option value="2">următoarele 2</option><option value="3">următoarele 3</option><option value="4">următoarele 4</option><option value="5">următoarele 5</option></select></div>
+  <div class="lf stage-only"><span>Bara de sus</span><input type="range" id="lHead" min="2" max="8" step="0.1"><b id="lHeadV"></b></div>
+  <div class="look-sec">Text</div>
   <label class="check" id="lookItemRow"><input type="checkbox" id="lookItem"> Doar pentru cântarea selectată</label>
   <div class="lf"><span>Font</span><select id="lFont">
     <optgroup label="Simple"><option value="Montserrat" style="font-family:'Montserrat'">Montserrat</option><option value="Figtree" style="font-family:'Figtree'">Figtree · ca Proxima Nova</option><option value="Poppins" style="font-family:'Poppins'">Poppins</option><option value="Inter" style="font-family:'Inter'">Inter</option><option value="Raleway" style="font-family:'Raleway'">Raleway</option><option value="Arial" style="font-family:'Arial'">Arial</option><option value="Segoe UI" style="font-family:'Segoe UI'">Segoe UI</option><option value="Bahnschrift" style="font-family:'Bahnschrift'">Bahnschrift</option><option value="Calibri" style="font-family:'Calibri'">Calibri</option><option value="Verdana" style="font-family:'Verdana'">Verdana</option></optgroup><optgroup label="Titluri"><option value="Oswald" style="font-family:'Oswald'">Oswald</option><option value="Bebas Neue" style="font-family:'Bebas Neue'">Bebas Neue · MAJUSCULE</option><option value="Impact" style="font-family:'Impact'">Impact</option></optgroup><optgroup label="Elegante"><option value="Playfair Display" style="font-family:'Playfair Display'">Playfair Display</option><option value="Lora" style="font-family:'Lora'">Lora</option><option value="Georgia" style="font-family:'Georgia'">Georgia</option><option value="Times New Roman" style="font-family:'Times New Roman'">Times New Roman</option></optgroup><optgroup label="Scris de mână"><option value="Caveat" style="font-family:'Caveat'">Caveat</option><option value="Kalam" style="font-family:'Kalam'">Kalam</option><option value="Patrick Hand" style="font-family:'Patrick Hand'">Patrick Hand</option><option value="Dancing Script" style="font-family:'Dancing Script'">Dancing Script</option><option value="Great Vibes" style="font-family:'Great Vibes'">Great Vibes</option><option value="Pacifico" style="font-family:'Pacifico'">Pacifico</option><option value="Amatic SC" style="font-family:'Amatic SC'">Amatic SC</option></optgroup></select></div>
@@ -629,10 +701,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="lf main-only"><span>Întunecă fundalul</span><input type="range" id="lDim" min="0" max="90" step="5"><b id="lDimV"></b></div>
   <label class="check main-only"><input type="checkbox" id="lUpper"> MAJUSCULE</label>
   <label class="check main-only"><input type="checkbox" id="lShadow"> Umbră la text</label>
-  <label class="check stage-only"><input type="checkbox" id="lLabels"> Arată Strofa / Refren deasupra</label>
-  <label class="check stage-only"><input type="checkbox" id="lNext"> Arată ce urmează</label>
+  <div class="look-sec stage-only">Partea de jos (urmează)</div>
   <div class="lf stage-only"><span>Urmează · mărime</span><input type="range" id="lNextSize" min="1.5" max="10" step="0.1"><b id="lNextSizeV"></b></div>
-  <div class="lf stage-only"><span>Urmează · loc</span><input type="range" id="lNextShare" min="10" max="70" step="1" title="Cât din înălțimea ecranului"><b id="lNextShareV"></b></div>
+  <div class="lf stage-only"><span>Urmează · loc</span><input type="range" id="lNextShare" min="10" max="55" step="1" title="Cât din înălțimea ecranului"><b id="lNextShareV"></b></div>
   <div class="lf stage-only"><span>Urmează · culoare</span><input type="color" id="lNextColor"></div>
   <button id="lReset" class="ghost main-only">↺ Scoate setările speciale ale cântării</button>
 </div>
@@ -658,6 +729,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <div class="sed-right">
       <div class="lf"><span>Secțiune</span><input id="sedSec" list="secList" placeholder="ex. Refren" style="flex:1"></div>
       <div class="secs" id="sedSecs"></div>
+      <button id="sedAutoTag" class="mini" title="Refrenul e ce se repetă, restul strofe; poți corecta apoi slide cu slide">✨ Etichete automat pentru toată cântarea</button>
       <label class="check"><input type="checkbox" id="sedAuto" checked> După ce alegi secțiunea, treci singur la slide-ul următor</label>
       <div class="lf"><span>Font</span><select id="sFont"></select></div>
       <div class="lf"><span>Mărime</span><input type="range" id="sSize" min="2.5" max="14" step="0.1"><b id="sSizeV"></b></div>
@@ -682,7 +754,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   import { connect, esc, paintBackground } from '/client.js';
   import { Pad, Metronome, Multitrack, PAD_SOUNDS, tapper, outputs } from '/music.js';
   import { stripChords, sectionColor } from '/core/song.js';
-  const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva' };
+  const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', reading: 'citire' };
   const $ = id => document.getElementById(id);
   let S = null, sel = -1;
   const hub = connect(s => { S = s; if (sel < 0 && s.live.item >= 0) sel = s.live.item; render(); }, e => {
@@ -778,11 +850,24 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (anyPlaying() && !(await ask('Pad-ul, metronomul și track-ul se opresc dacă mergi la Planificare. Mergi totuși?', [], 'Mergi'))) return;
     location.href = '/planning.html';
   };
-  $('bLook').onclick = e => { e.stopPropagation(); look.classList.toggle('show'); fillLook(); };
-  addEventListener('click', e => { if (!look.contains(e.target) && e.target !== $('bLook')) look.classList.remove('show'); });
-  document.querySelectorAll('#lookTabs button').forEach(b => b.onclick = () => {
-    lookScreen = b.dataset.s; document.querySelectorAll('#lookTabs button').forEach(x => x.classList.toggle('sel', x === b)); fillLook();
+  // Ecrane: one place for both screens — a live preview, what shows on each, and the look of the text
+  function openLook(screen) {
+    if (screen) lookScreen = screen;
+    document.querySelectorAll('#lookTabs button').forEach(x => x.classList.toggle('sel', x.dataset.s === lookScreen));
+    const src = lookScreen === 'stage' ? '/stage.html' : '/main.html';
+    if ($('lookPv').getAttribute('src') !== src) $('lookPv').src = src;
+    look.classList.add('show'); $('bLook').classList.add('sel'); fillLook();
+  }
+  const closeLook = () => { look.classList.remove('show'); $('bLook').classList.remove('sel'); };
+  $('bLook').onclick = e => { e.stopPropagation(); look.classList.contains('show') ? closeLook() : openLook(); };
+  $('lookClose').onclick = closeLook;
+  addEventListener('click', e => { if (look.classList.contains('show') && !look.contains(e.target) && !e.target.closest('#bLook,.screen')) closeLook(); });
+  document.querySelectorAll('#lookTabs button').forEach(b => b.onclick = () => openLook(b.dataset.s));
+  document.querySelectorAll('.screens .screen').forEach((el, i) => {               // click a preview → its settings
+    el.title = 'Apasă ca să configurezi ecranul'; el.onclick = e => { if (!e.target.closest('.open')) openLook(i ? 'stage' : 'main'); };
   });
+  $('lookOpen').onclick = () => lookScreen === 'stage' ? openScreen('/stage.html', 'bnc-stage') : openScreen('/main.html', 'bnc-main');
+  $('lTimerReset').onclick = () => { send({ type: 'resetTimer' }); toast('Timer-ul pornește de la zero'); };
   const itemMode = () => lookScreen === 'main' && $('lookItem').checked && S.setlist[sel];
   function currentLook() {
     const base = S.display[lookScreen];
@@ -801,6 +886,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('lLabels').checked = d.labels !== false; $('lNextColor').value = d.nextColor || '#8a8f95';
     $('lNextSize').value = d.nextSize || 3.4; $('lNextSizeV').textContent = (+(d.nextSize || 3.4)).toFixed(1);
     $('lNextShare').value = d.nextShare || 30; $('lNextShareV').textContent = (d.nextShare || 30) + '%';
+    $('lTitle').checked = d.title !== false; $('lClock').checked = d.clock !== false; $('lTimer').checked = d.timer !== false;
+    $('lUpNext').value = String(d.upNext ?? 2); $('lHead').value = d.headSize || 3.2; $('lHeadV').textContent = (+(d.headSize || 3.2)).toFixed(1);
     document.querySelectorAll('#lAlign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.align));
     document.querySelectorAll('#lValign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.valign));
   }
@@ -822,6 +909,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('lNextSize').oninput = e => { $('lNextSizeV').textContent = (+e.target.value).toFixed(1); setLook({ nextSize: +e.target.value }); };
   $('lNextShare').oninput = e => { $('lNextShareV').textContent = e.target.value + '%'; setLook({ nextShare: +e.target.value }); };
   $('lNextColor').oninput = e => setLook({ nextColor: e.target.value });
+  for (const [id, k] of [['lTitle', 'title'], ['lClock', 'clock'], ['lTimer', 'timer']]) $(id).onchange = e => setLook({ [k]: e.target.checked });
+  $('lUpNext').onchange = e => setLook({ upNext: +e.target.value });
+  $('lHead').oninput = e => { $('lHeadV').textContent = (+e.target.value).toFixed(1); setLook({ headSize: +e.target.value }); };
   $('lookItem').onchange = fillLook;
   document.querySelectorAll('#lAlign button').forEach(b => b.onclick = () => setLook({ align: b.dataset.v }));
   document.querySelectorAll('#lValign button').forEach(b => b.onclick = () => setLook({ valign: b.dataset.v }));
@@ -946,6 +1036,24 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // service + program
   $('svcTitle').onchange = e => send({ type: 'service', value: { title: e.target.value } });
   $('svcStart').onchange = e => send({ type: 'service', value: { startsAt: e.target.value ? new Date(e.target.value).toISOString() : null } });
+  // PowerPoint, Keynote, PDF, pictures, videos → a "prezentare" in the program, one slide per page
+  $('importMedia').onchange = async e => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    const { importMedia } = await import('/importer.js');
+    const upload = async (name, blob) => (await api('/api/media?name=' + encodeURIComponent(name), { method: 'POST', body: blob }), '/media/' + name);
+    const convert = async f => {
+      const r = await fetch('/api/convert?name=' + encodeURIComponent(f.name), { method: 'POST', body: f, headers: { 'x-pin': hub.pin() } });
+      if ((r.headers.get('content-type') || '').includes('pdf')) return await r.blob();
+      const j = await r.json(); if (j.error) toast(j.error); return null;
+    };
+    try {
+      const done = await importMedia(files, { upload, convert, progress: t => toast(t) });
+      const at = sel >= 0 ? sel + 1 : S.setlist.length;
+      done.forEach((d, k) => send({ type: 'addItem', kind: 'media', title: d.title, slides: d.slides, minutes: 2, at: at + k }));
+      sel = at; toast(done.length === 1 ? `„${done[0].title}”: ${done[0].slides.length} slide-uri în program` : `${done.length} prezentări în program`);
+    } catch (err) { toast(err.message || String(err)); }
+  };
   $('bAddItem').onclick = async () => {
     const kind = $('addKind').value, name = $('addKind').selectedOptions[0].text;
     const v = await ask('Adaugă în program', [{ label: 'Titlu', value: name }, { label: 'Minute', value: 5, type: 'number' }], 'Adaugă');
@@ -1030,18 +1138,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     } else {
       $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''} ${i === pickedSlide ? 'picked' : ''}" data-s="${i}" style="--sc:${sectionColor(sl.label || '')}">
         <span class="n">${i + 1}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${it.kind === 'song' ? `<span class="tools">
-          <button data-t="copy" title="Copiază textul slide-ului">📋</button><button data-t="dup" title="Repetă slide-ul (doar în acest program)">⧉</button><button data-t="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button><button data-t="del" title="Șterge slide-ul din acest program (Delete)">🗑</button></span>` : ''}<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div></div>`).join('');
+          <button data-t="copy" title="Copiază textul slide-ului">📋</button><button data-t="dup" title="Repetă slide-ul (doar în acest program)">⧉</button><button data-t="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button><button data-t="del" title="Șterge slide-ul din acest program (Delete)">🗑</button></span>` : ''}${sl.image ? `<div class="pic">${/\.(mp4|webm|mov)$/i.test(sl.image) ? `<video src="${esc(sl.image)}" muted preload="metadata"></video>` : `<img src="${esc(sl.image)}" alt="" loading="lazy">`}</div>`
+          : `<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div>`}</div>`).join('');
     }
-    document.querySelectorAll('#slides .slide').forEach(el => {
-      el.ondragover = e => { if (e.dataTransfer.types.includes('text/x-tag')) { e.preventDefault(); el.classList.add('drop'); } };
-      el.ondragleave = () => el.classList.remove('drop');
-      el.ondrop = e => { const tag = e.dataTransfer.getData('text/x-tag'); el.classList.remove('drop'); if (tag) { e.preventDefault(); tagSlide(+el.dataset.s, tag); } };
-    });
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
       const t = e.target.closest('button')?.dataset.t, i = +el.dataset.s;
       pickedSlide = i; document.querySelectorAll('#slides .slide').forEach(x => x.classList.toggle('picked', x === el));
       if (t === 'del') return removeSlide(i);
-      if (!t && paintTag && it.kind === 'song') return tagSlide(i, paintTag);
       if (!t) return send({ type: 'go', item: sel, slide: i });
       if (t === 'edit') return openSlideEditor(i, slides);
       if (t === 'dup') { send({ type: 'duplicateSlide', item: sel, slide: i }); return toast('Slide-ul ' + (i + 1) + ' se repetă acum după el'); }
@@ -1057,6 +1160,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     return song;
   }
   async function previewSlides(it) {
+    if (it.kind === 'media') return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));
     if (it.kind !== 'song') return [];
     const core = await import('/core/song.js');
     const song = await getSong(it);
@@ -1064,29 +1168,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const steps = it.key && orig ? core.keyDistance(orig, it.key) : 0;
     return core.toSlides(core.arrange(core.parseSong(core.transpose(song.body, steps, core.prefersFlats(it.key || orig || 'C'))), it.arrangement || song.arrangement), it.maxLines || 4);
   }
-  // ---- tags: drag one onto a slide (or click a tag, then click slides); the slides after it get it too
-  let paintTag = '';
-  const TAGS = ['Strofa 1', 'Strofa 2', 'Strofa 3', 'Strofa 4', 'Pre-refren', 'Refren', 'Refren 2', 'Bridge', 'Intro', 'Final', 'Tag'];
-  function renderTagBar() {
-    $('tagBar').innerHTML = '<span>Etichete</span>' + TAGS.map(t => `<button class="tg ${t === paintTag ? 'on' : ''}" draggable="true" data-tag="${t}" style="--sc:${sectionColor(t)}" title="Trage pe un slide, sau apasă și apoi apasă pe slide-uri">${t}</button>`).join('')
-      + `<button class="auto" id="bAutoTag" title="Pun singur etichetele: refrenul e ce se repetă, restul strofe">✨ Automat</button>`
-      + `<label title="Eticheta merge și pe slide-urile de după, până la următoarea etichetă diferită"><input type="checkbox" id="tagCascade" ${tagCascade ? 'checked' : ''}> și pe următoarele</label>`
-      + (paintTag ? `<span class="paint-hint">Apasă pe slide-uri ca să le pui „${paintTag}” · Esc sau apasă din nou pe etichetă ca să ieși</span>` : '');
-    document.querySelectorAll('#tagBar .tg').forEach(b => {
-      b.ondragstart = e => { e.dataTransfer.setData('text/x-tag', b.dataset.tag); e.dataTransfer.effectAllowed = 'copy'; };
-      b.onclick = () => { paintTag = paintTag === b.dataset.tag ? '' : b.dataset.tag; renderTagBar(); $('slides').classList.toggle('painting', !!paintTag); };
-    });
-    $('bAutoTag').onclick = () => {
-      send({ type: 'autoLabel', item: sel });
-      clearTimeout(autoWait);                        // an old Betleem still running does not answer
-      autoWait = setTimeout(() => toast('Betleem nu a răspuns. Închide-l complet și deschide-l din nou.'), 2500);
-    };
-    $('tagCascade').onchange = e => { tagCascade = e.target.checked; };
-  }
-  let tagCascade = true, autoWait = null;
-  const tagSlide = (i, label) => send({ type: 'tagSlides', item: sel, slide: i, label, cascade: tagCascade });
-  addEventListener('keydown', e => { if (e.key === 'Escape' && paintTag) { paintTag = ''; renderTagBar(); $('slides').classList.remove('painting'); } });
-  renderTagBar();
+  let autoWait = null;
+  $('sedAutoTag').onclick = () => {                  // labels for the whole song, from the slide editor
+    send({ type: 'autoLabel', item: sel });
+    clearTimeout(autoWait);                          // an old Betleem still running does not answer
+    autoWait = setTimeout(() => toast('Betleem nu a răspuns. Închide-l complet și deschide-l din nou.'), 2500);
+    $('sedModal').classList.remove('show');
+  };
 
   // ---- MUZICĂ view: key, tempo, multitrack with cues (lyrics follow the tracks), click and pad in the mixer.
   // Sound keeps playing when you switch back to Live.
@@ -1415,8 +1503,6 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   $('keyUp').onclick = () => stepKey(1); $('keyDown').onclick = () => stepKey(-1);
 
-  try { if (localStorage.getItem('betleem.struct') === '0') { $('structBox').hidden = true; $('bStruct').classList.remove('on'); } } catch {}
-  $('bStruct').onclick = () => { const h = !$('structBox').hidden; $('structBox').hidden = h; $('bStruct').classList.toggle('on', !h); try { localStorage.setItem('betleem.struct', h ? '0' : '1'); } catch {} };
   // ---- order of sections for this program: colored tags you drag around
   let arr = null;                                    // { tokens, parsed }
   const setOrder = tokens => send({ type: 'arrangement', item: sel, value: tokens, maxLines: +$('maxLines').value });

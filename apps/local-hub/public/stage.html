@@ -8,13 +8,31 @@
 <title>Betleem – Scenă</title>
 <style>
   html,body{margin:0;height:100%;background:#0b0b0d;color:#f2f2f2;font-family:"Helvetica Neue",Arial,sans-serif;overflow:hidden;cursor:none}
-  header{display:flex;justify-content:space-between;align-items:baseline;padding:1.5vh 3vw;font-size:3vh;color:#9aa0a6;border-bottom:1px solid #222}
-  header b{color:#fff}
-  #clock{font-variant-numeric:tabular-nums;font-size:4vh;color:#fff}
-  main{display:flex;flex-direction:column;height:calc(100% - 9vh)}
-  #now{flex:1;min-height:0}
-  #now{padding:3vh 3vw;font-size:5.4vh;line-height:1.15;overflow:hidden}
-  #next{padding:2vh 3vw;font-size:3.4vh;color:#8a8f95;border-top:1px solid #222;line-height:1.15;max-height:30vh;overflow:hidden;flex:none}
+  body{display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:2vw;padding:1.2vh 3vw;font-size:var(--hs,3.2vh);color:#9aa0a6;border-bottom:1px solid #222;flex:none}
+  header:empty,header.empty{display:none}
+  #head{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #head b{color:#fff}
+  #pos{font-size:.8em}
+  #clock,#timer{font-variant-numeric:tabular-nums;font-weight:700;font-size:1.25em}
+  #clock{color:#fff}
+  #timer{padding:.1em .5em;border-radius:.4em;color:#e9ecef;background:#1b1d22;transition:background .4s,color .4s}
+  #timer.t1{background:#f5d90a;color:#111} #timer.t2{background:#ff8c1a;color:#111}
+  #timer.t3{background:#e5243b;color:#fff;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:.55}}
+  #msg{background:#f5b301;color:#000;padding:1vh 3vw;font-size:3vh;display:none;flex:none}
+  main{flex:1;min-height:0;display:flex;flex-direction:column}
+  #now{flex:1;min-height:0;padding:3vh 3vw;font-size:5.4vh;line-height:1.15;overflow:hidden}
+  #now img,#now video{width:100%;height:100%;object-fit:contain;display:block}
+  footer{display:flex;border-top:1px solid #222;flex:none;max-height:30vh;overflow:hidden}
+  #next{flex:1;min-width:0;padding:2vh 3vw;font-size:3.4vh;color:#8a8f95;line-height:1.15;overflow:hidden;max-height:inherit;box-sizing:border-box}
+  #next img{height:18vh;border-radius:.6vh}
+  #prog{flex:none;width:30vw;padding:2vh 2vw;border-left:1px solid #222;font-size:3vh;color:#c9ced6;overflow:hidden}
+  #prog:empty,#next:empty{display:none}
+  #prog .it{display:flex;gap:1vw;align-items:baseline;padding:.5vh 0;white-space:nowrap}
+  #prog .it b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  #prog .it small{color:#8a8f95;font-size:.8em}
+  #prog .it:first-of-type b{color:#fff}
   .label{font-size:2.6vh;color:var(--lc,#f5b301);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1vh}
   .label .up{color:#8a8f95;margin-right:1.2vw}
   body.nolabels #now .label{display:none}
@@ -25,14 +43,14 @@
   .seg b{color:var(--chord,#f5b301);font-size:.7em;min-height:1em;font-weight:700}
   .seg i{font-style:normal}
   .ly{white-space:pre}
-  #blank{position:fixed;top:1vh;right:1vw;background:#b00020;color:#fff;padding:.5vh 1vw;font-size:2.4vh;display:none;border-radius:4px}
-  #msg{background:#f5b301;color:#000;padding:1vh 3vw;font-size:3vh;display:none}
+  #blank{position:fixed;top:1vh;left:50%;transform:translateX(-50%);background:#b00020;color:#fff;padding:.5vh 1vw;font-size:2.4vh;display:none;border-radius:4px}
 </style>
 </head>
 <body>
-<header><span><b id="title">—</b> <span id="key"></span></span><span id="pos"></span><span id="clock"></span></header>
+<header><span id="head"></span><span id="pos"></span><span id="timer" title="Timpul rămas pentru ce e acum în program"></span><span id="clock"></span></header>
 <div id="msg"></div>
-<main><div id="now"></div><div id="next"></div></main>
+<main><div id="now"></div></main>
+<footer><div id="next"></div><div id="prog"></div></footer>
 <div id="blank">ECRAN NEGRU</div>
 <script type="module">
   import { connect, esc, stayAwake } from '/client.js';
@@ -40,35 +58,68 @@
   const $ = id => document.getElementById(id);
   stayAwake();
   document.ondblclick = () => document.documentElement.requestFullscreen?.();
-  const tick = () => $('clock').textContent = new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
-  tick(); setInterval(tick, 1000);
-  const render = sl => !sl ? '' :
-    (sl.label ? `<div class="label" style="--lc:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : '') +
-    sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('');
+  let S = null, D = {}, skew = 0;
+  const KIND = { sermon: 'Predică', prayer: 'Rugăciune', announcement: 'Anunțuri', reading: 'Citire', other: '', media: 'Prezentare' };
+  const mmss = s => { s = Math.abs(Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const isVideo = src => /\.(mp4|webm|mov)$/i.test(src);
+  // the timer counts down the minutes planned for this item: yellow at the last quarter, orange at the last tenth, red when over
+  function tick() {
+    if (D.clock !== false) $('clock').textContent = new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+    const t = $('timer'), it = S?.setlist[S.live.item];
+    if (D.timer === false || !it || !S.live.since) { t.textContent = ''; t.style.display = 'none'; t.className = ''; return; }
+    t.style.display = '';
+    const used = (Date.now() + skew - S.live.since) / 1000, plan = (Number(it.minutes) || 0) * 60;
+    if (!plan) { t.textContent = mmss(used); t.className = ''; return; }
+    const left = plan - used;
+    t.textContent = left >= 0 ? mmss(left) : '+' + mmss(left);
+    t.className = left < 0 ? 't3' : left <= plan * 0.1 ? 't2' : left <= plan * 0.25 ? 't1' : '';
+  }
+  setInterval(tick, 500);
+  const render = sl => !sl ? '' : sl.image
+    ? (isVideo(sl.image) ? `<video src="${esc(sl.image)}" muted autoplay loop playsinline></video>` : `<img src="${esc(sl.image)}" alt="">`)
+    : (sl.label ? `<div class="label" style="--lc:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : '') +
+      sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('');
   function style(d) {
-    if (!d) return;
-    for (const el of [$('now'), $('next')]) { el.classList.toggle('center', d.align === 'center'); el.classList.toggle('right', d.align === 'right'); }
-    document.body.style.fontFamily = `"${d.font}", "Segoe UI", Arial, sans-serif`;
-    $('now').style.fontSize = d.size + 'vh'; $('now').style.color = d.color;
-    document.documentElement.style.setProperty('--chord', d.chordColor);
-    $('next').style.display = d.next === false ? 'none' : '';
+    D = d || {};
+    for (const el of [$('now'), $('next')]) { el.classList.toggle('center', D.align === 'center'); el.classList.toggle('right', D.align === 'right'); }
+    document.body.style.fontFamily = `"${D.font}", "Segoe UI", Arial, sans-serif`;
+    $('now').style.fontSize = D.size + 'vh'; $('now').style.color = D.color;
+    document.documentElement.style.setProperty('--chord', D.chordColor);
+    document.documentElement.style.setProperty('--hs', (D.headSize || 3.2) + 'vh');
     const n = $('next').style;                       // the "Urmează" part: its own size, color and share of the screen
-    n.fontSize = (d.nextSize || 3.4) + 'vh'; n.color = d.nextColor || '#8a8f95'; n.maxHeight = (d.nextShare || 30) + 'vh';
+    n.fontSize = (D.nextSize || 3.4) + 'vh'; n.color = D.nextColor || '#8a8f95';
+    document.querySelector('footer').style.maxHeight = Math.min(55, D.nextShare || 30) + 'vh';
     n.fontFamily = document.body.style.fontFamily;
-    document.body.classList.toggle('nolabels', d.labels === false);
+    document.body.classList.toggle('nolabels', D.labels === false);
+    $('clock').style.display = D.clock === false ? 'none' : '';
+    $('head').style.visibility = D.title === false ? 'hidden' : '';
+  }
+  // long verses get smaller letters instead of being cut off
+  function fit(el, size) {
+    el.style.fontSize = size + 'vh';
+    for (let v = size; v > 1.6 && el.scrollHeight > el.clientHeight + 2; v -= 0.2) el.style.fontSize = v.toFixed(1) + 'vh';
   }
   connect(s => {
+    S = s; if (s.now) skew = s.now - Date.now();
     style(s.display?.stage);
-    const L = s.live, item = s.setlist[L.item], nextItem = s.setlist[L.item + 1];
-    $('title').textContent = item ? item.title : '—';
-    $('key').textContent = item && item.key ? `· ton ${item.key}` : '';
-    $('pos').textContent = L.slides.length ? `${L.slide + 1} / ${L.slides.length}` : '';
+    const L = s.live, item = s.setlist[L.item];
+    $('head').innerHTML = item ? `<b>${esc(item.title || KIND[item.kind] || '')}</b>${item.key ? ' · ton ' + esc(item.key) : ''}${item.leader ? ' · ' + esc(item.leader) : ''}` : '';
+    $('pos').textContent = L.slides.length > 1 ? `${L.slide + 1} / ${L.slides.length}` : '';
     $('now').innerHTML = render(L.slides[L.slide]);
-    const n = L.slides[L.slide + 1];
-    $('next').innerHTML = n ? `<div class="label" style="--lc:${sectionColor(n.label || '')}"><span class="up">Urmează</span>${esc(n.label || '')}</div>${n.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('')}`
-      : nextItem ? `<div class="label"><span class="up">Urmează</span></div>${esc(nextItem.title)}` : '';
+    // what comes next: the next slide of this item; if it is the last one, the next item
+    const n = L.slides[L.slide + 1], nextItem = s.setlist[L.item + 1];
+    $('next').innerHTML = D.next === false ? '' : n
+      ? (n.image ? `<div class="label"><span class="up">Urmează</span></div>${isVideo(n.image) ? '▶ video' : `<img src="${esc(n.image)}" alt="">`}`
+        : `<div class="label" style="--lc:${sectionColor(n.label || '')}"><span class="up">Urmează</span>${esc(n.label || '')}</div>${n.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('')}`)
+      : nextItem ? `<div class="label"><span class="up">Urmează</span></div>${esc(nextItem.title || KIND[nextItem.kind] || '')}` : '';
+    // the program ahead, for the band: title, key, minutes
+    const ahead = s.setlist.slice(L.item + 1, L.item + 1 + (D.upNext ?? 2));
+    $('prog').innerHTML = ahead.length ? `<div class="label"><span class="up">În program</span></div>` + ahead.map(x =>
+      `<div class="it"><b>${esc(x.title || KIND[x.kind] || '')}</b><small>${[x.key ? 'ton ' + x.key : '', x.minutes ? x.minutes + ' min' : ''].filter(Boolean).map(esc).join(' · ')}</small></div>`).join('') : '';
+    fit($('now'), D.size || 5.4); fit($('next'), D.nextSize || 3.4);
     $('blank').style.display = L.blank ? 'block' : 'none';
     $('msg').style.display = L.message ? 'block' : 'none'; $('msg').textContent = L.message;
+    tick();
   });
 </script>
 </body>

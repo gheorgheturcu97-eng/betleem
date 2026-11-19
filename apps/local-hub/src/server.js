@@ -107,7 +107,8 @@ function save() {
 const DISPLAY_DEFAULTS = {
   main:  { font: 'Segoe UI', size: 6.2, color: '#ffffff', align: 'center', valign: 'middle', weight: 700, upper: false, shadow: true, dim: 35 },
   stage: { font: 'Segoe UI', size: 5.4, color: '#f2f2f2', chordColor: '#f5b301', align: 'left', next: true,
-           nextSize: 3.4, nextColor: '#8a8f95', nextShare: 30, labels: true },
+           nextSize: 3.4, nextColor: '#8a8f95', nextShare: 30, labels: true,
+           title: true, clock: true, timer: true, upNext: 2, headSize: 3.2 },
 };
 db.display = { main: { ...DISPLAY_DEFAULTS.main, ...(db.display?.main || {}) }, stage: { ...DISPLAY_DEFAULTS.stage, ...(db.display?.stage || {}) } };
 function cleanDisplay(screen, patch) {
@@ -119,12 +120,14 @@ function cleanDisplay(screen, patch) {
   if (['left', 'center', 'right'].includes(p.align)) d.align = p.align;
   if (['top', 'middle', 'bottom'].includes(p.valign)) d.valign = p.valign;
   if ([400, 500, 600, 700, 800].includes(+p.weight)) d.weight = +p.weight;
-  for (const k of ['upper', 'shadow', 'next', 'italic', 'labels']) if (typeof p[k] === 'boolean') d[k] = p[k];
+  for (const k of ['upper', 'shadow', 'next', 'italic', 'labels', 'title', 'clock', 'timer']) if (typeof p[k] === 'boolean') d[k] = p[k];
+  if (Number.isFinite(+p.upNext)) d.upNext = Math.min(5, Math.max(0, Math.round(+p.upNext)));        // how many program items the stage shows ahead
+  if (Number.isFinite(+p.headSize)) d.headSize = Math.min(8, Math.max(2, +p.headSize));
   if (Number.isFinite(+p.dim)) d.dim = Math.min(90, Math.max(0, +p.dim));
   if (Number.isFinite(+p.lineHeight)) d.lineHeight = Math.min(2.2, Math.max(0.8, +p.lineHeight));
   if (Number.isFinite(+p.nextSize)) d.nextSize = Math.min(10, Math.max(1.5, +p.nextSize));
   if (/^#[0-9a-f]{6}$/i.test(p.nextColor || '')) d.nextColor = p.nextColor;
-  if (Number.isFinite(+p.nextShare)) d.nextShare = Math.min(70, Math.max(10, +p.nextShare));
+  if (Number.isFinite(+p.nextShare)) d.nextShare = Math.min(55, Math.max(10, +p.nextShare));
   // text area on the screen, in % of width/height (null = whole screen with margins)
   if (p.box === null) d.box = null;
   else if (p.box && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(+p.box[k]))) {
@@ -136,10 +139,16 @@ function cleanDisplay(screen, patch) {
 }
 
 // --- Live state (what is on the screens right now) ---------------------------
-const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '' };
+const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0 };
+let liveId = null;                                   // the timer on stage restarts when another program item goes live
+function trackSince() {
+  const id = db.setlist[live.item]?.id || null;
+  if (id !== liveId) { liveId = id; live.since = id ? Date.now() : 0; }
+}
 
 function slidesFor(index) {
   const it = db.setlist[index];
+  if (it?.kind === 'media') return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));   // PDF / PowerPoint pages, pictures, videos
   if (!it || it.kind !== 'song') return [];
   const song = db.songs.find(s => s.id === it.songId);
   if (!song) return [];
@@ -222,6 +231,7 @@ function snapshot() {
       slideCount: slidesFor(i).length,
     })),
     live: { ...live, slides: slidesFor(live.item) },
+    now: Date.now(),                                 // screens on other devices correct their clock with this
     // the planned programs of this church (titles and dates only — teams and phone numbers stay out)
     programs: (db.plan?.services || []).slice().sort((a, b) => a.date.localeCompare(b.date))
       .map(s => ({ id: s.id, title: s.title, date: s.date, count: s.items.length })),
@@ -234,6 +244,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 const sessions = new Map(); // ws -> { role }
 
 function broadcast() {
+  trackSince();
   const msg = JSON.stringify({ type: 'state', state: snapshot() });
   for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
 }
@@ -329,6 +340,7 @@ function handleMessage(ws, m) {
         break;
       }
       case 'blank': live.blank = !live.blank; break;
+      case 'resetTimer': live.since = live.item >= 0 ? Date.now() : 0; break;
       case 'logo': live.logo = !live.logo; break;
       case 'background': live.background = String(m.value || ''); break;
       case 'message': live.message = String(m.value || '').slice(0, 200); break;
@@ -593,10 +605,11 @@ function handleMessage(ws, m) {
       case 'addItem': case 'removeItem': case 'moveItem': case 'updateItem': case 'deleteSong': case 'service': {
         if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba programul.' });
         if (m.type === 'addItem') {
-          const kind = ['song', 'sermon', 'prayer', 'announcement', 'other'].includes(m.kind) ? m.kind : 'other';
+          const kind = ['song', 'sermon', 'prayer', 'announcement', 'other', 'media'].includes(m.kind) ? m.kind : 'other';
           const item = m.item && typeof m.item === 'object'                                 // undo of a removal
-            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes']), id: m.item.id || crypto.randomUUID() }
-            : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [] };
+            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes', 'slides']), id: m.item.id || crypto.randomUUID() }
+            : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [],
+                ...(kind === 'media' ? { slides: mediaSlides(m.slides) } : {}) };
           const at = Number.isInteger(m.at) ? Math.min(Math.max(0, m.at), db.setlist.length) : db.setlist.length;
           db.setlist.splice(at, 0, item);
           if (live.item >= at && live.item >= 0 && Number.isInteger(m.at)) live.item++;
@@ -804,11 +817,31 @@ async function runChordsJob(list) {
 }
 
 // --- HTTP ----------------------------------------------------------------------
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css',
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.pdf': 'application/pdf', '.css': 'text/css',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml',
   '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.webm': 'video/webm', '.mov': 'video/quicktime', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.aac': 'audio/aac' };
 const MEDIA_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.mp4', '.webm', '.mov', '.mp3', '.wav', '.m4a', '.ogg', '.aac'];   // what may be uploaded
+const SHOW_EXT = ['.pptx', '.ppt', '.key', '.odp', '.pps', '.ppsx'];                  // presentations turned into PDF by LibreOffice
+/** Only pictures and videos from our own media folder can be slides. */
+function mediaSlides(list) {
+  return (Array.isArray(list) ? list : []).slice(0, 400).map(x => String(x))
+    .filter(x => /^\/media\/[^/]+$/.test(x) && ['.png', '.jpg', '.jpeg', '.webp', '.mp4', '.webm', '.mov'].includes(path.extname(x).toLowerCase()));
+}
+/** LibreOffice, if this computer has it: it opens PowerPoint, Keynote and Impress files exactly. */
+function findOffice() {
+  const c = ['/Applications/LibreOffice.app/Contents/MacOS/soffice', 'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+    'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe', '/usr/bin/soffice', '/usr/local/bin/soffice', '/opt/homebrew/bin/soffice'];
+  return c.find(p => { try { return fs.statSync(p).isFile(); } catch { return false; } }) || null;
+}
+async function toPdf(file) {
+  const office = findOffice(); if (!office) return null;
+  const { execFile } = await import('node:child_process');
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-pdf-'));
+  await new Promise((ok, no) => execFile(office, ['--headless', '--convert-to', 'pdf', '--outdir', out, file], { timeout: 180000 }, e => e ? no(e) : ok()));
+  const pdf = fs.readdirSync(out).find(f => f.endsWith('.pdf'));
+  return pdf ? path.join(out, pdf) : null;
+}
 
 async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
@@ -950,7 +983,7 @@ async function handle(req, res) {
       catch (e) { return json(res, 200, { error: e.message }); }
     }
     if (p === '/api/media' && req.method === 'GET') {
-      const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.'));
+      const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.') && !f.startsWith('pres-'));
       return json(res, 200, files);
     }
     if (p === '/api/media' && req.method === 'POST') {      // upload background (raw body, ?name=)
@@ -960,6 +993,21 @@ async function handle(req, res) {
       const buf = await body(req, 500 * 1024 * 1024, true);
       fs.writeFileSync(path.join(MEDIA_DIR, name), buf);
       return json(res, 200, { ok: true, name });
+    }
+    if (p === '/api/convert' && req.method === 'POST') {    // PowerPoint / Keynote → PDF (the pages are drawn in the browser)
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const name = path.basename(url.searchParams.get('name') || '').replace(/[^\w.\- ]/g, '_');
+      if (!SHOW_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Tip de fișier nepermis' });
+      if (!findOffice()) return json(res, 200, { office: false });
+      const buf = await body(req, 300 * 1024 * 1024, true);
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-show-')), src = path.join(dir, name);
+      fs.writeFileSync(src, buf);
+      try {
+        const pdf = await toPdf(src);
+        if (!pdf) return json(res, 200, { office: true, error: 'LibreOffice nu a putut deschide prezentarea' });
+        res.writeHead(200, { 'content-type': 'application/pdf' }); return res.end(fs.readFileSync(pdf));
+      } catch (e) { logError('convert', e); return json(res, 200, { office: true, error: 'Conversia a eșuat: ' + e.message }); }
+      finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
     if (p === '/' ) return redirect(res, '/live.html');
