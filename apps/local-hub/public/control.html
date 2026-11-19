@@ -1427,7 +1427,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         toast('Am scos „' + name(parsed[+gone.slice(1)]) + '” din acest program', () => setOrder(arr.tokens.slice(0, +b.dataset.x).concat(gone, arr.tokens.slice(+b.dataset.x))));
       });
     }
-    $('arrAdd').innerHTML = '<option value="">＋ secțiune</option>' + parsed.map((sec, i) => `<option value="#${i}">${esc(name(sec))}</option>`).join('');
+    $('arrAdd').innerHTML = '<option value="">＋</option>' + parsed.map((sec, i) => `<option value="#${i}">${esc(name(sec))}</option>`).join('');
   }
   $('arrAdd').onchange = e => { if (e.target.value && arr) setOrder([...arr.tokens, e.target.value]); e.target.value = ''; };
   $('arrReset').onclick = () => { send({ type: 'arrangement', item: sel, value: null, maxLines: +$('maxLines').value }); toast('Ordinea din cântare'); };
