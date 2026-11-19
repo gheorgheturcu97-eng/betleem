@@ -26,6 +26,7 @@ const ROOT = path.resolve(HERE, '..');
 const PUBLIC = path.join(ROOT, 'public');
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
+const INBOX_DIR = path.join(DATA_DIR, 'primite');                                     // files sent from phones / AirDrop, waiting
 const BIBLE_DIRS = [path.join(ROOT, 'bibles'), path.join(DATA_DIR, 'bibles')];        // built in (public domain), then imported by the church
 const DB_FILE = path.join(DATA_DIR, 'library.json');
 const PORT = Number(process.env.PORT || 4545);
@@ -284,6 +285,7 @@ function snapshot() {
     live: { ...live, slides: slidesFor(live.item), title: live.item === -2 ? live.bible?.title || '' : undefined },
     now: Date.now(),                                 // screens on other devices correct their clock with this
     // the planned programs of this church (titles and dates only — teams and phone numbers stay out)
+    inbox: inboxList().length,                       // files waiting in 📥 Primite
     programs: (db.plan?.services || []).slice().sort((a, b) => a.date.localeCompare(b.date))
       .map(s => ({ id: s.id, title: s.title, date: s.date, count: s.items.length })),
   };
@@ -1058,6 +1060,42 @@ async function handle(req, res) {
     }
     if (p === '/api/bibles' && req.method === 'GET') return json(res, 200, bibleList());
     if (p === '/api/peers' && req.method === 'GET') return json(res, 200, peerList());
+    // phone → Betleem: the page behind the QR code sends files here (only with the code from the QR)
+    if (p === '/api/send' && req.method === 'POST') {
+      if (!safeEq(url.searchParams.get('t'), sendToken)) return json(res, 403, { error: 'Codul QR a expirat. Scanează-l din nou de pe ecranul Betleem.' });
+      const name = inboxName(url.searchParams.get('name'));
+      if (!name || !INBOX_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Pot primi poze, video, audio, PowerPoint, Keynote și PDF.' });
+      const final = freeName(INBOX_DIR, name), tmp = path.join(INBOX_DIR, '.' + final + '.part');
+      let size = 0; const MAX = 4 * 1024 * 1024 * 1024;
+      await new Promise((ok, bad) => {
+        const out = fs.createWriteStream(tmp);
+        req.on('data', c => { size += c.length; if (size > MAX) { req.destroy(); bad(new Error('Fișierul e prea mare')); } });
+        req.pipe(out); out.on('finish', ok); out.on('error', bad); req.on('error', bad);
+      }).catch(e => { try { fs.rmSync(tmp, { force: true }); } catch {} throw e; });
+      fs.renameSync(tmp, path.join(INBOX_DIR, final));
+      inboxEvent({ added: final, via: 'telefon' });
+      return json(res, 200, { ok: true, name: final });
+    }
+    if (p === '/api/inbox' && req.method === 'GET') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const t = url.searchParams.get('new') === '1' ? (sendToken = crypto.randomBytes(9).toString('base64url')) : sendToken;
+      return json(res, 200, { token: t, urls: lanIPs().map(i => `http://${i.address}:${PORT}`), files: inboxList() });
+    }
+    if (p === '/api/inbox/file' && req.method === 'GET') {    // ?pin= too, so pictures can show in an <img>
+      const qp = url.searchParams.get('pin');
+      if (!checkPin(req) && !(qp && (safeEq(qp, PIN) || safeEq(qp, LEADER_PIN)))) return json(res, 401, { error: 'PIN greșit' });
+      return file(res, INBOX_DIR, inboxName(url.searchParams.get('name')), req);
+    }
+    if (p === '/api/inbox/take' && req.method === 'POST') {  // to the backgrounds / media folder, or thrown away
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const m = JSON.parse(await body(req, 10000)), name = inboxName(m.name), src = path.join(INBOX_DIR, name);
+      if (!fs.existsSync(src)) return json(res, 404, { error: 'Fișierul nu mai e în Primite' });
+      if (m.action === 'delete') { fs.rmSync(src); inboxEvent({}); return json(res, 200, { ok: true }); }
+      if (!MEDIA_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Acest fișier se deschide ca prezentare' });
+      const dst = freeName(MEDIA_DIR, name.replace(/ /g, '-'));
+      fs.renameSync(src, path.join(MEDIA_DIR, dst)); inboxEvent({});
+      return json(res, 200, { ok: true, media: dst });
+    }
     if (p === '/api/hello' && req.method === 'GET') {        // "is there a Betleem at this address?" (asked from another computer's page)
       res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
       return res.end(JSON.stringify({ app: 'betleem', name: os.hostname().replace(/\.local$/, ''), church: activeChurch()?.name || '' }));
@@ -1204,6 +1242,48 @@ function peerList() {
   const now = Date.now();
   return [...peers.values()].filter(p => now - p.seen < 12000).sort((a, b) => a.name.localeCompare(b.name))
     .map(p => ({ name: p.name, church: p.church, url: `http://${p.address}:${p.port}` }));
+}
+
+// --- Primite: files sent from a phone (QR code) or by AirDrop, waiting to be used ------------------
+const INBOX_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.mp4', '.mov', '.m4v', '.webm', '.mp3', '.wav', '.m4a', '.aac', '.pdf', '.pptx', '.ppt', '.key', '.odp', '.ppsx', '.pps'];
+let sendToken = crypto.randomBytes(9).toString('base64url');   // in the QR code; a new one each time Betleem starts
+fs.mkdirSync(INBOX_DIR, { recursive: true });
+const inboxName = n => path.basename(String(n || '')).replace(/[^\w.\- ăâîșțĂÂÎȘȚ()]/g, '_').slice(-120);
+function inboxList() {
+  return fs.readdirSync(INBOX_DIR).filter(f => !f.startsWith('.') && INBOX_EXT.includes(path.extname(f).toLowerCase()))
+    .map(f => { const st = fs.statSync(path.join(INBOX_DIR, f)); return { name: f, size: st.size, at: st.mtimeMs }; })
+    .sort((a, b) => b.at - a.at);
+}
+function inboxEvent(o) {
+  const msg = JSON.stringify({ type: 'inbox', files: inboxList(), ...o });
+  for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role !== 'viewer') ws.send(msg);
+}
+function freeName(dir, name) {
+  let n = name, i = 2; const ext = path.extname(name), base = name.slice(0, -ext.length || undefined);
+  while (fs.existsSync(path.join(dir, n))) n = `${base} (${i++})${ext}`;
+  return n;
+}
+// AirDrop (Mac) and Nearby Share (Windows) drop files into Downloads: new pictures, videos and presentations that arrive
+// while Betleem is open come to Primite (copied, the original stays). Nothing else from Downloads is read.
+if (['darwin', 'win32'].includes(process.platform) && process.env.WATCH_AIRDROP !== '0' && !process.env.NODE_TEST_CONTEXT) {
+  const dl = path.join(os.homedir(), 'Downloads'), started = Date.now(), seen = new Set();
+  try {
+    fs.watch(dl, (_e, f) => {
+      if (!f || seen.has(f) || f.startsWith('.') || !INBOX_EXT.includes(path.extname(f).toLowerCase())) return;
+      let last = -1, tries = 0;
+      const check = () => {                                  // wait until the file stops growing (big videos take a while)
+        try {
+          const src = path.join(dl, f), st = fs.statSync(src);
+          if (!st.isFile() || Math.max(st.birthtimeMs, st.ctimeMs) < started || seen.has(f)) return;
+          if (st.size !== last || !st.size) { last = st.size; if (++tries < 300) setTimeout(check, 1500); return; }
+          seen.add(f);
+          const n = freeName(INBOX_DIR, inboxName(f)); fs.copyFileSync(src, path.join(INBOX_DIR, n));
+          inboxEvent({ added: n, via: process.platform === 'darwin' ? 'AirDrop' : 'Descărcări' });
+        } catch {}
+      };
+      setTimeout(check, 1500);
+    }).unref?.();
+  } catch (e) { logError('AirDrop (Downloads)', e); }
 }
 
 export { server };

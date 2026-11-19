@@ -482,6 +482,19 @@
   .look .checks{display:flex;flex-wrap:wrap;gap:6px 14px} .look .checks .check{font-size:12.5px}
   .look .lf>span{width:96px}
   #bLook.sel{background:var(--glass-3);color:var(--fg)}
+  .inbox-btn{position:relative} .inbox-btn i{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font:700 10px/16px Inter,sans-serif;font-style:normal}
+  .inbox-btn.ping{animation:ping .5s ease 4} @keyframes ping{50%{transform:scale(1.18);background:rgba(255,191,47,.4)}}
+  .modal .glass.inbox{width:min(860px,96vw);display:flex;flex-direction:column;gap:12px}
+  .inbox-body{display:grid;grid-template-columns:260px 1fr;gap:18px;min-height:340px}
+  .qr-side{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+  .qr{width:220px;height:220px;border-radius:18px;background:#fff;padding:6px;display:grid;place-items:center} .qr svg{width:100%;height:100%}
+  .qr-urls{flex-wrap:wrap;justify-content:center} .qr-urls .sel{border-color:var(--acc)}
+  .in-list{display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto}
+  .in-f{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke)}
+  .in-f img,.in-f .k{width:56px;height:36px;border-radius:7px;object-fit:cover;flex:none;display:grid;place-items:center;background:rgba(0,0,0,.3);font-size:18px}
+  .in-f .t{flex:1;min-width:0} .in-f b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .in-f small{color:var(--mute);font-size:11.5px}
+  .in-f .acts{display:flex;gap:5px;align-items:center} .in-f .mini{padding:4px 10px;font-size:12px}
+  @media (max-width:760px){ .inbox-body{grid-template-columns:1fr} }
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
   .pc-list{display:flex;flex-direction:column;gap:6px}
@@ -528,6 +541,7 @@
       <input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button id="bLogin">OK</button>
     </div>
     <button id="bUndo" class="icon" title="Anulează">↶</button><button id="bRedo" class="icon" title="Refă">↷</button>
+    <button id="bInbox" class="icon inbox-btn" title="📥 Primite: trimite de pe telefon (cod QR) sau prin AirDrop">📥<i id="inboxN" hidden></i></button>
     <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
     <button id="aiTop" class="ai-top" title="Asistentul Betleem">✦</button>
     <button id="remotePill" class="remote-pill" hidden title="Lucrezi pe programul altui calculator · apasă pentru detalii"></button>
@@ -706,6 +720,20 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="sep"></div>
   <button id="bPcs" class="ghost">🖥 Lucrează de pe mai multe calculatoare…</button>
 </div>
+<div class="modal" id="inboxModal"><div class="glass inbox">
+  <div class="look-head"><b>📥 Primite</b><span class="grow"></span><button id="inboxClose" class="icon" title="Închide">✕</button></div>
+  <div class="inbox-body">
+    <div class="qr-side">
+      <div class="qr" id="qr"></div>
+      <b>Scanează cu telefonul</b>
+      <p class="hint">Alege poze, video, PowerPoint, Keynote sau PDF și apasă trimite. Telefonul trebuie să fie pe același Wi-Fi.</p>
+      <p class="hint">Pe Mac merge și cu <b>AirDrop</b>: ce primești cât timp Betleem e deschis apare aici.</p>
+      <div class="row qr-urls" id="qrUrls"></div>
+      <button id="qrNew" class="mini ghost" title="Codul vechi nu mai merge">↻ Cod nou</button>
+    </div>
+    <div class="in-list" id="inList"></div>
+  </div>
+</div></div>
 <div class="modal" id="pcModal"><div class="glass pcs">
   <div class="look-head"><b>Mai multe calculatoare, același program</b><span class="grow"></span><button id="pcClose" class="icon" title="Închide">✕</button></div>
   <p class="hint">Un calculator ține programul, de obicei cel cu proiectorul. Celelalte se conectează la el și lucrează pe același program, în timp real: unul pornește track-urile, altul schimbă versurile.</p>
@@ -830,6 +858,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'chords') chordsProgress(e);
     if (e.type === 'cleaned') { songCache.clear(); search(); render(); toast(`Am curățat ${e.changed} din ${e.total} cântări; la ${e.ordered} am pus refrenul după fiecare strofă.`); }
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
+    if (e.type === 'inbox') onInbox(e);
     if (e.type === 'undone') toast(e.ok ? (e.what === 'undo' ? 'Anulat: ' : 'Refăcut: ') + (e.name || 'ultima schimbare') : (e.what === 'undo' ? 'Nu mai am ce anula' : 'Nu mai am ce reface'));
   });
   const send = o => hub.send(o);
@@ -892,6 +921,66 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (v[2] !== v[3]) return toast('Codurile nu sunt la fel');
     send({ type: 'addChurch', name: v[0], city: v[1], code: v[2] });
   };
+  // ---- 📥 Primite: files from a phone (QR code) or AirDrop → background, or into the program
+  let inboxData = null, qrUrl = '';
+  const IMG = /\.(png|jpe?g|webp)$/i, VID = /\.(mp4|webm|mov|m4v)$/i, AUD = /\.(mp3|wav|m4a|aac|ogg)$/i, SHOW = /\.(pdf|pptx?|key|odp|ppsx?)$/i;
+  const sizeTxt = n => n > 1048576 ? (n / 1048576).toFixed(n > 104857600 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  async function loadInbox(fresh) {
+    try { inboxData = await api('/api/inbox' + (fresh ? '?new=1' : '')); } catch (err) { return toast(err.message); }
+    const urls = inboxData.urls.map(u => `${u}/send.html?t=${inboxData.token}`);
+    if (!urls.includes(qrUrl)) qrUrl = urls[0] || '';
+    const { default: qrcode } = await import('/vendor/qrcode.js');
+    if (qrUrl) { const q = qrcode(0, 'M'); q.addData(qrUrl); q.make(); $('qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 3, scalable: true }); }
+    else $('qr').innerHTML = '<p class="hint">Calculatorul nu e conectat la o rețea Wi-Fi.</p>';
+    $('qrUrls').innerHTML = urls.length > 1 ? urls.map(u => `<button class="mini ${u === qrUrl ? 'sel' : ''}" data-u="${esc(u)}" title="Altă rețea a calculatorului">${esc(new URL(u).hostname)}</button>`).join('') : '';
+    document.querySelectorAll('#qrUrls [data-u]').forEach(b => b.onclick = () => { qrUrl = b.dataset.u; loadInbox(); });
+    renderInbox();
+  }
+  function renderInbox() {
+    const files = inboxData?.files || [];
+    $('inList').innerHTML = files.length ? files.map(f => {
+      const kind = IMG.test(f.name) ? '🖼' : VID.test(f.name) ? '🎬' : AUD.test(f.name) ? '🎵' : SHOW.test(f.name) ? '📊' : '📄';
+      const acts = (IMG.test(f.name) || VID.test(f.name) ? `<button class="mini" data-a="bg">Fundal</button><button class="mini acc" data-a="prog">În program</button>`
+        : SHOW.test(f.name) ? `<button class="mini acc" data-a="show">În program</button>`
+        : AUD.test(f.name) ? `<button class="mini" data-a="keep" title="În folderul media, de unde îl pui ca track la Muzică">Păstrează</button>` : '')
+        + `<button class="icon" data-a="del" title="Șterge">🗑</button>`;
+      const thumb = IMG.test(f.name) ? `<img src="/api/inbox/file?name=${encodeURIComponent(f.name)}&pin=${encodeURIComponent(hub.pin())}" alt="">` : `<span class="k">${kind}</span>`;
+      return `<div class="in-f" data-n="${esc(f.name)}">${thumb}<div class="t"><b>${esc(f.name)}</b><small>${sizeTxt(f.size)}</small></div><div class="acts">${acts}</div></div>`;
+    }).join('') : '<div class="empty">Nimic încă.<br>Scanează codul cu telefonul și trimite fișiere.</div>';
+    document.querySelectorAll('#inList .in-f').forEach(el => el.onclick = e => { const a = e.target.closest('button')?.dataset.a; if (a) useInbox(el.dataset.n, a, e.target.closest('button')); });
+    $('inboxN').hidden = !files.length; $('inboxN').textContent = files.length;
+  }
+  async function useInbox(name, a, btn) {
+    btn.disabled = true;
+    try {
+      if (a === 'del') { await api('/api/inbox/take', { method: 'POST', body: JSON.stringify({ name, action: 'delete' }) }); }
+      else if (a === 'bg' || a === 'keep') { await api('/api/inbox/take', { method: 'POST', body: JSON.stringify({ name }) }); toast(a === 'bg' ? 'E la Fundaluri' : 'Păstrat în folderul media'); loadMedia(); }
+      else if (a === 'prog') {
+        const r = await api('/api/inbox/take', { method: 'POST', body: JSON.stringify({ name }) });
+        const at = sel >= 0 ? sel + 1 : S.setlist.length;
+        send({ type: 'addItem', kind: 'media', title: name.replace(/\.[^.]+$/, ''), slides: ['/media/' + r.media], minutes: 2, at });
+        toast('„' + name + '” e în program'); loadMedia();
+      } else if (a === 'show') {
+        toast('Deschid ' + name + '…');
+        const blob = await fetch('/api/inbox/file?name=' + encodeURIComponent(name), { headers: { 'x-pin': hub.pin() } }).then(r => { if (!r.ok) throw new Error('Nu pot deschide fișierul'); return r.blob(); });
+        await importFiles([new File([blob], name)]);
+        await api('/api/inbox/take', { method: 'POST', body: JSON.stringify({ name, action: 'delete' }) });
+      }
+    } catch (err) { toast(err.message || String(err)); }
+    loadInbox();
+  }
+  function onInbox(e) {
+    if (inboxData) inboxData.files = e.files;
+    $('inboxN').hidden = !e.files?.length; $('inboxN').textContent = e.files?.length || '';
+    if (e.added) { toast(`📥 Ai primit „${e.added}”${e.via ? ' (' + e.via + ')' : ''}`); $('bInbox').classList.add('ping'); setTimeout(() => $('bInbox').classList.remove('ping'), 2500); }
+    if ($('inboxModal').classList.contains('show')) renderInbox();
+  }
+  $('bInbox').onclick = () => { $('inboxModal').classList.add('show'); loadInbox(); };
+  $('inboxClose').onclick = () => $('inboxModal').classList.remove('show');
+  $('inboxModal').onclick = e => { if (e.target === $('inboxModal')) $('inboxModal').classList.remove('show'); };
+  $('qrNew').onclick = () => { loadInbox(true); toast('Cod nou: cel vechi nu mai merge'); };
+  api('/api/inbox').then(d => { inboxData = d; $('inboxN').hidden = !d.files.length; $('inboxN').textContent = d.files.length; }).catch(() => {});
+
   // ---- 🖥 several computers
   async function renderPcs() {
     $('pcThisHead').textContent = REMOTE ? 'Lucrezi acum pe programul de la' : 'Acest calculator';
@@ -1133,9 +1222,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('svcTitle').onchange = e => send({ type: 'service', value: { title: e.target.value } });
   $('svcStart').onchange = e => send({ type: 'service', value: { startsAt: e.target.value ? new Date(e.target.value).toISOString() : null } });
   // PowerPoint, Keynote, PDF, pictures, videos → a "prezentare" in the program, one slide per page
-  $('importMedia').onchange = async e => {
-    const files = [...e.target.files]; e.target.value = '';
-    if (!files.length) return;
+  $('importMedia').onchange = async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) importFiles(files); };
+  async function importFiles(files) {
     const { importMedia } = await import('/importer.js');
     const upload = async (name, blob) => (await api('/api/media?name=' + encodeURIComponent(name), { method: 'POST', body: blob }), '/media/' + name);
     const convert = async f => {
@@ -1149,7 +1237,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       done.forEach((d, k) => send({ type: 'addItem', kind: 'media', title: d.title, slides: d.slides, minutes: 2, at: at + k }));
       sel = at; toast(done.length === 1 ? `„${done[0].title}”: ${done[0].slides.length} slide-uri în program` : `${done.length} prezentări în program`);
     } catch (err) { toast(err.message || String(err)); }
-  };
+  }
   $('bAddItem').onclick = async () => {
     const kind = $('addKind').value, name = $('addKind').selectedOptions[0].text;
     const v = await ask('Adaugă în program', [{ label: 'Titlu', value: name }, { label: 'Minute', value: 5, type: 'number' }], 'Adaugă');

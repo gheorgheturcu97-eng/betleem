@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="stylesheet" href="/fonts/inter.css">
+<title>Trimite în Betleem</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;min-height:100vh;font-family:Inter,-apple-system,system-ui,sans-serif;color:#f4f5f7;-webkit-font-smoothing:antialiased;
+       background:radial-gradient(120% 70% at 20% 0%,#3a2a6b,transparent 60%),radial-gradient(120% 80% at 100% 100%,#6b3a1a,transparent 55%),#07080c}
+  main{max-width:480px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 20px 40px;display:flex;flex-direction:column;gap:16px}
+  .logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px;background:linear-gradient(180deg,#ffd35c,#ff9d1e);color:#fff}
+  h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em} p{margin:0;color:rgba(235,238,245,.65);line-height:1.45}
+  .card{background:rgba(255,255,255,.07);border:.5px solid rgba(255,255,255,.16);border-radius:22px;padding:16px;backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
+  label.pick{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 16px;border-radius:18px;border:1.5px dashed rgba(255,255,255,.3);text-align:center;cursor:pointer}
+  label.pick b{font-size:17px} label.pick span{font-size:13px;color:rgba(235,238,245,.6)}
+  .big{font-size:36px}
+  input[type=file]{display:none}
+  .f{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:.5px solid rgba(255,255,255,.1)}
+  .f:first-child{border-top:0}
+  .f .n{display:flex;gap:8px;font-size:14px} .f .n b{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .f .n small{color:rgba(235,238,245,.6)}
+  .bar{height:6px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden} .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd35c,#ff9d1e);transition:width .2s}
+  .ok .bar i{background:#3ddc84} .err .bar i{background:#ff5a5f;width:100%!important} .err small{color:#ff8a8d!important}
+  #list:empty{display:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">✦</div>
+  <h1>Trimite în Betleem</h1>
+  <p>Poze, video, PowerPoint, Keynote sau PDF. Ajung pe calculator, la <b>📥 Primite</b>, de unde le pui ca fundal sau în program.</p>
+  <label class="pick card"><span class="big">⇪</span><b>Alege fișierele</b><span>Poți alege mai multe deodată</span>
+    <input type="file" id="files" multiple accept="image/*,video/*,audio/*,.pdf,.ppt,.pptx,.key,.odp,.pps,.ppsx"></label>
+  <div class="card" id="list"></div>
+</main>
+<script>
+  const token = new URLSearchParams(location.search).get('t') || '';
+  const list = document.getElementById('list');
+  const mb = n => (n / 1048576).toFixed(n > 104857600 ? 0 : 1) + ' MB';
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  // one at a time: phones on church Wi-Fi do better than with everything at once
+  let queue = Promise.resolve();
+  document.getElementById('files').onchange = e => {
+    for (const f of e.target.files) {
+      const row = document.createElement('div'); row.className = 'f';
+      row.innerHTML = `<div class="n"><b>${esc(f.name)}</b><small>${mb(f.size)}</small></div><div class="bar"><i></i></div>`;
+      list.prepend(row);
+      queue = queue.then(() => send(f, row));
+    }
+    e.target.value = '';
+  };
+  function send(f, row) {
+    return new Promise(done => {
+      const x = new XMLHttpRequest();
+      x.open('POST', `/api/send?t=${encodeURIComponent(token)}&name=${encodeURIComponent(f.name)}`);
+      x.upload.onprogress = e => { if (e.lengthComputable) row.querySelector('i').style.width = Math.round(e.loaded / e.total * 100) + '%'; };
+      x.onload = () => {
+        let j = {}; try { j = JSON.parse(x.responseText); } catch {}
+        if (x.status === 200) { row.classList.add('ok'); row.querySelector('i').style.width = '100%'; row.querySelector('small').textContent = 'trimis ✓'; }
+        else { row.classList.add('err'); row.querySelector('small').textContent = j.error || 'nu a mers'; }
+        done();
+      };
+      x.onerror = () => { row.classList.add('err'); row.querySelector('small').textContent = 'fără conexiune la Betleem'; done(); };
+      x.send(f);
+    });
+  }
+</script>
+</body>
+</html>

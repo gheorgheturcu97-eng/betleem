@@ -245,3 +245,17 @@ test('several computers: hello for others, PINs only on this computer', async ()
   assert.equal((await fetch('http://localhost:4599/api/this')).status, 403, 'PINs are not given out');
   assert.ok(Array.isArray(await fetch('http://localhost:4599/api/peers').then(r => r.json())));
 });
+
+test('📥 Primite: a phone sends with the QR code, the file becomes a background', async () => {
+  const bad = await fetch('http://localhost:4599/api/send?t=wrong&name=a.jpg', { method: 'POST', body: 'x' });
+  assert.equal(bad.status, 403);
+  const box = await fetch('http://localhost:4599/api/inbox', { headers: { 'x-pin': '1111' } }).then(r => r.json());
+  const ok = await fetch(`http://localhost:4599/api/send?t=${box.token}&name=${encodeURIComponent('poză din telefon.jpg')}`, { method: 'POST', body: Buffer.from([0xff, 0xd8, 0xff, 1, 2, 3]) }).then(r => r.json());
+  assert.ok(ok.ok);
+  assert.equal((await fetch(`http://localhost:4599/api/send?t=${box.token}&name=virus.exe`, { method: 'POST', body: 'x' })).status, 400);
+  const after = await fetch('http://localhost:4599/api/inbox', { headers: { 'x-pin': '1111' } }).then(r => r.json());
+  assert.ok(after.files.some(f => f.name === ok.name));
+  const t = await fetch('http://localhost:4599/api/inbox/take', { method: 'POST', headers: { 'x-pin': '1111' }, body: JSON.stringify({ name: ok.name }) }).then(r => r.json());
+  assert.ok(t.media);
+  assert.equal((await fetch('http://localhost:4599/media/' + encodeURIComponent(t.media))).status, 200);
+});
