@@ -741,7 +741,7 @@ export function mergePcoPlans(plans) {
   return { added, updated };
 }
 
-async function runPcoImport({ songs, plans }) {
+async function runPcoImport({ songs, plans, only = null, openId = null }) {
   Object.assign(pcoJob, { running: true });
   const res = {};
   try {
@@ -751,7 +751,7 @@ async function runPcoImport({ songs, plans }) {
     }
     if (plans) {
       pcoEvent({ running: true, step: 'programe', done: 0, total: 0 });
-      const list = await pco.fetchPlans(pcoSettings, pcoSettings.typeIds || []);
+      const list = await pco.fetchPlans(pcoSettings, pcoSettings.typeIds || [], { only });
       // songs used in these plans but not imported yet come along too
       const missing = [...new Set(list.flatMap(p => p.items.filter(i => i.type === 'song' && i.songId && !db.songs.some(s => s.pcoId === i.songId)).map(i => i.songId)))];
       if (missing.length) {
@@ -759,7 +759,15 @@ async function runPcoImport({ songs, plans }) {
         for (const id of missing) extra.push(...(await pco.fetchSongs(pcoSettings, { onlyIds: [id] }).catch(() => [])));
         mergePcoSongs(extra);
       }
-      Object.assign(res, { plans: mergePcoPlans(list) }); save();
+      Object.assign(res, { plans: mergePcoPlans(list) });
+      const open = openId && db.plan.services.find(x => x.pcoId === openId);
+      if (open) {                                    // straight into Live
+        db.setlist = open.items.map(it => ({ ...structuredClone(it), notes: [] }));
+        db.service = { title: open.title, startsAt: open.date, planId: open.id };
+        Object.assign(live, { item: -1, slide: 0, blank: false, logo: false });
+        res.opened = open.title;
+      }
+      save();
     }
     pcoSettings.lastImport = new Date().toISOString(); fs.writeFileSync(PCO_FILE, JSON.stringify(pcoSettings, null, 2));
     pcoEvent({ finished: true, ...res }); broadcast();
@@ -901,10 +909,21 @@ async function handle(req, res) {
       if (p === '/api/pco/types') {
         try { return json(res, 200, await pco.serviceTypes(pcoSettings)); } catch (e) { return json(res, 400, { error: e.message }); }
       }
+      if (p === '/api/pco/plans') {                       // plans to choose from, per service type
+        try {
+          const types = await pco.serviceTypes(pcoSettings);
+          const want = types.filter(t => !pcoSettings.typeIds?.length || pcoSettings.typeIds.includes(t.id));
+          const out = [];
+          for (const t of want) for (const pl of await pco.listPlans(pcoSettings, t.id))
+            out.push({ ...pl, typeName: t.name, imported: db.plan.services.some(x => x.pcoId === pl.id) });
+          return json(res, 200, { types, plans: out });
+        } catch (e) { return json(res, 400, { error: e.message }); }
+      }
       if (p === '/api/pco/import' && req.method === 'POST') {
         if (pcoJob.running) return json(res, 409, { error: 'Importul rulează deja' });
         const v = JSON.parse((await body(req, 10_000)) || '{}');
-        runPcoImport({ songs: !!v.songs, plans: !!v.plans });
+        const only = Array.isArray(v.only) ? v.only.slice(0, 40).map(r => ({ typeId: String(r.typeId), id: String(r.id) })).filter(r => /^\d+$/.test(r.typeId) && /^\d+$/.test(r.id)) : null;
+        runPcoImport({ songs: !!v.songs, plans: !!v.plans || !!only?.length, only: only?.length ? only : null, openId: v.open ? String(v.open) : null });
         return json(res, 200, { started: true });
       }
       return json(res, 404, { error: 'Nu există' });

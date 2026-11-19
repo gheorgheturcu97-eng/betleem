@@ -142,6 +142,15 @@
   .checks{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-bottom:12px}
   .checks label{flex-direction:row;align-items:center;gap:8px;margin:0;color:var(--fg)} .checks input{width:auto;accent-color:var(--acc)}
   .modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+  .pco-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap} .pco-head h3{margin:0}
+  .pco-types{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0} .pco-types .chip input{width:auto;margin:0} .pco-types .chip{display:flex;flex-direction:row;gap:6px;align-items:center;margin:0;color:var(--fg);padding:4px 10px;border-radius:999px;border:1px solid var(--line,rgba(255,255,255,.15));font-size:12.5px}
+  #mBox:has(.pco-list){width:min(680px,94vw)}
+  .pco-list{max-height:46vh;overflow:auto;margin:12px 0;display:flex;flex-direction:column;gap:4px}
+  .pco-list .grp{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:8px 2px 2px}
+  .pco-list .pl{display:grid;grid-template-columns:auto 96px minmax(0,1fr) auto;margin:0;flex-direction:row;color:var(--fg);gap:10px;align-items:center;padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.04);cursor:pointer}
+  .pco-list .pl:hover{background:rgba(255,255,255,.08)} .pco-list .pl.done .t{opacity:.75}
+  .pco-list .pl input{width:auto;margin:0} .pco-list .d{color:var(--mute);font-size:12.5px} .pco-list .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .pco-list .m{color:var(--mute);font-size:12px}
+  @media (max-width:600px){ .pco-list .pl{grid-template-columns:auto 1fr} .pco-list .d,.pco-list .m{grid-column:2} }
 </style>
 </head>
 <body>
@@ -149,7 +158,7 @@
 <div class="app">
   <header class="top glass">
     <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
-    <div class="seg nav"><button id="toLive">Live</button><button class="sel">Planificare</button></div>
+    <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP">Muzică</button><button class="sel">Planificare</button></div>
     <div class="seg views" id="views">
       <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button>
     </div>
@@ -252,6 +261,7 @@
   const pcoApi = (url, body) => fetch(url, { method: body ? 'POST' : 'GET', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
     .then(async r => { const j = await r.json().catch(() => ({ error: 'Închide și redeschide Betleem pe laptop.' })); if (!r.ok) throw new Error(j.error); return j; });
   $('bPco').onclick = openPco;
+  $('toMusicP').onclick = () => { location.href = '/control.html#muzica'; };
   if (/[?&]pco=1/.test(location.search)) setTimeout(() => { history.replaceState(null, '', '/planning.html'); openPco(); }, 600);   // came from Live: open the import right away
   async function openPco() {
     let st; try { st = await pcoApi('/api/pco/settings'); } catch (e) { return toast(e.message); }
@@ -273,27 +283,42 @@
       };
       return;
     }
-    $('mBox').innerHTML = `<h3>Planning Center</h3>
-      <p class="hint">Conectat (${esc(st.appIdHint)})${st.lastImport ? ' · ultimul import ' + new Date(st.lastImport).toLocaleString('ro-RO') : ''}</p>
-      <label>Din ce tipuri de servicii iau programele?</label><div id="pcoTypes" class="hint">Se încarcă…</div>
-      <p class="hint" style="line-height:1.5">Cântările noi intră în bibliotecă cu acorduri și ordinea strofelor. Cântările pe care le ai deja primesc doar acordurile, dacă nu aveau.
-      Programele viitoare apar în biserica <b>${esc($('church').firstChild?.textContent || '')}</b>; echipele rămân cele din Betleem.</p>
+    $('mBox').innerHTML = `<div class="pco-head"><h3>Planning Center</h3><span class="hint">Conectat (${esc(st.appIdHint)})${st.lastImport ? ' · ultimul import ' + new Date(st.lastImport).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span></div>
+      <div class="pco-types" id="pcoTypes"></div>
+      <div class="pco-list" id="pcoList"><div class="hint">Caut programele din Planning Center…</div></div>
+      <p class="hint">Programele alese intră în <b>${esc($('church').firstChild?.textContent || '')}</b>, cu cântările lor (cu acorduri și ordinea strofelor). Echipele rămân cele din Betleem.</p>
       <div id="pcoProg" class="hint"></div>
-      <div class="btns" style="flex-wrap:wrap"><button id="pcoOff" class="ghost">Deconectează</button><span style="flex:1"></span>
-        <button id="pcoSongs">Ia cântările</button><button id="pcoPlans" class="acc">Ia cântările + programele</button><button id="mNo">Închide</button></div>`;
+      <div class="btns" style="flex-wrap:wrap"><button id="pcoOff" class="ghost" title="Șterge legătura de pe acest calculator">Deconectează</button><span style="flex:1"></span>
+        <button id="pcoSongs" class="ghost" title="Toate cântările din Planning Center, fără programe">Doar cântările</button><button id="mNo">Închide</button>
+        <button id="pcoGo" class="acc" disabled>Importă</button></div>`;
     $('mNo').onclick = () => $('modal').classList.remove('show');
     $('pcoOff').onclick = async () => { await pcoApi('/api/pco/settings', { disconnect: true }); toast('Deconectat'); $('modal').classList.remove('show'); };
-    const go = async plans => {
-      const typeIds = [...document.querySelectorAll('#pcoTypes input:checked')].map(i => i.value);
-      if (plans && !typeIds.length) return toast('Bifează cel puțin un tip de serviciu');
-      try { await pcoApi('/api/pco/settings', { typeIds }); await pcoApi('/api/pco/import', { songs: true, plans }); $('pcoProg').textContent = 'Pornesc…'; }
+    $('pcoSongs').onclick = async () => { try { await pcoApi('/api/pco/import', { songs: true }); $('pcoProg').textContent = 'Iau cântările…'; } catch (e) { toast(e.message); } };
+    let data = null;
+    const fmtD = iso => new Date(iso).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' });
+    const picked = () => [...document.querySelectorAll('#pcoList input:checked')].map(i => ({ typeId: i.dataset.t, id: i.value }));
+    const update = () => { const n = picked().length; $('pcoGo').disabled = !n; $('pcoGo').textContent = n === 1 ? 'Importă și deschide în Live' : n ? `Importă ${n} programe` : 'Importă'; };
+    async function loadPlans() {
+      try { data = await pcoApi('/api/pco/plans'); } catch (e) { $('pcoList').innerHTML = `<div class="hint">${esc(e.message)}</div>`; return; }
+      $('pcoTypes').innerHTML = data.types.length > 1 ? data.types.map(t => `<label class="chip"><input type="checkbox" value="${esc(t.id)}" ${!st.typeIds.length || st.typeIds.includes(t.id) ? 'checked' : ''}> ${esc(t.name)}</label>`).join('') : '';
+      document.querySelectorAll('#pcoTypes input').forEach(i => i.onchange = async () => {
+        st.typeIds = [...document.querySelectorAll('#pcoTypes input:checked')].map(x => x.value);
+        await pcoApi('/api/pco/settings', { typeIds: st.typeIds }); $('pcoList').innerHTML = '<div class="hint">Se încarcă…</div>'; loadPlans();
+      });
+      const row = p => `<label class="pl ${p.imported ? 'done' : ''}"><input type="checkbox" value="${esc(p.id)}" data-t="${esc(p.typeId)}">
+          <span class="d">${esc(fmtD(p.date))}</span><span class="t">${esc(p.title || p.dates || 'Serviciu')}</span>
+          <span class="m">${esc([data.types.length > 1 ? p.typeName : '', p.items != null ? p.items + ' elemente' : '', p.imported ? '✓ importat' : ''].filter(Boolean).join(' · '))}</span></label>`;
+      const fut = data.plans.filter(p => p.when === 'future'), past = data.plans.filter(p => p.when === 'past');
+      $('pcoList').innerHTML = (fut.length ? '<div class="grp">Urmează</div>' + fut.map(row).join('') : '<div class="hint">Niciun program viitor în Planning Center.</div>')
+        + (past.length ? '<div class="grp">Recente</div>' + past.map(row).join('') : '');
+      document.querySelectorAll('#pcoList input').forEach(i => i.onchange = update); update();
+    }
+    $('pcoGo').onclick = async () => {
+      const only = picked(); if (!only.length) return;
+      try { await pcoApi('/api/pco/import', { only, open: only.length === 1 ? only[0].id : null }); $('pcoProg').textContent = 'Import…'; $('pcoGo').disabled = true; }
       catch (e) { toast(e.message); }
     };
-    $('pcoSongs').onclick = () => go(false); $('pcoPlans').onclick = () => go(true);
-    try {
-      const types = await pcoApi('/api/pco/types');
-      $('pcoTypes').innerHTML = types.map(t => `<label class="check" style="flex-direction:row;align-items:center"><input type="checkbox" value="${esc(t.id)}" ${st.typeIds.includes(t.id) || (!st.typeIds.length && types.length === 1) ? 'checked' : ''}> ${esc(t.name)}</label>`).join('') || 'Niciun tip de serviciu.';
-    } catch (e) { $('pcoTypes').textContent = e.message; }
+    loadPlans();
   }
   function pcoProgress(e) {
     const el = $('pcoProg'); 
@@ -302,6 +327,7 @@
     const t = e.error ? 'Eroare: ' + e.error
       : [e.added != null && `${e.added} cântări noi`, e.chords && `acorduri la ${e.chords} cântări`, e.plans && `${e.plans.added} programe noi, ${e.plans.updated} actualizate`].filter(Boolean).join(' · ') || 'Gata, nimic nou.';
     if (el) el.textContent = 'Gata: ' + t; toast(t);
+    if (e.opened) { toast(`„${e.opened}” e acum în Live`); setTimeout(() => { location.href = /Mobi|iPhone|Android/.test(navigator.userAgent) ? '/live.html' : '/control.html'; }, 1200); }
   }
 
   // on a phone, "Live" opens the phone view (lyrics, program, slide control) instead of the big operator screen

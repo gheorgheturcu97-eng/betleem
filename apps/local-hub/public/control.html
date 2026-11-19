@@ -256,8 +256,13 @@
   .arrange .ruler{position:absolute;left:0;right:0;top:2px;height:14px;font-size:10px;color:var(--faint)} .arrange .ruler span{position:absolute;transform:translateX(-50%)}
   .arrange .blocks{position:absolute;left:0;right:0;top:18px;bottom:4px}
   .arrange .blk{top:0;bottom:0;border-radius:7px;padding:3px 7px}
-  .tracks{flex:1;overflow-y:auto;min-height:0}
-  .trk{height:64px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .tracks{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column}
+  .trk{height:clamp(56px,calc((100% - 0px) / var(--n,3)),92px);border-bottom:1px solid rgba(255,255,255,.06)}
+  .trk .th{border-left:4px solid var(--tc);background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 14%,transparent),transparent)}
+  .trk .th .row1{display:flex;align-items:center;gap:6px;justify-content:space-between}
+  .trk .th input.tv{width:100%;padding:0;height:14px;accent-color:var(--tc)}
+  .arrange .lane-empty.inhead{inset:0 0 auto var(--th);height:58px;font-size:11.5px;padding:4px 12px;background:rgba(0,0,0,.25)}
+  .mixer .strip{border-top:3px solid var(--tc,var(--stroke))} .mixer .strip input.fader{accent-color:var(--tc,var(--acc))}
   .trk .th b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .trk .th .bt{display:flex;gap:4px} .trk .th .bt button{width:24px;height:20px;padding:0;font-size:10.5px;font-weight:700;border-radius:6px}
   .trk .th .bt .m.on{background:#e5484d;color:#fff} .trk .th .bt .s.on{background:#f5b301;color:#111}
@@ -266,7 +271,8 @@
   .arrange .playhead{left:calc(var(--th) + (100% - var(--th)) * var(--p,0));top:0;bottom:0}
   .arrange .lane-empty{position:absolute;inset:58px 0 0 var(--th)}
   .mixer{min-height:200px;flex:none} .mixer .strip .fz{height:110px} .mixer .strip input.fader{height:110px}
-  .tagbar{display:flex;flex-wrap:wrap;gap:5px;flex-basis:100%;order:10;align-items:center}
+  .tagbar{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:5px;flex-basis:100%;order:10;align-items:center;mask-image:linear-gradient(90deg,#000 92%,transparent)}
+  .tagbar>*{flex:none}
   .tagbar>span{font-size:11px;color:var(--mute);margin-right:4px}
   .tagbar .tg{padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;border:1.5px solid var(--sc);color:var(--fg);background:transparent;cursor:grab}
   .tagbar .tg.on{background:var(--sc);color:#111}
@@ -1097,6 +1103,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (v === 'music') { renderMusic(); renderMixer(); }
   }
   $('toMusic').onclick = () => showView('music'); $('toLive').onclick = () => showView('live');
+  if (location.hash === '#muzica') { history.replaceState(null, '', '/control.html'); setTimeout(() => showView('music'), 400); }
   const liveSong = () => S.live.item >= 0 && S.setlist[S.live.item]?.kind === 'song' ? S.live.item : -1;
   const musicItemIndex = () => {
     if (mt.playing && mtItem >= 0) return mtItem;                 // while the tracks play, stay on that song
@@ -1183,7 +1190,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     });
     return blocks;
   }
-  async function drawWave(canvas, file, blocks) {
+  // one color per kind of track (click grey, guide light, drums red, bass blue, keys purple…), the same in the lanes and the mixer
+  const TRACK_COLORS = [[/click|metro/i, '#9aa3ad'], [/guide|cue|ghid/i, '#e6e1d7'], [/drum|tob|perc|kick|snare/i, '#ff6b6b'], [/bass|bas\b/i, '#5aa9ff'],
+    [/key|clap|piano|synth|pad/i, '#b38cff'], [/gtr|guitar|chitar/i, '#ffb13b'], [/voc|bv|voce|choir|cor/i, '#4fd1a5']];
+  const SPARE = ['#47d7e6', '#ff8fc7', '#c5e86c', '#f7a072', '#8fb3ff'];
+  const trackColor = (i, name = '') => (TRACK_COLORS.find(([re]) => re.test(name)) || [0, SPARE[i % SPARE.length]])[1];
+  async function drawWave(canvas, file, blocks, color = '#ffffff') {
     const peaks = await peaksFor(file), dur = mt.duration;
     const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
     const dpr = devicePixelRatio || 1; canvas.width = w * dpr; canvas.height = h * dpr;
@@ -1191,7 +1203,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     for (const b of blocks) { g.fillStyle = sectionColor(b.label) + '1f'; g.fillRect(b.start / dur * w, 0, (b.end - b.start) / dur * w, h); }
     if (!peaks) { g.fillStyle = 'rgba(255,255,255,.4)'; g.font = '11px Inter'; g.fillText('se încarcă…', 8, h / 2); return; }
     const total = mt.ch.find(c => c.file === file)?.el.duration || dur, frac = dur ? total / dur : 1;
-    g.fillStyle = 'rgba(255,255,255,.75)';
+    g.fillStyle = color; g.globalAlpha = .85;
     const n = peaks.length, cols = Math.floor(w * frac);
     for (let x = 0; x < cols; x++) {
       const v = peaks[Math.floor(x / cols * n)] || 0, bh = Math.max(1, v * (h - 8));
@@ -1201,8 +1213,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function renderLane() {
     const dur = mt.duration, cues = cuesNow(), has = mt.ch.length > 0;
     $('laneEmpty').style.display = has && (cues.length || learning) ? 'none' : 'grid';
+    $('laneEmpty').classList.toggle('inhead', has);            // with tracks: the hint sits in the sections row, not on the waveforms
     $('laneEmpty').innerHTML = !has ? 'Adaugă track-urile cântării (＋ Track-uri): click, guide, tobe, bas, clape…<br>Fiecare apare aici ca o pistă și primește un fader jos.'
-      : 'Apasă ⏺ Învață cue-urile: pornește muzica și apasă → (sau Spațiu) când trebuie să apară fiecare slide.<br>Data viitoare versurile se schimbă singure, pe secțiuni.';
+      : 'Apasă ⏺ Învață cue-urile, apoi → (sau Spațiu) când începe fiecare slide. Data viitoare versurile merg singure.';
     const blocks = sectionBlocks(), pct = t => dur ? (t / dur * 100) : 0;
     $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
       ${esc(b.label)}<small>${fmt(b.start)}</small>${b.ticks.map(t => `<i class="tick" style="left:${(t - b.start) / Math.max(0.01, b.end - b.start) * 100}%"></i>`).join('')}</div>`).join('') : '';
@@ -1211,12 +1224,17 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const key = mt.ch.map(c => c.file + (c.muted ? 'm' : '') + (c.solo ? 's' : '')).join('|') + '#' + blocks.map(b => b.label + b.start).join(',') + '#' + dur;
     if ($('tracks').dataset.key !== key) {
       $('tracks').dataset.key = key;
-      $('tracks').innerHTML = mt.ch.map((c, i) => `<div class="arow trk ${c.muted ? 'muted' : ''}"><div class="th"><b title="${esc(c.name || c.file)}">${esc(c.name || c.file)}</b>
-        <div class="bt"><button class="m ${c.muted ? 'on' : ''}" data-mute="${i}" title="Mut">M</button><button class="s ${c.solo ? 'on' : ''}" data-solo="${i}" title="Solo">S</button></div></div>
+      $('tracks').style.setProperty('--n', Math.max(1, mt.ch.length));
+      $('tracks').innerHTML = mt.ch.map((c, i) => `<div class="arow trk ${c.muted ? 'muted' : ''}" style="--tc:${trackColor(i, c.name)}"><div class="th">
+        <div class="row1"><b title="${esc(c.name || c.file)}">${esc(c.name || c.file)}</b>
+        <span class="bt"><button class="m ${c.muted ? 'on' : ''}" data-mute="${i}" title="Mut">M</button><button class="s ${c.solo ? 'on' : ''}" data-solo="${i}" title="Solo">S</button></span></div>
+        <input class="tv" type="range" min="0" max="1.5" step="0.01" value="${c.vol}" data-tv="${i}" title="Volum"></div>
         <div class="tc"><canvas data-w="${i}"></canvas></div></div>`).join('');
+      $('tracks').querySelectorAll('[data-tv]').forEach(r => { r.onclick = e => e.stopPropagation(); r.oninput = () => {
+        const i = +r.dataset.tv; mt.ch[i].vol = +r.value; mt.apply(); const f = $('mixer').querySelector(`[data-f="${i}"]`); if (f) f.value = r.value; saveStemsSoon(); }; });
       $('tracks').querySelectorAll('[data-mute]').forEach(b => b.onclick = e => { e.stopPropagation(); const c = mt.ch[+b.dataset.mute]; c.muted = !c.muted; mt.apply(); renderMixer(); saveStemsSoon(); });
       $('tracks').querySelectorAll('[data-solo]').forEach(b => b.onclick = e => { e.stopPropagation(); const c = mt.ch[+b.dataset.solo]; c.solo = !c.solo; mt.apply(); renderMixer(); });
-      requestAnimationFrame(() => $('tracks').querySelectorAll('canvas').forEach(cv => drawWave(cv, mt.ch[+cv.dataset.w].file, blocks)));
+      requestAnimationFrame(() => $('tracks').querySelectorAll('canvas').forEach(cv => drawWave(cv, mt.ch[+cv.dataset.w].file, blocks, trackColor(+cv.dataset.w, mt.ch[+cv.dataset.w].name))));
     }
     $('tlTime').textContent = fmt(mt.time) + ' / ' + fmt(dur);
     $('lane').style.setProperty('--p', dur ? mt.time / dur : 0);
@@ -1280,7 +1298,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   // ---- mixer: Click, Pad, every stem, Master
   function strip(id, name, vol, extra = '', cls = '') {
-    return `<div class="strip ${cls}" data-ch="${id}"><div class="nm" title="${esc(name)}">${esc(name)}</div>${extra}
+    const tc = /^\d+$/.test(String(id)) ? `style="--tc:${trackColor(+id, name)}"` : '';
+    return `<div class="strip ${cls}" data-ch="${id}" ${tc}><div class="nm" title="${esc(name)}">${esc(name)}</div>${extra}
       <div class="fz"><input class="fader" type="range" min="0" max="1.5" step="0.01" value="${vol}" data-f="${id}"><span class="meter"><i data-m="${id}"></i></span></div></div>`;
   }
   function renderMixer() {
@@ -1299,7 +1318,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       if (id === 'click') { met.vol = v; prefs.metVol = v; savePrefs(); }
       else if (id === 'pad') { pad.setVolume(v); prefs.padVol = v; savePrefs(); }
       else if (id === 'master') { mt.vol = v; mt.apply(); prefs.mtVol = v; savePrefs(); }
-      else { mt.ch[+id].vol = v; mt.apply(); saveStemsSoon(); }
+      else { mt.ch[+id].vol = v; mt.apply(); const tv = $('tracks').querySelector(`[data-tv="${id}"]`); if (tv) tv.value = v; saveStemsSoon(); }
     });
     $('mixer').querySelectorAll('[data-mute]').forEach(b => b.onclick = () => { const c = mt.ch[+b.dataset.mute]; c.muted = !c.muted; mt.apply(); renderMixer(); saveStemsSoon(); });
     $('mixer').querySelectorAll('[data-solo]').forEach(b => b.onclick = () => { const c = mt.ch[+b.dataset.solo]; c.solo = !c.solo; mt.apply(); renderMixer(); });

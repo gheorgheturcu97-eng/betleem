@@ -54,3 +54,17 @@ test('helpers', () => {
   assert.equal(itemKind('Rugăciune'), 'prayer');
   assert.equal(itemKind('Anunțuri'), 'announcement');
 });
+
+test('plans to choose from (upcoming and recent), and importing only the chosen one', async () => {
+  const { listPlans } = await import('../src/pco.js');
+  const f = fakeFetch({
+    '/service_types/1/plans?filter=future&order=sort_date': { data: [{ id: 'p2', attributes: { title: 'Crăciun', sort_date: '2026-12-25T10:00:00Z', dates: 'December 25, 2026', items_count: 7 } }] },
+    '/service_types/1/plans?filter=past&order=-sort_date&per_page=4': { data: [{ id: 'p1', attributes: { series_title: 'Advent', sort_date: '2026-11-15T10:00:00Z' } }] },
+    '/service_types/1/plans/p2': { data: { id: 'p2', attributes: { title: 'Crăciun', sort_date: '2026-12-25T10:00:00Z' } } },
+    '/service_types/1/plans/p2/items?include=song,arrangement': { data: [{ id: 'i1', attributes: { item_type: 'item', title: 'Predică', length: 1800 } }] },
+  });
+  const list = await listPlans(creds, '1', { fetchImpl: f });
+  assert.deepEqual(list.map(p => [p.id, p.when, p.title || p.dates]), [['p2', 'future', 'Crăciun'], ['p1', 'past', 'Advent']]);
+  const [p] = await fetchPlans(creds, [], { only: [{ typeId: '1', id: 'p2' }], fetchImpl: f });
+  assert.equal(p.title, 'Crăciun'); assert.equal(p.items[0].seconds, 1800);
+});

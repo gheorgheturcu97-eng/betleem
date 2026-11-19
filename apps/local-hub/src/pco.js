@@ -68,25 +68,38 @@ export async function fetchSongs(creds, { onProgress = () => {}, onlyIds = null,
   return out;
 }
 
-/** Upcoming plans of the chosen service types, with their items (songs, sermon, etc.). */
-export async function fetchPlans(creds, typeIds, { ...opt } = {}) {
+/** Plans to choose from: the upcoming ones and the last few that already happened. */
+export async function listPlans(creds, typeId, { past = 4, ...opt } = {}) {
+  const shape = (p, when) => ({ id: p.id, typeId: String(typeId), when, title: p.attributes.title || p.attributes.series_title || '',
+    dates: p.attributes.dates || '', date: p.attributes.sort_date, items: p.attributes.items_count ?? null });
+  const { data: future } = await pcoGet(creds, withPerPage(`/service_types/${typeId}/plans?filter=future&order=sort_date`), { ...opt, max: 30 });
+  const { data: gone } = past ? await pcoGet(creds, `/service_types/${typeId}/plans?filter=past&order=-sort_date&per_page=${past}`, { ...opt, max: past }) : { data: [] };
+  return [...future.map(p => shape(p, 'future')), ...gone.slice(0, past).map(p => shape(p, 'past'))];
+}
+
+/** One plan with its items (songs, sermon, etc.). */
+export async function fetchPlan(creds, typeId, plan, opt = {}) {
+  const p = plan.attributes ? plan : (await pcoGet(creds, `/service_types/${typeId}/plans/${plan.id}`, opt)).data[0];
+  const { data: items } = await pcoGet(creds, withPerPage(`/service_types/${typeId}/plans/${p.id}/items?include=song,arrangement`), opt);
+  return {
+    pcoId: p.id,
+    title: p.attributes.title || p.attributes.series_title || p.attributes.dates || 'Serviciu',
+    date: p.attributes.sort_date,
+    items: items.map(it => ({
+      type: it.attributes.item_type, title: it.attributes.title || '', key: it.attributes.key_name || '',
+      seconds: Number(it.attributes.length) || 0,
+      songId: it.relationships?.song?.data?.id || '',
+    })).filter(it => it.type !== 'header'),
+  };
+}
+
+/** Upcoming plans of the chosen service types (or only the chosen plans: [{ typeId, id }]). */
+export async function fetchPlans(creds, typeIds, { only = null, ...opt } = {}) {
   const plans = [];
+  if (only) { for (const r of only) plans.push(await fetchPlan(creds, r.typeId, { id: r.id }, opt)); return plans; }
   for (const tid of typeIds) {
     const { data } = await pcoGet(creds, withPerPage(`/service_types/${tid}/plans?filter=future&order=sort_date`), { ...opt, max: 60 });
-    for (const p of data) {
-      const { data: items, included } = await pcoGet(creds, withPerPage(`/service_types/${tid}/plans/${p.id}/items?include=song,arrangement`), opt);
-      plans.push({
-        pcoId: p.id,
-        title: p.attributes.title || p.attributes.series_title || p.attributes.dates || 'Serviciu',
-        date: p.attributes.sort_date,
-        items: items.map(it => ({
-          type: it.attributes.item_type, title: it.attributes.title || '', key: it.attributes.key_name || '',
-          seconds: Number(it.attributes.length) || 0,
-          songId: it.relationships?.song?.data?.id || '',
-        })).filter(it => it.type !== 'header'),
-        included: included.length,
-      });
-    }
+    for (const p of data) plans.push(await fetchPlan(creds, tid, p, opt));
   }
   return plans;
 }
