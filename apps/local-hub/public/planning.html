@@ -152,6 +152,7 @@
   .pco-list .pl input{width:auto;margin:0} .pco-list .d{color:var(--mute);font-size:12.5px} .pco-list .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .pco-list .m{color:var(--mute);font-size:12px}
   @media (max-width:600px){ .pco-list .pl{grid-template-columns:auto 1fr} .pco-list .d,.pco-list .m{grid-column:2} }
 </style>
+<link rel="stylesheet" href="/glass.css">
 </head>
 <body>
 <div class="aurora"><i></i><i></i><i></i></div>
@@ -232,13 +233,14 @@
 <div class="modal" id="modal"><div class="glass" id="mBox"></div></div>
 
 <script type="module">
+  import { backdrop } from '/glass.js';
   import { connect, esc } from '/client.js';
   const $ = id => document.getElementById(id);
-  const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', reading: 'citire', announcement: 'anunțuri', other: 'altceva' };
+  const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', reading: 'citire', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', bible: 'biblie' };
   const DAYS = ['dum', 'lun', 'mar', 'mie', 'joi', 'vin', 'sâm'];
   const MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
   let P = null, selId = null, month = new Date(); month.setDate(1);
-  const hub = connect(s => { const c = s.church; if (c) $('church').innerHTML = esc(c.name) + `<small>${esc(c.city || '')}</small>`; },
+  const hub = connect(s => { backdrop(s.live?.background); const c = s.church; if (c) $('church').innerHTML = esc(c.name) + `<small>${esc(c.city || '')}</small>`; },
     e => {
       if (e.role) { $('signin').classList.toggle('show', e.role !== 'leader'); if (e.role === 'leader' && !P) load(); }
       if (e.type === 'login') { if (e.ok && e.role === 'leader') { load(); toast('Bine ai venit!'); } else toast(e.ok ? 'PIN-ul acesta e de operator. Pentru planificare trebuie PIN-ul de lider.' : 'PIN greșit'); }

@@ -19,12 +19,14 @@ import { addChordsToSongs } from './chords.js';
 import { runAssistant } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings } from './plan.js';
 import * as pco from './pco.js';
+import { bookName, formatRef, parseRef, BOOKS } from '../public/bibleref.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const PUBLIC = path.join(ROOT, 'public');
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
+const BIBLE_DIRS = [path.join(ROOT, 'bibles'), path.join(DATA_DIR, 'bibles')];        // built in (public domain), then imported by the church
 const DB_FILE = path.join(DATA_DIR, 'library.json');
 const PORT = Number(process.env.PORT || 4545);
 const PIN = String(process.env.PIN || '');          // operator PIN; empty = no PIN (only for testing)
@@ -139,15 +141,64 @@ function cleanDisplay(screen, patch) {
 }
 
 // --- Live state (what is on the screens right now) ---------------------------
-const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0 };
+const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0, bible: null };
 let liveId = null;                                   // the timer on stage restarts when another program item goes live
 function trackSince() {
-  const id = db.setlist[live.item]?.id || null;
+  const id = live.item === -2 ? 'bible' : db.setlist[live.item]?.id || null;
   if (id !== liveId) { liveId = id; live.since = id ? Date.now() : 0; }
 }
 
+// --- Bible: versions on disk, loaded when first used ----------------------------
+const bibleCache = new Map();
+function bibleList() {
+  const out = [];
+  for (const dir of BIBLE_DIRS) {
+    let files = []; try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')); } catch {}
+    for (const f of files) {
+      const id = f.slice(0, -5); if (out.some(b => b.id === id)) continue;
+      const b = bible(id); if (b) out.push({ id, name: b.name, short: b.short, lang: b.lang, imported: dir !== BIBLE_DIRS[0] });
+    }
+  }
+  return out.sort((a, b) => (a.lang === 'ro' ? 0 : 1) - (b.lang === 'ro' ? 0 : 1) || a.short.localeCompare(b.short));
+}
+function bible(id) {
+  id = String(id || '').toLowerCase().replace(/[^a-z0-9_-]/g, ''); if (!id) return null;
+  if (!bibleCache.has(id)) {
+    let b = null;
+    for (const dir of BIBLE_DIRS) { try { b = JSON.parse(fs.readFileSync(path.join(dir, id + '.json'), 'utf8')); break; } catch {} }
+    if (b && !(Array.isArray(b.books) && b.books.length === 66)) b = null;
+    bibleCache.set(id, b);
+  }
+  return bibleCache.get(id);
+}
+/** Slides for a passage: one verse per slide, a second version under it when chosen. ref = { book, chapter, from, to }, versions = [id, id?] */
+function bibleSlides(ref, versions) {
+  if (!ref) return [];
+  const [a, b] = (versions || []).map(bible);
+  const main = a || bible('vdc'); if (!main) return [];
+  const verses = main.books[ref.book]?.[ref.chapter - 1] || [];
+  const from = Math.max(1, ref.from || 1), to = Math.min(verses.length, ref.to || verses.length);
+  const out = [];
+  for (let v = from; v <= to; v++) {
+    const r = { book: ref.book, chapter: ref.chapter, from: v, to: v };
+    out.push({ label: formatRef(r, main.lang), lines: [verses[v - 1] || ''], bible: main.short, verse: v,
+      ...(b ? { second: { lines: [b.books[ref.book]?.[ref.chapter - 1]?.[v - 1] || ''], label: formatRef(r, b.lang), bible: b.short } } : {}) });
+  }
+  return out;
+}
+function cleanRef(r) {
+  if (!r) return null;
+  const book = Math.round(+r.book), chapter = Math.round(+r.chapter);
+  if (!(book >= 0 && book < 66 && chapter >= 1 && chapter <= 150)) return null;
+  const from = Math.max(0, Math.round(+r.from || 0)), to = Math.max(from, Math.round(+r.to || from));
+  return { book, chapter, from, to };
+}
+const cleanVersions = v => (Array.isArray(v) ? v : []).slice(0, 2).map(x => String(x).toLowerCase().replace(/[^a-z0-9_-]/g, '')).filter(x => x && bible(x));
+
 function slidesFor(index) {
+  if (index === -2) return live.bible ? bibleSlides(live.bible.ref, live.bible.versions) : [];   // a passage shown straight from the Bible tab
   const it = db.setlist[index];
+  if (it?.kind === 'bible') return bibleSlides(it.ref, it.versions);
   if (it?.kind === 'media') return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));   // PDF / PowerPoint pages, pictures, videos
   if (!it || it.kind !== 'song') return [];
   const song = db.songs.find(s => s.id === it.songId);
@@ -230,7 +281,7 @@ function snapshot() {
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
     })),
-    live: { ...live, slides: slidesFor(live.item) },
+    live: { ...live, slides: slidesFor(live.item), title: live.item === -2 ? live.bible?.title || '' : undefined },
     now: Date.now(),                                 // screens on other devices correct their clock with this
     // the planned programs of this church (titles and dates only — teams and phone numbers stay out)
     programs: (db.plan?.services || []).slice().sort((a, b) => a.date.localeCompare(b.date))
@@ -332,10 +383,18 @@ function handleMessage(ws, m) {
         const n = slidesFor(live.item).length;
         const s = live.slide + dir;
         if (s >= 0 && s < n) live.slide = s;
-        else {                                       // jump to neighbouring item
+        else if (live.item !== -2) {                 // jump to neighbouring item (a passage from the Bible tab stays alone)
           const item = clamp(live.item + dir, 0, db.setlist.length - 1);
           if (item !== live.item) { applyItemBackground(item); live.item = item; live.slide = dir > 0 ? 0 : Math.max(0, slidesFor(item).length - 1); }
         }
+        live.blank = false; live.logo = false;
+        break;
+      }
+      case 'bible': {                                // show a passage now, without putting it in the program
+        const ref = cleanRef(m.ref), versions = cleanVersions(m.versions);
+        if (!ref || !versions.length) return reply({ type: 'error', error: 'Alege o traducere și un pasaj' });
+        live.bible = { ref, versions, title: formatRef(ref, bible(versions[0]).lang) + ' · ' + versions.map(v => bible(v).short).join(' / ') };
+        live.item = -2; live.slide = clamp(Number(m.slide) || 0, 0, Math.max(0, slidesFor(-2).length - 1));
         live.blank = false; live.logo = false;
         break;
       }
@@ -605,11 +664,14 @@ function handleMessage(ws, m) {
       case 'addItem': case 'removeItem': case 'moveItem': case 'updateItem': case 'deleteSong': case 'service': {
         if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba programul.' });
         if (m.type === 'addItem') {
-          const kind = ['song', 'sermon', 'prayer', 'announcement', 'other', 'media'].includes(m.kind) ? m.kind : 'other';
+          const kind = ['song', 'sermon', 'prayer', 'announcement', 'other', 'media', 'bible'].includes(m.kind) ? m.kind : 'other';
           const item = m.item && typeof m.item === 'object'                                 // undo of a removal
-            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes', 'slides']), id: m.item.id || crypto.randomUUID() }
+            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes', 'slides', 'ref', 'versions']), id: m.item.id || crypto.randomUUID() }
             : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [],
-                ...(kind === 'media' ? { slides: mediaSlides(m.slides) } : {}) };
+                ...(kind === 'media' ? { slides: mediaSlides(m.slides) } : {}),
+                ...(kind === 'bible' ? { ref: cleanRef(m.ref), versions: cleanVersions(m.versions) } : {}) };
+          if (kind === 'bible' && (!item.ref || !item.versions.length)) return reply({ type: 'error', error: 'Pasaj sau traducere greșită' });
+          if (kind === 'bible' && !item.title) item.title = formatRef(item.ref, bible(item.versions[0]).lang);
           const at = Number.isInteger(m.at) ? Math.min(Math.max(0, m.at), db.setlist.length) : db.setlist.length;
           db.setlist.splice(at, 0, item);
           if (live.item >= at && live.item >= 0 && Number.isInteger(m.at)) live.item++;
@@ -993,6 +1055,35 @@ async function handle(req, res) {
       const buf = await body(req, 500 * 1024 * 1024, true);
       fs.writeFileSync(path.join(MEDIA_DIR, name), buf);
       return json(res, 200, { ok: true, name });
+    }
+    if (p === '/api/bibles' && req.method === 'GET') return json(res, 200, bibleList());
+    if (p === '/api/bible' && req.method === 'GET') {        // one chapter: ?v=vdc&b=42&c=3
+      const b = bible(url.searchParams.get('v')); if (!b) return json(res, 404, { error: 'Traducerea nu există' });
+      const bk = Number(url.searchParams.get('b')), ch = Number(url.searchParams.get('c')) || 1, book = b.books[bk];
+      if (!book) return json(res, 404, { error: 'Cartea nu există' });
+      return json(res, 200, { book: bk, name: bookName(bk, b.lang), chapters: book.length, chapter: Math.min(ch, book.length), verses: book[Math.min(ch, book.length) - 1] || [] });
+    }
+    if (p === '/api/bible/search' && req.method === 'GET') {  // words: ?v=vdc&q=pastorul meu
+      const b = bible(url.searchParams.get('v')), q = String(url.searchParams.get('q') || '');
+      if (!b || q.trim().length < 3) return json(res, 200, []);
+      const f = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const words = f(q).split(/\s+/).filter(Boolean), hits = [];
+      for (const [bi, book] of b.books.entries()) for (const [ci, ch] of book.entries()) for (const [vi, v] of ch.entries()) {
+        const t = f(v); if (words.every(w => t.includes(w))) { hits.push({ book: bi, chapter: ci + 1, verse: vi + 1, text: v, ref: formatRef({ book: bi, chapter: ci + 1, from: vi + 1 }, b.lang) }); if (hits.length >= 60) return json(res, 200, hits); }
+      }
+      return json(res, 200, hits);
+    }
+    if (p === '/api/bibles' && req.method === 'POST') {       // a version the church has the right to use, converted in the browser
+      if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul poate adăuga traduceri' });
+      const b = JSON.parse(await body(req, 30 * 1024 * 1024));
+      const id = String(b.short || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+      const ok = id && Array.isArray(b.books) && b.books.length === 66 && b.books.every(bk => Array.isArray(bk) && bk.every(ch => Array.isArray(ch) && ch.every(v => typeof v === 'string')));
+      if (!ok) return json(res, 400, { error: 'Fișierul nu are toate cele 66 de cărți ale Bibliei' });
+      if (fs.existsSync(path.join(BIBLE_DIRS[0], id + '.json'))) return json(res, 400, { error: 'Prescurtarea ' + b.short + ' e deja folosită' });
+      fs.mkdirSync(BIBLE_DIRS[1], { recursive: true });
+      fs.writeFileSync(path.join(BIBLE_DIRS[1], id + '.json'), JSON.stringify({ id, name: String(b.name || b.short).slice(0, 80), short: String(b.short).slice(0, 12), lang: b.lang === 'en' ? 'en' : b.lang === 'ro' ? 'ro' : String(b.lang || 'ro').slice(0, 5), books: b.books }));
+      bibleCache.delete(id);
+      return json(res, 200, { ok: true, id });
     }
     if (p === '/api/convert' && req.method === 'POST') {    // PowerPoint / Keynote → PDF (the pages are drawn in the browser)
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });

@@ -216,3 +216,24 @@ test('presentations: pages are slides; the stage timer starts when an item goes 
   assert.equal(r.status, 401, 'converting needs the PIN');
   a.ws.close();
 });
+
+test('Bible: versions, a passage on screen in two languages, a passage in the program', async () => {
+  const list = await fetch('http://localhost:4599/api/bibles').then(r => r.json());
+  assert.deepEqual(list.map(b => b.id).sort(), ['kjv', 'vdc', 'web']);
+  const ch = await fetch('http://localhost:4599/api/bible?v=vdc&b=42&c=3').then(r => r.json());
+  assert.equal(ch.name, 'Ioan'); assert.match(ch.verses[15], /atât de mult a iubit Dumnezeu lumea/);
+  const hits = await fetch('http://localhost:4599/api/bible/search?v=vdc&q=' + encodeURIComponent('pastorul meu')).then(r => r.json());
+  assert.ok(hits.some(h => h.ref === 'Psalmii 23:1'));
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '1111' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'bible', versions: ['vdc', 'kjv'], ref: { book: 42, chapter: 3, from: 0, to: 0 }, slide: 15 });
+  const st = await a.next(m => m.type === 'state' && m.state.live.item === -2);
+  const sl = st.state.live.slides[st.state.live.slide];
+  assert.equal(sl.label, 'Ioan 3:16'); assert.equal(sl.second.label, 'John 3:16'); assert.match(sl.second.lines[0], /For God so loved/);
+  assert.equal(st.state.live.slides.length, 36); assert.match(st.state.live.title, /Ioan 3 · VDC \/ KJV/);
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'addItem', kind: 'bible', ref: { book: 18, chapter: 23, from: 1, to: 3 }, versions: ['vdc'], at: 0 });
+  const p = await a.next(m => m.type === 'state' && m.state.setlist[0]?.kind === 'bible');
+  assert.equal(p.state.setlist[0].title, 'Psalmii 23:1-3'); assert.equal(p.state.setlist[0].slideCount, 3);
+  a.ws.close();
+});

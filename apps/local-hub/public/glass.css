@@ -1,0 +1,37 @@
+/* Liquid glass: panels take the colour of what is on the screen right now (the live background, blurred behind everything). */
+:root{
+  --tint:40,44,60;
+  --glass:rgba(255,255,255,.055); --glass-2:rgba(255,255,255,.085); --glass-3:rgba(255,255,255,.15);
+  --stroke:rgba(255,255,255,.12); --stroke-hi:rgba(255,255,255,.28);
+  --blur:blur(42px) saturate(190%);
+  --shadow:0 24px 60px rgba(0,0,0,.32), 0 2px 6px rgba(0,0,0,.18);
+}
+body{background:#05060a;transition:background-color 1.2s}
+.backdrop{position:fixed;inset:0;z-index:-2;overflow:hidden;opacity:0;transition:opacity 1.4s ease;pointer-events:none}
+.backdrop>*{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(70px) saturate(1.45) brightness(.5)}
+.backdrop::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%,transparent,rgba(0,0,0,.45))}
+body.has-bg .backdrop{opacity:1}
+.aurora{opacity:.30;transition:opacity 1.4s}
+body.has-bg .aurora{opacity:.06}
+.aurora i:nth-child(1){background:rgb(var(--tint))}
+
+.glass{
+  background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.03)),rgba(var(--tint),.11);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:.5px solid rgba(255,255,255,.14);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.16);
+  transition:background-color 1.2s;
+}
+/* the bright rim of real glass: a thin light edge, stronger at the top-left */
+.glass::before{
+  background:linear-gradient(150deg,rgba(255,255,255,.5),rgba(255,255,255,.08) 22%,rgba(255,255,255,0) 50%,rgba(255,255,255,.06) 80%,rgba(255,255,255,.22));
+  padding:1px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+}
+button,.btn{background:rgba(255,255,255,.075);border:.5px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+button:hover,.btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.26)}
+button.acc{box-shadow:0 4px 16px rgba(255,170,30,.28),inset 0 1px 0 rgba(255,255,255,.55)}
+button.ghost{background:transparent;border-color:transparent;box-shadow:none}
+input,select,textarea{background:rgba(0,0,0,.18);border:.5px solid rgba(255,255,255,.12)}
+input:focus,select:focus,textarea:focus{background:rgba(0,0,0,.26)}
+.seg{background:rgba(0,0,0,.18);border:.5px solid rgba(255,255,255,.1)}
+.seg button{background:transparent;border:0;box-shadow:none}
+.seg button.sel{background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 10px rgba(0,0,0,.2)}

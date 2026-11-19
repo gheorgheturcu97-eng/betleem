@@ -43,6 +43,8 @@
   .seg b{color:var(--chord,#f5b301);font-size:.7em;min-height:1em;font-weight:700}
   .seg i{font-style:normal}
   .ly{white-space:pre}
+  .second{margin-top:1.5vh;padding-top:1.2vh;border-top:1px solid #333;font-size:.75em;color:#aab0b8}
+  .verse{line-height:1.25}
   #blank{position:fixed;top:1vh;left:50%;transform:translateX(-50%);background:#b00020;color:#fff;padding:.5vh 1vw;font-size:2.4vh;display:none;border-radius:4px}
 </style>
 </head>
@@ -77,8 +79,9 @@
   setInterval(tick, 500);
   const render = sl => !sl ? '' : sl.image
     ? (isVideo(sl.image) ? `<video src="${esc(sl.image)}" muted autoplay loop playsinline></video>` : `<img src="${esc(sl.image)}" alt="">`)
-    : (sl.label ? `<div class="label" style="--lc:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : '') +
-      sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('');
+    : (sl.label ? `<div class="label" style="--lc:${sectionColor(sl.label)}">${esc(sl.label)}${sl.bible ? ' · ' + esc(sl.bible) : ''}</div>` : '') +
+      (sl.bible ? `<div class="verse">${sl.lines.map(esc).join('<br>')}</div>` : sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('')) +
+      (sl.second ? `<div class="second">${sl.second.lines.map(esc).join('<br>')}</div>` : '');
   function style(d) {
     D = d || {};
     for (const el of [$('now'), $('next')]) { el.classList.toggle('center', D.align === 'center'); el.classList.toggle('right', D.align === 'right'); }
@@ -103,14 +106,14 @@
     S = s; if (s.now) skew = s.now - Date.now();
     style(s.display?.stage);
     const L = s.live, item = s.setlist[L.item];
-    $('head').innerHTML = item ? `<b>${esc(item.title || KIND[item.kind] || '')}</b>${item.key ? ' · ton ' + esc(item.key) : ''}${item.leader ? ' · ' + esc(item.leader) : ''}` : '';
+    $('head').innerHTML = L.item === -2 ? `<b>${esc(L.title || 'Biblia')}</b>` : item ? `<b>${esc(item.title || KIND[item.kind] || '')}</b>${item.key ? ' · ton ' + esc(item.key) : ''}${item.leader ? ' · ' + esc(item.leader) : ''}` : '';
     $('pos').textContent = L.slides.length > 1 ? `${L.slide + 1} / ${L.slides.length}` : '';
     $('now').innerHTML = render(L.slides[L.slide]);
     // what comes next: the next slide of this item; if it is the last one, the next item
     const n = L.slides[L.slide + 1], nextItem = s.setlist[L.item + 1];
     $('next').innerHTML = D.next === false ? '' : n
       ? (n.image ? `<div class="label"><span class="up">Urmează</span></div>${isVideo(n.image) ? '▶ video' : `<img src="${esc(n.image)}" alt="">`}`
-        : `<div class="label" style="--lc:${sectionColor(n.label || '')}"><span class="up">Urmează</span>${esc(n.label || '')}</div>${n.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('')}`)
+        : `<div class="label" style="--lc:${sectionColor(n.label || '')}"><span class="up">Urmează</span>${esc(n.label || '')}</div>${n.bible ? `<div class="verse">${n.lines.map(esc).join('<br>')}</div>` : n.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('')}`)
       : nextItem ? `<div class="label"><span class="up">Urmează</span></div>${esc(nextItem.title || KIND[nextItem.kind] || '')}` : '';
     // the program ahead, for the band: title, key, minutes
     const ahead = s.setlist.slice(L.item + 1, L.item + 1 + (D.upNext ?? 2));
