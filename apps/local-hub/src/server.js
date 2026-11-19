@@ -142,7 +142,11 @@ function cleanDisplay(screen, patch) {
 }
 
 // --- Live state (what is on the screens right now) ---------------------------
-const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0, bible: null };
+const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0, bible: null,
+  noText: false,             // "Fără text": the words go away, the background stays
+  messageTo: 'both',         // the message bar: on the audience screen, the stage, or both
+  countdown: null,           // { to: ms, label } — "Începem în 4:59" on the screens
+  video: { cmd: 'play', at: 0, muted: false } };   // the video on the audience screen: play / pause / from the start / sound
 let liveId = null;                                   // the timer on stage restarts when another program item goes live
 function trackSince() {
   const id = live.item === -2 ? 'bible' : db.setlist[live.item]?.id || null;
@@ -296,8 +300,26 @@ const server = http.createServer(handle);
 const wss = new WebSocketServer({ server, path: '/ws' });
 const sessions = new Map(); // ws -> { role }
 
+// Slides that change by themselves (announcements before the service): seconds per slide, again from the start if "în buclă".
+let autoTimer = null, autoKey = '';
+function scheduleAuto() {
+  const it = db.setlist[live.item], secs = Number(it?.autoAdvance) || 0;
+  const key = secs && !live.blank ? `${it.id}:${live.slide}:${secs}:${it.loop ? 1 : 0}` : '';
+  if (key === autoKey) return;
+  autoKey = key; clearTimeout(autoTimer);
+  if (!key) return;
+  autoTimer = setTimeout(() => {
+    if (db.setlist[live.item] !== it) return;
+    const n = slidesFor(live.item).length;
+    if (live.slide + 1 < n) live.slide++;
+    else if (it.loop && n > 1) live.slide = 0;
+    else return;
+    broadcast();
+  }, secs * 1000);
+  autoTimer.unref?.();
+}
 function broadcast() {
-  trackSince();
+  trackSince(); scheduleAuto();
   const msg = JSON.stringify({ type: 'state', state: snapshot() });
   for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
 }
@@ -374,7 +396,7 @@ function handleMessage(ws, m) {
     switch (m.type) {
       case 'go': {                                   // go to item + slide
         const item = clamp(m.item ?? live.item, -1, db.setlist.length - 1);
-        if (item !== live.item) applyItemBackground(item);
+        if (item !== live.item) { applyItemBackground(item); live.video = { ...live.video, cmd: 'play', at: Date.now() }; }
         live.item = item;
         live.slide = clamp(m.slide ?? 0, 0, Math.max(0, slidesFor(item).length - 1));
         live.blank = false; live.logo = false;
@@ -404,7 +426,36 @@ function handleMessage(ws, m) {
       case 'resetTimer': live.since = live.item >= 0 ? Date.now() : 0; break;
       case 'logo': live.logo = !live.logo; break;
       case 'background': live.background = String(m.value || ''); break;
-      case 'message': live.message = String(m.value || '').slice(0, 200); break;
+      case 'message':
+        live.message = String(m.value || '').slice(0, 200);
+        if (['both', 'main', 'stage'].includes(m.to)) live.messageTo = m.to;
+        break;
+      case 'noText': live.noText = typeof m.value === 'boolean' ? m.value : !live.noText; break;
+      case 'clearAll': Object.assign(live, { noText: false, blank: false, logo: false, background: '', message: '', countdown: null }); break;
+      case 'countdown': {                            // { minutes } or { at: "10:00" } or { off: true }
+        if (m.off) { live.countdown = null; break; }
+        let to = 0;
+        if (Number(m.minutes) > 0) to = Date.now() + Math.min(600, Number(m.minutes)) * 60000;
+        else if (/^\d{1,2}:\d{2}$/.test(m.at || '')) {
+          const [h, mm] = m.at.split(':').map(Number), d = new Date(); d.setHours(h, mm, 0, 0);
+          if (d < Date.now() - 60000) d.setDate(d.getDate() + 1);
+          to = d.getTime();
+        }
+        if (!to) return reply({ type: 'error', error: 'Scrie minutele sau ora' });
+        live.countdown = { to, label: String(m.label ?? 'Începem în').slice(0, 60), screens: ['both', 'main', 'stage'].includes(m.screens) ? m.screens : 'both' };
+        break;
+      }
+      case 'video': {                                // the video playing on the audience screen
+        if (['play', 'pause', 'restart'].includes(m.cmd)) live.video = { ...live.video, cmd: m.cmd, at: Date.now() };
+        if (typeof m.muted === 'boolean') live.video = { ...live.video, muted: m.muted };
+        break;
+      }
+      case 'autoAdvance': {                          // a presentation that changes by itself
+        const it = db.setlist[m.item]; if (!it) break;
+        const secs = Math.round(Number(m.seconds) || 0);
+        if (secs > 0) { it.autoAdvance = Math.min(600, Math.max(2, secs)); it.loop = !!m.loop; } else { delete it.autoAdvance; delete it.loop; }
+        save(); break;
+      }
       case 'arrangement': {                          // operators may change slide layout only
         const it = db.setlist[m.item]; if (!it) break;
         it.arrangement = Array.isArray(m.value) ? m.value.map(v => String(v).slice(0, 40)).slice(0, 60) : undefined;
@@ -668,7 +719,7 @@ function handleMessage(ws, m) {
         if (m.type === 'addItem') {
           const kind = ['song', 'sermon', 'prayer', 'announcement', 'other', 'media', 'bible'].includes(m.kind) ? m.kind : 'other';
           const item = m.item && typeof m.item === 'object'                                 // undo of a removal
-            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes', 'slides', 'ref', 'versions']), id: m.item.id || crypto.randomUUID() }
+            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes', 'slides', 'ref', 'versions', 'autoAdvance', 'loop']), id: m.item.id || crypto.randomUUID() }
             : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [],
                 ...(kind === 'media' ? { slides: mediaSlides(m.slides) } : {}),
                 ...(kind === 'bible' ? { ref: cleanRef(m.ref), versions: cleanVersions(m.versions) } : {}) };
@@ -1060,21 +1111,13 @@ async function handle(req, res) {
     }
     if (p === '/api/bibles' && req.method === 'GET') return json(res, 200, bibleList());
     if (p === '/api/peers' && req.method === 'GET') return json(res, 200, peerList());
-    // phone → Betleem: the page behind the QR code sends files here (only with the code from the QR)
-    if (p === '/api/send' && req.method === 'POST') {
-      if (!safeEq(url.searchParams.get('t'), sendToken)) return json(res, 403, { error: 'Codul QR a expirat. Scanează-l din nou de pe ecranul Betleem.' });
-      const name = inboxName(url.searchParams.get('name'));
-      if (!name || !INBOX_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Pot primi poze, video, audio, PowerPoint, Keynote și PDF.' });
-      const final = freeName(INBOX_DIR, name), tmp = path.join(INBOX_DIR, '.' + final + '.part');
-      let size = 0; const MAX = 4 * 1024 * 1024 * 1024;
-      await new Promise((ok, bad) => {
-        const out = fs.createWriteStream(tmp);
-        req.on('data', c => { size += c.length; if (size > MAX) { req.destroy(); bad(new Error('Fișierul e prea mare')); } });
-        req.pipe(out); out.on('finish', ok); out.on('error', bad); req.on('error', bad);
-      }).catch(e => { try { fs.rmSync(tmp, { force: true }); } catch {} throw e; });
-      fs.renameSync(tmp, path.join(INBOX_DIR, final));
-      inboxEvent({ added: final, via: 'telefon' });
-      return json(res, 200, { ok: true, name: final });
+    if (p === '/api/send' && req.method === 'POST') return handleSend(req, res, url);
+    if (p === '/api/tunnel' && req.method === 'GET') return json(res, 200, tunnelState());
+    if (p === '/api/tunnel' && req.method === 'POST') {
+      if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul' });
+      const m = JSON.parse(await body(req, 1000) || '{}');
+      if (m.install) installCloudflared(); else if (m.on) startTunnel(); else stopTunnel();
+      return json(res, 200, tunnelState());
     }
     if (p === '/api/inbox' && req.method === 'GET') {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
@@ -1242,6 +1285,89 @@ function peerList() {
   const now = Date.now();
   return [...peers.values()].filter(p => now - p.seen < 12000).sort((a, b) => a.name.localeCompare(b.name))
     .map(p => ({ name: p.name, church: p.church, url: `http://${p.address}:${p.port}` }));
+}
+
+
+// phone → Betleem: the page behind the QR code sends files here (only with the code from the QR)
+async function handleSend(req, res, url) {
+  if (!safeEq(url.searchParams.get('t'), sendToken)) return json(res, 403, { error: 'Codul QR a expirat. Scanează-l din nou de pe ecranul Betleem.' });
+  const name = inboxName(url.searchParams.get('name'));
+  if (!name || !INBOX_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Pot primi poze, video, audio, PowerPoint, Keynote și PDF.' });
+  const final = freeName(INBOX_DIR, name), tmp = path.join(INBOX_DIR, '.' + final + '.part');
+  let size = 0; const MAX = 4 * 1024 * 1024 * 1024;
+  try {
+    await new Promise((ok, bad) => {
+      const out = fs.createWriteStream(tmp);
+      req.on('data', c => { size += c.length; if (size > MAX) { req.destroy(); bad(new Error('Fișierul e prea mare')); } });
+      req.pipe(out); out.on('finish', ok); out.on('error', bad); req.on('error', bad);
+    });
+  } catch (e) { try { fs.rmSync(tmp, { force: true }); } catch {} return json(res, 400, { error: e.message }); }
+  fs.renameSync(tmp, path.join(INBOX_DIR, final));
+  inboxEvent({ added: final, via: req.socket.localPort === SEND_PORT ? 'internet' : 'telefon' });
+  return json(res, 200, { ok: true, name: final });
+}
+
+// --- From anywhere (mobile data, another city): a Cloudflare link to a tiny server that can ONLY receive files.
+// The program, the screens and the PINs are never reachable from the internet: that server has two things —
+// the send page and the upload, which still needs the code from the QR.
+const SEND_PORT = PORT + 1;
+const sendServer = http.createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://x'), p = url.pathname;
+  try {
+    if (p === '/api/send' && req.method === 'POST') return await handleSend(req, res, url);
+    if (p === '/' || p === '/send.html') return file(res, PUBLIC, 'send.html', req);
+    if (p.startsWith('/fonts/') && req.method === 'GET') return file(res, PUBLIC, p.slice(1), req);
+    return send(res, 404, 'Not found', 'text/plain');
+  } catch (e) { try { json(res, 400, { error: e.message }); } catch {} }
+});
+if (process.env.SEND_SERVER !== '0') { sendServer.on('error', e => logError('serverul de trimis', e)); sendServer.listen(SEND_PORT, '127.0.0.1'); sendServer.unref(); }
+
+const TOOLS_DIR = path.join(DATA_DIR, 'tools');
+const tunnel = { proc: null, url: '', error: '', installing: false };
+function findCloudflared() {
+  const exe = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared';
+  const c = [path.join(TOOLS_DIR, exe), '/opt/homebrew/bin/cloudflared', '/usr/local/bin/cloudflared', '/usr/bin/cloudflared',
+    'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe', 'C:\\Program Files\\cloudflared\\cloudflared.exe'];
+  return c.find(p => { try { return fs.statSync(p).isFile(); } catch { return false; } }) || null;
+}
+const tunnelState = () => ({ available: !!findCloudflared(), running: !!tunnel.proc, url: tunnel.url, error: tunnel.error, installing: tunnel.installing,
+  link: tunnel.url ? `${tunnel.url}/send.html?t=${sendToken}` : '' });
+const tunnelEvent = () => { const msg = JSON.stringify({ type: 'tunnel', ...tunnelState() }); for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role !== 'viewer') ws.send(msg); };
+async function startTunnel() {
+  const bin = findCloudflared(); if (!bin || tunnel.proc) return;
+  const { spawn } = await import('node:child_process');
+  tunnel.error = ''; tunnel.url = '';
+  const proc = tunnel.proc = spawn(bin, ['tunnel', '--no-autoupdate', '--url', `http://127.0.0.1:${SEND_PORT}`], { windowsHide: true });
+  const look = d => { const m = String(d).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/); if (m && !tunnel.url) { tunnel.url = m[0]; tunnelEvent(); } };
+  proc.stdout.on('data', look); proc.stderr.on('data', look);
+  proc.on('exit', code => { if (tunnel.proc === proc) { tunnel.proc = null; tunnel.url = ''; if (code) tunnel.error = 'Legătura prin internet s-a oprit'; tunnelEvent(); } });
+  proc.on('error', e => { tunnel.error = e.message; tunnel.proc = null; tunnelEvent(); });
+  setTimeout(() => { if (tunnel.proc === proc && !tunnel.url) { tunnel.error = 'Nu am primit link de la Cloudflare. Ai internet?'; tunnelEvent(); } }, 25000).unref();
+  tunnelEvent();
+}
+function stopTunnel() { try { tunnel.proc?.kill(); } catch {} tunnel.proc = null; tunnel.url = ''; tunnelEvent(); }
+process.on('exit', () => { try { tunnel.proc?.kill(); } catch {} });
+// cloudflared is Cloudflare's free, official program for these links (github.com/cloudflare/cloudflared)
+async function installCloudflared() {
+  if (tunnel.installing || findCloudflared()) return;
+  tunnel.installing = true; tunnel.error = ''; tunnelEvent();
+  try {
+    const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
+    const asset = process.platform === 'win32' ? `cloudflared-windows-${arch === 'arm64' ? 'amd64' : arch}.exe`
+      : process.platform === 'darwin' ? `cloudflared-darwin-${arch}.tgz` : `cloudflared-linux-${arch}`;
+    const r = await fetch('https://github.com/cloudflare/cloudflared/releases/latest/download/' + asset);
+    if (!r.ok) throw new Error('Descărcarea a eșuat (' + r.status + ')');
+    fs.mkdirSync(TOOLS_DIR, { recursive: true });
+    const buf = Buffer.from(await r.arrayBuffer());
+    const exe = path.join(TOOLS_DIR, process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared');
+    if (asset.endsWith('.tgz')) {
+      const tgz = path.join(TOOLS_DIR, asset); fs.writeFileSync(tgz, buf);
+      const { execFileSync } = await import('node:child_process');
+      execFileSync('tar', ['-xzf', tgz, '-C', TOOLS_DIR]); fs.rmSync(tgz, { force: true });
+    } else fs.writeFileSync(exe, buf);
+    fs.chmodSync(exe, 0o755);
+  } catch (e) { tunnel.error = 'Nu am putut instala: ' + e.message; logError('cloudflared', e); }
+  tunnel.installing = false; tunnelEvent();
 }
 
 // --- Primite: files sent from a phone (QR code) or by AirDrop, waiting to be used ------------------

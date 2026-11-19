@@ -259,3 +259,35 @@ test('📥 Primite: a phone sends with the QR code, the file becomes a backgroun
   assert.ok(t.media);
   assert.equal((await fetch('http://localhost:4599/media/' + encodeURIComponent(t.media))).status, 200);
 });
+
+test('presenter: text off, clear all, countdown, message only on stage, slides that change by themselves', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'noText' });
+  assert.equal((await a.next(m => m.type === 'state' && m.state.live.noText)).state.live.noText, true);
+  a.send({ type: 'message', value: 'Trupa: încă o dată refrenul', to: 'stage' });
+  assert.equal((await a.next(m => m.type === 'state' && m.state.live.message)).state.live.messageTo, 'stage');
+  a.send({ type: 'countdown', minutes: 5, label: 'Începem în' });
+  const c = (await a.next(m => m.type === 'state' && m.state.live.countdown)).state.live.countdown;
+  assert.ok(c.to - Date.now() > 290000 && c.to - Date.now() <= 300000);
+  a.send({ type: 'clearAll' });
+  const cl = (await a.next(m => m.type === 'state' && !m.state.live.countdown && !m.state.live.message)).state.live;
+  assert.equal(cl.noText, false);
+  a.send({ type: 'addItem', kind: 'media', title: 'Anunțuri', slides: ['/media/a1.jpg', '/media/a2.jpg'], at: 0 });
+  await a.next(m => m.type === 'state' && m.state.setlist[0]?.title === 'Anunțuri');
+  a.send({ type: 'autoAdvance', item: 0, seconds: 2, loop: true });
+  a.send({ type: 'go', item: 0, slide: 0 });
+  await a.next(m => m.type === 'state' && m.state.live.item === 0 && m.state.live.slide === 0);
+  await a.next(m => m.type === 'state' && m.state.live.slide === 1);
+  await a.next(m => m.type === 'state' && m.state.live.slide === 0);           // in a loop: back to the first one
+  a.send({ type: 'autoAdvance', item: 0, seconds: 0 });
+  a.ws.close();
+});
+
+test('from the internet only the send page and the upload exist', async () => {
+  assert.equal((await fetch('http://127.0.0.1:4600/send.html')).status, 200);
+  for (const p of ['/control.html', '/api/songs', '/api/inbox', '/media/x.jpg', '/api/this']) assert.equal((await fetch('http://127.0.0.1:4600' + p)).status, 404, p);
+  assert.equal((await fetch('http://127.0.0.1:4600/api/send?t=nu&name=a.jpg', { method: 'POST', body: 'x' })).status, 403);
+  const t = await fetch('http://localhost:4599/api/tunnel').then(r => r.json());
+  assert.equal(typeof t.available, 'boolean'); assert.equal(t.running, false);
+});

@@ -67,7 +67,11 @@
   // the timer counts down the minutes planned for this item: yellow at the last quarter, orange at the last tenth, red when over
   function tick() {
     if (D.clock !== false) $('clock').textContent = new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
-    const t = $('timer'), it = S?.setlist[S.live.item];
+    const t = $('timer'), it = S?.setlist[S.live.item], c = S?.live.countdown;
+    if (c && c.screens !== 'main' && c.to > Date.now() + skew) {                // "Începem în" also for the band
+      const left = Math.ceil((c.to - Date.now() - skew) / 1000);
+      t.style.display = ''; t.className = left <= 60 ? 't1' : ''; t.textContent = '⏱ ' + mmss(left); return;
+    }
     if (D.timer === false || !it || !S.live.since) { t.textContent = ''; t.style.display = 'none'; t.className = ''; return; }
     t.style.display = '';
     const used = (Date.now() + skew - S.live.since) / 1000, plan = (Number(it.minutes) || 0) * 60;
@@ -121,7 +125,7 @@
       `<div class="it"><b>${esc(x.title || KIND[x.kind] || '')}</b><small>${[x.key ? 'ton ' + x.key : '', x.minutes ? x.minutes + ' min' : ''].filter(Boolean).map(esc).join(' · ')}</small></div>`).join('') : '';
     fit($('now'), D.size || 5.4); fit($('next'), D.nextSize || 3.4);
     $('blank').style.display = L.blank ? 'block' : 'none';
-    $('msg').style.display = L.message ? 'block' : 'none'; $('msg').textContent = L.message;
+    $('msg').style.display = L.message && L.messageTo !== 'main' ? 'block' : 'none'; $('msg').textContent = L.message;
     tick();
   });
 </script>

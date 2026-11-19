@@ -20,7 +20,14 @@
   #pic img,#pic video{width:100%;height:100%;object-fit:contain;display:block}
   #logo{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#000}
   #logo img{max-width:40vw;max-height:40vh}
-  #msg{position:fixed;left:0;right:0;bottom:0;padding:1.5vh 3vw;background:rgba(0,0,0,.7);font-size:3.5vh;display:none}
+  #msg{position:fixed;left:0;right:0;bottom:0;padding:1.5vh 3vw;background:rgba(0,0,0,.7);font-size:3.5vh;display:none;z-index:5}
+  #black{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .35s;z-index:4}
+  #black.on{opacity:1}
+  /* countdown before the service */
+  #count{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:2vh;z-index:3;
+         text-shadow:0 .4vh 2vh rgba(0,0,0,.7);font-family:Inter,"Helvetica Neue",Arial,sans-serif}
+  #count small{font-size:4vh;font-weight:500;letter-spacing:.02em;opacity:.9}
+  #count b{font-size:20vh;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
 </style>
 </head>
 <body>
@@ -28,6 +35,8 @@
 <div id="text"></div>
 <div id="pic"></div>
 <div id="logo"><img src="/media/logo.png" alt="" onerror="this.remove()"></div>
+<div id="count"><small id="countLabel"></small><b id="countTime"></b></div>
+<div id="black"></div>
 <div id="msg"></div>
 <script type="module">
   import { connect, esc, paintBackground, stayAwake } from '/client.js';
@@ -56,16 +65,43 @@
     const t = $('text'); t.style.fontSize = baseSize + 'vh';
     for (let v = baseSize; v > 2 && t.scrollHeight > t.clientHeight + 2; v -= 0.2) t.style.fontSize = v.toFixed(1) + 'vh';
   }
+  // countdown: "Începem în 4:59", hides itself at zero
+  let S = null, skew = 0;
+  function tick() {
+    const c = S?.live.countdown, show = c && c.screens !== 'stage' && !S.live.blank;
+    const left = show ? Math.ceil((c.to - Date.now() - skew) / 1000) : 0;
+    $('count').style.display = show && left > 0 ? 'flex' : 'none';
+    if (show && left > 0) {
+      $('countLabel').textContent = c.label;
+      const h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60), sec = left % 60;
+      $('countTime').textContent = (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0');
+    }
+    $('text').style.visibility = $('pic').style.visibility = show && left > 0 ? 'hidden' : '';   // the countdown stands alone on the background
+  }
+  setInterval(tick, 250);
+  // the video on screen follows Play / Pauză / De la început / Sunet from the control window
+  let vidAt = 0;
+  function video(L) {
+    const v = $('pic').querySelector('video'); if (!v) return;
+    v.muted = !!L.video?.muted;
+    if (L.video && L.video.at !== vidAt) {
+      vidAt = L.video.at;
+      if (L.video.cmd === 'pause') v.pause();
+      else { if (L.video.cmd === 'restart') v.currentTime = 0; v.play().catch(() => { v.muted = true; v.play().catch(() => {}); }); }
+    }
+  }
   connect(s => {
+    S = s; if (s.now) skew = s.now - Date.now();
     const L = s.live, item = s.setlist[L.item];
     if (s.display) style({ ...s.display.main, ...(item?.display || {}), ...(item?.slideStyles?.[L.slide] || {}) });
     paintBackground($('bg'), L.background);
+    tick();
     const slide = L.slides[L.slide];
     // a page of a presentation, a picture or a video: whole screen, nothing on top
     const src = !L.blank && slide?.image || '';
     if ($('pic').dataset.src !== src) {
       $('pic').dataset.src = src;
-      $('pic').innerHTML = !src ? '' : /\.(mp4|webm|mov)$/i.test(src) ? `<video src="${esc(src)}" autoplay playsinline></video>` : `<img src="${esc(src)}" alt="">`;
+      $('pic').innerHTML = !src ? '' : /\.(mp4|webm|mov)$/i.test(src) ? `<video src="${esc(src)}" autoplay playsinline ${s.live.video?.muted ? 'muted' : ''}></video>` : `<img src="${esc(src)}" alt="">`;
     }
     $('pic').style.display = src ? 'block' : 'none';
     const lines = sl => sl.lines.map(l => esc(stripChords(l))).filter(Boolean).join('<br>');
@@ -73,10 +109,12 @@
       ? `<div class="v1">${lines(slide)}<div class="ref">${esc(slide.label)} · ${esc(slide.bible)}</div></div>`
         + (slide.second ? `<div class="v2">${lines(slide.second)}<div class="ref">${esc(slide.second.label)} · ${esc(slide.second.bible)}</div></div>` : '')
       : lines(slide);
-    $('text').classList.toggle('hide', L.blank || !html);
-    if (!L.blank) { $('text').innerHTML = html; fit(); }
+    video(L);
+    $('text').classList.toggle('hide', L.blank || L.noText || !html);
+    if (!L.blank && !L.noText) { $('text').innerHTML = html; fit(); }
+    $('black').classList.toggle('on', !!L.blank);
     $('logo').style.display = L.logo ? 'flex' : 'none';
-    $('msg').style.display = L.message ? 'block' : 'none';
+    $('msg').style.display = L.message && L.messageTo !== 'stage' ? 'block' : 'none';
     $('msg').textContent = L.message;
   });
 </script>

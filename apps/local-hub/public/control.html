@@ -487,6 +487,8 @@
   .modal .glass.inbox{width:min(860px,96vw);display:flex;flex-direction:column;gap:12px}
   .inbox-body{display:grid;grid-template-columns:260px 1fr;gap:18px;min-height:340px}
   .qr-side{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+  .qr.off{background:rgba(255,255,255,.06);color:var(--mute);text-align:center;padding:20px}
+  #qrWifi,#qrNet{display:flex;flex-direction:column;gap:8px;align-items:center} #qrWifi[hidden],#qrNet[hidden]{display:none}
   .qr{width:220px;height:220px;border-radius:18px;background:#fff;padding:6px;display:grid;place-items:center} .qr svg{width:100%;height:100%}
   .qr-urls{flex-wrap:wrap;justify-content:center} .qr-urls .sel{border-color:var(--acc)}
   .in-list{display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto}
@@ -495,6 +497,25 @@
   .in-f .t{flex:1;min-width:0} .in-f b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .in-f small{color:var(--mute);font-size:11.5px}
   .in-f .acts{display:flex;gap:5px;align-items:center} .in-f .mini{padding:4px 10px;font-size:12px}
   @media (max-width:760px){ .inbox-body{grid-template-columns:1fr} }
+  .clr{display:inline-flex;gap:2px;padding:2px;border-radius:999px;background:rgba(0,0,0,.18)}
+  .clr button{padding:6px 11px;font-size:12.5px} .clr .icon{width:28px;height:28px}
+  #bCount.on{background:var(--acc);color:var(--acc-ink);width:auto;padding:0 10px;font-variant-numeric:tabular-nums;font-weight:700}
+  .msgbox{display:inline-flex;align-items:center;border-radius:999px;background:rgba(0,0,0,.2);border:.5px solid var(--stroke)}
+  .msgbox #msg{border:0;background:transparent;width:170px} .msgbox select{width:auto;border:0;background:transparent;padding:4px 8px;font-size:12px;color:var(--mute)}
+  .pop{position:fixed;z-index:40;width:330px;padding:14px;display:none;flex-direction:column;gap:10px;background:rgba(36,38,48,.82)}
+  .pop.show{display:flex} .pop .row{flex-wrap:wrap} .pop .mini{padding:5px 11px;font-size:12.5px}
+  .screens{position:relative}
+  .scr-vis{position:absolute;left:50%;transform:translateX(-50%);bottom:4px;z-index:5;opacity:0;transition:opacity .2s;background:rgba(0,0,0,.55)!important;backdrop-filter:blur(12px)}
+  .scr-vis button{padding:3px 9px!important;font-size:11px!important}
+  .screens:hover .scr-vis,.screens[data-vis=none] .scr-vis{opacity:1}
+  .screens[data-vis=main] .screen:has(iframe[title="Scenă"]),.screens[data-vis=stage] .screen:has(iframe[title="Sală"]),.screens[data-vis=none] .screen{display:none}
+  .screens[data-vis=main],.screens[data-vis=stage]{grid-template-columns:minmax(0,calc(var(--scrH,32vh) * 16 / 9))}
+  .screens[data-vis=none]{min-height:40px;padding:0}
+  .screens[data-vis=none] .scr-vis{position:static;transform:none;margin:6px auto}
+  .mediabar[hidden],.mediabar .tool[hidden]{display:none!important}
+  .mediabar{display:inline-flex;gap:6px;order:1;align-items:center}
+  .mediabar input[type=number]{width:52px;border:0;background:transparent;padding:2px 4px;font-weight:650;text-align:center}
+  .mediabar .check{font-size:11.5px;margin-left:4px}
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
   .pc-list{display:flex;flex-direction:column;gap:6px}
@@ -533,9 +554,14 @@
     <div class="transport">
       <button id="bPrev" class="icon" title="Înapoi (←)">◀</button>
       <button id="bNext" class="acc" title="Înainte (Spațiu / →)">Înainte ▶</button>
-      <button id="bBlank" title="Ecran negru (B)">Negru</button>
-      <button id="bLogo" title="Logo (L)">Logo</button>
-      <input id="msg" placeholder="Mesaj pe ecran… (Enter)">
+      <span class="clr">
+        <button id="bNoText" title="Fără text: rămâne doar fundalul (T)">Text</button>
+        <button id="bBlank" title="Ecran negru (B)">Negru</button>
+        <button id="bLogo" title="Logo (L)">Logo</button>
+        <button id="bClear" class="icon" title="Curăță tot: fără text ascuns, fără fundal, mesaj, numărătoare (Esc Esc)">⌫</button>
+      </span>
+      <button id="bCount" class="icon" title="Numărătoare inversă: „Începem în 5:00”">⏱</button>
+      <span class="msgbox"><input id="msg" placeholder="Mesaj… (Enter)"><select id="msgTo" title="Unde apare mesajul"><option value="both">peste tot</option><option value="main">sală</option><option value="stage">scenă</option></select></span>
     </div>
     <div class="login" id="loginBox">
       <input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button id="bLogin">OK</button>
@@ -570,7 +596,8 @@
 
     <!-- center: screens, slides, backgrounds -->
     <section class="center">
-      <div class="screens glass">
+      <div class="screens glass" id="screens">
+        <div class="scr-vis seg mini" id="scrVis" title="Ce ecrane vezi aici (nu schimbă nimic pe ecranele reale)"><button data-v="both">Ambele</button><button data-v="main">Sală</button><button data-v="stage">Scenă</button><button data-v="none">Ascunde</button></div>
         <div class="screen"><iframe src="/main.html" title="Sală" tabindex="-1"></iframe>
           <span class="cap"><i></i>SALĂ</span><button class="open" id="bMain" title="Deschide pe proiector">Proiector ↗</button></div>
         <div class="screen"><iframe src="/stage.html" title="Scenă" tabindex="-1"></iframe>
@@ -591,6 +618,11 @@
               <div class="line"><div class="arr" id="arrChips" title="Ordinea secțiunilor în acest program: trage ca s-o schimbi; ✕ scoate o secțiune. Etichetele le pui din ✎ pe slide."></div>
                 <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋</option></select><button id="arrReset" class="icon" title="Ordinea din cântare">↺</button></div>
             </div>
+          </div>
+          <div class="mediabar" id="mediaBar" hidden>
+            <span class="tool vid" id="vidCtl" hidden title="Video-ul de pe ecran"><button class="icon" data-v="play" title="Pornește">▶</button><button class="icon" data-v="pause" title="Pauză">⏸</button><button class="icon" data-v="restart" title="De la început">⟲</button><button class="icon" data-v="mute" id="vidMute" title="Sunet">🔊</button></span>
+            <span class="tool" title="Slide-urile se schimbă singure (anunțuri înainte de serviciu)"><small>Singur la</small><input id="autoSec" type="number" min="0" max="600" placeholder="—"><small>s</small>
+              <label class="check"><input type="checkbox" id="autoLoop"> buclă</label></span>
           </div>
           <label class="zoom" title="Mărimea slide-urilor">🔍<input type="range" id="slideZoom" min="150" max="420" step="10"></label>
         </div>
@@ -720,15 +752,31 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="sep"></div>
   <button id="bPcs" class="ghost">🖥 Lucrează de pe mai multe calculatoare…</button>
 </div>
+<div class="pop glass" id="countPop">
+  <div class="look-head"><b>⏱ Numărătoare inversă</b></div>
+  <input id="cLabel" value="Începem în" placeholder="Textul de deasupra">
+  <div class="row"><button class="mini" data-min="2">2 min</button><button class="mini" data-min="5">5 min</button><button class="mini" data-min="10">10 min</button><button class="mini" data-min="15">15 min</button></div>
+  <div class="row"><span class="hint">sau până la ora</span><input id="cAt" type="time" style="width:auto"><button id="cAtGo" class="mini">Pornește</button></div>
+  <div class="row"><span class="hint">pe</span><select id="cScreens" style="width:auto"><option value="both">sală și scenă</option><option value="main">doar sală</option><option value="stage">doar scenă</option></select>
+    <span class="grow"></span><button id="cStop" class="mini">Oprește</button></div>
+  <p class="hint" id="cNow"></p>
+</div>
 <div class="modal" id="inboxModal"><div class="glass inbox">
   <div class="look-head"><b>📥 Primite</b><span class="grow"></span><button id="inboxClose" class="icon" title="Închide">✕</button></div>
   <div class="inbox-body">
     <div class="qr-side">
+      <div class="seg mini" id="qrMode"><button data-m="wifi" class="sel">Același Wi-Fi</button><button data-m="net">Prin internet</button></div>
       <div class="qr" id="qr"></div>
       <b>Scanează cu telefonul</b>
-      <p class="hint">Alege poze, video, PowerPoint, Keynote sau PDF și apasă trimite. Telefonul trebuie să fie pe același Wi-Fi.</p>
-      <p class="hint">Pe Mac merge și cu <b>AirDrop</b>: ce primești cât timp Betleem e deschis apare aici.</p>
-      <div class="row qr-urls" id="qrUrls"></div>
+      <div id="qrWifi">
+        <p class="hint">iPhone sau Android: alege poze, video, PowerPoint, Keynote sau PDF și apasă trimite. Telefonul trebuie să fie pe același Wi-Fi.</p>
+        <p class="hint">Pe Mac merge și cu <b>AirDrop</b>: ce primești cât timp Betleem e deschis apare aici.</p>
+        <div class="row qr-urls" id="qrUrls"></div>
+      </div>
+      <div id="qrNet" hidden>
+        <p class="hint" id="netInfo"></p>
+        <div class="row" style="justify-content:center"><button id="netBtn" class="mini acc"></button><button id="netCopy" class="mini" hidden>Copiază linkul</button></div>
+      </div>
       <button id="qrNew" class="mini ghost" title="Codul vechi nu mai merge">↻ Cod nou</button>
     </div>
     <div class="in-list" id="inList"></div>
@@ -859,6 +907,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'cleaned') { songCache.clear(); search(); render(); toast(`Am curățat ${e.changed} din ${e.total} cântări; la ${e.ordered} am pus refrenul după fiecare strofă.`); }
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
     if (e.type === 'inbox') onInbox(e);
+    if (e.type === 'tunnel') renderNet(e);
     if (e.type === 'undone') toast(e.ok ? (e.what === 'undo' ? 'Anulat: ' : 'Refăcut: ') + (e.name || 'ultima schimbare') : (e.what === 'undo' ? 'Nu mai am ce anula' : 'Nu mai am ce reface'));
   });
   const send = o => hub.send(o);
@@ -925,13 +974,39 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   let inboxData = null, qrUrl = '';
   const IMG = /\.(png|jpe?g|webp)$/i, VID = /\.(mp4|webm|mov|m4v)$/i, AUD = /\.(mp3|wav|m4a|aac|ogg)$/i, SHOW = /\.(pdf|pptx?|key|odp|ppsx?)$/i;
   const sizeTxt = n => n > 1048576 ? (n / 1048576).toFixed(n > 104857600 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  let qrMode = 'wifi', tun = {};
+  async function drawQr(link, empty) {
+    const { default: qrcode } = await import('/vendor/qrcode.js');
+    if (link) { const q = qrcode(0, 'M'); q.addData(link); q.make(); $('qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 3, scalable: true }); $('qr').classList.remove('off'); }
+    else { $('qr').innerHTML = `<p class="hint">${empty}</p>`; $('qr').classList.add('off'); }
+  }
+  // the internet: a Cloudflare link (free) that reaches only the "send files" page of this Betleem
+  async function renderNet(t) {
+    if (t) tun = t; else try { tun = await fetch('/api/tunnel').then(r => r.json()); } catch {}
+    if (qrMode !== 'net') return;
+    const b = $('netBtn'); b.disabled = false; $('netCopy').hidden = !tun.link;
+    if (tun.installing) { b.textContent = 'Se instalează…'; b.disabled = true; $('netInfo').textContent = 'Descarc programul gratuit de la Cloudflare (cam 20 MB).'; }
+    else if (!tun.available) { b.textContent = 'Pregătește (o singură dată)'; b.dataset.do = 'install';
+      $('netInfo').innerHTML = 'Ca să trimiți de oriunde (date mobile, alt oraș), Betleem folosește un link gratuit de la Cloudflare. Prin el se pot doar <b>trimite fișiere</b>; programul și PIN-urile nu se văd de pe internet.'; }
+    else if (!tun.running) { b.textContent = 'Pornește linkul'; b.dataset.do = 'on'; $('netInfo').textContent = tun.error || 'Linkul merge cât timp Betleem e deschis; la fiecare pornire e altul.'; }
+    else { b.textContent = 'Oprește linkul'; b.dataset.do = 'off'; $('netInfo').textContent = tun.link ? 'Merge de pe orice telefon, din orice rețea. Trimite codul sau linkul celui care are fișierele.' : (tun.error || 'Pornesc… (câteva secunde)'); }
+    drawQr(tun.link, tun.running ? 'Pornesc linkul…' : 'Linkul prin internet e oprit');
+  }
+  $('netBtn').onclick = async () => {
+    const d = $('netBtn').dataset.do;
+    try { renderNet(await api('/api/tunnel', { method: 'POST', body: JSON.stringify(d === 'install' ? { install: true } : { on: d === 'on' }) })); } catch (err) { toast(err.message); }
+  };
+  $('netCopy').onclick = () => { copyText(tun.link); toast('Link copiat: trimite-l pe WhatsApp'); };
+  document.querySelectorAll('#qrMode button').forEach(b => b.onclick = () => {
+    qrMode = b.dataset.m; document.querySelectorAll('#qrMode button').forEach(x => x.classList.toggle('sel', x === b));
+    $('qrWifi').hidden = qrMode !== 'wifi'; $('qrNet').hidden = qrMode !== 'net';
+    qrMode === 'net' ? renderNet() : loadInbox();
+  });
   async function loadInbox(fresh) {
     try { inboxData = await api('/api/inbox' + (fresh ? '?new=1' : '')); } catch (err) { return toast(err.message); }
     const urls = inboxData.urls.map(u => `${u}/send.html?t=${inboxData.token}`);
     if (!urls.includes(qrUrl)) qrUrl = urls[0] || '';
-    const { default: qrcode } = await import('/vendor/qrcode.js');
-    if (qrUrl) { const q = qrcode(0, 'M'); q.addData(qrUrl); q.make(); $('qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 3, scalable: true }); }
-    else $('qr').innerHTML = '<p class="hint">Calculatorul nu e conectat la o rețea Wi-Fi.</p>';
+    if (qrMode === 'net') renderNet(); else drawQr(qrUrl, 'Calculatorul nu e conectat la o rețea Wi-Fi.');
     $('qrUrls').innerHTML = urls.length > 1 ? urls.map(u => `<button class="mini ${u === qrUrl ? 'sel' : ''}" data-u="${esc(u)}" title="Altă rețea a calculatorului">${esc(new URL(u).hostname)}</button>`).join('') : '';
     document.querySelectorAll('#qrUrls [data-u]').forEach(b => b.onclick = () => { qrUrl = b.dataset.u; loadInbox(); });
     renderInbox();
@@ -1158,8 +1233,32 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('bNext').onclick = () => send({ type: 'next' });
   $('bPrev').onclick = () => send({ type: 'prev' });
   $('bBlank').onclick = () => send({ type: 'blank' });
+  $('bNoText').onclick = () => send({ type: 'noText' });
+  $('bClear').onclick = () => { send({ type: 'clearAll' }); toast('Curat: doar ecranul gol'); };
+  $('msgTo').onchange = e => { if ($('msg').value) send({ type: 'message', value: $('msg').value, to: e.target.value }); else send({ type: 'message', value: '', to: e.target.value }); };
+  // ⏱ countdown
+  const cPop = $('countPop');
+  $('bCount').onclick = e => { e.stopPropagation(); cPop.classList.toggle('show'); const r = $('bCount').getBoundingClientRect(); cPop.style.left = Math.max(10, r.left - 140) + 'px'; cPop.style.top = (r.bottom + 10) + 'px'; };
+  addEventListener('click', e => { if (cPop.classList.contains('show') && !cPop.contains(e.target) && e.target !== $('bCount')) cPop.classList.remove('show'); });
+  const countSend = o => send({ type: 'countdown', label: $('cLabel').value, screens: $('cScreens').value, ...o });
+  document.querySelectorAll('#countPop [data-min]').forEach(b => b.onclick = () => { countSend({ minutes: +b.dataset.min }); toast('Numărătoarea a pornit'); });
+  $('cAtGo').onclick = () => { if ($('cAt').value) { countSend({ at: $('cAt').value }); toast('Numărătoare până la ' + $('cAt').value); } };
+  $('cStop').onclick = () => { send({ type: 'countdown', off: true }); toast('Numărătoarea s-a oprit'); };
+  setInterval(() => {                                // the countdown, in the button too
+    const c = S?.live.countdown, left = c ? Math.ceil((c.to - Date.now()) / 1000) : 0;
+    $('bCount').classList.toggle('on', left > 0);
+    $('bCount').textContent = left > 0 ? Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : '⏱';
+    $('cNow').textContent = left > 0 ? `Acum: ${c.label} ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : '';
+  }, 500);
+  // previews of the two screens: both, one, or hidden (the real screens do not change)
+  const setVis = v => {
+    $('screens').dataset.vis = v; document.querySelectorAll('#scrVis button').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
+    try { localStorage.setItem('betleem.scr', v); } catch {}
+  };
+  document.querySelectorAll('#scrVis button').forEach(b => b.onclick = e => { e.stopPropagation(); setVis(b.dataset.v); });
+  setVis((() => { try { return localStorage.getItem('betleem.scr') || 'both'; } catch { return 'both'; } })());
   $('bLogo').onclick = () => send({ type: 'logo' });
-  $('msg').onkeydown = e => { if (e.key === 'Enter') { send({ type: 'message', value: e.target.value }); toast(e.target.value ? 'Mesaj afișat' : 'Mesaj șters'); } };
+  $('msg').onkeydown = e => { if (e.key === 'Enter') { send({ type: 'message', value: e.target.value, to: $('msgTo').value }); toast(e.target.value ? 'Mesaj afișat' : 'Mesaj șters'); } };
   $('bLogin').onclick = () => hub.login($('pin').value);
   $('pin').onkeydown = e => { if (e.key === 'Enter') hub.login($('pin').value); };
   const openScreen = (url, name) => {
@@ -1216,6 +1315,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.key === 'b' || e.key === 'B' || e.key === '.') send({ type: 'blank' });
     if ((e.key === 'Delete' || e.key === 'Backspace') && pickedSlide >= 0) { e.preventDefault(); removeSlide(pickedSlide); }
     if (e.key === 'l' || e.key === 'L') send({ type: 'logo' });
+    if (e.key === 't' || e.key === 'T') send({ type: 'noText' });
+    if (e.key === 'Escape') { if (Date.now() - (window._esc || 0) < 600) { send({ type: 'clearAll' }); toast('Curat'); } window._esc = Date.now(); }
   });
 
   // service + program
@@ -1243,6 +1344,18 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const v = await ask('Adaugă în program', [{ label: 'Titlu', value: name }, { label: 'Minute', value: 5, type: 'number' }], 'Adaugă');
     if (v && v[0].trim()) send({ type: 'addItem', kind, title: v[0].trim(), minutes: Number(v[1]) || 5 });
   };
+
+  function renderMediaBar() {
+    const it = S.setlist[sel], liveSl = S.live.slides[S.live.slide];
+    const vid = !!liveSl?.image && /\.(mp4|webm|mov|m4v)$/i.test(liveSl.image);
+    $('mediaBar').hidden = !(it?.kind === 'media' || vid);
+    $('vidCtl').hidden = !vid;
+    $('vidMute').textContent = S.live.video?.muted ? '🔇' : '🔊';
+    if (it && document.activeElement !== $('autoSec')) { $('autoSec').value = it.autoAdvance || ''; $('autoLoop').checked = !!it.loop; }
+  }
+  document.querySelectorAll('#vidCtl button').forEach(b => b.onclick = () => b.dataset.v === 'mute' ? send({ type: 'video', muted: !S.live.video?.muted }) : send({ type: 'video', cmd: b.dataset.v }));
+  const sendAuto = () => send({ type: 'autoAdvance', item: sel, seconds: +$('autoSec').value || 0, loop: $('autoLoop').checked });
+  $('autoSec').onchange = sendAuto; $('autoLoop').onchange = sendAuto;
 
   // ---- programs: Sunday, Christmas, November… — the same ones as in Planning
   const fmtDay = iso => new Date(iso).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -1279,7 +1392,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
-    $('bBlank').classList.toggle('on', S.live.blank); $('bLogo').classList.toggle('on', S.live.logo);
+    $('bBlank').classList.toggle('on', S.live.blank); $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);
+    if (document.activeElement !== $('msgTo')) $('msgTo').value = S.live.messageTo || 'both';
+    renderMediaBar();
     $('setlist').innerHTML = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true">
       <span class="num">${i + 1}</span>
       <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${it.kind === 'song' && S.setlist.filter(x => x.songId === it.songId).length > 1 ? '<span class="rep" title="Cântarea apare de mai multe ori în program">repetată</span> ' : ''}${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}</small></span>
