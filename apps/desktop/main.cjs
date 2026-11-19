@@ -13,7 +13,7 @@ const { pathToFileURL } = require('node:url');
 const PORT = 4545;
 const BASE = `http://localhost:${PORT}`;
 const APP_DIR = __dirname;
-const HUB = path.join(APP_DIR, 'hub');
+const BUILTIN_HUB = path.join(APP_DIR, 'hub');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 
@@ -23,6 +23,10 @@ const DATA_DIR = path.join(app.getPath('documents'), 'Betleem');
 const OLD_DIR = path.join(app.getPath('documents'), 'Bethlehem');
 if (!fs.existsSync(DATA_DIR) && fs.existsSync(OLD_DIR)) { try { fs.renameSync(OLD_DIR, DATA_DIR); } catch {} }
 const MEDIA_DIR = path.join(DATA_DIR, 'media');
+// Updates: a newer hub can be dropped in Documents/Betleem/update/hub (no reinstall, no re-signing on Mac).
+// If it fails to start, the hub inside the app is used.
+const UPDATE_HUB = path.join(DATA_DIR, 'update', 'hub');
+let HUB = fs.existsSync(path.join(UPDATE_HUB, 'src', 'server.js')) ? UPDATE_HUB : BUILTIN_HUB;
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
@@ -200,8 +204,16 @@ app.on('second-instance', () => { if (control) { if (control.isMinimized()) cont
 
 app.whenReady().then(async () => {
   try {
-    hub = await import(pathToFileURL(path.join(HUB, 'src', 'server.js')).href);
-    await hub.ready;
+    try {
+      hub = await import(pathToFileURL(path.join(HUB, 'src', 'server.js')).href);
+      await hub.ready;
+    } catch (err) {
+      if (HUB === BUILTIN_HUB || err.code === 'EADDRINUSE') throw err;
+      logError('actualizarea din update/hub nu pornește, folosesc versiunea din aplicație', err);
+      HUB = BUILTIN_HUB;
+      hub = await import(pathToFileURL(path.join(HUB, 'src', 'server.js')).href);
+      await hub.ready;
+    }
   } catch (err) {
     dialog.showErrorBox('Betleem nu poate porni',
       err.code === 'EADDRINUSE'
