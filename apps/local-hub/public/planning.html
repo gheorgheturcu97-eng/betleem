@@ -252,6 +252,7 @@
   const pcoApi = (url, body) => fetch(url, { method: body ? 'POST' : 'GET', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
     .then(async r => { const j = await r.json().catch(() => ({ error: 'Închide și redeschide Betleem pe laptop.' })); if (!r.ok) throw new Error(j.error); return j; });
   $('bPco').onclick = openPco;
+  if (/[?&]pco=1/.test(location.search)) setTimeout(() => { history.replaceState(null, '', '/planning.html'); openPco(); }, 600);   // came from Live: open the import right away
   async function openPco() {
     let st; try { st = await pcoApi('/api/pco/settings'); } catch (e) { return toast(e.message); }
     $('modal').classList.add('show');
