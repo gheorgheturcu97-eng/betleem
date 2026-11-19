@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('bnc', {
   webSearch: q => ipcRenderer.send('bnc:web-search', String(q)),
-  openScreen: kind => ipcRenderer.send('bnc:open-screen', kind),
+  version: 2,
+  openScreen: (kind, base) => ipcRenderer.send('bnc:open-screen', kind, base || ''),
   onImport: cb => ipcRenderer.on('bnc:imported', (_e, data) => cb(data)),
 });

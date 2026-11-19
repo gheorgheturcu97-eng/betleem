@@ -80,10 +80,13 @@ function displayLabel(d, i) {
   return `Ecran ${i + 1}${primary ? ' (principal Windows)' : ''} – ${d.size.width}×${d.size.height}`;
 }
 
-function openOutput(kind) {
+// base: the Betleem whose program the screens show (this computer, or the one it joined in the network)
+const cleanBase = b => { try { const u = new URL(b); return /^https?:$/.test(u.protocol) ? u.origin : BASE; } catch { return BASE; } };
+function openOutput(kind, base = BASE) {
   const d = displayFor(kind);
-  const url = `${BASE}/${kind === 'main' ? 'main' : 'stage'}.html`;
+  const url = `${cleanBase(base)}/${kind === 'main' ? 'main' : 'stage'}.html`;
   let w = outputs[kind];
+  if (w && !w.isDestroyed() && w.webContents.getURL() !== url) w.loadURL(url);
   if (!w || w.isDestroyed()) {
     w = outputs[kind] = new BrowserWindow({
       x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
@@ -104,6 +107,8 @@ function openOutput(kind) {
 }
 function closeOutput(kind) { outputs[kind]?.close(); }
 
+const controlBase = () => { try { return new URL(control.webContents.getURL()).origin; } catch { return BASE; } };
+
 // ---------------------------------------------------------------- web search window
 function openWebSearch(query) {
   const w = new BrowserWindow({
@@ -115,7 +120,7 @@ function openWebSearch(query) {
 }
 
 ipcMain.on('bnc:web-search', (_e, q) => openWebSearch(String(q || '').slice(0, 200)));
-ipcMain.on('bnc:open-screen', (_e, kind) => openOutput(kind === 'stage' ? 'stage' : 'main'));
+ipcMain.on('bnc:open-screen', (_e, kind, base) => openOutput(kind === 'stage' ? 'stage' : 'main', base || BASE));
 ipcMain.on('bnc:import', (e, data) => {
   try {
     const url = String(data.url || '');
@@ -160,7 +165,7 @@ function buildMenu() {
   const ds = displays();
   const pick = kind => ds.map((d, i) => ({
     label: displayLabel(d, i), type: 'radio', checked: displayFor(kind).id === d.id,
-    click: () => { settings[kind + 'Display'] = d.id; saveSettings(); if (outputs[kind]) openOutput(kind); else buildMenu(); },
+    click: () => { settings[kind + 'Display'] = d.id; saveSettings(); if (outputs[kind]) openOutput(kind, controlBase()); else buildMenu(); },
   }));
   const page = id => () => control?.webContents.executeJavaScript(`document.getElementById('${id}')?.click()`).catch(() => {});
   Menu.setApplicationMenu(Menu.buildFromTemplate([
@@ -174,8 +179,8 @@ function buildMenu() {
       { label: 'Scurtături de tastatură', accelerator: 'CmdOrCtrl+/', registerAccelerator: false, click: page('bKeys') },
     ] },
     { label: 'Ecrane', submenu: [
-      { label: outputs.main ? 'Închide ecranul principal' : 'Deschide ecranul principal', accelerator: 'F2', click: () => outputs.main ? closeOutput('main') : openOutput('main') },
-      { label: outputs.stage ? 'Închide ecranul de scenă' : 'Deschide ecranul de scenă', accelerator: 'F3', click: () => outputs.stage ? closeOutput('stage') : openOutput('stage') },
+      { label: outputs.main ? 'Închide ecranul principal' : 'Deschide ecranul principal', accelerator: 'F2', click: () => outputs.main ? closeOutput('main') : openOutput('main', controlBase()) },
+      { label: outputs.stage ? 'Închide ecranul de scenă' : 'Deschide ecranul de scenă', accelerator: 'F3', click: () => outputs.stage ? closeOutput('stage') : openOutput('stage', controlBase()) },
       { type: 'separator' },
       { label: 'Ecranul principal pe…', submenu: pick('main') },
       { label: 'Ecranul de scenă pe…', submenu: pick('stage') },
@@ -228,8 +233,9 @@ app.whenReady().then(async () => {
     webPreferences: { preload: path.join(APP_DIR, 'preload-control.cjs'), contextIsolation: true, sandbox: true },
   });
   control.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.endsWith('/main.html')) { openOutput('main'); return { action: 'deny' }; }
-    if (url.endsWith('/stage.html')) { openOutput('stage'); return { action: 'deny' }; }
+    const plain = url.split(/[?#]/)[0];
+    if (plain.endsWith('/main.html')) { openOutput('main', new URL(url).origin); return { action: 'deny' }; }
+    if (plain.endsWith('/stage.html')) { openOutput('stage', new URL(url).origin); return { action: 'deny' }; }
     if (/^https?:/.test(url) && !url.startsWith(BASE)) shell.openExternal(url);
     return { action: 'deny' };
   });

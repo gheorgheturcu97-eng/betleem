@@ -237,3 +237,11 @@ test('Bible: versions, a passage on screen in two languages, a passage in the pr
   assert.equal(p.state.setlist[0].title, 'Psalmii 23:1-3'); assert.equal(p.state.setlist[0].slideCount, 3);
   a.ws.close();
 });
+
+test('several computers: hello for others, PINs only on this computer', async () => {
+  const h = await fetch('http://localhost:4599/api/hello');
+  assert.equal(h.headers.get('access-control-allow-origin'), '*');
+  assert.equal((await h.json()).app, 'betleem');
+  assert.equal((await fetch('http://localhost:4599/api/this')).status, 403, 'PINs are not given out');
+  assert.ok(Array.isArray(await fetch('http://localhost:4599/api/peers').then(r => r.json())));
+});

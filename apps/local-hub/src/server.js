@@ -1057,6 +1057,15 @@ async function handle(req, res) {
       return json(res, 200, { ok: true, name });
     }
     if (p === '/api/bibles' && req.method === 'GET') return json(res, 200, bibleList());
+    if (p === '/api/peers' && req.method === 'GET') return json(res, 200, peerList());
+    if (p === '/api/hello' && req.method === 'GET') {        // "is there a Betleem at this address?" (asked from another computer's page)
+      res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+      return res.end(JSON.stringify({ app: 'betleem', name: os.hostname().replace(/\.local$/, ''), church: activeChurch()?.name || '' }));
+    }
+    if (p === '/api/this' && req.method === 'GET') {         // only on this computer: its addresses and PINs, to join from another one
+      if (!(TRUST_LOCALHOST && isLocal(req.socket.remoteAddress))) return json(res, 403, { error: 'Doar pe acest calculator' });
+      return json(res, 200, { name: os.hostname().replace(/\.local$/, ''), urls: lanIPs().map(i => `http://${i.address}:${PORT}`), pin: PIN, leaderPin: LEADER_PIN });
+    }
     if (p === '/api/bible' && req.method === 'GET') {        // one chapter: ?v=vdc&b=42&c=3
       const b = bible(url.searchParams.get('v')); if (!b) return json(res, 404, { error: 'Traducerea nu există' });
       const bk = Number(url.searchParams.get('b')), ch = Number(url.searchParams.get('c')) || 1, book = b.books[bk];
@@ -1155,5 +1164,46 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  Ecran principal:  /main.html     Ecran scenă: /stage.html     Telefoane: /live.html`);
   if (!PIN) console.log('\n  ATENȚIE: nu ai setat PIN. Oricine din rețea poate controla. Pornește cu PIN=1234 npm start\n');
 });
+
+// --- Other computers with Betleem on the same network (Wi-Fi, hotspot, cable) ---------------------
+// Every Betleem says "I am here" a few times a minute; the others list it, so a second computer
+// (tracks in front, lyrics in the back) can join the same program with one click.
+const DISCOVERY_PORT = 45454, instanceId = crypto.randomUUID();
+const peers = new Map();                              // id → { name, church, address, port, seen }
+const lanIPs = () => Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal);
+if (process.env.DISCOVERY !== '0') (async () => {
+  try {
+    const dgram = await import('node:dgram');
+    const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    sock.on('error', e => { logError('găsirea altor calculatoare', e); try { sock.close(); } catch {} });
+    sock.on('message', (buf, rinfo) => {
+      try {
+        const m = JSON.parse(buf);
+        if (m.app !== 'betleem' || m.id === instanceId) return;
+        peers.set(m.id, { name: String(m.name).slice(0, 60), church: String(m.church || '').slice(0, 60), address: rinfo.address, port: Number(m.port) || 4545, seen: Date.now() });
+      } catch {}
+    });
+    sock.bind(DISCOVERY_PORT, () => {
+      try { sock.setBroadcast(true); } catch {}
+      const beat = () => {
+        const msg = Buffer.from(JSON.stringify({ app: 'betleem', id: instanceId, name: os.hostname().replace(/\.local$/, ''), church: activeChurch()?.name || '', port: PORT }));
+        // the broadcast address of every network this computer is on (hotspots do not always pass 255.255.255.255)
+        const targets = new Set(['255.255.255.255']);
+        for (const i of lanIPs()) {
+          const ip = i.address.split('.').map(Number), mask = i.netmask.split('.').map(Number);
+          targets.add(ip.map((b, k) => (b | (~mask[k] & 255))).join('.'));
+        }
+        for (const t of targets) sock.send(msg, DISCOVERY_PORT, t, () => {});
+      };
+      beat(); setInterval(beat, 3000).unref();
+    });
+    sock.unref();
+  } catch (e) { logError('găsirea altor calculatoare', e); }
+})();
+function peerList() {
+  const now = Date.now();
+  return [...peers.values()].filter(p => now - p.seen < 12000).sort((a, b) => a.name.localeCompare(b.name))
+    .map(p => ({ name: p.name, church: p.church, url: `http://${p.address}:${p.port}` }));
+}
 
 export { server };

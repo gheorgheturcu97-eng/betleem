@@ -482,6 +482,12 @@
   .look .checks{display:flex;flex-wrap:wrap;gap:6px 14px} .look .checks .check{font-size:12.5px}
   .look .lf>span{width:96px}
   #bLook.sel{background:var(--glass-3);color:var(--fg)}
+  .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
+  .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
+  .pc-list{display:flex;flex-direction:column;gap:6px}
+  .pc{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke)}
+  .pc.on{border-color:rgba(61,220,132,.6)} .pc b{font-weight:650} .pc small{grid-column:1;color:var(--mute);font-size:12px} .pc button{grid-row:1/3;grid-column:2}
+  .pc .pinv{color:var(--acc);font-size:13px;letter-spacing:.08em}
   /* ---------- Biblia */
   .bib-v select{flex:1;min-width:0;padding:6px 8px;border-radius:999px;font-size:12.5px} .bib-v .plus{color:var(--faint)}
   .bib-nav select{padding:6px 8px;border-radius:999px;font-size:13px} .bib-nav #bibCh{width:auto}
@@ -524,6 +530,7 @@
     <button id="bUndo" class="icon" title="Anulează">↶</button><button id="bRedo" class="icon" title="Refă">↷</button>
     <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
     <button id="aiTop" class="ai-top" title="Asistentul Betleem">✦</button>
+    <button id="remotePill" class="remote-pill" hidden title="Lucrezi pe programul altui calculator · apasă pentru detalii"></button>
     <span id="role"></span>
   </header>
 
@@ -696,7 +703,19 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="sep"></div>
   <button id="bAddChurch" class="ghost">＋ Adaugă biserică</button>
   <button id="bEditChurch" class="ghost">⚙ Nume și cod pentru biserica curentă</button>
+  <div class="sep"></div>
+  <button id="bPcs" class="ghost">🖥 Lucrează de pe mai multe calculatoare…</button>
 </div>
+<div class="modal" id="pcModal"><div class="glass pcs">
+  <div class="look-head"><b>Mai multe calculatoare, același program</b><span class="grow"></span><button id="pcClose" class="icon" title="Închide">✕</button></div>
+  <p class="hint">Un calculator ține programul, de obicei cel cu proiectorul. Celelalte se conectează la el și lucrează pe același program, în timp real: unul pornește track-urile, altul schimbă versurile.</p>
+  <div class="look-sec" id="pcThisHead">Acest calculator</div>
+  <div id="pcThis" class="pc-this"></div>
+  <div class="look-sec">Alte calculatoare cu Betleem în rețea</div>
+  <div id="pcList" class="pc-list"></div>
+  <div class="row"><input id="pcAddr" placeholder="sau scrie adresa, ex. 192.168.1.20" class="grow"><button id="pcGo">Conectează</button></div>
+  <label class="check"><input type="checkbox" id="pcAuto"> Când pornesc Betleem aici, conectează-l singur la calculatorul ales</label>
+</div></div>
 <div class="look glass" id="look">
   <div class="look-head"><b>Ecrane</b><span class="grow"></span><button id="lookClose" class="icon" title="Închide">✕</button></div>
   <div class="seg" id="lookTabs"><button data-s="main" class="sel">Sală · proiector</button><button data-s="stage">Scenă · monitor</button></div>
@@ -784,6 +803,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', reading: 'citire', bible: 'biblie' };
   const $ = id => document.getElementById(id);
   let S = null, sel = -1;
+  // ---- several computers: this page may be served by another computer's Betleem
+  const REMOTE = !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const LOCAL_HOME = 'http://localhost:' + (location.port || 4545) + '/control.html?aici';
+  (() => {                                            // PIN handed over when joining: #pin=1234
+    const m = location.hash.match(/pin=(\d+)/);
+    if (m) { try { localStorage.setItem('bnc-pin', m[1]); } catch {} history.replaceState(null, '', location.pathname); }
+  })();
+  if (!REMOTE && !location.search.includes('aici')) {  // joined automatically last time?
+    let join = ''; try { join = localStorage.getItem('betleem.join') || ''; } catch {}
+    if (join) {
+      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
+      fetch(join + '/api/hello', { signal: ctl.signal }).then(r => r.json()).then(j => { if (j.app === 'betleem') location.replace(join + '/control.html'); })
+        .catch(() => setTimeout(() => toast('Calculatorul principal nu răspunde: lucrezi pe acesta. (🖥 în meniul bisericii)'), 1200));
+    }
+  }
   const hub = connect(s => { S = s; if (sel < 0 && s.live.item >= 0) sel = s.live.item; render(); }, e => {
     if (e.type === 'online' || e.type === 'offline') $('dot').classList.toggle('on', e.type === 'online');
     if (e.role) {
@@ -858,6 +892,39 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (v[2] !== v[3]) return toast('Codurile nu sunt la fel');
     send({ type: 'addChurch', name: v[0], city: v[1], code: v[2] });
   };
+  // ---- 🖥 several computers
+  async function renderPcs() {
+    $('pcThisHead').textContent = REMOTE ? 'Lucrezi acum pe programul de la' : 'Acest calculator';
+    if (REMOTE) {
+      const h = await fetch('/api/hello').then(r => r.json()).catch(() => ({}));
+      $('pcThis').innerHTML = `<div class="pc on"><b>${esc(h.name || location.hostname)}</b><small>${esc(h.church || '')} · ${esc(location.host)}</small><button id="pcHome" class="mini">Înapoi la acest calculator</button></div>`;
+      $('pcHome').onclick = () => { try { localStorage.removeItem('betleem.join'); } catch {} location.href = LOCAL_HOME; };
+    } else {
+      const t = await fetch('/api/this').then(r => r.json()).catch(() => null);
+      $('pcThis').innerHTML = t && !t.error ? `<div class="pc"><b>${esc(t.name)}</b><small>${t.urls.map(esc).join(' · ') || 'nu e conectat la o rețea'}</small>
+        <small>Ca să lucreze altcineva pe acest program: pe celălalt calculator deschide Betleem → 🖥 → alege „${esc(t.name)}” și scrie PIN-ul de lider <b class="pinv">${esc(t.leaderPin)}</b></small></div>` : '';
+    }
+    const list = await fetch('/api/peers').then(r => r.json()).catch(() => []);
+    $('pcList').innerHTML = list.length ? list.map(p => `<div class="pc"><b>${esc(p.name)}</b><small>${esc(p.church)} · ${esc(p.url.replace('http://', ''))}</small><button class="mini acc" data-url="${esc(p.url)}">Conectează</button></div>`).join('')
+      : '<p class="hint">Caut… Celălalt calculator trebuie să aibă Betleem deschis și să fie în aceeași rețea (același Wi-Fi sau hotspot).</p>';
+    document.querySelectorAll('#pcList [data-url]').forEach(b => b.onclick = () => joinPc(b.dataset.url));
+  }
+  async function joinPc(url) {
+    url = url.trim().replace(/\/+$/, ''); if (!/^https?:\/\//.test(url)) url = 'http://' + url; if (!/:\d+$/.test(url)) url += ':4545';
+    const ok = await fetch(url + '/api/hello').then(r => r.json()).then(j => j.app === 'betleem').catch(() => false);
+    if (!ok) return toast('Nu găsesc Betleem la ' + url.replace('http://', '') + '. E deschis? E în aceeași rețea?');
+    const v = await ask('PIN-ul de lider de pe celălalt calculator\n(îl vezi acolo în 🖥)', [{ label: 'PIN', type: 'password' }], 'Conectează');
+    if (!v) return;
+    try { if ($('pcAuto').checked) localStorage.setItem('betleem.join', url); else localStorage.removeItem('betleem.join'); } catch {}
+    location.href = url + '/control.html#pin=' + encodeURIComponent(v[0].trim());
+  }
+  let pcTimer = null;
+  const openPcs = () => { $('pcModal').classList.add('show'); menu.classList.remove('show'); renderPcs(); clearInterval(pcTimer); pcTimer = setInterval(renderPcs, 3000); };
+  $('bPcs').onclick = openPcs; $('remotePill').onclick = openPcs;
+  $('pcClose').onclick = () => { $('pcModal').classList.remove('show'); clearInterval(pcTimer); };
+  $('pcGo').onclick = () => $('pcAddr').value.trim() && joinPc($('pcAddr').value);
+  try { $('pcAuto').checked = !!localStorage.getItem('betleem.join') || true; } catch {}
+  if (REMOTE) { $('remotePill').hidden = false; fetch('/api/hello').then(r => r.json()).then(h => $('remotePill').textContent = '⇄ ' + (h.name || location.hostname)).catch(() => {}); }
   $('bEditChurch').onclick = async () => {
     menu.classList.remove('show');
     const c = S.churches.find(x => x.id === S.church.id);
@@ -1007,7 +1074,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('bLogin').onclick = () => hub.login($('pin').value);
   $('pin').onkeydown = e => { if (e.key === 'Enter') hub.login($('pin').value); };
   const openScreen = (url, name) => {
-    if (window.bnc?.openScreen) return window.bnc.openScreen(name === 'bnc-main' ? 'main' : 'stage');
+    // on a computer joined to another one, the screens show that computer's program
+    if (window.bnc?.openScreen && (!REMOTE || window.bnc.version >= 2)) return window.bnc.openScreen(name === 'bnc-main' ? 'main' : 'stage', REMOTE ? location.origin : '');
+    if (REMOTE && window.bnc) { window.open(location.origin + url + '?ecran'); return toast('Se deschide în browser: mut-o pe ecranul dorit și apasă dublu-clic pentru ecran complet.'); }
     const w = window.open(url, name, 'popup,width=960,height=540');
     if (!w) toast('Browserul a blocat fereastra. Permite ferestrele pop-up pentru localhost.');
     else toast('Mută fereastra pe ecranul dorit, apoi apasă F11.');
