@@ -117,7 +117,7 @@ async function pdfPages(file, progress) {
 }
 
 // ---------------------------------------------------------------- ZIP (pptx is a zip of XML files)
-async function unzip(file) {
+export async function unzip(file) {
   const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer);
   let e = buf.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
   if (e < 0) throw new Error('Fișierul PowerPoint e deteriorat.');

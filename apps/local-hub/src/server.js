@@ -869,7 +869,7 @@ const mediaList = () => fs.readdirSync(MEDIA_DIR).filter(f => /^(image|video)\//
 
 // --- AI assistant -------------------------------------------------------------------
 const AI_FILE = path.join(DATA_DIR, 'ai.json');
-let aiSettings = { provider: 'auto', claudeModel: 'claude-sonnet-5-5', ollamaUrl: 'http://localhost:11434', ollamaModel: 'qwen2.5:7b' };
+let aiSettings = { provider: 'auto', claudeModel: 'claude-sonnet-5-5', ollamaUrl: 'http://localhost:11434', ollamaModel: 'qwen2.5:7b', ollamaVisionModel: 'qwen2.5vl:7b' };
 try { aiSettings = { ...aiSettings, ...JSON.parse(fs.readFileSync(AI_FILE, 'utf8')) }; } catch {}
 const aiPublic = () => ({ ...aiSettings, claudeKey: undefined, hasKey: !!aiSettings.claudeKey, keyHint: aiSettings.claudeKey ? '…' + aiSettings.claudeKey.slice(-4) : '' });
 const aiSocket = { send(t) { try { const o = JSON.parse(t); if (o.type === 'error' || (o.type === 'church' && !o.ok)) this.last = o.error; } catch {} } };
@@ -885,6 +885,14 @@ const aiHub = {
   run(m) { aiSocket.last = null; handleMessage(aiSocket, m); return aiSocket.last; },
   searchSongs, media: mediaList,
   song: id => db.songs.find(s => s.id === id),
+  structure(i) {                                    // sections, order and tracks of a song in the program
+    const it = db.setlist[i]; if (!it || it.kind !== 'song') return { error: 'La poziția aceasta nu e o cântare' };
+    const song = db.songs.find(s => s.id === it.songId); if (!song) return { error: 'Cântarea nu mai e în bibliotecă' };
+    const parsed = core.parseSong(song.body);
+    const sections = parsed.filter(x => x.label).map(x => ({ label: x.label, first_line: core.stripChords(x.lines[0] || '').slice(0, 60) }));
+    const order = core.arrangementIndexes(parsed, it.arrangement || song.arrangement).map(t => parsed[+t.slice(1)]?.label || '');
+    return { title: song.title, key: it.key || song.key || '', sections, order, stems: (song.stems || []).map(x => ({ ...x })) };
+  },
 };
 
 // --- Add chords from resursecrestine.ro (runs in the background) ---------------------
@@ -1321,7 +1329,7 @@ async function handle(req, res) {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       if (req.method === 'POST') {
         const v = JSON.parse(await body(req, 10_000));
-        for (const k of ['provider', 'claudeModel', 'ollamaUrl', 'ollamaModel']) if (typeof v[k] === 'string' && v[k].length < 200) aiSettings[k] = v[k].trim();
+        for (const k of ['provider', 'claudeModel', 'ollamaUrl', 'ollamaModel', 'ollamaVisionModel']) if (typeof v[k] === 'string' && v[k].length < 200) aiSettings[k] = v[k].trim();
         if (typeof v.claudeKey === 'string' && v.claudeKey.trim()) aiSettings.claudeKey = v.claudeKey.trim();
         if (v.clearKey) delete aiSettings.claudeKey;
         fs.writeFileSync(AI_FILE, JSON.stringify(aiSettings, null, 2));
@@ -1330,12 +1338,13 @@ async function handle(req, res) {
     }
     if (p === '/api/ai/chat' && req.method === 'POST') {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
-      const { history } = JSON.parse(await body(req, 200_000));
+      const { history, images } = JSON.parse(await body(req, 25_000_000));
+      const pics = (Array.isArray(images) ? images : []).slice(0, 4).filter(im => /^image\/(png|jpeg|webp|gif)$/.test(im?.type) && typeof im.data === 'string' && im.data.length < 7_000_000);
       const clean = (Array.isArray(history) ? history : []).slice(-16)
         .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
-        .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }));
+        .map((m, k, all) => ({ role: m.role, content: m.content.slice(0, k === all.length - 1 ? 30000 : 4000) }));   // the last message may carry a whole file
       if (!clean.length || clean.at(-1).role !== 'user') return json(res, 400, { error: 'Scrie un mesaj' });
-      try { return json(res, 200, await runAssistant(aiSettings, clean, aiHub)); }
+      try { return json(res, 200, await runAssistant(aiSettings, clean, aiHub, { images: pics })); }
       catch (e) { return json(res, 200, { error: e.message }); }
     }
     if (p === '/api/media' && req.method === 'GET') {

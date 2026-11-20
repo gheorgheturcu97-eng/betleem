@@ -65,3 +65,18 @@ test('auto: no key -> local model; missing key with claude gives a clear message
   assert.match(called, /11434/); assert.equal(r.reply, 'Salut!');
   await assert.rejects(runAssistant({ provider: 'claude' }, [{ role: 'user', content: 'x' }], hub), /cheia Claude/);
 });
+
+test('assistant arranges a song by section names and changes a track', async () => {
+  const { runTool } = await import('../src/ai.js');
+  const sent = [];
+  const hub = {
+    state: () => ({ program: [{ position: 1, kind: 'song', title: 'Mare e Domnul' }] }),
+    run: m => { sent.push(m); return null; },
+    structure: () => ({ title: 'Mare e Domnul', sections: [{ label: 'Strofa 1' }, { label: 'Refren' }, { label: 'Bridge' }], order: [], stems: [{ file: 'a.mp3', name: 'Tobe', vol: 1, muted: false, pan: 0 }] }),
+  };
+  assert.ok(runTool(hub, 'set_arrangement', { position: 1, sections: ['strofa 1', 'Refren', 'Bridge', 'Refren', 'Refren'] }).ok);
+  assert.deepEqual(sent.at(-1), { type: 'arrangement', item: 0, value: ['Strofa 1', 'Refren', 'Bridge', 'Refren', 'Refren'] });
+  assert.match(runTool(hub, 'set_arrangement', { position: 1, sections: ['Coda'] }).error, /necunoscute/);
+  assert.ok(runTool(hub, 'set_track', { position: 1, track: 'tobe', volume: 50 }).ok);
+  assert.equal(sent.at(-1).stems[0].vol, 0.5);
+});
