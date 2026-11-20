@@ -12,6 +12,8 @@ Reguli:
 - „Sală”/„proiector”/„ecranul mare” = screen "main". „Scenă”/„monitor”/„muzicieni” = screen "stage".
 - Ordinea strofelor („aranjamentul”): citește întâi get_song_structure, apoi set_arrangement cu numele secțiunilor exact cum apar (ex. ["Strofa 1","Refren","Strofa 2","Refren","Bridge","Refren"]). O secțiune se poate repeta.
 - Când primești o listă (scrisă, dintr-un fișier sau dintr-o poză) cu cântări și structuri: caută fiecare cântare cu search_songs, adaug-o în ordine cu add_song_to_program (cu tonul, dacă e scris), apoi pune structura cu set_arrangement. Track-urile vin singure cu cântarea; volumul sau mut-ul lor le schimbi cu set_track. La final spune ce n-ai găsit în bibliotecă.
+- Pentru „cântări necântate de mult”, „ceva din categoria X” sau „să nu repetăm” folosește song_usage.
+- Dacă get_state spune că ești în Planificare, lucrezi pe serviciul ales acolo (programul planificat), nu pe ecrane: fundalul, slide-urile și aspectul nu se schimbă de aici.
 - Dacă cererea e neclară sau ar șterge mult, întreabă înainte.`;
 
 export const TOOLS = [
@@ -44,6 +46,10 @@ export const TOOLS = [
     params: { position: { type: 'number' }, sections: { type: 'array', items: { type: 'string' } } }, required: ['position', 'sections'] },
   { name: 'set_track', description: 'Schimbă un track al unei cântări din program (click, guide, tobe, bas…): volum în procente (0-150) și/sau mut.',
     params: { position: { type: 'number' }, track: { type: 'string' }, volume: { type: 'number' }, muted: { type: 'boolean' } }, required: ['position', 'track'] },
+  { name: 'song_usage', description: 'Cât s-a cântat fiecare cântare în ultimele zile (din programele trecute): count, last (data), tags. Folosește-l ca să alegi cântări necântate de mult sau cele mai cântate, opțional dintr-o categorie.',
+    params: { days: { type: 'number' }, tag: { type: 'string' } } },
+  { name: 'set_item', description: 'Schimbă un element din program: titlu (nu la cântări), minute, cine îl conduce.',
+    params: { position: { type: 'number' }, title: { type: 'string' }, minutes: { type: 'number' }, leader: { type: 'string' } }, required: ['position'] },
   { name: 'set_service', description: 'Schimbă titlul serviciului și/sau data și ora (ISO, ex. 2026-11-22T10:00).', params: { title: { type: 'string' }, starts_at: { type: 'string' } } },
 ];
 
@@ -81,6 +87,15 @@ export function runTool(hub, name, a = {}) {
     case 'set_background': return done(hub.run({ type: 'background', value: a.name || '' }));
     case 'show_slide': return done(hub.run({ type: 'go', item: pos(a.position), slide: Math.max(0, Math.round(Number(a.slide || 1)) - 1) }));
     case 'set_service': return done(hub.run({ type: 'service', value: { ...(a.title ? { title: a.title } : {}), ...(a.starts_at ? { startsAt: new Date(a.starts_at).toISOString() } : {}) } }));
+    case 'song_usage': {
+      const list = hub.usage ? hub.usage(a.days, a.tag) : [];
+      return list.sort((x, y) => x.count - y.count || x.last - y.last).slice(0, 80)
+        .map(u => ({ id: u.id, title: u.title, key: u.key, tags: u.tags, sung: u.count, last: u.last ? new Date(u.last).toISOString().slice(0, 10) : 'niciodată' }));
+    }
+    case 'set_item': {
+      const patch = {}; if (a.title) patch.title = String(a.title); if (Number.isFinite(Number(a.minutes))) patch.minutes = Number(a.minutes); if (a.leader !== undefined) patch.leader = String(a.leader);
+      return done(hub.run({ type: 'updateItem', item: pos(a.position), patch }));
+    }
     case 'get_song_structure': {
       const it = hub.state().program[pos(a.position)]; if (!it) return { error: 'Nu există poziția ' + a.position };
       return hub.structure ? hub.structure(pos(a.position)) : { error: 'indisponibil' };
@@ -138,7 +153,7 @@ export async function runClaude(settings, history, hub, { fetchImpl = fetch, max
     if (!calls.length) return { reply: res.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim(), actions };
     messages.push({ role: 'user', content: calls.map(c => {
       const out = runTool(hub, c.name, c.input);
-      if (c.name !== 'get_state' && c.name !== 'search_songs' && c.name !== 'list_backgrounds') actions.push(c.name);
+      if (!['get_state', 'search_songs', 'list_backgrounds', 'song_usage', 'get_song_structure'].includes(c.name)) actions.push(c.name);
       return { type: 'tool_result', tool_use_id: c.id, content: JSON.stringify(out), ...(out.error ? { is_error: true } : {}) };
     }) });
   }
@@ -178,7 +193,7 @@ export async function runOllama(settings, history, hub, { fetchImpl = fetch, max
     for (const c of calls) {
       let args = c.function?.arguments; if (typeof args === 'string') { try { args = JSON.parse(args); } catch { args = {}; } }
       const out = runTool(hub, c.function?.name, args || {});
-      if (!['get_state', 'search_songs', 'list_backgrounds'].includes(c.function?.name)) actions.push(c.function?.name);
+      if (!['get_state', 'search_songs', 'list_backgrounds', 'song_usage', 'get_song_structure'].includes(c.function?.name)) actions.push(c.function?.name);
       messages.push({ role: 'tool', content: JSON.stringify(out), tool_name: c.function?.name });
     }
   }

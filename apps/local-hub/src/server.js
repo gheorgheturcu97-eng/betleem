@@ -885,15 +885,55 @@ const aiHub = {
   run(m) { aiSocket.last = null; handleMessage(aiSocket, m); return aiSocket.last; },
   searchSongs, media: mediaList,
   song: id => db.songs.find(s => s.id === id),
-  structure(i) {                                    // sections, order and tracks of a song in the program
-    const it = db.setlist[i]; if (!it || it.kind !== 'song') return { error: 'La poziția aceasta nu e o cântare' };
+  usage: (days, tag) => songUsage(days || 60).filter(u => !tag || u.tags.some(t => t.toLowerCase() === String(tag).toLowerCase())),
+  structure(i) { return songStructure(db.setlist[i]); },
+};
+function songStructure(it) {                         // sections, order and tracks of a song in a program
+    if (!it || it.kind !== 'song') return { error: 'La poziția aceasta nu e o cântare' };
     const song = db.songs.find(s => s.id === it.songId); if (!song) return { error: 'Cântarea nu mai e în bibliotecă' };
     const parsed = core.parseSong(song.body);
     const sections = parsed.filter(x => x.label).map(x => ({ label: x.label, first_line: core.stripChords(x.lines[0] || '').slice(0, 60) }));
     const order = core.arrangementIndexes(parsed, it.arrangement || song.arrangement).map(t => parsed[+t.slice(1)]?.label || '');
     return { title: song.title, key: it.key || song.key || '', sections, order, stems: (song.stems || []).map(x => ({ ...x })) };
-  },
-};
+}
+/** The assistant working on a planned service (Planificare) instead of the program on the screens. */
+export function planHub(serviceId) {
+  const svc = () => db.plan.services.find(x => x.id === serviceId);
+  const commit = items => { const s = svc(); applyPlanOp(db.plan, { op: 'setItems', id: s.id, items }); planToLive(); save(); broadcast();
+    const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg); };
+  return {
+    ...aiHub,
+    state() {
+      const s = svc(); if (!s) return { error: 'Serviciul nu mai există' };
+      return { where: 'Planificare (serviciul ales, nu ecranele)', church: activeChurch().name, service: { title: s.title, date: s.date, status: s.status },
+        program: s.items.map((it, i) => ({ position: i + 1, kind: it.kind, title: it.kind === 'song' ? db.songs.find(x => x.id === it.songId)?.title : it.title,
+          key: it.key || '', minutes: it.minutes, leader: it.leader || '', arrangement: it.arrangement, slides: it.slides?.length || 0 })),
+        team: serviceWarnings(db.plan, s) };
+    },
+    run(m) {
+      const s = svc(); if (!s) return 'Serviciul nu mai există';
+      const items = s.items.map(x => ({ ...x })), at = n => Number.isInteger(n) && items[n] ? items[n] : null;
+      switch (m.type) {
+        case 'addItem': {
+          const it = m.kind === 'song' ? { kind: 'song', songId: m.songId, key: m.key || '', minutes: m.minutes || 5 } : { kind: m.kind, title: m.title || '', minutes: m.minutes || 5 };
+          items.splice(Number.isInteger(m.at) ? m.at : items.length, 0, it); break;
+        }
+        case 'removeItem': if (!at(m.item)) return 'Nu există poziția'; items.splice(m.item, 1); break;
+        case 'moveItem': { if (!at(m.item)) return 'Nu există poziția'; const to = Math.max(0, Math.min(items.length - 1, m.to)); const [x] = items.splice(m.item, 1); items.splice(to, 0, x); break; }
+        case 'updateItem': if (!at(m.item)) return 'Nu există poziția'; for (const k of ['title', 'key', 'minutes', 'leader']) if (k in (m.patch || {})) items[m.item][k] = m.patch[k]; break;
+        case 'setKey': if (!at(m.item)) return 'Nu există poziția'; items[m.item].key = m.key; break;
+        case 'arrangement': if (!at(m.item)) return 'Nu există poziția'; if (Array.isArray(m.value)) items[m.item].arrangement = m.value; else delete items[m.item].arrangement; break;
+        case 'setStems': { const it = at(m.item); const song = it && db.songs.find(x => x.id === it.songId); if (!song) return 'Nu e o cântare';
+          song.stems = m.stems.map(x => ({ file: x.file, name: x.name, vol: Math.min(1.5, Math.max(0, +x.vol)), muted: !!x.muted, pan: +x.pan || 0 })); save(); return null; }
+        case 'service': { const v = m.value || {}; if (v.title) s.title = String(v.title).slice(0, 120); if (v.startsAt) s.date = v.startsAt; save(); broadcast(); return null; }
+        case 'saveSong': return aiHub.run(m);
+        default: return 'Asta se face în Live, nu în Planificare';
+      }
+      commit(items); return null;
+    },
+    structure: i => songStructure(svc()?.items[i]),
+  };
+}
 
 // --- Add chords from resursecrestine.ro (runs in the background) ---------------------
 // --- Planning Center (read only): songs with chords and upcoming plans ------------------------
@@ -1338,13 +1378,14 @@ async function handle(req, res) {
     }
     if (p === '/api/ai/chat' && req.method === 'POST') {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
-      const { history, images } = JSON.parse(await body(req, 25_000_000));
+      const { history, images, serviceId } = JSON.parse(await body(req, 25_000_000));
+      const hubFor = serviceId && db.plan.services.some(x => x.id === serviceId) ? planHub(serviceId) : aiHub;
       const pics = (Array.isArray(images) ? images : []).slice(0, 4).filter(im => /^image\/(png|jpeg|webp|gif)$/.test(im?.type) && typeof im.data === 'string' && im.data.length < 7_000_000);
       const clean = (Array.isArray(history) ? history : []).slice(-16)
         .filter(m => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
         .map((m, k, all) => ({ role: m.role, content: m.content.slice(0, k === all.length - 1 ? 30000 : 4000) }));   // the last message may carry a whole file
       if (!clean.length || clean.at(-1).role !== 'user') return json(res, 400, { error: 'Scrie un mesaj' });
-      try { return json(res, 200, await runAssistant(aiSettings, clean, aiHub, { images: pics })); }
+      try { return json(res, 200, await runAssistant(aiSettings, clean, hubFor, { images: pics })); }
       catch (e) { return json(res, 200, { error: e.message }); }
     }
     if (p === '/api/media' && req.method === 'GET') {

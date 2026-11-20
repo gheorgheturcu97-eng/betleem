@@ -124,6 +124,22 @@
   .ctx button{display:flex;align-items:center;gap:18px;justify-content:space-between;text-align:left;background:transparent;border:0;box-shadow:none;padding:6px 10px;border-radius:7px;font-size:13px;color:var(--fg);white-space:nowrap}
   .ctx button:hover:not(:disabled){background:var(--acc);color:#1a1200} .ctx button:disabled{opacity:.35} .ctx kbd{font:500 11.5px ui-monospace,Menlo,monospace;color:var(--mute)} .ctx hr{border:0;border-top:1px solid var(--stroke);margin:4px 6px}
   .picked-any{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)} .drop-on{outline:2px dashed var(--acc);outline-offset:3px}
+  /* ---------- the assistant in Planificare: speak or write, it makes the program of the chosen service */
+  .ai-open{padding:7px 14px!important;border-radius:999px!important;font-weight:700;background:linear-gradient(135deg,#ffd76a,#f5a300)!important;color:#1a1200!important;border:0!important;cursor:pointer;opacity:1!important}
+  .pai{position:fixed;right:18px;bottom:18px;width:min(440px,94vw);height:min(620px,80vh);z-index:60;display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(28,30,38,.88);border-radius:20px}
+  .pai[hidden]{display:none} .pai-head{display:flex;align-items:center;gap:8px} .pai-head .hint{font-size:12px}
+  .pai-log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px}
+  .pai-log .msg{padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.45;max-width:92%;white-space:pre-wrap}
+  .pai-log .bot{background:rgba(255,255,255,.07);align-self:flex-start} .pai-log .me{background:rgba(245,179,1,.22);align-self:flex-end} .pai-log .err{background:rgba(229,72,77,.2)}
+  .pai-log .did{display:block;margin-top:4px;font-size:11.5px;color:#7fe0a8} .pai-log a{color:var(--acc)}
+  .pai-files{display:flex;flex-wrap:wrap;gap:6px} .pai-files:empty{display:none}
+  .pai-files span{display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:12px}
+  .pai-files img{width:24px;height:24px;border-radius:6px;object-fit:cover} .pai-files button{all:unset;cursor:pointer;opacity:.6}
+  .pai-in{display:flex;gap:6px;align-items:flex-end} .pai-in textarea{flex:1;resize:none;font-size:14px}
+  .pai-att{display:inline-grid;place-items:center;cursor:pointer;font-size:17px;width:36px;height:36px}
+  .pai-mic{width:42px;height:42px;border-radius:50%;font-size:18px;flex:none}
+  .pai-mic.on{background:#e5484d;color:#fff;animation:vp 1.2s infinite} .pai-mic.busy{opacity:.6}
+  @keyframes vp{0%{box-shadow:0 0 0 0 rgba(229,72,77,.7)}70%{box-shadow:0 0 0 14px rgba(229,72,77,0)}100%{box-shadow:0 0 0 0 rgba(229,72,77,0)}}
   /* ---------- "Duminica e gata?": the checklist of a service */
   .ready{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.04);border:.5px solid var(--stroke)}
   .ready>b{font-size:13px;margin-right:4px} .ready.ok{background:rgba(61,220,132,.1);border-color:rgba(61,220,132,.45)}
@@ -217,6 +233,7 @@
 <div class="app">
   <header class="top glass">
     <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
+ <button class="ai-open" id="aiOpen" title="Asistentul: spune-i sau scrie-i ce program vrei">✦ Asistent</button>
     <button class="mode-chip" id="modeChip" title="Schimbă ce faci: Pregătesc / Proiectez / Cânt">🗓 Pregătesc ▾</button>
     <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP">MD&amp;TRACK</button><button class="sel">Planificare</button></div>
     <div class="seg views" id="views">
@@ -312,6 +329,21 @@
       <div id="vols" class="scroll" style="display:flex;flex-direction:column;gap:6px"></div>
     </section>
   </section>
+</div>
+<div class="pai glass" id="pai" hidden>
+  <div class="pai-head"><b>✦ Asistent</b><span class="hint" id="paiFor"></span><span class="grow"></span><button id="paiClose" class="icon" title="Închide">✕</button></div>
+  <div class="pai-log" id="paiLog"><div class="msg bot">Spune-mi ce program vrei pentru serviciul ales. De exemplu:<br>
+    <a href="#" class="ex">fă programul: 4 cântări de laudă necântate de o lună, apoi predica 35 de minute și o rugăciune</a><br>
+    <a href="#" class="ex">pune la Mare e Domnul structura strofa 1, refren, strofa 2, refren, refren</a><br>
+    <a href="#" class="ex">tonul la a doua cântare în A și Alex o conduce</a><br>
+    Poți să-mi și vorbești 🎙, sau să-mi dai o poză ori un document cu lista 📎.</div></div>
+  <div class="pai-files" id="paiFiles"></div>
+  <form class="pai-in" id="paiForm">
+    <label class="icon pai-att" title="Poză, PDF, Word sau text cu lista de cântări / structura">📎<input type="file" id="paiFile" accept="image/*,.pdf,.docx,.txt,.md,.csv" multiple hidden></label>
+    <textarea id="paiText" rows="2" placeholder="Scrie sau apasă 🎙 și vorbește…"></textarea>
+    <button type="button" class="pai-mic" id="paiMic" title="🎙 Vorbește">🎙</button>
+    <button class="acc" id="paiSend">➤</button>
+  </form>
 </div>
 <div class="signin" id="signin"><div class="glass">
   <div class="brand" style="justify-content:center;margin-bottom:6px"><span class="star">✦</span>Echipa Betleem</div>
@@ -686,6 +718,73 @@
         await op({ op: 'setItems', id: s.id, items: s.items });
         toast(`${slides.length} slide-uri la „${it.title || KIND[it.kind]}”`);
       } catch (e) { toast(e.message || String(e)); }
+  }
+
+  // ---------- ✦ the assistant, for the chosen service: voice, photos, documents
+  const paiHist = []; let paiAttach = [];
+  const paiMsg = (t, cls, did) => { const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = t; if (did) { const x = document.createElement('span'); x.className = 'did'; x.textContent = did; d.append(x); } $('paiLog').append(d); $('paiLog').scrollTop = 1e9; return d; };
+  const PACT = { add_song_to_program: 'am adăugat cântări', add_item_to_program: 'am adăugat momente', remove_from_program: 'am scos din program', move_in_program: 'am mutat',
+    set_key: 'am schimbat tonul', set_arrangement: 'am pus structura', set_track: 'am schimbat track-uri', set_item: 'am schimbat detalii', set_service: 'am schimbat serviciul', set_song_tags: 'am pus categorii' };
+  function paiOpen() {
+    const s = curSvc(); if (!s) return toast('Alege întâi un serviciu din stânga (sau fă unul nou)');
+    $('pai').hidden = false; $('paiFor').textContent = '· ' + s.title + ' · ' + new Date(s.date).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }); $('paiText').focus();
+  }
+  $('aiOpen').onclick = () => $('pai').hidden ? paiOpen() : ($('pai').hidden = true);
+  $('paiClose').onclick = () => { $('pai').hidden = true; };
+  $('paiLog').addEventListener('click', e => { if (e.target.classList.contains('ex')) { e.preventDefault(); $('paiText').value = e.target.textContent; paiSend(); } });
+  function paiFilesRender() {
+    $('paiFiles').innerHTML = paiAttach.map((f, k) => `<span>${f.image ? `<img src="data:${f.type};base64,${f.data}" alt="">` : '📄'}${esc(f.name.slice(0, 26))}<button data-k="${k}">✕</button></span>`).join('');
+    $('paiFiles').querySelectorAll('[data-k]').forEach(b => b.onclick = () => { paiAttach.splice(+b.dataset.k, 1); paiFilesRender(); });
+  }
+  async function paiFileText(f) {
+    const ext = (f.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+    if (ext === '.pdf') { const pdfjs = await import('/vendor/pdfjs/pdf.min.mjs'); pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs';
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise; let out = '';
+      for (let n = 1; n <= Math.min(doc.numPages, 30); n++) { const c = await (await doc.getPage(n)).getTextContent(); out += c.items.map(x => x.str + (x.hasEOL ? '\n' : ' ')).join('') + '\n'; } return out; }
+    if (ext === '.docx') { const { unzip } = await import('/importer.js'); const z = await unzip(f), x = await z.text('word/document.xml') || '';
+      return x.replace(/<\/w:p>/g, '\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'); }
+    return await f.text();
+  }
+  async function paiShrink(f) { const bmp = await createImageBitmap(f), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const c = Object.assign(document.createElement('canvas'), { width: Math.round(bmp.width * k), height: Math.round(bmp.height * k) }); c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85).split(',')[1]; }
+  async function paiAdd(files) {
+    for (const f of files) { try {
+      if (/^image\//.test(f.type) || /\.(jpe?g|png|heic|webp)$/i.test(f.name)) paiAttach.push({ name: f.name, image: true, type: 'image/jpeg', data: await paiShrink(f) });
+      else paiAttach.push({ name: f.name, text: (await paiFileText(f)).slice(0, 25000) });
+    } catch (e) { toast('Nu pot citi ' + f.name); } }
+    paiFilesRender(); if (!$('paiText').value.trim()) $('paiText').value = 'Fă programul după ce am atașat: caută cântările în bibliotecă, în ordine, cu tonul și structura scrise acolo.';
+  }
+  $('paiFile').onchange = e => { const f = [...e.target.files]; e.target.value = ''; paiAdd(f); };
+  $('pai').addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); });
+  $('pai').addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); paiAdd([...e.dataTransfer.files]); }, true);
+  $('pai').addEventListener('paste', e => { const f = [...(e.clipboardData?.files || [])]; if (f.length) { e.preventDefault(); e.stopPropagation(); paiAdd(f); } }, true);
+  $('paiText').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); paiSend(); } };
+  $('paiForm').onsubmit = e => { e.preventDefault(); paiSend(); };
+  $('paiMic').onclick = async () => {
+    const V = await import('/voice.js'); if (V.listening()) return V.stopListening();
+    try {
+      const text = await V.listen({ onState: st => { $('paiMic').classList.toggle('on', !!st.listening); $('paiMic').classList.toggle('busy', !!(st.loading || st.working));
+        if (st.listening) $('paiText').value = st.text || ''; $('paiText').placeholder = st.note || 'Scrie sau apasă 🎙 și vorbește…'; } });
+      if (text) { $('paiText').value = text; paiSend(); }
+    } catch (e) { toast(e.message); $('paiMic').classList.remove('on', 'busy'); }
+  };
+  async function paiSend() {
+    const s = curSvc(); if (!s) return toast('Alege întâi un serviciu');
+    let text = $('paiText').value.trim(); if (!text && !paiAttach.length) return; if (!text) text = 'Fă programul după ce am atașat.';
+    const files = paiAttach; paiAttach = []; paiFilesRender();
+    const docs = files.filter(f => !f.image).map(f => `\n\n[Fișier: ${f.name}]\n${f.text}`).join(''), images = files.filter(f => f.image).map(f => ({ type: f.type, data: f.data }));
+    $('paiText').value = ''; paiMsg(text + (files.length ? '\n📎 ' + files.map(f => f.name).join(', ') : ''), 'me'); paiHist.push({ role: 'user', content: text + docs });
+    const wait = paiMsg('…', 'bot'); $('paiSend').disabled = true;
+    try {
+      const r = await fetch('/api/ai/chat', { method: 'POST', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: JSON.stringify({ history: paiHist, images, serviceId: s.id }) }).then(x => x.json());
+      wait.remove();
+      if (r.error) { paiMsg(r.error, 'bot err'); paiHist.pop(); return; }
+      const did = [...new Set((r.actions || []).map(a => PACT[a]).filter(Boolean))].join(', ');
+      paiMsg(r.reply || 'Gata.', 'bot', did ? '✓ ' + did : ''); paiHist.push({ role: 'assistant', content: r.reply || 'Gata.' });
+      P = await api(); render();
+    } catch (e) { wait.remove(); paiMsg(e.message, 'bot err'); paiHist.pop(); }
+    finally { $('paiSend').disabled = false; }
   }
   // ---------- right-click menus, shortcuts and dropped / pasted files, as in Live
   const ON_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), MK = ON_MAC ? '⌘' : 'Ctrl+';

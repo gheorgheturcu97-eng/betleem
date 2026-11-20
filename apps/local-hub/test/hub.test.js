@@ -340,3 +340,25 @@ test('service timer starts with the first item on Live; a presentation can be at
   const op = await fetch('http://localhost:4599/api/canva/settings', { method: 'POST', headers: { 'x-pin': '1111' }, body: '{}' });
   assert.equal(op.status, 401, 'only the leader connects Canva');
 });
+
+test('the assistant builds a planned service in Planificare (not the screens)', async () => {
+  const { planHub } = await import('../src/server.js');
+  const { runTool } = await import('../src/ai.js');
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' };
+  let P = await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify({ op: 'addService', title: 'AI test', date: '2027-03-07T10:00:00.000Z' }) }).then(r => r.json());
+  const s = P.services.find(x => x.title === 'AI test');
+  const h = planHub(s.id);
+  const song = (await fetch('http://localhost:4599/api/songs').then(r => r.json()))[0];
+  assert.ok(runTool(h, 'add_song_to_program', { song_id: song.id, key: 'A' }).ok);
+  assert.ok(runTool(h, 'add_item_to_program', { kind: 'sermon', title: 'Predica', minutes: 35 }).ok);
+  assert.ok(runTool(h, 'set_item', { position: 2, leader: 'Pastorul' }).ok);
+  assert.ok(runTool(h, 'move_in_program', { from: 2, to: 1 }).ok);
+  const st = runTool(h, 'get_state');
+  assert.match(st.where, /Planificare/);
+  assert.deepEqual(st.program.map(x => x.kind), ['sermon', 'song']);
+  assert.equal(st.program[0].leader, 'Pastorul'); assert.equal(st.program[1].key, 'A');
+  assert.match(runTool(h, 'set_background', { name: 'x.jpg' }).error, /Live/);
+  assert.ok(Array.isArray(runTool(h, 'song_usage', { days: 30 })));
+  P = await fetch('http://localhost:4599/api/plan', { headers: L }).then(r => r.json());
+  assert.equal(P.services.find(x => x.id === s.id).items.length, 2, 'saved in the plan');
+});
