@@ -1535,9 +1535,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       const j = await r.json(); if (j.error) toast(j.error); return null;
     };
     try {
-      const done = await importMedia(files, { upload, convert, progress: t => toast(t) });
+      const fonts = families => api('/api/fonts', { method: 'POST', body: JSON.stringify({ families }) });
+      const done = await importMedia(files, { upload, convert, fonts, progress: t => toast(t) });
       const at = sel >= 0 ? sel + 1 : S.setlist.length;
-      done.forEach((d, k) => send({ type: 'addItem', kind: 'media', title: d.title, slides: d.slides, minutes: 2, at: at + k }));
+      done.forEach((d, k) => send({ type: 'addItem', kind: 'media', title: d.title, slides: d.slides, transitions: d.transitions, advance: d.advance, minutes: 2, at: at + k }));
       sel = at; toast(done.length === 1 ? `„${done[0].title}”: ${done[0].slides.length} slide-uri în program` : `${done.length} prezentări în program`);
     } catch (err) { toast(err.message || String(err)); }
   }

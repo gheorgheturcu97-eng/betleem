@@ -205,7 +205,8 @@ function slidesFor(index) {
   if (index === -2) return live.bible ? bibleSlides(live.bible.ref, live.bible.versions) : [];   // a passage shown straight from the Bible tab
   const it = db.setlist[index];
   if (it?.kind === 'bible') return bibleSlides(it.ref, it.versions);
-  if (it?.kind === 'media') return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));   // PDF / PowerPoint pages, pictures, videos
+  if (it?.kind === 'media') return (it.slides || []).map((src, i) => ({ label: '', lines: [], image: src,
+    ...(it.transitions?.[i] ? { transition: it.transitions[i] } : {}), ...(it.advance?.[i] ? { advance: it.advance[i] } : {}) }));   // PDF / PowerPoint pages, pictures, videos
   if (!it || it.kind !== 'song') return [];
   const song = db.songs.find(s => s.id === it.songId);
   if (!song) return [];
@@ -304,7 +305,8 @@ const sessions = new Map(); // ws -> { role }
 // Slides that change by themselves (announcements before the service): seconds per slide, again from the start if "în buclă".
 let autoTimer = null, autoKey = '';
 function scheduleAuto() {
-  const it = db.setlist[live.item], secs = Number(it?.autoAdvance) || 0;
+  const it = db.setlist[live.item], own = it?.kind === 'media' ? it.advance?.[live.slide] : 0;   // PowerPoint's own timing wins
+  const secs = own ? own / 1000 : Number(it?.autoAdvance) || 0;
   const key = secs && !live.blank ? `${it.id}:${live.slide}:${secs}:${it.loop ? 1 : 0}` : '';
   if (key === autoKey) return;
   autoKey = key; clearTimeout(autoTimer);
@@ -722,7 +724,7 @@ function handleMessage(ws, m) {
           const item = m.item && typeof m.item === 'object'                                 // undo of a removal
             ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes', 'slides', 'ref', 'versions', 'autoAdvance', 'loop']), id: m.item.id || crypto.randomUUID() }
             : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [],
-                ...(kind === 'media' ? { slides: mediaSlides(m.slides) } : {}),
+                ...(kind === 'media' ? { slides: mediaSlides(m.slides), ...cleanFx(m) } : {}),
                 ...(kind === 'bible' ? { ref: cleanRef(m.ref), versions: cleanVersions(m.versions) } : {}) };
           if (kind === 'bible' && (!item.ref || !item.versions.length)) return reply({ type: 'error', error: 'Pasaj sau traducere greșită' });
           if (kind === 'bible' && !item.title) item.title = formatRef(item.ref, bible(item.versions[0]).lang);
@@ -935,10 +937,19 @@ async function runChordsJob(list) {
 // --- HTTP ----------------------------------------------------------------------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.pdf': 'application/pdf', '.css': 'text/css',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.webm': 'video/webm', '.mov': 'video/quicktime', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
+  '.mp4': 'video/mp4', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf', '.txt': 'text/plain; charset=utf-8', '.webm': 'video/webm', '.mov': 'video/quicktime', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.aac': 'audio/aac' };
 const MEDIA_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.mp4', '.webm', '.mov', '.mp3', '.wav', '.m4a', '.ogg', '.aac'];   // what may be uploaded
 const SHOW_EXT = ['.pptx', '.ppt', '.key', '.odp', '.pps', '.ppsx'];                  // presentations turned into PDF by LibreOffice
+/** PowerPoint's transition and timing for each page: { type, dir, dur } and milliseconds. */
+const FX = ['fade', 'push', 'wipe', 'cover', 'uncover', 'split', 'zoom', 'cut'];
+function cleanFx(m) {
+  const n = Array.isArray(m.slides) ? m.slides.length : 0, out = {};
+  if (Array.isArray(m.transitions) && m.transitions.length === n) out.transitions = m.transitions.map(t => t && FX.includes(t.type)
+    ? { type: t.type, dir: /^(l|r|u|d|in|out)$/.test(t.dir) ? t.dir : '', dur: Math.min(5000, Math.max(0, Math.round(+t.dur || 700))) } : null);
+  if (Array.isArray(m.advance) && m.advance.length === n) out.advance = m.advance.map(a => Number(a) > 0 ? Math.min(600000, Math.max(500, Math.round(+a))) : null);
+  return out;
+}
 /** Only pictures and videos from our own media folder can be slides. */
 function mediaSlides(list) {
   return (Array.isArray(list) ? list : []).slice(0, 400).map(x => String(x))
@@ -950,11 +961,61 @@ function findOffice() {
     'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe', '/usr/bin/soffice', '/usr/local/bin/soffice', '/opt/homebrew/bin/soffice'];
   return c.find(p => { try { return fs.statSync(p).isFile(); } catch { return false; } }) || null;
 }
+// --- Fonts a presentation needs and this computer lacks: downloaded once from Google Fonts (free), kept in Documente/Betleem/fonts.
+// Microsoft fonts are not free; their look-alikes with the same letter widths are used instead (Calibri → Carlito …).
+const FONTS_DIR = path.join(DATA_DIR, 'fonts');
+const LO_PROFILE = path.join(DATA_DIR, 'libreoffice');
+const COMMON_FONTS = ['arial', 'helvetica', 'helvetica neue', 'times new roman', 'times', 'georgia', 'verdana', 'courier new', 'tahoma', 'trebuchet ms', 'impact', 'segoe ui', 'symbol', 'wingdings', 'webdings'];
+const LOOKALIKE = { calibri: 'Carlito', 'calibri light': 'Carlito', cambria: 'Caladea', 'century gothic': 'Didact Gothic', 'gill sans': 'Lato', 'gill sans mt': 'Lato', 'franklin gothic': 'Libre Franklin',
+  'franklin gothic medium': 'Libre Franklin', garamond: 'EB Garamond', 'book antiqua': 'Crimson Text', 'segoe print': 'Patrick Hand', 'comic sans ms': 'Comic Neue', 'avenir': 'Nunito Sans', 'avenir next': 'Nunito Sans', 'futura': 'Jost', 'myriad pro': 'PT Sans', 'proxima nova': 'Montserrat', 'sf pro': 'Inter', 'sf pro display': 'Inter' };
+const fontSlug = f => f.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function fontIndex() { try { return JSON.parse(fs.readFileSync(path.join(FONTS_DIR, 'fonts.json'), 'utf8')); } catch { return {}; } }
+function writeFontCss(idx) {
+  const css = Object.entries(idx).flatMap(([family, f]) => (f.files || []).map(x =>
+    `@font-face{font-family:"${family.replace(/"/g, '')}";src:url(/userfonts/${x.file}) format("truetype");font-weight:${x.weight};font-style:${x.style};font-display:swap}`)).join('\n');
+  fs.writeFileSync(path.join(FONTS_DIR, 'fonts.css'), css);
+  fs.writeFileSync(path.join(FONTS_DIR, 'fonts.json'), JSON.stringify(idx, null, 1));
+  // LibreOffice reads the fonts in its profile: copy them there, so converted presentations look right too
+  const lo = path.join(LO_PROFILE, 'user', 'fonts'); fs.mkdirSync(lo, { recursive: true });
+  for (const f of Object.values(idx)) for (const x of f.files || []) { const d = path.join(lo, x.file); if (!fs.existsSync(d)) fs.copyFileSync(path.join(FONTS_DIR, x.file), d); }
+}
+async function ensureFonts(families) {
+  fs.mkdirSync(FONTS_DIR, { recursive: true });
+  const idx = fontIndex(), got = [], missing = [];
+  for (const family of [...new Set(families.map(f => String(f).trim()).filter(Boolean))].slice(0, 20)) {
+    const key = family.toLowerCase();
+    if (COMMON_FONTS.includes(key)) continue;
+    if (idx[family]?.files?.length) { got.push(family); continue; }
+    if (idx[family]?.missing && Date.now() - idx[family].missing < 7 * 864e5) { missing.push(family); continue; }
+    const source = LOOKALIKE[key] || family;
+    try {
+      // without a browser name Google gives plain .ttf files, which both the browser and LibreOffice read
+      const css = await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(source).replace(/%20/g, '+')}:ital,wght@0,400;0,700;1,400;1,700`).then(r => r.ok ? r.text() : '');
+      const faces = [...css.matchAll(/@font-face\s*{([^}]*)}/g)].map(m => ({
+        style: /font-style:\s*italic/.test(m[1]) ? 'italic' : 'normal', weight: (m[1].match(/font-weight:\s*(\d+)/) || [])[1] || '400',
+        url: (m[1].match(/url\((https:[^)]+)\)/) || [])[1] })).filter(x => x.url);
+      if (!faces.length) { idx[family] = { missing: Date.now() }; missing.push(family); continue; }
+      const files = [];
+      for (const x of faces) {
+        const file = `${fontSlug(family)}-${x.weight}${x.style === 'italic' ? 'i' : ''}.ttf`;
+        const buf = Buffer.from(await fetch(x.url).then(r => r.arrayBuffer()));
+        if (buf.length < 1000) continue;
+        fs.writeFileSync(path.join(FONTS_DIR, file), buf); files.push({ file, weight: x.weight, style: x.style });
+      }
+      idx[family] = { source, files }; got.push(family);
+    } catch { missing.push(family); }                      // offline: next time
+  }
+  writeFontCss(idx);
+  return { css: '/userfonts/fonts.css?v=' + Date.now(), got, missing };
+}
+
 async function toPdf(file) {
   const office = findOffice(); if (!office) return null;
   const { execFile } = await import('node:child_process');
+  const { pathToFileURL } = await import('node:url');
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-pdf-'));
-  await new Promise((ok, no) => execFile(office, ['--headless', '--convert-to', 'pdf', '--outdir', out, file], { timeout: 180000 }, e => e ? no(e) : ok()));
+  fs.mkdirSync(LO_PROFILE, { recursive: true });
+  await new Promise((ok, no) => execFile(office, [`-env:UserInstallation=${pathToFileURL(LO_PROFILE).href}`, '--headless', '--convert-to', 'pdf', '--outdir', out, file], { timeout: 240000 }, e => e ? no(e) : ok()));
   const pdf = fs.readdirSync(out).find(f => f.endsWith('.pdf'));
   return pdf ? path.join(out, pdf) : null;
 }
@@ -1202,6 +1263,12 @@ async function handle(req, res) {
       finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
+    if (p.startsWith('/userfonts/')) return file(res, FONTS_DIR, path.basename(decodeURIComponent(p.slice(11))), req);
+    if (p === '/api/fonts' && req.method === 'POST') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const m = JSON.parse(await body(req, 10000));
+      return json(res, 200, await ensureFonts(Array.isArray(m.families) ? m.families : []));
+    }
     if (p === '/' ) return redirect(res, '/live.html');
     return file(res, PUBLIC, p.slice(1), req);
   } catch (e) {

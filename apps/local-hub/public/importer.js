@@ -10,12 +10,12 @@ const toBlob = canvas => new Promise(ok => canvas.toBlob(ok, 'image/jpeg', 0.9))
  * files: File[]; upload(name, blob) → url; progress(text).
  * Returns [{ title, slides: [url] }] or throws an Error with a message for people.
  */
-export async function importMedia(files, { upload, convert, progress = () => {} }) {
+export async function importMedia(files, { upload, convert, fonts = async () => null, progress = () => {} }) {
   const out = [];
   for (const f of files) {
     const ext = (f.name.match(/\.[^.]+$/) || [''])[0].toLowerCase(), title = f.name.replace(/\.[^.]+$/, '');
     const base = 'pres-' + slug(title) + '-' + Date.now().toString(36);
-    let pages;                                                  // canvases, or null for a picture / video kept as it is
+    let pages, info = null;                                     // canvases; info: transitions, timings, fonts of a PowerPoint
     if (IMAGE.test(f.name) || VIDEO.test(f.name)) {
       progress(`Încarc ${f.name}…`);
       out.push({ title, slides: [await upload(base + ext, f)] });
@@ -24,6 +24,15 @@ export async function importMedia(files, { upload, convert, progress = () => {} 
     if (ext === '.pdf') pages = await pdfPages(f, progress);
     else if (['.pptx', '.ppt', '.key', '.odp', '.pps', '.ppsx'].includes(ext)) {
       progress(`Deschid ${f.name}…`);
+      if (ext === '.pptx' || ext === '.ppsx') {
+        info = await pptxInfo(f).catch(() => null);
+        if (info?.fonts.length) {                               // fonts the computer does not have: downloaded once, kept for next time
+          progress('Caut fonturile prezentării…');
+          const r = await fonts(info.fonts).catch(() => null);
+          if (r?.css) await loadFontCss(r.css, r.got || []);
+          if (r?.missing?.length) progress('Fonturi negăsite (folosesc altele asemănătoare): ' + r.missing.join(', '));
+        }
+      }
       const pdf = await convert(f);                             // Blob (LibreOffice did it) or null
       if (pdf) pages = await pdfPages(pdf, progress);
       else if (ext === '.pptx' || ext === '.ppsx') pages = await pptxPages(f, progress);
@@ -34,9 +43,58 @@ export async function importMedia(files, { upload, convert, progress = () => {} 
       progress(`Salvez pagina ${i + 1} din ${pages.length}…`);
       slides.push(await upload(`${base}-${String(i + 1).padStart(3, '0')}.jpg`, await toBlob(c)));
     }
-    out.push({ title, slides });
+    const shown = info?.slides.filter(x => !x.hidden) || [];
+    const fx = shown.length === slides.length ? shown : null;     // pages and slides line up: keep PowerPoint's transitions and timings
+    out.push({ title, slides, ...(fx ? { transitions: fx.map(x => x.transition), advance: fx.map(x => x.advance) } : {}) });
   }
   return out;
+}
+
+async function loadFontCss(href, families) {
+  if (!document.querySelector(`link[href="${href}"]`)) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href }));
+  await new Promise(ok => setTimeout(ok, 300));
+  await Promise.all(families.flatMap(f => ['400', '700'].map(w => document.fonts.load(`${w} 40px "${f}"`).catch(() => {}))));
+}
+
+// ---------------------------------------------------------------- what PowerPoint knows besides the pictures
+const TRANS = { fade: 'fade', dissolve: 'fade', push: 'push', wipe: 'wipe', cover: 'cover', pull: 'uncover', split: 'split',
+  zoom: 'zoom', cut: 'cut', randomBar: 'fade', circle: 'zoom', diamond: 'zoom', plus: 'zoom', wedge: 'wipe', wheel: 'wipe',
+  strips: 'wipe', blinds: 'wipe', checker: 'fade', comb: 'wipe', newsflash: 'zoom', random: 'fade', morph: 'fade',
+  vortex: 'zoom', ripple: 'zoom', glitter: 'fade', honeycomb: 'fade', flash: 'fade', shred: 'fade', switch: 'push',
+  flip: 'push', gallery: 'push', cube: 'push', doors: 'split', box: 'zoom', reveal: 'uncover', ferris: 'push', conveyor: 'push',
+  pan: 'push', prism: 'push', flythrough: 'zoom', warp: 'zoom', curtains: 'split', wind: 'push', airplane: 'push', origami: 'fade',
+  fracture: 'fade', crush: 'zoom', peelOff: 'uncover', pageCurlDouble: 'uncover', pageCurlSingle: 'uncover', drape: 'fade', prestige: 'fade' };
+export async function pptxInfo(file) {
+  const z = await unzip(file);
+  const relMap = async path => {
+    const dir = path.slice(0, path.lastIndexOf('/')), name = path.slice(path.lastIndexOf('/') + 1);
+    const t = await z.text(`${dir}/_rels/${name}.rels`); const map = {};
+    if (t) for (const r of xml(t).getElementsByTagNameNS('*', 'Relationship')) map[r.getAttribute('Id')] = resolve(dir, r.getAttribute('Target'));
+    return map;
+  };
+  const pres = xml(await z.text('ppt/presentation.xml')), pr = await relMap('ppt/presentation.xml');
+  const ids = [...pres.getElementsByTagNameNS('*', 'sldId')].map(s => pr[s.getAttribute('r:id')]).filter(Boolean);
+  const fonts = new Set();
+  const addFonts = d => { for (const el of d.getElementsByTagNameNS('*', 'latin')) { const f = el.getAttribute('typeface'); if (f && !f.startsWith('+')) fonts.add(f); } };
+  const theme = await z.text('ppt/theme/theme1.xml'); if (theme) addFonts(xml(theme));
+  const slides = [];
+  for (const path of ids) {
+    const d = xml(await z.text(path)); addFonts(d);
+    const tr = d.getElementsByTagNameNS('*', 'transition')[0];        // the richer PowerPoint 2010+ one comes first
+    let transition = null, advance = null;
+    if (tr) {
+      const kind = [...tr.children].map(c => c.localName).find(n => n !== 'sndAc' && n !== 'extLst');
+      const dur = Number(tr.getAttribute('p14:dur') || tr.getAttribute('dur')) || ({ slow: 1000, med: 750, fast: 500 }[tr.getAttribute('spd')] ?? 700);
+      const el = kind && [...tr.children].find(c => c.localName === kind);
+      const dir = el?.getAttribute('dir') || '';
+      if (kind) transition = { type: TRANS[kind] || 'fade', dir: /^[lrud]$/.test(dir) ? dir : dir === 'in' || dir === 'out' ? dir : '', dur: Math.min(5000, Math.max(0, dur)) };
+      const adv = [...d.getElementsByTagNameNS('*', 'transition')].map(t => t.getAttribute('advTm')).find(Boolean);
+      if (adv) advance = Math.max(500, Number(adv));
+    }
+    slides.push({ hidden: d.documentElement.getAttribute('show') === '0', transition, advance });
+  }
+  for (const n of [1, 2, 3]) { const t = await z.text(`ppt/slideMasters/slideMaster${n}.xml`); if (t) addFonts(xml(t)); }
+  return { slides, fonts: [...fonts].slice(0, 20) };
 }
 
 // ---------------------------------------------------------------- PDF
@@ -89,6 +147,7 @@ const kid = (el, tag) => kids(el, tag)[0] || null;
 const deep = (el, tag) => el ? el.getElementsByTagNameNS('*', tag)[0] || null : null;
 const resolve = (dir, target) => { const parts = (dir + '/' + target).split('/'), out = []; for (const p of parts) { if (p === '..') out.pop(); else if (p && p !== '.') out.push(p); } return out.join('/'); };
 
+const themeFonts = { major: 'Inter', minor: 'Inter' };
 async function pptxPages(file, progress) {
   const z = await unzip(file);
   const rels = async path => {
@@ -114,6 +173,7 @@ async function pptxPages(file, progress) {
   for (const [n, path] of ids.entries()) {
     progress(`Desenez slide-ul ${n + 1} din ${ids.length}…`);
     const doc = xml(await z.text(path)), r = await rels(path);
+    if (doc.documentElement.getAttribute('show') === '0') continue;           // hidden slides stay hidden
     const layoutPath = Object.values(r).find(x => x.type.endsWith('/slideLayout'))?.target;
     const layout = layoutPath ? xml(await z.text(layoutPath)) : null, lr = layoutPath ? await rels(layoutPath) : {};
     const masterPath = Object.values(lr).find(x => x.type.endsWith('/slideMaster'))?.target;
@@ -122,6 +182,8 @@ async function pptxPages(file, progress) {
     const theme = themePath ? xml(await z.text(themePath)) : null;
     const scheme = {};
     const cs = deep(theme, 'clrScheme');
+    themeFonts.major = deep(deep(theme, 'majorFont'), 'latin')?.getAttribute('typeface') || 'Inter';
+    themeFonts.minor = deep(deep(theme, 'minorFont'), 'latin')?.getAttribute('typeface') || 'Inter';
     if (cs) for (const c of cs.children) { const v = c.firstElementChild; scheme[c.localName] = '#' + (v?.getAttribute('val') || v?.getAttribute('lastClr') || '000000'); }
     const alias = { bg1: 'lt1', tx1: 'dk1', bg2: 'lt2', tx2: 'dk2' };
     const color = el => {
@@ -196,9 +258,10 @@ function drawText(ctx, tx, [x, y, w, h], ph, color, k) {
       if (r.localName !== 'r' && r.localName !== 'fld') continue;
       const rp = kid(r, 'rPr'), sz = +(rp?.getAttribute('sz') || 0) / 100 || (title ? 40 : 24);
       size = Math.max(size, sz);
-      const face = deep(rp, 'latin')?.getAttribute('typeface');
+      let face = deep(rp, 'latin')?.getAttribute('typeface') || (title ? '+mj-lt' : '+mn-lt');
+      if (face.startsWith('+mj')) face = themeFonts.major; else if (face.startsWith('+mn')) face = themeFonts.minor;
       runs.push({ text: kid(r, 't')?.textContent || '', sz, bold: rp?.getAttribute('b') === '1', italic: rp?.getAttribute('i') === '1',
-        color: color(kid(rp, 'solidFill')) || '#000', face: face && !face.startsWith('+') ? face : 'Inter' });
+        color: color(kid(rp, 'solidFill')) || '#000', face: face || 'Inter' });
     }
     lines.push({ runs, size: size || (title ? 40 : 24), align });
   }

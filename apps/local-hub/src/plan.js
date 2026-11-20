@@ -49,6 +49,8 @@ function cleanItems(items) {
     ...(it.kind === 'bible' && it.ref ? { ref: { book: +it.ref.book || 0, chapter: +it.ref.chapter || 1, from: +it.ref.from || 0, to: +it.ref.to || 0 }, versions: (it.versions || []).slice(0, 2).map(x => str(x, 12)) } : {}),
     ...(it.autoAdvance ? { autoAdvance: Math.min(600, Math.max(2, +it.autoAdvance || 0)), loop: !!it.loop } : {}),
     ...(it.kind === 'media' && Array.isArray(it.slides) ? { slides: it.slides.slice(0, 400).map(x => str(x, 200)).filter(x => x.startsWith('/media/')) } : {}),
+    ...(it.kind === 'media' && Array.isArray(it.transitions) && it.transitions.length === it.slides?.length ? { transitions: it.transitions } : {}),
+    ...(it.kind === 'media' && Array.isArray(it.advance) && it.advance.length === it.slides?.length ? { advance: it.advance } : {}),
   }));
 }
 

@@ -17,7 +17,8 @@
   #text .v2{font-size:.74em;font-weight:500;opacity:.88;margin-top:.9em;padding-top:.7em;border-top:1px solid rgba(255,255,255,.35)}
   #text .ref{font-size:.42em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.75;margin-top:.5em}
   #pic{position:fixed;inset:0;background:#000;display:none}
-  #pic img,#pic video{width:100%;height:100%;object-fit:contain;display:block}
+  #pic{overflow:hidden}
+  #pic img,#pic video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#000}
   #logo{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#000}
   #logo img{max-width:40vw;max-height:40vh}
   #msg{position:fixed;left:0;right:0;bottom:0;padding:1.5vh 3vw;background:rgba(0,0,0,.7);font-size:3.5vh;display:none;z-index:5}
@@ -90,6 +91,28 @@
       else { if (L.video.cmd === 'restart') v.currentTime = 0; v.play().catch(() => { v.muted = true; v.play().catch(() => {}); }); }
     }
   }
+  // PowerPoint's transitions between pages: fade, push, wipe, cover, uncover, split, zoom
+  const MOVE = { l: [-1, 0], r: [1, 0], u: [0, -1], d: [0, 1] };
+  function showPic(src, tr, muted) {
+    const pic = $('pic'), old = [...pic.children];
+    if (!src) { pic.replaceChildren(); return; }
+    const el = /\.(mp4|webm|mov)$/i.test(src) ? Object.assign(document.createElement('video'), { src, autoplay: true, playsInline: true, muted: !!muted })
+      : Object.assign(document.createElement('img'), { src, alt: '' });
+    const go = () => {
+      if (!old.length || !tr || tr.type === 'cut' || !tr.dur || pic.style.display === 'none') { pic.replaceChildren(el); return; }
+      const dur = tr.dur, ease = 'cubic-bezier(.4,0,.2,1)', [x, y] = MOVE[tr.dir] || MOVE.l, done = () => old.forEach(o => o.remove());
+      const from = `translate(${-x * 100}%, ${-y * 100}%)`, to = `translate(${x * 100}%, ${y * 100}%)`;
+      if (tr.type === 'uncover') { pic.prepend(el); old.at(-1).animate([{ transform: 'none' }, { transform: to }], { duration: dur, easing: ease }).finished.then(done); return; }
+      pic.append(el);
+      const k = { fade: [{ opacity: 0 }, { opacity: 1 }], cover: [{ transform: from }, { transform: 'none' }], push: [{ transform: from }, { transform: 'none' }],
+        zoom: [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }],
+        wipe: [{ clipPath: x < 0 ? 'inset(0 0 0 100%)' : x > 0 ? 'inset(0 100% 0 0)' : y < 0 ? 'inset(100% 0 0 0)' : 'inset(0 0 100% 0)' }, { clipPath: 'inset(0)' }],
+        split: tr.dir === 'in' ? [{ clipPath: 'inset(0 50%)' }, { clipPath: 'inset(0)' }] : [{ clipPath: 'inset(0 50% 0 50%)' }, { clipPath: 'inset(0)' }] }[tr.type] || [{ opacity: 0 }, { opacity: 1 }];
+      if (tr.type === 'push') old.at(-1).animate([{ transform: 'none' }, { transform: to }], { duration: dur, easing: ease, fill: 'forwards' });
+      el.animate(k, { duration: dur, easing: ease }).finished.then(done, done);
+    };
+    if (el.tagName === 'IMG' && !el.complete) { el.onload = go; el.onerror = go; } else go();   // never show half a picture
+  }
   connect(s => {
     S = s; if (s.now) skew = s.now - Date.now();
     const L = s.live, item = s.setlist[L.item];
@@ -101,7 +124,7 @@
     const src = !L.blank && slide?.image || '';
     if ($('pic').dataset.src !== src) {
       $('pic').dataset.src = src;
-      $('pic').innerHTML = !src ? '' : /\.(mp4|webm|mov)$/i.test(src) ? `<video src="${esc(src)}" autoplay playsinline ${s.live.video?.muted ? 'muted' : ''}></video>` : `<img src="${esc(src)}" alt="">`;
+      showPic(src, slide?.transition, s.live.video?.muted);
     }
     $('pic').style.display = src ? 'block' : 'none';
     const lines = sl => sl.lines.map(l => esc(stripChords(l))).filter(Boolean).join('<br>');
