@@ -548,6 +548,39 @@
   .pal-list button{display:grid;grid-template-columns:100px 1fr auto;gap:10px;align-items:center;text-align:left;background:transparent!important;border:0!important;box-shadow:none!important;padding:8px 12px!important;border-radius:9px;font-size:13.5px}
   .pal-list button small{color:var(--faint);font-size:11.5px}
   .pal-list button.sel,.pal-list button:hover{background:rgba(255,255,255,.1)!important}
+  /* ---------- Muzică: a DAW, quiet and clear */
+  .transport2 .time{display:inline-flex;align-items:baseline;gap:8px;padding:4px 14px;border-radius:10px;background:rgba(0,0,0,.55);border:.5px solid rgba(255,255,255,.08);min-width:0}
+  .transport2 .time b{font:700 26px/1.1 "SF Mono","JetBrains Mono",ui-monospace,Menlo,monospace;color:#7dffb0;text-shadow:0 0 14px rgba(125,255,176,.35);letter-spacing:.02em}
+  .transport2 .time small{font:500 12px ui-monospace,Menlo,monospace;color:var(--faint)}
+  .arrange{--th:168px;background:rgba(8,9,12,.55)!important}
+  .arrange .ruler{top:0;height:18px;border-bottom:1px solid rgba(255,255,255,.06);font:500 10px ui-monospace,Menlo,monospace}
+  .arrange .ruler span{padding-left:4px;border-left:1px solid rgba(255,255,255,.18);transform:none;height:18px;line-height:18px}
+  .arow.head{height:50px;background:rgba(0,0,0,.35)}
+  .arrange .blocks{top:22px;bottom:4px}
+  .arrange .blk{background:color-mix(in srgb,var(--sc) 9%,transparent)!important;border:0!important;border-left:1.5px solid var(--sc)!important;border-radius:0!important;padding:2px 8px!important;font-size:11.5px;font-weight:650;color:#fff}
+  .arrange .blk::before{content:"◆";color:var(--sc);margin-right:5px;font-size:10px}
+  .arrange .blk small{display:inline;margin-left:6px}
+  .trk{border-bottom:1px solid rgba(0,0,0,.45)!important;background:rgba(255,255,255,.015)}
+  .trk .th{background:color-mix(in srgb,var(--tc) 78%,#000)!important;border-left:0!important;color:#0b0c10;margin:3px 0 3px 4px;border-radius:7px 0 0 7px;position:relative;justify-content:space-between!important}
+  .trk .th b{color:#0b0c10;font-weight:750;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .trk .th input.tv{display:none}
+  .trk .th .bt button{background:rgba(0,0,0,.28)!important;border:0!important;color:#fff;box-shadow:none!important;width:22px!important;height:18px!important;font-size:10px!important}
+  .trk .th .bt .m.on{background:#e5484d!important} .trk .th .bt .s.on{background:#ffd60a!important;color:#111}
+  .arrange .playhead{background:#ff3b30;box-shadow:0 0 8px rgba(255,59,48,.6);width:1.5px}
+  .mixer{gap:2px!important;padding:10px!important;background:rgba(8,9,12,.6)!important}
+  .mixer .strip{width:70px!important;padding:6px 4px 0!important;border-radius:8px!important;background:rgba(255,255,255,.035)!important;border:0!important;border-right:1px solid rgba(0,0,0,.4)!important;gap:4px!important;overflow:hidden}
+  .mixer .strip .nm{margin:auto -4px 0;padding:4px 2px;background:var(--tc);color:#0b0c10;font-size:10.5px;font-weight:750;text-transform:uppercase;letter-spacing:.03em;border-radius:0}
+  .mixer .strip .fz{height:120px!important;margin-top:auto!important} .mixer .strip input.fader{height:120px!important;accent-color:#e9ecf1!important;width:22px}
+  .mixer .strip .meter{width:5px}
+  .mixer .strip .db,.mixer .strip .pv{font:500 10px ui-monospace,Menlo,monospace;color:var(--mute)}
+  .knob{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4a4d57,#1d1f25 70%);border:1px solid rgba(255,255,255,.12);position:relative;cursor:ns-resize;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+  .knob i{position:absolute;left:50%;top:3px;width:2px;height:10px;margin-left:-1px;border-radius:1px;background:var(--tc);transform-origin:50% 12px;transform:rotate(var(--a,0deg))}
+  .knob.off{visibility:hidden}
+  .mixer .strip .bt{gap:2px} .mixer .strip .bt button{width:20px!important;height:18px!important;font-size:9.5px!important;border-radius:5px}
+  .mixer .strip .x{padding:0!important;color:var(--faint)}
+  .mixer .strip .bigplay.sm{width:34px;height:34px;font-size:13px}
+  .mixer .strip select{font-size:9.5px!important;padding:2px!important}
+  .mixer .strip.master{background:rgba(255,191,47,.07)!important;margin-left:auto}
   .remote-pill.upd{background:rgba(255,191,47,.18)!important;border-color:rgba(255,191,47,.6)!important;color:#ffe2a3}
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
@@ -1898,19 +1931,28 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const trackColor = (i, name = '') => (TRACK_COLORS.find(([re]) => re.test(name)) || [0, SPARE[i % SPARE.length]])[1];
   async function drawWave(canvas, file, blocks, color = '#ffffff') {
     const peaks = await peaksFor(file), dur = mt.duration;
-    const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) { if (canvas.isConnected && (canvas._tries = (canvas._tries || 0) + 1) < 40) setTimeout(() => drawWave(canvas, file, blocks, color), 250); return; }   // view not shown yet
     const dpr = devicePixelRatio || 1; canvas.width = w * dpr; canvas.height = h * dpr;
     const g = canvas.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
-    for (const b of blocks) { g.fillStyle = sectionColor(b.label) + '1f'; g.fillRect(b.start / dur * w, 0, (b.end - b.start) / dur * w, h); }
-    if (!peaks) { g.fillStyle = 'rgba(255,255,255,.4)'; g.font = '11px Inter'; g.fillText('se încarcă…', 8, h / 2); return; }
-    const total = mt.ch.find(c => c.file === file)?.el.duration || dur, frac = dur ? total / dur : 1;
-    g.fillStyle = color; g.globalAlpha = .85;
-    const n = peaks.length, cols = Math.floor(w * frac);
+    const d0 = mt.ch.find(c => c.file === file)?.el.duration, total = Number.isFinite(d0) && d0 > 0 ? d0 : dur;
+    const frac = dur && total ? Math.min(1, total / dur) : 1;
+    const cols = Math.floor(w * frac);
+    // the clip: the track's colour, rounded, with a thin lighter top edge
+    g.globalAlpha = .62; g.fillStyle = color; g.beginPath(); g.roundRect?.(1, 3, Math.max(4, cols - 2), h - 6, 6) ?? g.rect(1, 3, cols - 2, h - 6); g.fill();
+    g.globalAlpha = .9; g.fillRect(1, 3, Math.max(4, cols - 2), 2);
+    g.globalAlpha = .22; g.fillStyle = '#000';
+    for (const b of blocks.slice(1)) g.fillRect(Math.round(b.start / dur * w), 3, 1, h - 6);        // where each section starts
+    g.globalAlpha = 1;
+    if (!peaks) { g.fillStyle = 'rgba(255,255,255,.8)'; g.font = '11px Inter'; g.fillText('se încarcă…', 10, h / 2 + 4); return; }
+    g.fillStyle = '#fff'; g.globalAlpha = .92;
+    const n = peaks.length;
     for (let x = 0; x < cols; x++) {
-      const v = peaks[Math.floor(x / cols * n)] || 0, bh = Math.max(1, v * (h - 8));
+      const v = peaks[Math.floor(x / cols * n)] || 0, bh = Math.max(1, v * (h - 14));
       g.fillRect(x, (h - bh) / 2, 1, bh);
     }
   }
+  const clock = t => { t = Math.max(0, Math.floor(t || 0)); return `${Math.floor(t / 3600)}:${String(Math.floor(t % 3600 / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
   function renderLane() {
     const dur = mt.duration, cues = cuesNow(), has = mt.ch.length > 0;
     $('laneEmpty').style.display = has && (cues.length || learning) ? 'none' : 'grid';
@@ -1937,7 +1979,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       $('tracks').querySelectorAll('[data-solo]').forEach(b => b.onclick = e => { e.stopPropagation(); const c = mt.ch[+b.dataset.solo]; c.solo = !c.solo; mt.apply(); renderMixer(); });
       requestAnimationFrame(() => $('tracks').querySelectorAll('canvas').forEach(cv => drawWave(cv, mt.ch[+cv.dataset.w].file, blocks, trackColor(+cv.dataset.w, mt.ch[+cv.dataset.w].name))));
     }
-    $('tlTime').textContent = fmt(mt.time) + ' / ' + fmt(dur);
+    $('tlTime').innerHTML = `<b>${clock(mt.time)}</b><small>${clock(dur)}</small>`;
     $('lane').style.setProperty('--p', dur ? mt.time / dur : 0);
   }
   addEventListener('resize', () => { if (!$('musicView').hidden) { $('tracks').dataset.key = ''; renderLane(); } });
@@ -1998,10 +2040,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }, true);
 
   // ---- mixer: Click, Pad, every stem, Master
-  function strip(id, name, vol, extra = '', cls = '') {
-    const tc = /^\d+$/.test(String(id)) ? `style="--tc:${trackColor(+id, name)}"` : '';
-    return `<div class="strip ${cls}" data-ch="${id}" ${tc}><div class="nm" title="${esc(name)}">${esc(name)}</div>${extra}
-      <div class="fz"><input class="fader" type="range" min="0" max="1.5" step="0.01" value="${vol}" data-f="${id}"><span class="meter"><i data-m="${id}"></i></span></div></div>`;
+  const dB = v => v <= 0.001 ? '−∞' : (20 * Math.log10(v)).toFixed(1);
+  const panTxt = p => Math.abs(p) < 0.02 ? 'C' : (p < 0 ? 'L' : 'R') + Math.round(Math.abs(p) * 100);
+  function strip(id, name, vol, extra = '', cls = '', pan = null) {
+    const color = /^\d+$/.test(String(id)) ? trackColor(+id, name) : id === 'master' ? '#ffbf2f' : id === 'pad' ? '#b38cff' : '#9aa3ad';
+    return `<div class="strip ${cls}" data-ch="${id}" style="--tc:${color}">${extra}
+      ${pan === null ? '<div class="knob off"></div><small class="pv">&nbsp;</small>' : `<div class="knob" data-pan="${id}" style="--a:${pan * 135}deg" title="Stânga / dreapta · dublu-clic = centru"><i></i></div><small class="pv">${panTxt(pan)}</small>`}
+      <small class="db" data-db="${id}">${dB(vol)} dB</small>
+      <div class="fz"><input class="fader" type="range" min="0" max="1.5" step="0.01" value="${vol}" data-f="${id}"><span class="meter"><i data-m="${id}"></i></span></div>
+      <div class="nm" title="${esc(name)}">${esc(name)}</div></div>`;
   }
   function renderMixer() {
     const stems = mt.ch;
@@ -2011,11 +2058,19 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
           <select id="padKey" title="Tonul pad-ului"><option value="">Ton auto</option>${PAD_KEYS.map(k => `<option ${k === padKeyManual ? 'selected' : ''}>${k}</option>`).join('')}</select>
           <select id="padSound">${Object.entries(PAD_SOUNDS).map(([k, v]) => `<option value="${k}" ${k === pad.sound ? 'selected' : ''}>${v.name}</option>`).join('')}</select>`)
       + stems.map((c, i) => strip(i, c.name || c.file, c.vol,
-          `<div class="bt"><button class="m ${c.muted ? 'on' : ''}" data-mute="${i}" title="Mut">M</button><button class="s ${c.solo ? 'on' : ''}" data-solo="${i}" title="Solo">S</button></div>
-           <button class="x ghost" data-rm="${i}" title="Scoate track-ul">✕</button>`)).join('')
+          `<div class="bt"><button class="m ${c.muted ? 'on' : ''}" data-mute="${i}" title="Mut">M</button><button class="s ${c.solo ? 'on' : ''}" data-solo="${i}" title="Solo">S</button><button class="x" data-rm="${i}" title="Scoate track-ul">✕</button></div>`, '', c.panValue || 0)).join('')
       + strip('master', 'Master', mt.vol, '', 'master');
+    // pan knobs: drag up/down (or sideways), double-click = centre
+    $('mixer').querySelectorAll('[data-pan]').forEach(k => {
+      const i = +k.dataset.pan, setPan = p => { p = Math.max(-1, Math.min(1, Math.round(p * 100) / 100)); mt.ch[i].panValue = p; mt.apply();
+        k.style.setProperty('--a', p * 135 + 'deg'); k.nextElementSibling.textContent = panTxt(p); saveStemsSoon(); };
+      k.onpointerdown = e => { e.preventDefault(); k.setPointerCapture(e.pointerId); const y0 = e.clientY, x0 = e.clientX, p0 = mt.ch[i].panValue || 0;
+        k.onpointermove = m => setPan(p0 + ((m.clientX - x0) - (m.clientY - y0)) / 120); k.onpointerup = () => { k.onpointermove = null; }; };
+      k.ondblclick = () => setPan(0);
+    });
     $('mixer').querySelectorAll('.fader').forEach(f => f.oninput = () => {
       const id = f.dataset.f, v = +f.value;
+      const d = $('mixer').querySelector(`[data-db="${id}"]`); if (d) d.textContent = dB(v) + ' dB';
       if (id === 'click') { met.vol = v; prefs.metVol = v; savePrefs(); }
       else if (id === 'pad') { pad.setVolume(v); prefs.padVol = v; savePrefs(); }
       else if (id === 'master') { mt.vol = v; mt.apply(); prefs.mtVol = v; savePrefs(); }
