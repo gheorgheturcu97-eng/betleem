@@ -120,6 +120,29 @@
 
   /* teams */
   #v-teams{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px}
+  /* ---------- Cântări: how often each song was sung, and its categories */
+  #v-songs{grid-template-columns:240px minmax(0,1fr);gap:14px}
+  #v-songs .panel{display:flex;flex-direction:column;gap:10px;min-height:0}
+  .cats{display:flex;flex-direction:column;gap:3px;overflow:auto}
+  .cat{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;cursor:pointer;font-size:13.5px;border:1px solid transparent}
+  .cat:hover{background:rgba(255,255,255,.06)} .cat.sel{background:rgba(255,255,255,.1);border-color:var(--stroke)}
+  .cat i{width:9px;height:9px;border-radius:50%;background:var(--tg);flex:none} .cat b{flex:1;font-weight:550} .cat small{color:var(--mute)}
+  .sg-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .sg-tools select{width:auto} .sg-tools #sgQ{flex:1;min-width:160px}
+  .sg-head,.sg{display:grid;grid-template-columns:28px minmax(160px,1.4fr) 44px minmax(160px,1.6fr) 150px 110px;gap:10px;align-items:center}
+  .sg-head{font-size:11.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;padding:0 10px}
+  .sg-list{display:flex;flex-direction:column;gap:3px;overflow:auto;min-height:0}
+  .sg{padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.035);font-size:13.5px}
+  .sg:hover{background:rgba(255,255,255,.07)} .sg input[type=checkbox]{width:16px;height:16px;margin:0}
+  .sg .ti{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .sg .k{color:var(--mute);font-size:12px}
+  .tg{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .tg span{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:color-mix(in srgb,var(--tg) 26%,transparent);border:1px solid color-mix(in srgb,var(--tg) 55%,transparent)}
+  .tg span button{all:unset;cursor:pointer;opacity:.6;font-size:11px} .tg span button:hover{opacity:1}
+  .tg .add{all:unset;cursor:pointer;color:var(--mute);font-size:12px;padding:2px 7px;border-radius:999px;border:1px dashed var(--stroke)} .tg .add:hover{color:var(--fg)}
+  .uses{display:flex;align-items:center;gap:8px} .uses .bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  .uses .bar i{display:block;height:100%;background:linear-gradient(90deg,#3ec98a,#f5b301,#ff6b4a);border-radius:3px} .uses b{min-width:22px;text-align:right;font-variant-numeric:tabular-nums}
+  .sg .when{font-size:12px;color:var(--mute)} .sg .when.soon{color:#7fd6ff}
+  .sg-bulk{display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(245,179,1,.12);border:1px solid rgba(245,179,1,.4)} .sg-bulk[hidden]{display:none}
+  @media (max-width: 900px){ #v-songs{grid-template-columns:minmax(0,1fr)} .sg-head{display:none} .sg{grid-template-columns:24px 1fr 60px;grid-template-areas:"c t u" ". g g"} .sg .tg{grid-area:g} .sg .k,.sg .when{display:none} }
   .vol{display:grid;grid-template-columns:1fr 130px 30px 30px;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045)}
   .vol small{display:block;color:var(--mute);font-size:11.5px}
   .posrow{display:grid;grid-template-columns:1fr 70px 30px;gap:6px;margin-bottom:6px}
@@ -185,7 +208,7 @@
     <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
     <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP">Muzică</button><button class="sel">Planificare</button></div>
     <div class="seg views" id="views">
-      <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button>
+      <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button><button data-v="songs">Cântări</button>
     </div>
     <button id="bPco" title="Ia cântările și programele din Planning Center">⇄ Planning Center</button>
     <span id="role" class="hint"></span>
@@ -242,6 +265,27 @@
     <div class="row"><button id="mPrev" class="icon">◀</button><h2 id="mName" style="min-width:150px;text-align:center"></h2><button id="mNext" class="icon">▶</button>
       <span class="hint">Alege oamenii pentru fiecare duminică. Roșu = aceeași persoană de două ori în aceeași zi.</span></div>
     <div class="grid-wrap glass scroll"><table id="grid"></table></div>
+  </section>
+
+  <!-- SONGS: how often, and categories -->
+  <section class="view" id="v-songs">
+    <aside class="panel glass">
+      <h2>Categorii</h2>
+      <div class="cats" id="cats"></div>
+      <p class="hint">Apasă pe <b>＋</b> la o cântare ca să-i pui o categorie, sau bifează mai multe și pune-le aceeași categorie dintr-odată.</p>
+    </aside>
+    <section class="panel glass">
+      <div class="sg-tools">
+        <input id="sgQ" placeholder="Caută cântarea…">
+        <select id="sgDays" title="Perioada"><option value="30">ultima lună</option><option value="90" selected>ultimele 3 luni</option><option value="180">ultimele 6 luni</option><option value="365">ultimul an</option></select>
+        <select id="sgScope" title="Ce biserici"><option value="church">doar această biserică</option><option value="all">toate bisericile</option></select>
+        <select id="sgSort"><option value="most">cele mai cântate</option><option value="least">cele mai puțin cântate</option><option value="never">necântate de mult</option><option value="abc">A–Z</option></select>
+      </div>
+      <div class="sg-bulk" id="sgBulk" hidden><b id="sgN"></b><span class="hint">alese ·</span><input id="sgTag" list="tagList" placeholder="categoria" style="width:170px"><button id="sgAdd" class="acc">Pune categoria</button><button id="sgRm">Scoate categoria</button><span class="grow"></span><button id="sgNone" class="ghost">Renunță</button></div>
+      <datalist id="tagList"></datalist>
+      <div class="sg-head"><span></span><span>Cântarea</span><span>Ton</span><span>Categorii</span><span id="sgCol">Cântată (3 luni)</span><span>Ultima dată</span></div>
+      <div class="sg-list" id="sgList"></div>
+    </section>
   </section>
 
   <!-- TEAMS -->
@@ -433,7 +477,70 @@
     if (view === 'services') renderServices();
     if (view === 'grid') renderGrid();
     if (view === 'teams') renderTeams();
+    if (view === 'songs') renderSongs();
   }
+
+  // ================= SONGS: how often each one was sung, and categories (tags)
+  const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const SUGGEST = ['Închinare', 'Laudă', 'Rapidă', 'Lentă', 'Deschidere', 'Încheiere', 'Cina Domnului', 'Botez', 'Crăciun', 'Paște', 'Copii', 'Tineret', 'Engleză'];
+  const TAG_COLORS = ['#f5b301', '#5aa0ff', '#3ec98a', '#ff7a59', '#a77bff', '#41c7c7', '#ff8fc7', '#c5e86c', '#f7a072', '#8fb3ff'];
+  const tagColor = t => TAG_COLORS[[...t.toLowerCase()].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % TAG_COLORS.length];
+  let usage = [], usageKey = '', catSel = '', picked = new Set();
+  const ago = t => { if (!t) return 'niciodată'; const d = Math.round((Date.now() - t) / 86400000);
+    return d < 1 ? 'azi' : d < 7 ? `acum ${d} ${d === 1 ? 'zi' : 'zile'}` : d < 60 ? `acum ${Math.round(d / 7)} săpt.` : d < 730 ? `acum ${Math.round(d / 30)} luni` : 'acum peste un an'; };
+  async function loadUsage(force) {
+    const key = $('sgDays').value + '|' + $('sgScope').value;
+    if (!force && key === usageKey && usage.length) return;
+    usage = await fetch(`/api/songs/usage?days=${$('sgDays').value}&scope=${$('sgScope').value}`).then(r => r.json()).catch(() => []);
+    usageKey = key;
+  }
+  async function renderSongs() {
+    await loadUsage();
+    const counts = {}; for (const u of usage) for (const t of u.tags) counts[t] = (counts[t] || 0) + 1;
+    const tags = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b, 'ro'));
+    const none = usage.filter(u => !u.tags.length).length;
+    $('cats').innerHTML = `<div class="cat ${!catSel ? 'sel' : ''}" data-c=""><i style="--tg:#9aa0a6"></i><b>Toate</b><small>${usage.length}</small></div>`
+      + tags.map(t => `<div class="cat ${catSel === t ? 'sel' : ''}" data-c="${esc(t)}" style="--tg:${tagColor(t)}"><i></i><b>${esc(t)}</b><small>${counts[t]}</small></div>`).join('')
+      + `<div class="cat ${catSel === '∅' ? 'sel' : ''}" data-c="∅"><i style="--tg:transparent;border:1px dashed var(--mute)"></i><b>Fără categorie</b><small>${none}</small></div>`;
+    $('cats').querySelectorAll('.cat').forEach(el => el.onclick = () => { catSel = el.dataset.c; renderSongs(); });
+    $('tagList').innerHTML = [...new Set([...tags, ...SUGGEST])].map(t => `<option value="${esc(t)}">`).join('');
+    const q = fold($('sgQ').value.trim());
+    let list = usage.filter(u => (!catSel || (catSel === '∅' ? !u.tags.length : u.tags.includes(catSel))) && (!q || fold(u.title).includes(q)));
+    const sort = $('sgSort').value;
+    list.sort(sort === 'abc' ? (a, b) => a.title.localeCompare(b.title, 'ro') : sort === 'least' ? (a, b) => a.count - b.count || a.title.localeCompare(b.title, 'ro')
+      : sort === 'never' ? (a, b) => (a.last || 0) - (b.last || 0) || a.title.localeCompare(b.title, 'ro') : (a, b) => b.count - a.count || b.last - a.last);
+    const max = Math.max(1, ...usage.map(u => u.count));
+    $('sgCol').textContent = 'Cântată (' + $('sgDays').selectedOptions[0].text.replace('ultimele ', '').replace('ultima ', '').replace('ultimul ', '') + ')';
+    $('sgList').innerHTML = list.slice(0, 400).map(u => `<div class="sg" data-id="${u.id}">
+      <input type="checkbox" ${picked.has(u.id) ? 'checked' : ''} title="Alege pentru a pune o categorie la mai multe">
+      <span class="ti" title="${esc(u.title)}">${esc(u.title)}</span><span class="k">${esc(u.key)}</span>
+      <span class="tg">${u.tags.map(t => `<span style="--tg:${tagColor(t)}">${esc(t)}<button data-rm="${esc(t)}" title="Scoate">✕</button></span>`).join('')}<button class="add" title="Pune o categorie">＋</button></span>
+      <span class="uses" title="${u.total} ori în total${u.churches > 1 ? ' · în ' + u.churches + ' biserici' : ''}"><span class="bar"><i style="width:${u.count / max * 100}%"></i></span><b>${u.count}×</b></span>
+      <span class="when ${u.next ? 'soon' : ''}" title="${u.next ? 'Programată: ' + new Date(u.next).toLocaleDateString('ro-RO') : ''}">${ago(u.last)}${u.next ? ' · ⏭' : ''}</span></div>`).join('')
+      || '<div class="empty">Nicio cântare aici.</div>';
+    $('sgList').querySelectorAll('.sg').forEach(el => {
+      const id = el.dataset.id;
+      el.querySelector('input').onchange = e => { e.target.checked ? picked.add(id) : picked.delete(id); bulkBar(); };
+      el.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => tagOp({ songId: id, remove: b.dataset.rm }));
+      el.querySelector('.add').onclick = () => {
+        dialog('Categorie pentru „' + (usage.find(u => u.id === id)?.title || '') + '”',
+          `<input id="tagIn" list="tagList" placeholder="ex. Închinare"><div class="tg" style="margin-top:10px">${SUGGEST.map(t => `<span style="--tg:${tagColor(t)};cursor:pointer" data-s="${esc(t)}">${esc(t)}</span>`).join('')}</div>`,
+          () => { const t = $('tagIn').value.trim(); if (t) tagOp({ songId: id, add: t }); }, 'Pune');
+        document.querySelectorAll('#mBox [data-s]').forEach(x => x.onclick = () => { tagOp({ songId: id, add: x.dataset.s }); $('modal').classList.remove('show'); });
+      };
+    });
+    bulkBar();
+  }
+  function bulkBar() { $('sgBulk').hidden = !picked.size; $('sgN').textContent = picked.size + (picked.size === 1 ? ' cântare' : ' cântări'); }
+  async function tagOp(o) {
+    await op({ op: 'songTags', ...o }); await loadUsage(true); renderSongs();
+  }
+  $('sgAdd').onclick = () => { const t = $('sgTag').value.trim(); if (!t) return toast('Scrie categoria'); tagOp({ songIds: [...picked], add: t }); toast(`„${t}” pus la ${picked.size} cântări`); picked.clear(); $('sgTag').value = ''; };
+  $('sgRm').onclick = () => { const t = $('sgTag').value.trim(); if (!t) return toast('Scrie categoria de scos'); tagOp({ songIds: [...picked], remove: t }); picked.clear(); $('sgTag').value = ''; };
+  $('sgNone').onclick = () => { picked.clear(); renderSongs(); };
+  let sgT; $('sgQ').oninput = () => { clearTimeout(sgT); sgT = setTimeout(renderSongs, 200); };
+  $('sgSort').onchange = () => renderSongs();
+  $('sgDays').onchange = $('sgScope').onchange = async () => { await loadUsage(true); renderSongs(); };
 
   // ================= SERVICES
   function renderServices() {
@@ -546,7 +653,10 @@
     const q = $('songQ').value.trim(); if (q.length < 2) { $('found').innerHTML = ''; return; }
     const list = await fetch('/api/songs?q=' + encodeURIComponent(q)).then(r => r.json());
     if ($('songQ').value.trim() !== q) return;
-    $('found').innerHTML = list.slice(0, 12).map(x => `<div data-id="${x.id}" data-key="${esc(x.key || '')}">${esc(x.title)}${x.key ? `<small>${esc(x.key)}</small>` : ''}${(x.tags || []).map(t => `<small>#${esc(t)}</small>`).join('')}</div>`).join('')
+    await loadUsage().catch(() => {});
+    const useOf = id => usage.find(u => u.id === id);
+    $('found').innerHTML = list.slice(0, 12).map(x => { const u = useOf(x.id);
+      return `<div data-id="${x.id}" data-key="${esc(x.key || '')}">${esc(x.title)}${x.key ? `<small>${esc(x.key)}</small>` : ''}${(x.tags || []).map(t => `<small>#${esc(t)}</small>`).join('')}${u ? `<small title="De câte ori s-a cântat în perioada aleasă la Cântări">${u.count ? u.count + '× · ' + ago(u.last) : 'necântată'}</small>` : ''}</div>`; }).join('')
       + `<p class="hint" id="webHint">${list.length ? '<a href="#" id="webGo">Nu e aici? Caută pe internet</a>' : 'Nu e în bibliotecă. Caut pe internet…'}</p>`;
     document.querySelectorAll('#found div[data-id]').forEach(el => el.onclick = () => addSongToService(el.dataset.id, el.dataset.key));
     if ($('webGo')) $('webGo').onclick = e => { e.preventDefault(); webSongs(q); };

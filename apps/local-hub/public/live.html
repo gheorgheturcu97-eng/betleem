@@ -30,7 +30,15 @@
   .order li.now{outline:2px solid var(--acc)}
   .order time{color:var(--mute);font-variant-numeric:tabular-nums;min-width:44px}
   .order small{color:var(--mute);display:block}
-  #lyrics{padding:8px 16px;font-size:22px;line-height:1.35}
+  #lyrics{padding:8px 16px;font-size:calc(22px * var(--fz,1));line-height:1.35}
+  .songhead{display:flex;align-items:center;gap:10px;padding:6px 16px 0}
+  .songhead b{font-size:19px;flex:1;min-width:0} .songhead .key{padding:3px 10px;border-radius:999px;background:var(--acc);color:#000;font-weight:700;font-size:14px}
+  .songhead .back{border:0;border-radius:999px;padding:6px 12px;background:var(--card);color:var(--fg);font:600 13px system-ui}
+  .tools{display:flex;gap:6px;align-items:center;padding:4px 16px 0;color:var(--mute);font-size:13px}
+  .tools button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;min-width:42px;height:30px;font:600 14px system-ui;white-space:nowrap}
+  .tools label{display:flex;gap:6px;align-items:center;margin-left:auto} .tools[hidden],.songhead[hidden],.nextsong[hidden]{display:none}
+  .nextsong{margin:14px 16px;padding:12px;border-radius:10px;background:var(--card);color:var(--mute);font-size:14px} .nextsong b{color:var(--fg)}
+  .order li{cursor:pointer} .order li.song::after{content:"›";margin-left:auto;color:var(--mute);font-size:22px}
   .label{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 4px}
   .slide{padding:10px 12px;border-radius:10px;margin-bottom:4px;opacity:.45}
   .slide.now{opacity:1;background:var(--card)}
@@ -54,17 +62,44 @@
   <button data-v="chords">Acorduri</button>
   <button data-v="order">Program</button>
 </nav>
+<div class="songhead" id="songhead" hidden></div>
+<div class="tools" id="tools"><button id="fzDown" title="Litere mai mici">A−</button><button id="fzUp" title="Litere mai mari">A＋</button>
+  <label><input type="checkbox" id="follow" checked> Urmează ecranul</label></div>
 <div id="lyrics"></div>
+<div class="nextsong" id="nextsong" hidden></div>
 <ul class="order" id="order" hidden></ul>
 <div class="login" id="login">Faci parte din echipa media? <input id="pin" type="password" inputmode="numeric" placeholder="PIN"> <button id="ok">Intră</button></div>
 <div id="pad"><button id="prev">◀ Înapoi</button><button id="blank">Negru</button><button class="go" id="next">Înainte ▶</button></div>
 <script type="module">
   import { connect, esc, stayAwake } from '/client.js';
-  import { stripChords, chordLineToHtml, sectionColor } from '/core/song.js';
+  import { stripChords, chordLineToHtml, sectionColor, originalKey, keyDistance, toSlides, arrange, parseSong, transpose, prefersFlats } from '/core/song.js';
   const $ = id => document.getElementById(id);
-  let view = 'lyrics', S = null;
+  // musicians open this with ?v=chords (from the QR code in Live): chords, the program, and any song of it
+  let view = new URLSearchParams(location.search).get('v') || 'lyrics', S = null, browse = -1, browseSlides = null;
+  if (!['lyrics', 'chords', 'order'].includes(view)) view = 'lyrics';
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x.dataset.v === view));
+  let fz = (() => { try { return +localStorage.getItem('betleem.fz') || 1; } catch { return 1; } })();
+  const setFz = v => { fz = Math.min(2.2, Math.max(0.6, v)); document.documentElement.style.setProperty('--fz', fz); try { localStorage.setItem('betleem.fz', fz); } catch {} };
+  setFz(fz);
+  $('fzUp').onclick = () => setFz(fz + 0.1); $('fzDown').onclick = () => setFz(fz - 0.1);
+  $('follow').onchange = () => { if ($('follow').checked) { browse = -1; browseSlides = null; } render(); };
+  const songCache = new Map();
+  async function slidesOf(i) {                       // a song of the program, in its key and order, the same slides as on the screen
+    const it = S.setlist[i]; if (!it) return [];
+    if (it.kind !== 'song') return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));
+    let song = songCache.get(it.songId);
+    if (!song || song.updatedAt !== it.rev) { song = await fetch('/api/songs/' + it.songId).then(r => r.json()); songCache.set(it.songId, song); }
+    const orig = originalKey(song.key, song.body), steps = it.key && orig ? keyDistance(orig, it.key) : 0;
+    return toSlides(arrange(parseSong(transpose(song.body, steps, prefersFlats(it.key || orig || 'C'))), it.arrangement || song.arrangement), it.maxLines || 4);
+  }
+  async function openItem(i) {
+    if (i === S.live.item) { browse = -1; browseSlides = null; $('follow').checked = true; }
+    else { browse = i; browseSlides = await slidesOf(i); $('follow').checked = false; }
+    view = 'chords'; document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x.dataset.v === view));
+    render(); scrollTo({ top: 0 });
+  }
   stayAwake();
-  const hub = connect(s => { S = s; render(); }, e => {
+  const hub = connect(s => { S = s; if ($('follow').checked) { browse = -1; browseSlides = null; } render(); }, e => {
     if (e.type === 'online' || e.type === 'offline') $('dot').classList.toggle('on', e.type === 'online');
     if (e.role) { const ctl = e.role !== 'viewer'; $('pad').style.display = ctl ? 'flex' : 'none'; $('login').hidden = ctl; }
     if (e.type === 'login' && !e.ok) alertBox('PIN greșit');
@@ -88,23 +123,34 @@
     const L = S.live, item = S.setlist[L.item];
     $('title').textContent = S.service.title || 'Betleem';
     $('now').textContent = item ? item.title : '';
-    $('lyrics').hidden = view === 'order'; $('order').hidden = view !== 'order';
+    $('lyrics').hidden = $('tools').hidden = view === 'order'; $('order').hidden = view !== 'order';
+    $('songhead').hidden = $('nextsong').hidden = true;
     if (view === 'order') {
       const ts = times(S);
-      $('order').innerHTML = S.setlist.map((it, i) => `<li class="${i === L.item ? 'now' : ''}">
+      $('order').innerHTML = S.setlist.map((it, i) => `<li class="${i === L.item ? 'now' : ''} ${it.kind === 'song' || it.slides?.length ? 'song' : ''}" data-i="${i}">
         <time>${ts[i] ? new Date(ts[i]).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
-        <div>${esc(it.title || it.kind)}<small>${esc([it.key && 'ton ' + it.key, it.leader, it.minutes && it.minutes + ' min'].filter(Boolean).join(' · '))}</small></div></li>`).join('');
+        <div>${esc(it.title || it.kind)}<small>${esc([(it.key || it.origKey) && 'ton ' + (it.key || it.origKey), it.leader, it.minutes && it.minutes + ' min'].filter(Boolean).join(' · '))}</small></div></li>`).join('');
+      document.querySelectorAll('.order li.song').forEach(li => li.onclick = () => openItem(+li.dataset.i));
       return;
     }
     const chords = view === 'chords';
+    const shown = browse >= 0 && S.setlist[browse] ? browse : L.item, it = S.setlist[shown];
+    if (it) {
+      $('songhead').hidden = false;
+      $('songhead').innerHTML = `<b>${esc(it.title || '')}</b>${it.key || it.origKey ? `<span class="key">${esc(it.key || it.origKey)}</span>` : ''}${browse >= 0 ? '<button class="back" id="back">↩ Ce e pe ecran</button>' : ''}`;
+      if ($('back')) $('back').onclick = () => { $('follow').checked = true; browse = -1; browseSlides = null; render(); };
+      const nx = S.setlist.slice(shown + 1).find(x => x.kind === 'song');
+      if (nx) { $('nextsong').hidden = false; $('nextsong').innerHTML = `Urmează: <b>${esc(nx.title)}</b>${nx.key || nx.origKey ? ' · ton ' + esc(nx.key || nx.origKey) : ''}`; }
+    }
+    const slides = browse >= 0 && browseSlides ? browseSlides : L.slides, cur = browse >= 0 ? -1 : L.slide;
     let last = null;
-    $('lyrics').innerHTML = L.slides.map((sl, i) => {
+    $('lyrics').innerHTML = slides.map((sl, i) => {
       const head = sl.label && sl.label !== last ? `<div class="label" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : ''; last = sl.label;
       const body = sl.image ? (/\.(mp4|webm|mov)$/i.test(sl.image) ? '▶ video' : `<img src="${esc(sl.image)}" alt="" style="width:100%;border-radius:8px">`) : sl.lines.map(l => chords ? `<div class="line">${chordLineToHtml(l, esc)}</div>` : `<div>${esc(stripChords(l))}</div>`).join('');
-      return `${head}<div class="slide ${i === L.slide ? 'now' : ''}" data-i="${i}">${body}</div>`;
-    }).join('') || `<p style="color:var(--mute)">Nimic pe ecran acum.</p>`;
-    document.querySelector('.slide.now')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    if (hub.role !== 'viewer') document.querySelectorAll('.slide').forEach(el => el.onclick = () => hub.send({ type: 'go', item: L.item, slide: +el.dataset.i }));
+      return `${head}<div class="slide ${i === cur || cur < 0 ? 'now' : ''}" data-i="${i}">${body}</div>`;
+    }).join('') || `<p style="color:var(--mute)">Nimic pe ecran acum. Deschide <b>Program</b> și alege o cântare.</p>`;
+    if (cur >= 0) document.querySelector('.slide.now')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (hub.role !== 'viewer') document.querySelectorAll('.slide').forEach(el => el.onclick = () => hub.send({ type: 'go', item: browse >= 0 ? browse : L.item, slide: +el.dataset.i }));
   }
 </script>
 </body>

@@ -814,6 +814,25 @@ function handleMessage(ws, m) {
 }
 
 /** A change made in Planning to the program that is on Live shows up in Live too. */
+/** Every song with: times sung in the last `days` days, the last time, the next planned time. */
+export function songUsage(days = 90, allChurches = false) {
+  const now = Date.now(), from = now - days * 86400_000;
+  const plans = [{ church: activeChurch().id, services: db.plan?.services || [] }];
+  if (allChurches) for (const [id, d] of Object.entries(db.churchData || {})) if (d?.plan?.services) plans.push({ church: id, services: d.plan.services });
+  const use = new Map();
+  for (const { church, services } of plans) for (const svc of services) {
+    const t = Date.parse(svc.date); if (!Number.isFinite(t)) continue;
+    for (const songId of new Set((svc.items || []).filter(i => i.kind === 'song' && i.songId).map(i => i.songId))) {
+      const u = use.get(songId) || { count: 0, total: 0, last: 0, next: 0, churches: new Set() };
+      if (t <= now) { u.total++; if (t >= from) { u.count++; u.churches.add(church); } if (t > u.last) u.last = t; }
+      else if (!u.next || t < u.next) u.next = t;
+      use.set(songId, u);
+    }
+  }
+  return db.songs.map(x => { const u = use.get(x.id) || {};
+    return { id: x.id, title: x.title, key: x.key || '', tags: x.tags || [], count: u.count || 0, total: u.total || 0, last: u.last || 0, next: u.next || 0, churches: u.churches?.size || 0 }; });
+}
+
 function planToLive() {
   if (!db.service.planId) return;
   const s = db.plan.services.find(x => x.id === db.service.planId);
@@ -1145,6 +1164,11 @@ async function handle(req, res) {
       const list = searchSongs(url.searchParams.get('q'), url.searchParams.get('tag'));
       return json(res, 200, list);
     }
+    if (p === '/api/songs/usage' && req.method === 'GET') {   // how often each song was sung lately (from the planned services)
+      const days = Math.min(3650, Math.max(7, Number(url.searchParams.get('days')) || 90));
+      const all = url.searchParams.get('scope') === 'all';
+      return json(res, 200, songUsage(days, all));
+    }
     if (p === '/api/tags' && req.method === 'GET') {
       const count = {};
       for (const s of db.songs) for (const t of s.tags || []) count[t] = (count[t] || 0) + 1;
@@ -1199,7 +1223,20 @@ async function handle(req, res) {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       if (req.method === 'POST') {
         const op = JSON.parse(await body(req, 500_000));
-        if (op.op === 'renameSong') {                   // the name of a song, fixed from the program
+        if (op.op === 'songTags') {                     // categories: one song, or one tag added / removed on many
+          const clean = t => String(t || '').trim().replace(/^#/, '').slice(0, 30);
+          const ids = Array.isArray(op.songIds) ? op.songIds : [op.songId];
+          for (const id of ids.slice(0, 1000)) {
+            const song = db.songs.find(x => x.id === id); if (!song) continue;
+            let tags = Array.isArray(op.tags) ? op.tags.map(clean) : [...(song.tags || [])];
+            if (op.add) tags.push(clean(op.add));
+            if (op.remove) tags = tags.filter(t => t.toLowerCase() !== clean(op.remove).toLowerCase());
+            tags = [...new Map(tags.filter(Boolean).map(t => [t.toLowerCase(), t])).values()].slice(0, 12);
+            if (tags.length) song.tags = tags; else delete song.tags;
+            song.updatedAt = new Date().toISOString();
+          }
+          save(); broadcast();
+        } else if (op.op === 'renameSong') {                   // the name of a song, fixed from the program
           const song = db.songs.find(x => x.id === op.songId), t = String(op.title || '').trim().slice(0, 120);
           if (!song || !t) return json(res, 400, { error: 'Cântarea nu există' });
           song.title = t; song.updatedAt = new Date().toISOString(); save(); broadcast();

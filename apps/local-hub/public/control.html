@@ -612,6 +612,11 @@
   .remote-pill.upd{background:rgba(255,191,47,.18)!important;border-color:rgba(255,191,47,.6)!important;color:#ffe2a3}
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
+  .modal .glass.phones{width:min(640px,94vw);display:flex;flex-direction:column;gap:10px}
+  .ph-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .ph{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:14px;border-radius:14px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke)}
+  .ph .qr{width:200px;height:200px;background:#fff;border-radius:12px;padding:6px} .ph .qr svg{width:100%;height:100%;display:block}
+  .ph small{color:var(--mute);font-size:12px;line-height:1.4}
   .modal .glass.canva{width:min(860px,95vw);max-height:88vh;display:flex;flex-direction:column;gap:10px;overflow:auto}
   .cv-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45} .cv-steps code{font-size:12px;padding:1px 6px;border-radius:5px;background:rgba(0,0,0,.35)}
   .cv-steps a{color:var(--acc)}
@@ -676,6 +681,7 @@
     </div>
     <button id="bUndo" class="icon" title="Anulează">↶</button><button id="bRedo" class="icon" title="Refă">↷</button>
     <span class="layout-t seg mini" id="layoutT" title="Arată / ascunde părțile ecranului"><button data-p="L" title="Programul (Ctrl/⌘+1)">▤</button><button data-p="S" title="Ecranele (Ctrl/⌘+2)">▭</button><button data-p="R" title="Cântări, Biblia, Internet (Ctrl/⌘+3)">▥</button></span>
+ <button id="bPhones" class="icon" title="📱 Telefoane: scanează codul și vezi programul și cântările cu acorduri">📱</button>
     <button id="bInbox" class="icon inbox-btn" title="📥 Primite: trimite de pe telefon (cod QR) sau prin AirDrop">📥<i id="inboxN" hidden></i></button>
     <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
     <button id="aiTop" class="ai-top" title="Asistentul Betleem">✦</button>
@@ -899,6 +905,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     </div>
     <div class="in-list" id="inList"></div>
   </div>
+</div></div>
+<div class="modal" id="phonesModal"><div class="glass phones">
+  <div class="look-head"><b>📱 Pe telefon</b><span class="grow"></span><button id="phClose" class="icon" title="Închide">✕</button></div>
+  <p class="hint">Telefonul trebuie să fie în aceeași rețea Wi-Fi ca acest calculator. Scanezi cu camera și se deschide imediat, fără nicio aplicație.</p>
+  <div class="ph-row">
+    <div class="ph"><div class="qr" id="phQr1"></div><b>Muzicieni</b><small>Programul și fiecare cântare cu acorduri, în tonul ales. Merge singur după ecran.</small></div>
+    <div class="ph"><div class="qr" id="phQr2"></div><b>Echipă și oricine</b><small>Versurile de pe ecran și programul.</small></div>
+  </div>
+  <p class="hint" id="phUrl"></p>
+  <p class="hint">Pe iPhone: în Safari → Partajează → <b>Adaugă pe ecranul principal</b> și arată ca o aplicație. Cine are PIN-ul de operator poate schimba și slide-urile din telefon.</p>
 </div></div>
 <div class="modal" id="canvaModal"><div class="glass canva">
   <div class="look-head"><b>🎨 Canva</b><span class="hint" id="cvUser"></span><span class="grow"></span><button id="cvClose" class="icon" title="Închide">✕</button></div>
@@ -1220,6 +1236,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       '-',
       { l: 'Importă PowerPoint, PDF, video…', run: () => $('importMedia').click() },
       { l: 'Din Canva…', run: () => openCanva() },
+      { l: 'Telefoane: cod QR pentru muzicieni…', run: () => $('bPhones').click() },
       { l: 'Primite de pe telefon / AirDrop…', run: () => $('bInbox').click() },
       { l: 'Din Planning Center…', run: () => location.href = '/planning.html?pco=1' },
       { l: 'Adaugă o traducere a Bibliei…', run: () => $('bibImport').click() },
@@ -1686,6 +1703,17 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     } catch (e) { toast(e.message); }
   }
   $('bCanva').onclick = () => openCanva();
+  // 📱 phones: a QR code for the musicians (chords) and one for everyone (lyrics)
+  $('bPhones').onclick = async () => {
+    $('phonesModal').classList.add('show');
+    let base = location.origin;
+    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
+    const { default: qrcode } = await import('/vendor/qrcode.js');
+    const draw = (el, link) => { const q = qrcode(0, 'M'); q.addData(link); q.make(); $(el).innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); };
+    draw('phQr1', base + '/live.html?v=chords'); draw('phQr2', base + '/live.html');
+    $('phUrl').innerHTML = `Sau scrie în browser: <b>${esc(base)}/live.html</b>` + (/localhost|127\.0\.0\.1/.test(base) ? ' — calculatorul nu pare conectat la Wi-Fi.' : '');
+  };
+  $('phClose').onclick = () => $('phonesModal').classList.remove('show');
   $('cvClose').onclick = () => $('canvaModal').classList.remove('show');
   $('cvCopy').onclick = () => { navigator.clipboard?.writeText($('cvRedirect').textContent); toast('Adresa e copiată'); };
   $('cvSave').onclick = async () => { try { await cvApi('/api/canva/settings', { method: 'POST', body: JSON.stringify({ clientId: $('cvId').value, clientSecret: $('cvSecret').value }) }); $('cvSecret').value = ''; canvaRefresh(); } catch (e) { toast(e.message); } };
