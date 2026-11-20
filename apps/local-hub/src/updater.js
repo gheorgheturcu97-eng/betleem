@@ -1,5 +1,5 @@
 // Updates that install themselves.
-// 1. From the internet: the newest release on GitHub (betleem-hub.tgz + betleem-hub.json).
+// 1. From the internet: the newest version on GitHub, branch "actualizari" (betleem-hub.tgz + betleem-hub.json).
 // 2. In the church network: a Betleem that already has a newer version gives it to the others, no internet needed.
 // Every package is signed; a package without a valid signature is never installed, wherever it came from.
 // A new version is unpacked next to the running one and used from the next start; if it does not start,
@@ -68,13 +68,11 @@ export function createUpdater({ root, dataDir, version, repo, publicKey = PUBLIC
     if (!repo) return;
     set({ checking: true });
     try {
-      const r = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'Betleem' } });
+      // the newest version sits on the "actualizari" branch of the repository (plain files, no account needed)
+      const base = `https://raw.githubusercontent.com/${repo}/actualizari/`;
+      const r = await fetch(base + 'betleem-hub.json?t=' + Date.now(), { headers: { 'user-agent': 'Betleem', 'cache-control': 'no-cache' } });
       if (!r.ok) return;
-      const rel = await r.json();
-      const asset = n => rel.assets?.find(a => a.name === n)?.browser_download_url;
-      const mUrl = asset('betleem-hub.json'), tUrl = asset('betleem-hub.tgz');
-      if (!mUrl || !tUrl) return;
-      const manifest = await fetch(mUrl).then(x => x.json());
+      const manifest = await r.json(), tUrl = base + 'betleem-hub.tgz?v=' + encodeURIComponent(manifest.version);
       if (!newer(manifest.version, state.ready || version)) return;
       set({ available: manifest.version });
       const buf = Buffer.from(await fetch(tUrl).then(x => x.arrayBuffer()));

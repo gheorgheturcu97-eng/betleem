@@ -10,6 +10,12 @@ if (!hubDir || !outDir || !keyPath) { console.error('folosire: node scripts/rele
 const m = await pack(hubDir, outDir, fs.readFileSync(keyPath, 'utf8'));
 console.log('pregătit', m.version, m.sha256.slice(0, 12));
 if (repo) {
-  execFileSync('gh', ['release', 'create', 'v' + m.version, `${outDir}/betleem-hub.tgz`, `${outDir}/betleem-hub.json`,
-    '--repo', repo, '--title', 'Betleem ' + m.version, '--notes', 'Actualizare Betleem ' + m.version], { stdio: 'inherit' });
+  // the "actualizari" branch holds only the newest package (replaced each time, so the repository stays small)
+  const dir = fs.mkdtempSync('/tmp/betleem-rel-'), git = (...a) => execFileSync('git', ['-C', dir, ...a], { stdio: 'inherit' });
+  git('init', '-q', '-b', 'actualizari');
+  fs.copyFileSync(`${outDir}/betleem-hub.tgz`, `${dir}/betleem-hub.tgz`); fs.copyFileSync(`${outDir}/betleem-hub.json`, `${dir}/betleem-hub.json`);
+  fs.writeFileSync(`${dir}/README.md`, `# Actualizări Betleem\n\nVersiunea ${m.version}. Fiecare Betleem verifică aici, descarcă, verifică semnătura și se actualizează singur.\n`);
+  git('add', '-A'); git('-c', 'user.name=Betleem', '-c', 'user.email=betleem@users.noreply.github.com', 'commit', '-qm', 'Betleem ' + m.version);
+  git('push', '-f', `https://github.com/${repo}`, 'actualizari');
+  console.log('publicat pe', repo, 'ramura actualizari');
 }
