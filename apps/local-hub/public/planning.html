@@ -345,7 +345,8 @@
     let st; try { st = await pcoApi('/api/pco/settings'); } catch (e) { return toast(e.message); }
     $('modal').classList.add('show');
     if (!st.connected) {
-      $('mBox').innerHTML = `<h3>Conectează Planning Center</h3>
+      $('mBox').innerHTML = `<h3>Conectează Planning Center pentru ${esc(st.church || '')}</h3>
+        <p class="hint" style="line-height:1.55">Fiecare biserică din Betleem are contul ei de Planning Center. Pentru altă biserică, alege-o întâi din meniul de sus (numele bisericii), apoi conectează contul ei.</p>
         <p class="hint" style="line-height:1.55">1. Intră pe <b>api.planningcenteronline.com/personal_access_tokens</b> cu contul tău Planning Center.<br>
         2. Apasă <b>Create token</b> (Services trebuie să fie bifat).<br>3. Copiază aici <b>Client ID</b> și <b>Secret</b>.<br>
         Betleem doar <b>citește</b> din Planning Center, nu schimbă nimic acolo. Cheia rămâne doar pe acest laptop.</p>
@@ -361,11 +362,11 @@
       };
       return;
     }
-    $('mBox').innerHTML = `<div class="pco-head"><h3>Planning Center</h3><span class="hint">Conectat (${esc(st.appIdHint)})${st.lastImport ? ' · ultimul import ' + new Date(st.lastImport).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span></div>
+    $('mBox').innerHTML = `<div class="pco-head"><h3>Planning Center · ${esc(st.church || '')}</h3><span class="hint">Conectat (${esc(st.appIdHint)})${st.lastImport ? ' · ultimul import ' + new Date(st.lastImport).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span></div>
       <div class="pco-types" id="pcoTypes"></div>
       <div class="pco-list" id="pcoList"><div class="hint">Caut programele din Planning Center…</div></div>
       <p class="hint">Programele alese intră în <b>${esc($('church').firstChild?.textContent || '')}</b>, cu cântările lor (cu acorduri și ordinea strofelor). Echipele rămân cele din Betleem.</p>
-      <label class="check" style="flex-direction:row;align-items:center;gap:8px;color:var(--fg)"><input type="checkbox" id="pcoPrefer" checked> Cântările din Planning Center sunt cele corecte: înlocuiesc versurile și acordurile din bibliotecă (cele vechi rămân salvate)</label>
+      <label class="check" style="flex-direction:row;align-items:center;gap:8px;color:var(--fg)"><input type="checkbox" id="pcoPrefer" checked> Cântările din Planning Center sunt cele corecte: înlocuiesc versurile și acordurile din bibliotecă (cele vechi rămân salvate). O cântare adusă deja din contul altei biserici nu e înlocuită.</label>
       <div id="pcoProg" class="hint"></div>
       <div class="btns" style="flex-wrap:wrap"><button id="pcoOff" class="ghost" title="Șterge legătura de pe acest calculator">Deconectează</button><span style="flex:1"></span>
         <button id="pcoSongs" class="ghost" title="Toate cântările din Planning Center, fără programe">Doar cântările</button><button id="mNo">Închide</button>

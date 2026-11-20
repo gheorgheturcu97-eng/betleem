@@ -871,10 +871,18 @@ const aiHub = {
 // --- Add chords from resursecrestine.ro (runs in the background) ---------------------
 // --- Planning Center (read only): songs with chords and upcoming plans ------------------------
 const PCO_FILE = path.join(DATA_DIR, 'planningcenter.json');      // the token stays on this computer
-let pcoSettings = { appId: '', secret: '', typeIds: [] };
-try { pcoSettings = { ...pcoSettings, ...JSON.parse(fs.readFileSync(PCO_FILE, 'utf8')) }; } catch {}
-const pcoPublic = () => ({ connected: !!(pcoSettings.appId && pcoSettings.secret), appIdHint: pcoSettings.appId ? pcoSettings.appId.slice(0, 6) + '…' : '',
-  typeIds: pcoSettings.typeIds, lastImport: pcoSettings.lastImport || null });
+// one Planning Center account per church (a leader can serve in two churches with two accounts)
+let pcoAll = { byChurch: {} };
+try {
+  const f = JSON.parse(fs.readFileSync(PCO_FILE, 'utf8'));
+  pcoAll = f.byChurch ? f : { byChurch: { [db.activeChurch]: f } };          // the old single account belongs to the church that was open
+} catch {}
+const pcoS = () => (pcoAll.byChurch[db.activeChurch] ||= { appId: '', secret: '', typeIds: [] });
+const savePco = () => fs.writeFileSync(PCO_FILE, JSON.stringify(pcoAll, null, 2), { mode: 0o600 });
+// songs remember which account they came from, so a second account never overwrites the first one's versions
+const pcoAccount = () => pcoS().appId ? crypto.createHash('sha256').update(pcoS().appId).digest('hex').slice(0, 10) : '';
+const pcoPublic = () => ({ church: activeChurch().name, connected: !!(pcoS().appId && pcoS().secret), appIdHint: pcoS().appId ? pcoS().appId.slice(0, 6) + '…' : '',
+  typeIds: pcoS().typeIds, lastImport: pcoS().lastImport || null });
 const pcoJob = { running: false };
 function pcoEvent(o) {
   const msg = JSON.stringify({ type: 'pco', ...o });
@@ -883,16 +891,17 @@ function pcoEvent(o) {
 const foldTitle = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
 /** Put Planning Center songs into the library: new ones are added, existing ones only get chords if they had none. */
-export function mergePcoSongs(list, { prefer = false } = {}) {
+export function mergePcoSongs(list, { prefer = false, account = '' } = {}) {
   let added = 0, chords = 0, skipped = 0, replaced = 0;
   for (const x of list) {
     const body = core.normalizeImported(x.body || '');
     if (!x.title || !body.trim()) { skipped++; continue; }
     const have = db.songs.find(s => s.pcoId === x.pcoId) || db.songs.find(s => foldTitle(s.title) === foldTitle(x.title));
     if (have) {
-      have.pcoId = x.pcoId;
+      const other = have.pcoAccount && account && have.pcoAccount !== account;     // the same song, already brought from another account
+      if (!other) { have.pcoId = x.pcoId; if (account) have.pcoAccount = account; }
       // "Planning Center has the right version": its words, chords, key and order replace ours (ours stays in song.before)
-      if (prefer && core.hasChords(body) && body.trim() !== have.body.trim()) {
+      if (prefer && !other && core.hasChords(body) && body.trim() !== have.body.trim()) {
         have.before = { body: have.body, key: have.key || '', arrangement: have.arrangement, savedAt: new Date().toISOString() };
         have.body = body; have.key = x.key || core.readMeta(body).key || have.key || '';
         if (x.bpm >= 30 && x.bpm <= 300) have.bpm = Math.round(x.bpm);
@@ -911,7 +920,7 @@ export function mergePcoSongs(list, { prefer = false } = {}) {
     }
     const labels = core.parseSong(body).map(sec => sec.label.toLowerCase());
     const order = (x.sequence || []).map(l => String(l)).filter(l => labels.includes(l.toLowerCase()));
-    db.songs.push({ id: crypto.randomUUID(), title: x.title.slice(0, 120), author: x.author || '', key: x.key || core.readMeta(body).key || '', body,
+    db.songs.push({ id: crypto.randomUUID(), title: x.title.slice(0, 120), author: x.author || '', key: x.key || core.readMeta(body).key || '', body, ...(account ? { pcoAccount: account } : {}),
       ...(x.bpm >= 30 && x.bpm <= 300 ? { bpm: Math.round(x.bpm) } : {}),
       source: 'planningcenter', pcoId: x.pcoId, ccli: x.ccli || '', ...(order.length >= 2 ? { arrangement: order } : core.autoArrangement(body) ? { arrangement: core.autoArrangement(body) } : {}),
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -944,18 +953,18 @@ async function runPcoImport({ songs, plans, only = null, openId = null, prefer =
   const res = {};
   try {
     if (songs) {
-      const list = await pco.fetchSongs(pcoSettings, { onProgress: e => pcoEvent({ running: true, step: 'cântări', ...e }) });
-      Object.assign(res, mergePcoSongs(list, { prefer })); save();
+      const list = await pco.fetchSongs(pcoS(), { onProgress: e => pcoEvent({ running: true, step: 'cântări', ...e }) });
+      Object.assign(res, mergePcoSongs(list, { prefer, account: pcoAccount() })); save();
     }
     if (plans) {
       pcoEvent({ running: true, step: 'programe', done: 0, total: 0 });
-      const list = await pco.fetchPlans(pcoSettings, pcoSettings.typeIds || [], { only });
+      const list = await pco.fetchPlans(pcoS(), pcoS().typeIds || [], { only });
       // songs used in these plans but not imported yet come along too
       const missing = [...new Set(list.flatMap(p => p.items.filter(i => i.type === 'song' && i.songId && !db.songs.some(s => s.pcoId === i.songId)).map(i => i.songId)))];
       if (missing.length) {
         const extra = [];
-        for (const id of missing) extra.push(...(await pco.fetchSongs(pcoSettings, { onlyIds: [id] }).catch(() => [])));
-        mergePcoSongs(extra, { prefer });
+        for (const id of missing) extra.push(...(await pco.fetchSongs(pcoS(), { onlyIds: [id] }).catch(() => [])));
+        mergePcoSongs(extra, { prefer, account: pcoAccount() });
       }
       Object.assign(res, { plans: mergePcoPlans(list) });
       const open = openId && db.plan.services.find(x => x.pcoId === openId);
@@ -967,7 +976,7 @@ async function runPcoImport({ songs, plans, only = null, openId = null, prefer =
       }
       save();
     }
-    pcoSettings.lastImport = new Date().toISOString(); fs.writeFileSync(PCO_FILE, JSON.stringify(pcoSettings, null, 2));
+    pcoS().lastImport = new Date().toISOString(); savePco();
     pcoEvent({ finished: true, ...res }); broadcast();
     const msg = JSON.stringify({ type: 'planChanged' });
     for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
@@ -1241,23 +1250,23 @@ async function handle(req, res) {
       if (p === '/api/pco/settings') {
         if (req.method === 'POST') {
           const v = JSON.parse(await body(req, 10_000));
-          if (typeof v.appId === 'string' && v.appId.trim()) pcoSettings.appId = v.appId.trim().slice(0, 200);
-          if (typeof v.secret === 'string' && v.secret.trim()) pcoSettings.secret = v.secret.trim().slice(0, 200);
-          if (Array.isArray(v.typeIds)) pcoSettings.typeIds = v.typeIds.map(String).slice(0, 20);
-          if (v.disconnect) pcoSettings = { appId: '', secret: '', typeIds: [] };
-          fs.writeFileSync(PCO_FILE, JSON.stringify(pcoSettings, null, 2));
+          if (typeof v.appId === 'string' && v.appId.trim()) pcoS().appId = v.appId.trim().slice(0, 200);
+          if (typeof v.secret === 'string' && v.secret.trim()) pcoS().secret = v.secret.trim().slice(0, 200);
+          if (Array.isArray(v.typeIds)) pcoS().typeIds = v.typeIds.map(String).slice(0, 20);
+          if (v.disconnect) pcoAll.byChurch[db.activeChurch] = { appId: '', secret: '', typeIds: [] };
+          savePco();
         }
         return json(res, 200, pcoPublic());
       }
       if (p === '/api/pco/types') {
-        try { return json(res, 200, await pco.serviceTypes(pcoSettings)); } catch (e) { return json(res, 400, { error: e.message }); }
+        try { return json(res, 200, await pco.serviceTypes(pcoS())); } catch (e) { return json(res, 400, { error: e.message }); }
       }
       if (p === '/api/pco/plans') {                       // plans to choose from, per service type
         try {
-          const types = await pco.serviceTypes(pcoSettings);
-          const want = types.filter(t => !pcoSettings.typeIds?.length || pcoSettings.typeIds.includes(t.id));
+          const types = await pco.serviceTypes(pcoS());
+          const want = types.filter(t => !pcoS().typeIds?.length || pcoS().typeIds.includes(t.id));
           const out = [];
-          for (const t of want) for (const pl of await pco.listPlans(pcoSettings, t.id))
+          for (const t of want) for (const pl of await pco.listPlans(pcoS(), t.id))
             out.push({ ...pl, typeName: t.name, imported: db.plan.services.some(x => x.pcoId === pl.id) });
           return json(res, 200, { types, plans: out });
         } catch (e) { return json(res, 400, { error: e.message }); }
