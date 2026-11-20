@@ -441,6 +441,10 @@
   .svc #svcTitle{font-size:16px} .svc #svcStart{font-size:12px}
   #setlist{gap:3px;margin-top:8px}
   .item{padding:6px 8px;gap:8px;border-radius:11px}
+  /* the moments of the service (sermon, prayer, announcements…) get their own tint of glass */
+  #setlist .item[data-k]{box-shadow:inset 3px 0 0 var(--kc);background:linear-gradient(90deg,color-mix(in srgb,var(--kc) 20%,transparent),transparent 75%)}
+  #setlist .item[data-k=sermon]{--kc:#f5b301} #setlist .item[data-k=prayer]{--kc:#5aa0ff} #setlist .item[data-k=announcement]{--kc:#3ec98a}
+  #setlist .item[data-k=reading],#setlist .item[data-k=bible]{--kc:#41c7c7} #setlist .item[data-k=media]{--kc:#a77bff} #setlist .item[data-k=other]{--kc:#ff7a59}
   .item .num{width:22px;height:22px;font-size:11px;border-radius:7px}
   .item .t b{font-size:13px} .item small{font-size:11px}
   .item .acts button{width:24px;height:24px;font-size:11px}
@@ -567,24 +571,55 @@
   .trk .th .bt button{background:rgba(0,0,0,.28)!important;border:0!important;color:#fff;box-shadow:none!important;width:22px!important;height:18px!important;font-size:10px!important}
   .trk .th .bt .m.on{background:#e5484d!important} .trk .th .bt .s.on{background:#ffd60a!important;color:#111}
   .arrange .playhead{background:#ff3b30;box-shadow:0 0 8px rgba(255,59,48,.6);width:1.5px}
-  .mixer{gap:2px!important;padding:10px!important;background:rgba(8,9,12,.6)!important}
-  .mixer .strip{width:70px!important;padding:6px 4px 0!important;border-radius:8px!important;background:rgba(255,255,255,.035)!important;border:0!important;border-right:1px solid rgba(0,0,0,.4)!important;gap:4px!important;overflow:hidden}
-  .mixer .strip .nm{margin:auto -4px 0;padding:4px 2px;background:var(--tc);color:#0b0c10;font-size:10.5px;font-weight:750;text-transform:uppercase;letter-spacing:.03em;border-radius:0}
-  .mixer .strip .fz{height:120px!important;margin-top:auto!important} .mixer .strip input.fader{height:120px!important;accent-color:#e9ecf1!important;width:22px}
-  .mixer .strip .meter{width:5px}
-  .mixer .strip .db,.mixer .strip .pv{font:500 10px ui-monospace,Menlo,monospace;color:var(--mute)}
-  .knob{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4a4d57,#1d1f25 70%);border:1px solid rgba(255,255,255,.12);position:relative;cursor:ns-resize;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+  /* the mixer: a console like Tracks Live: charcoal strips, real faders with a dB scale, segmented meters, name plates */
+  .mixer{gap:3px!important;padding:8px!important;background:linear-gradient(180deg,#1d1f24,#141518)!important;min-height:330px!important;align-items:stretch;overflow-x:auto;overflow-y:hidden}
+  .mixer .strip{width:84px!important;flex:none;padding:6px 5px 0!important;border-radius:6px!important;gap:5px!important;overflow:hidden;
+    background:linear-gradient(180deg,#34363c,#2a2c31 40%,#26282c)!important;border:0!important;border-top:3px solid var(--tc)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 1px 2px rgba(0,0,0,.6)}
+  .mixer .strip .nm{margin:auto -5px 0;padding:6px 3px;background:var(--tc);color:#0b0c10;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+  .mixer .strip .bt{display:flex;gap:3px;width:100%} .mixer .strip .bt button{flex:1;height:22px!important;width:auto!important;padding:0!important;font-size:10.5px!important;font-weight:800;border-radius:3px!important;
+    background:linear-gradient(180deg,#4a4d55,#383a41)!important;border:0!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 1px 1px rgba(0,0,0,.6)!important;color:#d6d9df}
+  .mixer .strip .bt .m.on{background:linear-gradient(180deg,#ffd84a,#e8b600)!important;color:#1a1400} .mixer .strip .bt .s.on{background:linear-gradient(180deg,#5fe08a,#2fb85f)!important;color:#05200f}
+  .mixer .strip .bt .x{flex:0 0 18px;color:#8b9099;background:transparent!important;box-shadow:none!important}
+  .mixer .strip .lcd{font:600 10.5px ui-monospace,Menlo,monospace;color:#7dffb0;background:#0a0b0d;border-radius:3px;padding:3px 0;width:100%;text-align:center;box-shadow:inset 0 1px 3px rgba(0,0,0,.8)}
+  .mixer .strip .pv{font:600 9.5px ui-monospace,Menlo,monospace;color:#9aa0a8;margin-top:-3px}
+  .mixer .strip .fz{position:relative;display:grid!important;grid-template-columns:18px 30px 10px;gap:2px;height:auto!important;flex:1;min-height:150px;margin:0!important;align-items:stretch}
+  .mixer .strip .scale{position:relative;font:500 8.5px ui-monospace,Menlo,monospace;color:#8b9099}
+  .mixer .strip .scale span{position:absolute;right:0;transform:translateY(50%);line-height:1}
+  .mixer .strip .scale span::after{content:"";position:absolute;right:-3px;top:50%;width:3px;height:1px;background:#5a5e66}
+  .fd{position:relative;cursor:ns-resize;touch-action:none}
+  .fd .slot{position:absolute;left:50%;top:6px;bottom:6px;width:4px;margin-left:-2px;border-radius:2px;background:#07080a;box-shadow:inset 0 1px 2px #000,0 0 0 1px rgba(255,255,255,.05)}
+  .fd .cap{position:absolute;left:1px;right:1px;height:22px;margin-bottom:-11px;border-radius:3px;
+    background:linear-gradient(180deg,#eef0f3 0%,#b9bdc5 45%,#8d929b 55%,#c9ccd2 100%);box-shadow:0 3px 6px rgba(0,0,0,.65),inset 0 1px 0 #fff}
+  .fd .cap::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:2px;margin-top:-1px;background:var(--tc);box-shadow:0 0 4px var(--tc)}
+  .fd:active .cap{filter:brightness(1.08)}
+  .mixer .strip .meter{width:10px!important;position:relative;border-radius:2px;background:#07080a;overflow:hidden;margin:6px 0;box-shadow:inset 0 1px 2px #000}
+  .mixer .strip .meter::before,.mixer .strip .meter i{content:"";position:absolute;left:1px;right:1px;bottom:0;
+    background:linear-gradient(0deg,#22c55e 0%,#4ade80 60%,#facc15 78%,#fb923c 88%,#ef4444 96%);
+    -webkit-mask:repeating-linear-gradient(0deg,#000 0 3px,transparent 3px 4px);mask:repeating-linear-gradient(0deg,#000 0 3px,transparent 3px 4px)}
+  .mixer .strip .meter::before{top:0;opacity:.12}
+  .mixer .strip .meter i{height:0;transition:height .06s linear}
+  .mixer .strip .meter i{background-size:100% var(--mh,160px);background-position:bottom}
+  .knob{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#5a5d66,#1d1f25 70%);border:1px solid rgba(255,255,255,.12);position:relative;cursor:ns-resize;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.6)}
   .knob i{position:absolute;left:50%;top:3px;width:2px;height:10px;margin-left:-1px;border-radius:1px;background:var(--tc);transform-origin:50% 12px;transform:rotate(var(--a,0deg))}
   .knob.off{visibility:hidden}
-  .mixer .strip .bt{gap:2px} .mixer .strip .bt button{width:20px!important;height:18px!important;font-size:9.5px!important;border-radius:5px}
-  .mixer .strip .x{padding:0!important;color:var(--faint)}
-  .mixer .strip .bigplay.sm{width:34px;height:34px;font-size:13px}
-  .mixer .strip select{font-size:9.5px!important;padding:2px!important}
-  .mixer .strip.master{background:rgba(255,191,47,.07)!important;margin-left:auto}
+  .mixer .strip .bigplay.sm{width:30px;height:30px;font-size:12px}
+  .mixer .strip .ex{height:58px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;flex:none}
+  .mixer .strip .ex:has(select){flex-direction:row;flex-wrap:wrap;justify-content:center} .mixer .strip .ex select{flex:1 1 100%}
+  .mixer .strip select{font-size:9.5px!important;padding:2px!important;width:100%;background:#1a1b1f!important}
+  .mixer .strip.master{width:96px!important;margin-left:auto;border-top-color:#ffbf2f!important;background:linear-gradient(180deg,#3a3628,#2c2a24 40%,#26251f)!important}
+  .mixer .strip.master .fz{grid-template-columns:18px 30px 10px 10px}
   .brand img.blogo{width:28px;height:28px;border-radius:8px;object-fit:contain;background:#fff;flex:none}
   .remote-pill.upd{background:rgba(255,191,47,.18)!important;border-color:rgba(255,191,47,.6)!important;color:#ffe2a3}
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
+  .modal .glass.canva{width:min(860px,95vw);max-height:88vh;display:flex;flex-direction:column;gap:10px;overflow:auto}
+  .cv-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45} .cv-steps code{font-size:12px;padding:1px 6px;border-radius:5px;background:rgba(0,0,0,.35)}
+  .cv-steps a{color:var(--acc)}
+  .cv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+  .cv-d{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke);cursor:pointer;text-align:left}
+  .cv-d:hover{border-color:var(--acc);background:rgba(255,255,255,.09)}
+  .cv-d img,.cv-d .ph{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:rgba(0,0,0,.35)}
+  .cv-d b{font-size:12.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .cv-d small{color:var(--mute);font-size:11px}
   .pc-list{display:flex;flex-direction:column;gap:6px}
   .pc{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke)}
   .pc.on{border-color:rgba(61,220,132,.6)} .pc b{font-weight:650} .pc small{grid-column:1;color:var(--mute);font-size:12px} .pc button{grid-row:1/3;grid-column:2}
@@ -664,6 +699,7 @@
           <option value="announcement">Anunțuri</option><option value="other">Altceva</option>
         </select>
         <button id="bAddItem" class="icon" title="Adaugă în program">＋</button>
+        <button class="btn" id="bCanva" title="Un design din Canva: fiecare pagină devine un slide">🎨</button>
         <label class="btn" title="PowerPoint, Keynote, PDF, imagini sau video: fiecare pagină devine un slide">⇪ Media<input type="file" id="importMedia" accept=".pdf,.pptx,.ppt,.key,.odp,.pps,.ppsx,image/*,video/*" multiple hidden></label>
       </div>
     </aside>
@@ -834,7 +870,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="row"><span class="hint">sau până la ora</span><input id="cAt" type="time" style="width:auto"><button id="cAtGo" class="mini">Pornește</button></div>
   <div class="row"><span class="hint">pe</span><select id="cScreens" style="width:auto"><option value="both">sală și scenă</option><option value="main">doar sală</option><option value="stage">doar scenă</option></select>
     <span class="grow"></span><button id="cStop" class="mini">Oprește</button></div>
+  <div class="row"><span class="hint">fundal</span><select id="cBg" style="flex:1;min-width:0" title="Fundalul din spatele numărătorii (din Fundaluri)"><option value="">cel de acum</option></select></div>
   <p class="hint" id="cNow"></p>
+  <div class="sep" style="height:1px;background:var(--stroke);margin:6px 0"></div>
+  <div class="look-head"><b>⏳ Timer slujbă</b><span class="grow"></span><span id="svcState" class="hint"></span></div>
+  <p class="hint" style="margin:0">Adună minutele din program și pornește singur când pui prima cântare pe Live. Galben la 5 minute, portocaliu la 3, roșu când trece timpul.</p>
+  <div class="row"><input id="svcMin" type="number" min="1" max="600" style="width:80px" title="Gol = suma minutelor din program"><span class="hint">min</span>
+    <button id="svcAuto" class="mini" title="Înapoi la suma minutelor din program">din program</button><span class="grow"></span>
+    <button id="svcStart" class="mini">▶ Pornește</button><button id="svcReset" class="mini">⟲ La zero</button></div>
 </div>
 <div class="modal" id="inboxModal"><div class="glass inbox">
   <div class="look-head"><b>📥 Primite</b><span class="grow"></span><button id="inboxClose" class="icon" title="Închide">✕</button></div>
@@ -857,6 +900,30 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <div class="in-list" id="inList"></div>
   </div>
 </div></div>
+<div class="modal" id="canvaModal"><div class="glass canva">
+  <div class="look-head"><b>🎨 Canva</b><span class="hint" id="cvUser"></span><span class="grow"></span><button id="cvClose" class="icon" title="Închide">✕</button></div>
+  <div id="cvSetup" hidden>
+    <p class="hint">O singură dată, liderul face legătura cu contul Canva al bisericii. Datele rămân doar pe acest calculator.</p>
+    <ol class="cv-steps">
+      <li>Deschide <a href="https://www.canva.com/developers/integrations/connect-api" target="_blank" rel="noopener">canva.com/developers</a> → <b>Create an integration</b> (tip „Private”).</li>
+      <li>La <b>Scopes</b> bifează: <code>design:meta:read</code>, <code>design:content:read</code>, <code>profile:read</code>.</li>
+      <li>La <b>Authentication → Redirect URL</b> pune adresa: <code id="cvRedirect"></code> <button class="mini" id="cvCopy">Copiază</button></li>
+      <li>Copiază aici <b>Client ID</b> și <b>Client secret</b>:</li>
+    </ol>
+    <input id="cvId" placeholder="Client ID" autocomplete="off"><input id="cvSecret" placeholder="Client secret" type="password" autocomplete="off">
+    <div class="row"><span class="grow"></span><button id="cvSave" class="acc">Salvează</button></div>
+  </div>
+  <div id="cvLogin" hidden>
+    <p class="hint">Apasă „Conectează”, intră în contul Canva din browser și apasă <b>Allow</b>. Apoi te întorci aici.</p>
+    <div class="row"><button id="cvReset" class="mini ghost">Schimbă datele</button><span class="grow"></span><button id="cvGo" class="acc">Conectează Canva</button></div>
+  </div>
+  <div id="cvBrowse" hidden>
+    <div class="row"><input id="cvQ" placeholder="Caută un design după nume…"><button id="cvOut" class="mini ghost" title="Deconectează Canva de pe acest calculator">Deconectează</button></div>
+    <p class="hint" id="cvFor"></p>
+    <div class="cv-grid" id="cvGrid"></div>
+    <div class="row"><span class="grow"></span><button id="cvMore" class="mini" hidden>Mai multe</button></div>
+  </div>
+</div></div>
 <div class="modal" id="pcModal"><div class="glass pcs">
   <div class="look-head"><b>Mai multe calculatoare, același program</b><span class="grow"></span><button id="pcClose" class="icon" title="Închide">✕</button></div>
   <p class="hint">Un calculator ține programul, de obicei cel cu proiectorul. Celelalte se conectează la el și lucrează pe același program, în timp real: unul pornește track-urile, altul schimbă versurile.</p>
@@ -876,6 +943,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="checks stage-only">
     <label class="check"><input type="checkbox" id="lTitle"> Titlu, ton, lider</label>
     <label class="check"><input type="checkbox" id="lClock"> Ceas</label>
+    <label class="check"><input type="checkbox" id="lSvc" title="Toată slujba: minutele din program, numără invers de la prima cântare"> Timer slujbă</label>
     <label class="check"><input type="checkbox" id="lTimer" title="Minutele din program: galben spre final, portocaliu în ultimele clipe, roșu când trece timpul"> Timer</label>
     <label class="check"><input type="checkbox" id="lLabels"> Strofa / Refren</label>
     <label class="check"><input type="checkbox" id="lNext"> Slide-ul următor</label>
@@ -982,6 +1050,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'cleaned') { songCache.clear(); search(); render(); toast(`Am curățat ${e.changed} din ${e.total} cântări; la ${e.ordered} am pus refrenul după fiecare strofă.`); }
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
     if (e.type === 'inbox') onInbox(e);
+    if (e.type === 'canva' && $('canvaModal').classList.contains('show')) canvaRefresh();
     if (e.type === 'tunnel') renderNet(e);
     if (e.type === 'update' && e.ready) showUpdate(e);
     if (e.type === 'undone') toast(e.ok ? (e.what === 'undo' ? 'Anulat: ' : 'Refăcut: ') + (e.name || 'ultima schimbare') : (e.what === 'undo' ? 'Nu mai am ce anula' : 'Nu mai am ce reface'));
@@ -1150,6 +1219,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       { l: 'Program nou…', run: () => { $('progSel').value = '+new'; $('progSel').dispatchEvent(new Event('change')); } },
       '-',
       { l: 'Importă PowerPoint, PDF, video…', run: () => $('importMedia').click() },
+      { l: 'Din Canva…', run: () => openCanva() },
       { l: 'Primite de pe telefon / AirDrop…', run: () => $('bInbox').click() },
       { l: 'Din Planning Center…', run: () => location.href = '/planning.html?pco=1' },
       { l: 'Adaugă o traducere a Bibliei…', run: () => $('bibImport').click() },
@@ -1368,7 +1438,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('lLabels').checked = d.labels !== false; $('lNextColor').value = d.nextColor || '#8a8f95';
     $('lNextSize').value = d.nextSize || 3.4; $('lNextSizeV').textContent = (+(d.nextSize || 3.4)).toFixed(1);
     $('lNextShare').value = d.nextShare || 30; $('lNextShareV').textContent = (d.nextShare || 30) + '%';
-    $('lTitle').checked = d.title !== false; $('lClock').checked = d.clock !== false; $('lTimer').checked = d.timer !== false;
+    $('lTitle').checked = d.title !== false; $('lClock').checked = d.clock !== false; $('lTimer').checked = d.timer !== false; $('lSvc').checked = d.service !== false;
     $('lUpNext').value = String(d.upNext ?? 2); $('lHead').value = d.headSize || 3.2; $('lHeadV').textContent = (+(d.headSize || 3.2)).toFixed(1);
     document.querySelectorAll('#lAlign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.align));
     document.querySelectorAll('#lValign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.valign));
@@ -1391,7 +1461,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('lNextSize').oninput = e => { $('lNextSizeV').textContent = (+e.target.value).toFixed(1); setLook({ nextSize: +e.target.value }); };
   $('lNextShare').oninput = e => { $('lNextShareV').textContent = e.target.value + '%'; setLook({ nextShare: +e.target.value }); };
   $('lNextColor').oninput = e => setLook({ nextColor: e.target.value });
-  for (const [id, k] of [['lTitle', 'title'], ['lClock', 'clock'], ['lTimer', 'timer']]) $(id).onchange = e => setLook({ [k]: e.target.checked });
+  for (const [id, k] of [['lTitle', 'title'], ['lClock', 'clock'], ['lTimer', 'timer'], ['lSvc', 'service']]) $(id).onchange = e => setLook({ [k]: e.target.checked });
   $('lUpNext').onchange = e => setLook({ upNext: +e.target.value });
   $('lHead').oninput = e => { $('lHeadV').textContent = (+e.target.value).toFixed(1); setLook({ headSize: +e.target.value }); };
   $('lookItem').onchange = fillLook;
@@ -1464,11 +1534,32 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const cPop = $('countPop');
   $('bCount').onclick = e => { e.stopPropagation(); cPop.classList.toggle('show'); const r = $('bCount').getBoundingClientRect(); cPop.style.left = Math.max(10, r.left - 140) + 'px'; cPop.style.top = (r.bottom + 10) + 'px'; };
   addEventListener('click', e => { if (cPop.classList.contains('show') && !cPop.contains(e.target) && e.target !== $('bCount')) cPop.classList.remove('show'); });
-  const countSend = o => send({ type: 'countdown', label: $('cLabel').value, screens: $('cScreens').value, ...o });
+  const countSend = o => send({ type: 'countdown', label: $('cLabel').value, screens: $('cScreens').value, bg: $('cBg').value, ...o });
+  // by default: until the service starts, on a background from Fundaluri
+  $('bCount').addEventListener('click', () => {
+    const st = S?.service?.startsAt ? new Date(S.service.startsAt) : null;
+    if (st && st > Date.now() && !$('cAt').dataset.touched) $('cAt').value = String(st.getHours()).padStart(2, '0') + ':' + String(st.getMinutes()).padStart(2, '0');
+    const cur = $('cBg').value;
+    $('cBg').innerHTML = '<option value="">cel de acum</option>' + (media || []).filter(m => /\.(jpe?g|png|webp|gif|mp4|webm|mov)$/i.test(m) && !m.startsWith('logo')).map(m =>
+      `<option value="${esc(m)}">${esc(m.replace(/\.[^.]+$/, '').replace(/^(fundal|miscare)-/, '').replace(/^\d+\s*/, '').replace(/-/g, ' '))}</option>`).join('');
+    $('cBg').value = cur; svcPop();
+  });
+  $('cAt').oninput = () => { $('cAt').dataset.touched = '1'; };
+  // ⏳ the service timer
+  const svcTotal = () => (Number(S?.service?.timerMinutes) || (S?.setlist || []).reduce((a, x) => a + (Number(x.minutes) || 0), 0)) * 60;
+  function svcPop() {
+    $('svcMin').value = S?.service?.timerMinutes || ''; $('svcMin').placeholder = String(Math.round(svcTotal() / 60) || '');
+  }
+  $('svcMin').onchange = () => send({ type: 'serviceTimer', minutes: $('svcMin').value ? +$('svcMin').value : null });
+  $('svcAuto').onclick = () => { $('svcMin').value = ''; send({ type: 'serviceTimer', minutes: null }); };
+  $('svcStart').onclick = () => { send({ type: 'serviceTimer', cmd: 'start' }); toast('Timer-ul slujbei a pornit'); };
+  $('svcReset').onclick = () => { send({ type: 'serviceTimer', cmd: 'reset' }); toast('Timer-ul slujbei pornește la prima cântare'); };
   document.querySelectorAll('#countPop [data-min]').forEach(b => b.onclick = () => { countSend({ minutes: +b.dataset.min }); toast('Numărătoarea a pornit'); });
   $('cAtGo').onclick = () => { if ($('cAt').value) { countSend({ at: $('cAt').value }); toast('Numărătoare până la ' + $('cAt').value); } };
   $('cStop').onclick = () => { send({ type: 'countdown', off: true }); toast('Numărătoarea s-a oprit'); };
   setInterval(() => {                                // the countdown, in the button too
+    const t = svcTotal(), on = S?.live.serviceStart, sl = on ? t - (Date.now() - on) / 1000 : t, f = v => { v = Math.abs(Math.round(v)); return Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0'); };
+    $('svcState').textContent = !t ? '' : on ? (sl < 0 ? 'depășit cu ' + f(sl) : 'mai sunt ' + f(sl)) : 'așteaptă prima cântare · ' + f(t);
     const c = S?.live.countdown, left = c ? Math.ceil((c.to - Date.now()) / 1000) : 0;
     $('bCount').classList.toggle('on', left > 0);
     $('bCount').textContent = left > 0 ? Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : '⏱';
@@ -1565,7 +1656,51 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('svcStart').onchange = e => send({ type: 'service', value: { startsAt: e.target.value ? new Date(e.target.value).toISOString() : null } });
   // PowerPoint, Keynote, PDF, pictures, videos → a "prezentare" in the program, one slide per page
   $('importMedia').onchange = async e => { const files = [...e.target.files]; e.target.value = ''; if (files.length) importFiles(files); };
-  async function importFiles(files) {
+  // 🎨 Canva: the leader connects once; then any design becomes a presentation (or the slides of a sermon)
+  let cvTarget = -1, cvCont = '', cvQT;
+  const cvApi = (u, o = {}) => api(u, o);
+  async function openCanva(into = -1) { cvTarget = into; $('canvaModal').classList.add('show'); await canvaRefresh(); }
+  async function canvaRefresh() {
+    let st; try { st = await cvApi('/api/canva/status'); } catch (e) { return toast(e.message); }
+    $('cvRedirect').textContent = st.redirect; $('cvUser').textContent = st.user ? '· ' + st.user : '';
+    $('cvSetup').hidden = st.configured; $('cvLogin').hidden = !st.configured || st.connected; $('cvBrowse').hidden = !st.connected;
+    $('cvFor').textContent = cvTarget >= 0 && S.setlist[cvTarget] ? `Paginile vor fi slide-urile pentru „${S.setlist[cvTarget].title || KIND[S.setlist[cvTarget].kind]}”.` : 'Alege un design: fiecare pagină devine un slide în program.';
+    if (st.connected) cvLoad(true);
+  }
+  async function cvLoad(fresh) {
+    if (fresh) { cvCont = ''; $('cvGrid').innerHTML = '<p class="hint">Se încarcă designurile…</p>'; }
+    try {
+      const r = await cvApi('/api/canva/designs?q=' + encodeURIComponent($('cvQ').value.trim()) + (cvCont ? '&c=' + encodeURIComponent(cvCont) : ''));
+      const html = r.items.map(d => `<button class="cv-d" data-id="${esc(d.id)}" data-t="${esc(d.title)}">${d.thumb ? `<img src="${esc(d.thumb)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<span class="ph"></span>'}<b>${esc(d.title)}</b><small>${d.pages ? d.pages + ' pagini · ' : ''}${d.updated ? new Date(d.updated * 1000).toLocaleDateString('ro-RO') : ''}</small></button>`).join('');
+      if (fresh) $('cvGrid').innerHTML = html || '<p class="hint">Niciun design găsit.</p>'; else $('cvGrid').insertAdjacentHTML('beforeend', html);
+      cvCont = r.continuation; $('cvMore').hidden = !cvCont;
+      $('cvGrid').querySelectorAll('.cv-d').forEach(b => b.onclick = () => cvImport(b.dataset.id, b.dataset.t));
+    } catch (e) { $('cvGrid').innerHTML = `<p class="hint">${esc(e.message)}</p>`; }
+  }
+  async function cvImport(id, title) {
+    toast('Iau „' + title + '” din Canva…'); $('canvaModal').classList.remove('show');
+    try {
+      const d = await cvApi('/api/canva/import', { method: 'POST', body: JSON.stringify({ id, title }) });
+      if (cvTarget >= 0 && S.setlist[cvTarget]) { send({ type: 'updateItem', item: cvTarget, patch: { slides: d.slides } }); toast(`${d.slides.length} slide-uri din Canva la „${S.setlist[cvTarget].title || KIND[S.setlist[cvTarget].kind]}”`); }
+      else { const at = sel >= 0 ? sel + 1 : S.setlist.length; send({ type: 'addItem', kind: 'media', title: d.title, slides: d.slides, minutes: 2, at }); sel = at; toast(`„${d.title}”: ${d.slides.length} slide-uri în program`); }
+    } catch (e) { toast(e.message); }
+  }
+  $('bCanva').onclick = () => openCanva();
+  $('cvClose').onclick = () => $('canvaModal').classList.remove('show');
+  $('cvCopy').onclick = () => { navigator.clipboard?.writeText($('cvRedirect').textContent); toast('Adresa e copiată'); };
+  $('cvSave').onclick = async () => { try { await cvApi('/api/canva/settings', { method: 'POST', body: JSON.stringify({ clientId: $('cvId').value, clientSecret: $('cvSecret').value }) }); $('cvSecret').value = ''; canvaRefresh(); } catch (e) { toast(e.message); } };
+  $('cvReset').onclick = () => { $('cvSetup').hidden = false; $('cvLogin').hidden = true; };
+  $('cvGo').onclick = async () => { try { const r = await cvApi('/api/canva/login'); window.open(r.url, '_blank'); toast('Am deschis Canva în browser'); } catch (e) { toast(e.message); } };
+  $('cvOut').onclick = async () => { await cvApi('/api/canva/disconnect', { method: 'POST', body: '{}' }).catch(() => {}); canvaRefresh(); };
+  $('cvQ').oninput = () => { clearTimeout(cvQT); cvQT = setTimeout(() => cvLoad(true), 400); };
+  $('cvMore').onclick = () => cvLoad(false);
+  // a presentation for a moment already in the program (the sermon's slides…)
+  function attachTo(i) {
+    const inp = Object.assign(document.createElement('input'), { type: 'file', multiple: true, accept: '.pptx,.ppt,.ppsx,.key,.odp,.pdf,image/*,video/*' });
+    inp.onchange = () => inp.files.length && importFiles([...inp.files], i);
+    inp.click();
+  }
+  async function importFiles(files, into = -1) {
     const { importMedia } = await import('/importer.js');
     const upload = async (name, blob) => (await api('/api/media?name=' + encodeURIComponent(name), { method: 'POST', body: blob }), '/media/' + name);
     const convert = async f => {
@@ -1576,6 +1711,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     try {
       const fonts = families => api('/api/fonts', { method: 'POST', body: JSON.stringify({ families }) });
       const done = await importMedia(files, { upload, convert, fonts, progress: t => toast(t) });
+      if (into >= 0 && S.setlist[into]) {
+        const one = done.length === 1 ? done[0] : {}, slides = done.flatMap(d => d.slides);
+        send({ type: 'updateItem', item: into, patch: { slides, transitions: one.transitions, advance: one.advance } });
+        toast(`${slides.length} slide-uri la „${S.setlist[into].title || KIND[S.setlist[into].kind]}”`); return;
+      }
       const at = sel >= 0 ? sel + 1 : S.setlist.length;
       done.forEach((d, k) => send({ type: 'addItem', kind: 'media', title: d.title, slides: d.slides, transitions: d.transitions, advance: d.advance, minutes: 2, at: at + k }));
       sel = at; toast(done.length === 1 ? `„${done[0].title}”: ${done[0].slides.length} slide-uri în program` : `${done.length} prezentări în program`);
@@ -1590,7 +1730,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function renderMediaBar() {
     const it = S.setlist[sel], liveSl = S.live.slides[S.live.slide];
     const vid = !!liveSl?.image && /\.(mp4|webm|mov|m4v)$/i.test(liveSl.image);
-    $('mediaBar').hidden = !(it?.kind === 'media' || vid);
+    $('mediaBar').hidden = !((it?.slides?.length && it.kind !== 'song') || vid);
     $('vidCtl').hidden = !vid;
     $('vidMute').textContent = S.live.video?.muted ? '🔇' : '🔊';
     if (it && document.activeElement !== $('autoSec')) { $('autoSec').value = it.autoAdvance || ''; $('autoLoop').checked = !!it.loop; }
@@ -1637,10 +1777,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('bBlank').classList.toggle('on', S.live.blank); $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);
     if (document.activeElement !== $('msgTo')) $('msgTo').value = S.live.messageTo || 'both';
     renderMediaBar();
-    $('setlist').innerHTML = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true">
+    $('setlist').innerHTML = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true" ${it.kind !== 'song' ? `data-k="${esc(it.kind)}"` : ''}>
       <span class="num">${i + 1}</span>
       <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${it.kind === 'song' && S.setlist.filter(x => x.songId === it.songId).length > 1 ? '<span class="rep" title="Cântarea apare de mai multe ori în program">repetată</span> ' : ''}${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}</small></span>
-      <span class="acts">${it.kind === 'song' ? '<button data-a="key" title="Schimbă tonul">♯</button>' : ''}<button data-a="del" title="Scoate din program">✕</button></span></div>`).join('')
+      <span class="acts">${it.kind === 'song' ? '<button data-a="key" title="Schimbă tonul">♯</button>' : ''}${it.kind !== 'song' && it.kind !== 'bible' ? '<button data-a="att" title="Adaugă / schimbă prezentarea acestui moment (PowerPoint, Keynote, PDF, poze)">📎</button><button data-a="cva" title="Prezentarea acestui moment din Canva">🎨</button>' : ''}<button data-a="del" title="Scoate din program">✕</button></span></div>`).join('')
       || '<div class="empty">Programul e gol.<br>Alege cântări din Bibliotecă →</div>';
     document.querySelectorAll('#setlist .item').forEach(el => {
       const i = +el.dataset.i;
@@ -1653,6 +1793,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
           return;
         }
         if (a === 'key') { sel = i; render(); setTimeout(() => $('keySel').focus(), 200); return; }
+        if (a === 'att') { attachTo(i); return; }
+        if (a === 'cva') { openCanva(i); return; }
         sel = i; pickedSlide = -1; render(); loadSongInEditor(S.setlist[i]);
       };
       el.ondragstart = () => { dragFrom = i; el.classList.add('drag'); };
@@ -1711,7 +1853,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   async function previewSlides(it) {
     if (it.kind === 'bible') return bibleSlidesFor(it.ref, it.versions);
-    if (it.kind === 'media') return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));
+    if (it.kind !== 'song' && it.slides?.length) return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));
     if (it.kind !== 'song') return [];
     const core = await import('/core/song.js');
     const song = await getSong(it);
@@ -2046,14 +2188,24 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }, true);
 
   // ---- mixer: Click, Pad, every stem, Master
-  const dB = v => v <= 0.001 ? '−∞' : (20 * Math.log10(v)).toFixed(1);
+  const dB = v => v <= 0.001 ? '−∞' : ((v >= 1 ? '+' : '') + (20 * Math.log10(v)).toFixed(1)).replace('+0.0', '0.0');
+  // a console fader: the travel is in dB, like on a real desk (0 dB high up, −∞ at the bottom)
+  const FADER_PTS = [[-90, 0], [-48, .1], [-24, .3], [-12, .5], [-6, .64], [0, .8], [3.5, 1]];
+  const FADER_TICKS = [[3.5, '+3'], [0, '0'], [-6, '6'], [-12, '12'], [-24, '24'], [-48, '48'], [-90, '∞']];
+  function dbToPos(d) { if (d <= -90) return 0; for (let k = 1; k < FADER_PTS.length; k++) { const [d1, p1] = FADER_PTS[k], [d0, p0] = FADER_PTS[k - 1]; if (d <= d1) return p0 + (p1 - p0) * (d - d0) / (d1 - d0); } return 1; }
+  function posToDb(p) { for (let k = 1; k < FADER_PTS.length; k++) { const [d1, p1] = FADER_PTS[k], [d0, p0] = FADER_PTS[k - 1]; if (p <= p1) return d0 + (d1 - d0) * (p - p0) / (p1 - p0); } return 3.5; }
+  const gainToPos = g => g <= 0.00003 ? 0 : dbToPos(20 * Math.log10(g));
+  const posToGain = p => p <= 0.002 ? 0 : Math.min(1.5, Math.pow(10, posToDb(p) / 20));
   const panTxt = p => Math.abs(p) < 0.02 ? 'C' : (p < 0 ? 'L' : 'R') + Math.round(Math.abs(p) * 100);
   function strip(id, name, vol, extra = '', cls = '', pan = null) {
     const color = /^\d+$/.test(String(id)) ? trackColor(+id, name) : id === 'master' ? '#ffbf2f' : id === 'pad' ? '#b38cff' : '#9aa3ad';
-    return `<div class="strip ${cls}" data-ch="${id}" style="--tc:${color}">${extra}
+    const ticks = FADER_TICKS.map(([d, t]) => `<span style="bottom:${(dbToPos(d) * 100).toFixed(1)}%">${t}</span>`).join('');
+    return `<div class="strip ${cls}" data-ch="${id}" style="--tc:${color}"><div class="ex">${extra}</div>
       ${pan === null ? '<div class="knob off"></div><small class="pv">&nbsp;</small>' : `<div class="knob" data-pan="${id}" style="--a:${pan * 135}deg" title="Stânga / dreapta · dublu-clic = centru"><i></i></div><small class="pv">${panTxt(pan)}</small>`}
-      <small class="db" data-db="${id}">${dB(vol)} dB</small>
-      <div class="fz"><input class="fader" type="range" min="0" max="1.5" step="0.01" value="${vol}" data-f="${id}"><span class="meter"><i data-m="${id}"></i></span></div>
+      <small class="lcd" data-db="${id}">${dB(vol)}</small>
+      <div class="fz"><div class="scale">${ticks}</div>
+        <div class="fd" data-f="${id}" data-v="${vol}" title="Trage în sus / jos · dublu-clic = 0 dB · Shift = fin"><div class="slot"></div><div class="cap" style="bottom:calc(6px + ${(gainToPos(vol) * 100).toFixed(2)}% - ${(gainToPos(vol) * 12).toFixed(2)}px)"></div></div>
+        <span class="meter"><i data-m="${id}"></i></span>${cls === 'master' ? `<span class="meter"><i data-m="${id}"></i></span>` : ''}</div>
       <div class="nm" title="${esc(name)}">${esc(name)}</div></div>`;
   }
   function renderMixer() {
@@ -2074,14 +2226,28 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         k.onpointermove = m => setPan(p0 + ((m.clientX - x0) - (m.clientY - y0)) / 120); k.onpointerup = () => { k.onpointermove = null; }; };
       k.ondblclick = () => setPan(0);
     });
-    $('mixer').querySelectorAll('.fader').forEach(f => f.oninput = () => {
-      const id = f.dataset.f, v = +f.value;
-      const d = $('mixer').querySelector(`[data-db="${id}"]`); if (d) d.textContent = dB(v) + ' dB';
+    $('mixer').querySelectorAll('.fd').forEach(f => {
+      const cap = f.querySelector('.cap');
+      const set = v => { v = Math.max(0, Math.min(1.5, v)); f.dataset.v = v; const p = gainToPos(v);
+        cap.style.bottom = `calc(6px + ${(p * 100).toFixed(2)}% - ${(p * 12).toFixed(2)}px)`; faderInput(f.dataset.f, v); };
+      f.onpointerdown = e => {
+        e.preventDefault(); f.setPointerCapture(e.pointerId);
+        const r = f.getBoundingClientRect(), travel = r.height - 12, onCap = e.target === cap;
+        let p0 = gainToPos(+f.dataset.v), y0 = e.clientY;
+        if (!onCap) { p0 = Math.max(0, Math.min(1, (r.bottom - 6 - e.clientY) / travel)); set(posToGain(p0)); }     // click on the slot: the fader jumps there
+        f.onpointermove = m => { const fine = m.shiftKey ? 0.25 : 1; set(posToGain(Math.max(0, Math.min(1, p0 + (y0 - m.clientY) / travel * fine)))); };
+        f.onpointerup = () => { f.onpointermove = null; };
+      };
+      f.ondblclick = () => set(1);
+      f.onwheel = e => { e.preventDefault(); set(posToGain(Math.max(0, Math.min(1, gainToPos(+f.dataset.v) - Math.sign(e.deltaY) * 0.02)))); };
+    });
+    function faderInput(id, v) {
+      const d = $('mixer').querySelector(`[data-db="${id}"]`); if (d) d.textContent = dB(v);
       if (id === 'click') { met.vol = v; prefs.metVol = v; savePrefs(); }
       else if (id === 'pad') { pad.setVolume(v); prefs.padVol = v; savePrefs(); }
       else if (id === 'master') { mt.vol = v; mt.apply(); prefs.mtVol = v; savePrefs(); }
       else { mt.ch[+id].vol = v; mt.apply(); const tv = $('tracks').querySelector(`[data-tv="${id}"]`); if (tv) tv.value = v; saveStemsSoon(); }
-    });
+    }
     $('mixer').querySelectorAll('[data-mute]').forEach(b => b.onclick = () => { const c = mt.ch[+b.dataset.mute]; c.muted = !c.muted; mt.apply(); renderMixer(); saveStemsSoon(); });
     $('mixer').querySelectorAll('[data-solo]').forEach(b => b.onclick = () => { const c = mt.ch[+b.dataset.solo]; c.solo = !c.solo; mt.apply(); renderMixer(); });
     $('mixer').querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
@@ -2108,7 +2274,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     mtKey = (S.setlist[mtItem]?.songId || '') + '|' + mt.ch.map(x => x.file).join(',');     // same files: no reload
   }, 600); };
   function meters() {
-    document.querySelectorAll('[data-m]').forEach(el => {
+    $('mixer').querySelectorAll('[data-m]').forEach(el => {
       const id = el.dataset.m, lv = id === 'master' ? mt.level() : /^\d+$/.test(id) ? mt.level(mt.ch[+id]) : 0;
       el.style.height = Math.round(lv * 100) + '%';
     });

@@ -79,8 +79,21 @@
   .it{display:grid;grid-template-columns:52px 1fr 78px 64px 120px 30px;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid transparent}
   .it:hover{border-color:var(--stroke)} .it.drag{opacity:.4} .it.over{border-color:var(--acc)}
   .it time{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px}
-  .it .t b{font-weight:600} .it .t small{display:block;color:var(--mute);font-size:11.5px;text-transform:capitalize}
-  .it input{padding:5px 8px;font-size:13px}
+  .it .t{display:flex;flex-direction:column;min-width:0}
+  .it .t .ti{font-weight:600;font-size:calc(14px * var(--itz,1));background:transparent;border-color:transparent;padding:3px 6px;margin-left:-6px;color:var(--fg);text-overflow:ellipsis}
+  .it .t .ti:hover,.it .t .ti:focus{border-color:var(--stroke);background:rgba(0,0,0,.25)}
+  .it .t .sub{display:flex;gap:6px;align-items:center}
+  .it .t .kd{appearance:none;-webkit-appearance:none;width:auto;background:transparent;border:0;padding:0 2px;color:var(--mute);font-size:calc(11.5px * var(--itz,1));text-transform:capitalize;cursor:pointer}
+  .it .t .kd:hover{color:var(--fg)} .it .t .kd:disabled{cursor:default}
+  .it .t .att{border:0;background:rgba(255,255,255,.08);color:var(--fg);border-radius:999px;padding:1px 9px;font-size:calc(11.5px * var(--itz,1));cursor:pointer}
+  .it .t .att:hover{background:rgba(255,255,255,.18)} .it .t .att.has{background:rgba(160,120,255,.28)}
+  .it input{padding:5px 8px;font-size:calc(13px * var(--itz,1))} .it time{font-size:calc(13px * var(--itz,1)) !important}
+  .it{padding:calc(8px * var(--itz,1)) 10px}
+  /* the moments of the service each get their own tint of glass */
+  .it[data-k]{border-left:3px solid var(--kc);background:linear-gradient(90deg,color-mix(in srgb,var(--kc) 22%,transparent),rgba(255,255,255,.04) 70%)}
+  .it[data-k=sermon]{--kc:#f5b301} .it[data-k=prayer]{--kc:#5aa0ff} .it[data-k=announcement]{--kc:#3ec98a} .it[data-k=reading]{--kc:#41c7c7}
+  .it[data-k=bible]{--kc:#41c7c7} .it[data-k=media]{--kc:#a77bff} .it[data-k=other]{--kc:#ff7a59}
+  .zoomit{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12px} .zoomit input{width:90px;padding:0}
   .add{display:flex;gap:8px;align-items:center}
   .found{display:flex;flex-direction:column;gap:2px;max-height:380px}
   .found .prev{display:block;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -205,7 +218,7 @@
       </div>
       <div class="row">
         <span class="hint">Copiază programul de la:</span><select id="copyFrom" style="width:auto"></select>
-        <span class="grow"></span><span class="hint" id="total"></span>
+        <span class="grow"></span><label class="zoomit" title="Mărimea scrisului din program">A<input type="range" id="itZoom" min="80" max="170" step="5" value="100"><b style="font-size:16px">A</b></label><span class="hint" id="total"></span>
         <button id="bDelSvc" class="ghost" title="Șterge serviciul">🗑</button>
       </div>
       <div id="items" class="scroll" style="flex:1"></div>
@@ -458,8 +471,12 @@
     let t = new Date(s.date), total = 0;
     $('items').innerHTML = s.items.map((it, i) => {
       const at = hhmm(t); t = new Date(t.getTime() + (it.minutes || 0) * 60000); total += it.minutes || 0;
-      return `<div class="it" draggable="true" data-i="${i}"><time>${at}</time>
-        <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${KIND[it.kind]}</small></span>
+      const kinds = it.kind === 'song' ? ['song'] : it.kind === 'bible' ? ['bible'] : ['sermon', 'prayer', 'reading', 'announcement', 'media', 'other'];
+      const n = it.slides?.length || 0, canAttach = it.kind !== 'song' && it.kind !== 'bible';
+      return `<div class="it" draggable="true" data-i="${i}" ${it.kind !== 'song' ? `data-k="${it.kind}"` : ''}><time>${at}</time>
+        <span class="t"><input class="ti" data-f="title" value="${esc(it.title || '')}" placeholder="${esc(KIND[it.kind])}" title="${it.kind === 'song' ? 'Schimbă numele cântării (și în Bibliotecă)' : 'Scrie numele momentului'}">
+          <span class="sub"><select class="kd" data-f="kind" ${kinds.length < 2 ? 'disabled' : ''} title="Ce fel de moment e">${kinds.map(k => `<option value="${k}" ${k === it.kind ? 'selected' : ''}>${KIND[k]}</option>`).join('')}</select>
+          ${canAttach ? `<button class="att ${n ? 'has' : ''}" data-att="1" title="${n ? 'Schimbă prezentarea' : 'Adaugă o prezentare (PowerPoint, Keynote, PDF, poze) la acest moment'}">${n ? '🖼 ' + n + ' slide-uri' : '📎 prezentare'}</button>` : ''}</span></span>
         <input data-f="leader" value="${esc(it.leader || '')}" placeholder="Cine">
         ${it.kind === 'song' ? `<input data-f="key" value="${esc(it.key || '')}" placeholder="Ton">` : '<span></span>'}
         <div class="row"><input data-f="minutes" type="number" min="0" value="${it.minutes || 0}" style="width:64px"><span class="hint">min</span></div>
@@ -468,10 +485,19 @@
     $('total').textContent = s.items.length ? `durată ${Math.floor(total / 60) ? Math.floor(total / 60) + ' h ' : ''}${total % 60} min · se termină la ${hhmm(t)}` : '';
     document.querySelectorAll('#items .it').forEach(el => {
       const i = +el.dataset.i;
-      el.querySelectorAll('input').forEach(inp => inp.oninput = () => {
+      el.querySelectorAll('input[data-f]').forEach(inp => inp.oninput = () => {
+        if (inp.dataset.f === 'title' && s.items[i].kind === 'song') {          // a song's name is the library's name
+          s.items[i].title = inp.value; clearTimeout(saveT);
+          saveT = setTimeout(() => inp.value.trim() && op({ op: 'renameSong', songId: s.items[i].songId, title: inp.value.trim() }), 800); return;
+        }
         s.items[i][inp.dataset.f] = inp.dataset.f === 'minutes' ? +inp.value : inp.value;
         clearTimeout(saveT); saveT = setTimeout(() => op({ op: 'setItems', id: s.id, items: s.items }), 600);
       });
+      el.querySelectorAll('input').forEach(inp => { inp.draggable = false; inp.onmousedown = e => e.stopPropagation(); });
+      const kd = el.querySelector('[data-f=kind]');
+      if (kd) kd.onchange = () => { s.items[i].kind = kd.value; op({ op: 'setItems', id: s.id, items: s.items }); };
+      const att = el.querySelector('[data-att]');
+      if (att) att.onclick = () => attachShow(s, i);
       el.querySelector('[data-del]').onclick = () => { s.items.splice(i, 1); op({ op: 'setItems', id: s.id, items: s.items }); };
       el.ondragstart = () => { dragFrom = i; el.classList.add('drag'); };
       el.ondragend = () => el.classList.remove('drag');
@@ -480,6 +506,34 @@
       el.ondrop = e => { e.preventDefault(); el.classList.remove('over'); if (dragFrom < 0 || dragFrom === i) return;
         const [m] = s.items.splice(dragFrom, 1); s.items.splice(i, 0, m); dragFrom = -1; op({ op: 'setItems', id: s.id, items: s.items }); };
     });
+  }
+  // the size of the writing in the program, remembered on this computer
+  const itZ = (() => { try { return +localStorage.getItem('betleem.itzoom') || 100; } catch { return 100; } })();
+  $('itZoom').value = itZ; $('items').style.setProperty('--itz', itZ / 100);
+  $('itZoom').oninput = e => { $('items').style.setProperty('--itz', e.target.value / 100); try { localStorage.setItem('betleem.itzoom', e.target.value); } catch {} };
+  // a presentation for the sermon (or announcements…): PowerPoint, Keynote, PDF, pictures → slides of this moment
+  function attachShow(s, i) {
+    const inp = Object.assign(document.createElement('input'), { type: 'file', multiple: true, accept: '.pptx,.ppt,.ppsx,.key,.odp,.pdf,image/*,video/*' });
+    inp.onchange = async () => {
+      const files = [...inp.files]; if (!files.length) return;
+      try {
+        const { importMedia } = await import('/importer.js');
+        const headers = { 'x-pin': hub.pin() };
+        const upload = async (name, blob) => { const r = await fetch('/api/media?name=' + encodeURIComponent(name), { method: 'POST', headers, body: blob }); if (!r.ok) throw new Error('Nu am putut salva ' + name); return '/media/' + name; };
+        const convert = async f => { const r = await fetch('/api/convert?name=' + encodeURIComponent(f.name), { method: 'POST', body: f, headers });
+          if ((r.headers.get('content-type') || '').includes('pdf')) return await r.blob(); return null; };
+        const fonts = families => fetch('/api/fonts', { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ families }) }).then(r => r.json());
+        const done = await importMedia(files, { upload, convert, fonts, progress: t => toast(t) });
+        const it = s.items[i], slides = done.flatMap(d => d.slides);
+        const one = done.length === 1 ? done[0] : null;
+        Object.assign(it, { slides }); delete it.transitions; delete it.advance;
+        if (one?.transitions) Object.assign(it, { transitions: one.transitions, advance: one.advance });
+        if (!it.title) it.title = done[0].title;
+        await op({ op: 'setItems', id: s.id, items: s.items });
+        toast(`${slides.length} slide-uri la „${it.title || KIND[it.kind]}”`);
+      } catch (e) { toast(e.message || String(e)); }
+    };
+    inp.click();
   }
   let qT; const webCache = new Map();
   function addSongToService(id, key) {

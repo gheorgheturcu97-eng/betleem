@@ -19,6 +19,7 @@ import { addChordsToSongs } from './chords.js';
 import { runAssistant } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings } from './plan.js';
 import * as pco from './pco.js';
+import { createCanva } from './canva.js';
 import { createUpdater, newer } from './updater.js';
 import { bookName, formatRef, parseRef, BOOKS } from '../public/bibleref.js';
 
@@ -66,6 +67,8 @@ if (!Array.isArray(db.churches) || !db.churches.length) {
 db.churchData ||= {};
 db.plan ||= defaultPlan();          // planning of the ACTIVE church (others wait in churchData)
 const activeChurch = () => db.churches.find(c => c.id === db.activeChurch) || db.churches[0];
+const canva = createCanva({ dataDir: DATA_DIR, port: PORT, mediaDir: MEDIA_DIR, log: (w, e) => logError(w, e) });
+function broadcastCanva() { const msg = JSON.stringify({ type: 'canva', ...canva.status() }); for (const ws of wss?.clients || []) if (ws.readyState === 1) ws.send(msg); }
 
 // --- What comes with the app --------------------------------------------------------
 // Backgrounds made for Echipa Betleem (free, original): put in the media folder once; one you delete stays deleted.
@@ -135,7 +138,7 @@ const DISPLAY_DEFAULTS = {
   main:  { font: 'Segoe UI', size: 6.2, color: '#ffffff', align: 'center', valign: 'middle', weight: 700, upper: false, shadow: true, dim: 35 },
   stage: { font: 'Segoe UI', size: 5.4, color: '#f2f2f2', chordColor: '#f5b301', align: 'left', next: true,
            nextSize: 3.4, nextColor: '#8a8f95', nextShare: 30, labels: true,
-           title: true, clock: true, timer: true, upNext: 2, headSize: 3.2 },
+           title: true, clock: true, timer: true, service: true, upNext: 2, headSize: 3.2 },
 };
 db.display = { main: { ...DISPLAY_DEFAULTS.main, ...(db.display?.main || {}) }, stage: { ...DISPLAY_DEFAULTS.stage, ...(db.display?.stage || {}) } };
 function cleanDisplay(screen, patch) {
@@ -147,7 +150,7 @@ function cleanDisplay(screen, patch) {
   if (['left', 'center', 'right'].includes(p.align)) d.align = p.align;
   if (['top', 'middle', 'bottom'].includes(p.valign)) d.valign = p.valign;
   if ([400, 500, 600, 700, 800].includes(+p.weight)) d.weight = +p.weight;
-  for (const k of ['upper', 'shadow', 'next', 'italic', 'labels', 'title', 'clock', 'timer']) if (typeof p[k] === 'boolean') d[k] = p[k];
+  for (const k of ['upper', 'shadow', 'next', 'italic', 'labels', 'title', 'clock', 'timer', 'service']) if (typeof p[k] === 'boolean') d[k] = p[k];
   if (Number.isFinite(+p.upNext)) d.upNext = Math.min(5, Math.max(0, Math.round(+p.upNext)));        // how many program items the stage shows ahead
   if (Number.isFinite(+p.headSize)) d.headSize = Math.min(8, Math.max(2, +p.headSize));
   if (Number.isFinite(+p.dim)) d.dim = Math.min(90, Math.max(0, +p.dim));
@@ -169,12 +172,13 @@ function cleanDisplay(screen, patch) {
 const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0, bible: null,
   noText: false,             // "Fără text": the words go away, the background stays
   messageTo: 'both',         // the message bar: on the audience screen, the stage, or both
-  countdown: null,           // { to: ms, label } — "Începem în 4:59" on the screens
+  countdown: null,           // { to: ms, label, screens, bg } — "Începem în 4:59" on the screens, on its own background
+  serviceStart: 0,           // the service timer: starts when the first item of the program goes live
   video: { cmd: 'play', at: 0, muted: false } };   // the video on the audience screen: play / pause / from the start / sound
 let liveId = null;                                   // the timer on stage restarts when another program item goes live
 function trackSince() {
   const id = live.item === -2 ? 'bible' : db.setlist[live.item]?.id || null;
-  if (id !== liveId) { liveId = id; live.since = id ? Date.now() : 0; }
+  if (id !== liveId) { liveId = id; live.since = id ? Date.now() : 0; if (id && !live.serviceStart && live.item >= 0) live.serviceStart = Date.now(); }
 }
 
 // --- Bible: versions on disk, loaded when first used ----------------------------
@@ -228,7 +232,7 @@ function slidesFor(index) {
   if (index === -2) return live.bible ? bibleSlides(live.bible.ref, live.bible.versions) : [];   // a passage shown straight from the Bible tab
   const it = db.setlist[index];
   if (it?.kind === 'bible') return bibleSlides(it.ref, it.versions);
-  if (it?.kind === 'media') return (it.slides || []).map((src, i) => ({ label: '', lines: [], image: src,
+  if (it && it.kind !== 'song' && it.slides?.length) return it.slides.map((src, i) => ({ label: '', lines: [], image: src,
     ...(it.transitions?.[i] ? { transition: it.transitions[i] } : {}), ...(it.advance?.[i] ? { advance: it.advance[i] } : {}) }));   // PDF / PowerPoint pages, pictures, videos
   if (!it || it.kind !== 'song') return [];
   const song = db.songs.find(s => s.id === it.songId);
@@ -328,7 +332,7 @@ const sessions = new Map(); // ws -> { role }
 // Slides that change by themselves (announcements before the service): seconds per slide, again from the start if "în buclă".
 let autoTimer = null, autoKey = '';
 function scheduleAuto() {
-  const it = db.setlist[live.item], own = it?.kind === 'media' ? it.advance?.[live.slide] : 0;   // PowerPoint's own timing wins
+  const it = db.setlist[live.item], own = it?.slides?.length ? it.advance?.[live.slide] : 0;   // PowerPoint's own timing wins
   const secs = own ? own / 1000 : Number(it?.autoAdvance) || 0;
   const key = secs && !live.blank ? `${it.id}:${live.slide}:${secs}:${it.loop ? 1 : 0}` : '';
   if (key === autoKey) return;
@@ -468,7 +472,19 @@ function handleMessage(ws, m) {
           to = d.getTime();
         }
         if (!to) return reply({ type: 'error', error: 'Scrie minutele sau ora' });
-        live.countdown = { to, label: String(m.label ?? 'Începem în').slice(0, 60), screens: ['both', 'main', 'stage'].includes(m.screens) ? m.screens : 'both' };
+        const bg = typeof m.bg === 'string' && (!m.bg || fs.existsSync(path.join(MEDIA_DIR, path.basename(m.bg)))) ? path.basename(m.bg) : '';
+        live.countdown = { to, label: String(m.label ?? 'Începem în').slice(0, 60), screens: ['both', 'main', 'stage'].includes(m.screens) ? m.screens : 'both', bg };
+        break;
+      }
+      case 'serviceTimer': {                         // the whole service: planned minutes, counting down from the first song
+        if (m.cmd === 'reset') live.serviceStart = 0;
+        else if (m.cmd === 'start') live.serviceStart = Date.now();
+        if ('minutes' in m) {
+          const n = Number(m.minutes);
+          if (m.minutes === null || m.minutes === '' || !(n > 0)) delete db.service.timerMinutes;   // back to the sum of the program
+          else db.service = { ...db.service, timerMinutes: Math.min(600, Math.round(n)) };
+          save();
+        }
         break;
       }
       case 'video': {                                // the video playing on the audience screen
@@ -748,7 +764,7 @@ function handleMessage(ws, m) {
         if (!target) return reply({ type: 'error', error: 'Programul nu există' });
         db.setlist = target.items.map(it => ({ ...structuredClone(it), notes: [] }));
         db.service = { title: target.title, startsAt: target.date, planId: target.id };
-        Object.assign(live, { item: -1, slide: 0, blank: false, logo: false });
+        Object.assign(live, { item: -1, slide: 0, blank: false, logo: false, serviceStart: 0 });
         save(); break;
       }
       case 'addItem': case 'removeItem': case 'moveItem': case 'updateItem': case 'deleteSong': case 'service': {
@@ -780,6 +796,11 @@ function handleMessage(ws, m) {
         if (m.type === 'updateItem' && db.setlist[m.item]) {
           const allowed = ['title', 'key', 'minutes', 'leader'];
           for (const k of allowed) if (k in (m.patch || {})) db.setlist[m.item][k] = m.patch[k];
+          const it = db.setlist[m.item];
+          if (Array.isArray(m.patch?.slides) && it.kind !== 'song' && it.kind !== 'bible') {   // a presentation attached to this moment
+            delete it.transitions; delete it.advance;
+            Object.assign(it, { slides: mediaSlides(m.patch.slides), ...cleanFx(m.patch) });
+          }
         }
         if (m.type === 'deleteSong') db.songs = db.songs.filter(s => s.id !== m.id);
         if (m.type === 'service') db.service = { ...db.service, ...pick(m.value, ['title', 'startsAt']) };
@@ -1169,11 +1190,15 @@ async function handle(req, res) {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       if (req.method === 'POST') {
         const op = JSON.parse(await body(req, 500_000));
-        if (op.op === 'goLive') {                       // make this service the program on the screens
+        if (op.op === 'renameSong') {                   // the name of a song, fixed from the program
+          const song = db.songs.find(x => x.id === op.songId), t = String(op.title || '').trim().slice(0, 120);
+          if (!song || !t) return json(res, 400, { error: 'Cântarea nu există' });
+          song.title = t; song.updatedAt = new Date().toISOString(); save(); broadcast();
+        } else if (op.op === 'goLive') {                       // make this service the program on the screens
           const s = db.plan.services.find(x => x.id === op.id); if (!s) return json(res, 404, { error: 'Serviciul nu există' });
           db.setlist = s.items.map(it => ({ ...structuredClone(it), notes: [] }));
           db.service = { title: s.title, startsAt: s.date, planId: s.id };
-          Object.assign(live, { item: -1, slide: 0, blank: false, logo: false });
+          Object.assign(live, { item: -1, slide: 0, blank: false, logo: false, serviceStart: 0 });
           save(); broadcast();
         } else {
           const err = applyPlanOp(db.plan, op);
@@ -1188,6 +1213,28 @@ async function handle(req, res) {
       return json(res, 200, { ...plan, currentPlanId: db.service.planId || null,
         services: plan.services.map(s => ({ ...s, warnings: serviceWarnings(plan, s),
           items: s.items.map(it => it.kind === 'song' ? { ...it, title: db.songs.find(x => x.id === it.songId)?.title || it.title || '(cântare ștearsă)' } : it) })) });
+    }
+    if (p.startsWith('/api/canva/')) {                   // Canva: the leader connects once, then operators bring designs in
+      if (p === '/api/canva/callback') {                 // Canva sends the browser back here after "Allow"
+        if (!isLocal(req.socket.remoteAddress)) return send(res, 403, 'Doar pe acest calculator');
+        let msg = 'Canva e conectat. Poți închide această pagină și te întorci în Echipa Betleem.';
+        try { if (url.searchParams.get('error')) throw new Error('Ai refuzat accesul în Canva.'); await canva.callback(url.searchParams.get('state'), url.searchParams.get('code')); }
+        catch (e) { msg = e.message; }
+        broadcastCanva();
+        return send(res, 200, `<!doctype html><meta charset="utf-8"><title>Canva</title><body style="font:18px system-ui;background:#111;color:#eee;display:grid;place-items:center;height:100vh;margin:0"><p>${msg.replace(/</g, '&lt;')}</p>`, 'text/html; charset=utf-8');
+      }
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      if (p === '/api/canva/status') return json(res, 200, canva.status());
+      if (p === '/api/canva/designs') return json(res, 200, await canva.designs(url.searchParams.get('q') || '', url.searchParams.get('c') || ''));
+      if (p === '/api/canva/import' && req.method === 'POST') {
+        const v = JSON.parse(await body(req, 10_000));
+        return json(res, 200, await canva.importDesign(String(v.id || ''), String(v.title || 'Canva').slice(0, 80)));
+      }
+      if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul poate conecta Canva (PIN de lider).' });
+      if (p === '/api/canva/settings' && req.method === 'POST') return json(res, 200, canva.setCredentials(JSON.parse(await body(req, 10_000))));
+      if (p === '/api/canva/login') return json(res, 200, { url: canva.loginUrl() });
+      if (p === '/api/canva/disconnect' && req.method === 'POST') return json(res, 200, canva.disconnect());
+      return json(res, 404, { error: 'not found' });
     }
     if (p.startsWith('/api/pco/')) {                     // Planning Center: leaders only
       if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul poate conecta Planning Center (PIN de lider).' });

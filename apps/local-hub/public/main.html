@@ -78,7 +78,9 @@
       $('countTime').textContent = (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0');
     }
     $('text').style.visibility = $('pic').style.visibility = show && left > 0 ? 'hidden' : '';   // the countdown stands alone on the background
+    bgNow(show && left > 0 && c.bg ? c.bg : S?.live.background);                                // …on its own background, if one was chosen
   }
+  function bgNow(name) { name = name || ''; if ($('bg').dataset.now === name) return; $('bg').dataset.now = name; paintBackground($('bg'), name); }
   setInterval(tick, 250);
   // the video on screen follows Play / Pauză / De la început / Sunet from the control window
   let vidAt = 0;
@@ -117,7 +119,6 @@
     S = s; if (s.now) skew = s.now - Date.now();
     const L = s.live, item = s.setlist[L.item];
     if (s.display) style({ ...s.display.main, ...(item?.display || {}), ...(item?.slideStyles?.[L.slide] || {}) });
-    paintBackground($('bg'), L.background);
     tick();
     const slide = L.slides[L.slide];
     // a page of a presentation, a picture or a video: whole screen, nothing on top

@@ -37,6 +37,7 @@ export function nextSundays(from = new Date(), n = 8, time = '10:00') {
 
 const str = (v, max = 120) => String(v ?? '').trim().slice(0, max);
 
+const SHOWS = it => it.kind !== 'song' && it.kind !== 'bible';
 function cleanItems(items) {
   return (Array.isArray(items) ? items : []).slice(0, 80).map(it => ({
     id: it.id || id(),
@@ -48,9 +49,10 @@ function cleanItems(items) {
     ...(it.maxLines ? { maxLines: it.maxLines } : {}), ...(it.background ? { background: str(it.background, 200) } : {}),
     ...(it.kind === 'bible' && it.ref ? { ref: { book: +it.ref.book || 0, chapter: +it.ref.chapter || 1, from: +it.ref.from || 0, to: +it.ref.to || 0 }, versions: (it.versions || []).slice(0, 2).map(x => str(x, 12)) } : {}),
     ...(it.autoAdvance ? { autoAdvance: Math.min(600, Math.max(2, +it.autoAdvance || 0)), loop: !!it.loop } : {}),
-    ...(it.kind === 'media' && Array.isArray(it.slides) ? { slides: it.slides.slice(0, 400).map(x => str(x, 200)).filter(x => x.startsWith('/media/')) } : {}),
-    ...(it.kind === 'media' && Array.isArray(it.transitions) && it.transitions.length === it.slides?.length ? { transitions: it.transitions } : {}),
-    ...(it.kind === 'media' && Array.isArray(it.advance) && it.advance.length === it.slides?.length ? { advance: it.advance } : {}),
+    // slides: a presentation, or one attached to a sermon / announcements / other moment
+    ...(SHOWS(it) && Array.isArray(it.slides) ? { slides: it.slides.slice(0, 400).map(x => str(x, 200)).filter(x => x.startsWith('/media/')) } : {}),
+    ...(SHOWS(it) && Array.isArray(it.transitions) && it.transitions.length === it.slides?.length ? { transitions: it.transitions } : {}),
+    ...(SHOWS(it) && Array.isArray(it.advance) && it.advance.length === it.slides?.length ? { advance: it.advance } : {}),
   }));
 }
 

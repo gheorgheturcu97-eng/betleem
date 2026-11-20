@@ -297,3 +297,39 @@ test('from the internet only the send page and the upload exist', async () => {
   const t = await fetch('http://localhost:4599/api/tunnel').then(r => r.json());
   assert.equal(typeof t.available, 'boolean'); assert.equal(t.running, false);
 });
+
+test('service timer starts with the first item on Live; a presentation can be attached to a sermon; Canva connects with PKCE', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'newProgram', title: 'Timer test' });
+  await a.next(m => m.type === 'state' && m.state.service.title === 'Timer test');
+  a.send({ type: 'addItem', kind: 'sermon', title: 'Predica', minutes: 30 });
+  let st = (await a.next(m => m.type === 'state' && m.state.setlist.length === 1)).state;
+  assert.equal(st.live.serviceStart, 0, 'waits for the first item');
+  a.send({ type: 'serviceTimer', minutes: 45 });
+  st = (await a.next(m => m.type === 'state' && m.state.service.timerMinutes === 45)).state;
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  await fetch('http://localhost:4599/api/media?name=pres-t-001.png', { method: 'POST', headers: { 'x-pin': '2222' }, body: png });
+  a.send({ type: 'updateItem', item: 0, patch: { slides: ['/media/pres-t-001.png'] } });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist[0]?.slideCount === 1)).state;
+  assert.equal(st.setlist[0].kind, 'sermon', 'still the sermon, now with slides');
+  a.send({ type: 'go', item: 0, slide: 0 });
+  st = (await a.next(m => m.type === 'state' && m.state.live.serviceStart > 0)).state;
+  assert.equal(st.live.slides[0].image, '/media/pres-t-001.png');
+  a.send({ type: 'serviceTimer', cmd: 'reset', minutes: null });
+  st = (await a.next(m => m.type === 'state' && m.state.live.serviceStart === 0)).state;
+  assert.equal(st.service.timerMinutes, undefined, 'back to the sum of the program');
+  a.ws.close();
+  // Canva: credentials stay on the computer; the login address carries a PKCE challenge
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' };
+  let c = await fetch('http://localhost:4599/api/canva/status', { headers: L }).then(r => r.json());
+  assert.equal(c.configured, false); assert.match(c.redirect, /^http:\/\/127\.0\.0\.1:4599\/api\/canva\/callback$/);
+  c = await fetch('http://localhost:4599/api/canva/settings', { method: 'POST', headers: L, body: JSON.stringify({ clientId: 'OC-abc', clientSecret: 'shh' }) }).then(r => r.json());
+  assert.equal(c.configured, true); assert.equal(c.connected, false); assert.ok(!JSON.stringify(c).includes('shh'), 'the secret never goes back out');
+  const { url } = await fetch('http://localhost:4599/api/canva/login', { headers: L }).then(r => r.json());
+  const u = new URL(url);
+  assert.equal(u.origin + u.pathname, 'https://www.canva.com/api/oauth/authorize');
+  assert.equal(u.searchParams.get('code_challenge_method'), 'S256'); assert.ok(u.searchParams.get('code_challenge').length >= 43);
+  const op = await fetch('http://localhost:4599/api/canva/settings', { method: 'POST', headers: { 'x-pin': '1111' }, body: '{}' });
+  assert.equal(op.status, 401, 'only the leader connects Canva');
+});
