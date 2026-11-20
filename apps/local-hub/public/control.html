@@ -527,6 +527,27 @@
   .main.noL.noR{grid-template-columns:minmax(0,1fr)}
   .main.noL>#pLeft,.main.noL>.gut[data-g=colL],.main.noR>#pRight,.main.noR>.gut[data-g=colR]{display:none}
   .layout-t{padding:2px} .layout-t button{padding:3px 8px!important;font-size:13px!important;opacity:.45} .layout-t button.sel{opacity:1}
+  .app{grid-template-rows:auto auto 1fr!important;gap:6px!important;padding-top:4px!important}
+  .menubar{display:flex;align-items:center;gap:2px;height:26px;padding:0 6px}
+  .menubar>button{background:transparent!important;border:0!important;box-shadow:none!important;padding:3px 10px!important;font-size:12.5px;font-weight:500;color:var(--mute);border-radius:7px}
+  .menubar>button:hover,.menubar>button.sel{background:rgba(255,255,255,.1)!important;color:var(--fg)}
+  .menubar .pal-btn{display:flex;gap:8px;align-items:center}
+  kbd{font:500 11px Inter,sans-serif;color:var(--faint);letter-spacing:.02em}
+  .menubar kbd{padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.08)}
+  .menu-drop{position:fixed;z-index:60;min-width:290px;padding:6px;display:flex;flex-direction:column;background:rgba(30,32,40,.86)!important;border-radius:12px}
+  .menu-drop[hidden]{display:none}
+  .menu-drop button{display:grid;grid-template-columns:16px 1fr auto;gap:8px;align-items:center;text-align:left;background:transparent!important;border:0!important;box-shadow:none!important;padding:6px 10px!important;border-radius:7px;font-size:13px;color:var(--fg)}
+  .menu-drop button:hover:not(:disabled){background:var(--acc)!important;color:var(--acc-ink)} .menu-drop button:hover kbd{color:inherit}
+  .menu-drop button:disabled{opacity:.35}
+  .menu-drop i{font-style:normal;font-size:12px;color:var(--acc)} .menu-drop button:hover i{color:inherit}
+  .menu-drop hr{border:0;border-top:1px solid var(--stroke);margin:4px 6px}
+  #palette{align-items:flex-start;padding-top:12vh}
+  .glass.pal{width:min(620px,92vw);padding:10px;display:flex;flex-direction:column;gap:6px}
+  .pal input{font-size:16px;padding:12px 14px;border-radius:12px}
+  .pal-list{max-height:52vh;overflow:auto;display:flex;flex-direction:column}
+  .pal-list button{display:grid;grid-template-columns:100px 1fr auto;gap:10px;align-items:center;text-align:left;background:transparent!important;border:0!important;box-shadow:none!important;padding:8px 12px!important;border-radius:9px;font-size:13.5px}
+  .pal-list button small{color:var(--faint);font-size:11.5px}
+  .pal-list button.sel,.pal-list button:hover{background:rgba(255,255,255,.1)!important}
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
   .pc-list{display:flex;flex-direction:column;gap:6px}
@@ -554,6 +575,12 @@
 <div class="aurora"><i></i><i></i><i></i><i></i></div>
 
 <div class="app">
+  <nav class="menubar" id="menubar" aria-label="Meniu"></nav>
+  <div class="menu-drop glass" id="menuDrop" hidden></div>
+  <div class="modal" id="palette"><div class="glass pal">
+    <input id="palQ" placeholder="Ce vrei să faci? ex. negru, biblia, numărătoare, fundal…" autocomplete="off">
+    <div id="palList" class="pal-list"></div>
+  </div></div>
   <header class="top glass">
     <button class="brand" id="churchBtn" title="Schimbă biserica">
       <span class="star">✦</span>
@@ -1067,6 +1094,140 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('inboxModal').onclick = e => { if (e.target === $('inboxModal')) $('inboxModal').classList.remove('show'); };
   $('qrNew').onclick = () => { loadInbox(true); toast('Cod nou: cel vechi nu mai merge'); };
   api('/api/inbox').then(d => { inboxData = d; $('inboxN').hidden = !d.files.length; $('inboxN').textContent = d.files.length; }).catch(() => {});
+
+  // ---- MENIUL: like ProPresenter's, in plain Romanian; every command also in the palette (Ctrl/⌘+K)
+  const ON_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const kb = k => k.replace('Mod+', ON_MAC ? '⌘' : 'Ctrl+').replace('Shift+', ON_MAC ? '⇧' : 'Shift+').replace('Alt+', ON_MAC ? '⌥' : 'Alt+');
+  const bgList = () => ['', ...(media || []).filter(m => m !== 'logo.png' && !/\.(mp3|wav|m4a|ogg|aac)$/i.test(m))];
+  const stepBg = d => { const l = bgList(), i = l.indexOf(S.live.background); send({ type: 'background', value: l[(i + d + l.length) % l.length] }); };
+  const zoomSlides = d => { const z = $('slideZoom'); z.value = +z.value + d; z.dispatchEvent(new Event('input')); };
+  const slideOk = () => S?.live.item >= 0 && S.live.slides.length;
+  const MENUS = [
+    ['Fișier', [
+      { l: 'Cântare nouă', k: 'Mod+N', run: () => $('bNew2').click() },
+      { l: 'Program nou…', run: () => { $('progSel').value = '+new'; $('progSel').dispatchEvent(new Event('change')); } },
+      '-',
+      { l: 'Importă PowerPoint, PDF, video…', run: () => $('importMedia').click() },
+      { l: 'Primite de pe telefon / AirDrop…', run: () => $('bInbox').click() },
+      { l: 'Din Planning Center…', run: () => location.href = '/planning.html?pco=1' },
+      { l: 'Adaugă o traducere a Bibliei…', run: () => $('bibImport').click() },
+      '-',
+      { l: 'Bisericile…', run: () => $('churchBtn').click() },
+      { l: 'Lucrează de pe mai multe calculatoare…', run: () => openPcs() },
+    ]],
+    ['Editare', [
+      { l: 'Anulează', k: 'Mod+Z', run: () => undo() },
+      { l: 'Refă', k: 'Mod+Shift+Z', run: () => redo() },
+      '-',
+      { l: 'Editează slide-ul de pe ecran', k: 'Mod+E', on: slideOk, run: () => { sel = S.live.item; openSlideEditor(S.live.slide, S.live.slides); } },
+      { l: 'Repetă slide-ul de pe ecran', k: 'Mod+D', on: slideOk, run: () => send({ type: 'duplicateSlide', item: S.live.item, slide: S.live.slide }) },
+      { l: 'Copiază textul de pe ecran', k: 'Mod+Shift+C', on: slideOk, run: () => { copyText(S.live.slides[S.live.slide].lines.map(l => stripChords(l)).join('\n')); toast('Text copiat'); } },
+      { l: 'Etichete automat (strofă, refren…)', on: () => S?.setlist[sel]?.kind === 'song', run: () => $('sedAutoTag').click() },
+      '-',
+      { l: 'Caută o cântare', k: 'Mod+F', run: () => { showTab('lib'); $('q').focus(); $('q').select(); } },
+    ]],
+    ['Prezentare', [
+      { l: 'Înainte', k: '→ / Spațiu', run: () => send({ type: 'next' }) },
+      { l: 'Înapoi', k: '←', run: () => send({ type: 'prev' }) },
+      { l: 'Fundalul următor', k: 'Alt+→', run: () => stepBg(1) },
+      { l: 'Fundalul anterior', k: 'Alt+←', run: () => stepBg(-1) },
+      '-',
+      { l: 'Fără text', k: 'T', chk: () => S?.live.noText, run: () => send({ type: 'noText' }) },
+      { l: 'Ecran negru', k: 'B', chk: () => S?.live.blank, run: () => send({ type: 'blank' }) },
+      { l: 'Logo', k: 'L', chk: () => S?.live.logo, run: () => send({ type: 'logo' }) },
+      { l: 'Fără fundal', on: () => !!S?.live.background, run: () => send({ type: 'background', value: '' }) },
+      { l: 'Șterge mesajul', on: () => !!S?.live.message, run: () => { $('msg').value = ''; send({ type: 'message', value: '' }); } },
+      { l: 'Curăță tot', k: 'Esc Esc', run: () => send({ type: 'clearAll' }) },
+      '-',
+      { l: 'Numărătoare inversă…', run: () => $('bCount').click() },
+      { l: 'Oprește numărătoarea', on: () => !!S?.live.countdown, run: () => send({ type: 'countdown', off: true }) },
+      { l: 'Timer-ul de pe scenă de la zero', run: () => send({ type: 'resetTimer' }) },
+    ]],
+    ['Ecrane', [
+      { l: 'Deschide ecranul din sală (proiector)', k: 'F2', run: () => $('bMain').click() },
+      { l: 'Deschide ecranul de scenă', k: 'F3', run: () => $('bStage').click() },
+      '-',
+      { l: 'Aspectul ecranului din sală…', run: () => openLook('main') },
+      { l: 'Aspectul ecranului de scenă…', run: () => openLook('stage') },
+      '-',
+      { l: 'Previzualizare: ambele', chk: () => $('screens').dataset.vis === 'both', run: () => setVis('both') },
+      { l: 'Previzualizare: doar sala', chk: () => $('screens').dataset.vis === 'main', run: () => setVis('main') },
+      { l: 'Previzualizare: doar scena', chk: () => $('screens').dataset.vis === 'stage', run: () => setVis('stage') },
+    ]],
+    ['Vizualizare', [
+      { l: 'Live', chk: () => !$('toLive').classList.contains('x') && $('toLive').classList.contains('sel'), run: () => $('toLive').click() },
+      { l: 'Muzică (track-uri, pad, metronom)', run: () => $('toMusic').click() },
+      { l: 'Planificare', run: () => $('toPlan').click() },
+      '-',
+      { l: 'Programul', k: 'Mod+1', chk: () => !layout.L, run: () => togglePart('L') },
+      { l: 'Ecranele', k: 'Mod+2', chk: () => !layout.S, run: () => togglePart('S') },
+      { l: 'Cântări · Biblia · Internet', k: 'Mod+3', chk: () => !layout.R, run: () => togglePart('R') },
+      '-',
+      { l: 'Cântări', run: () => { if (layout.R) togglePart('R'); showTab('lib'); } },
+      { l: 'Biblia', k: 'F8', run: () => { if (layout.R) togglePart('R'); showTab('bible'); $('bibQ').focus(); } },
+      { l: 'Internet (caută versuri)', run: () => { if (layout.R) togglePart('R'); showTab('web'); } },
+      '-',
+      { l: 'Slide-uri mai mari', k: 'Mod++', run: () => zoomSlides(30) },
+      { l: 'Slide-uri mai mici', k: 'Mod+-', run: () => zoomSlides(-30) },
+      { l: 'Ecran complet', run: () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen() },
+    ]],
+    ['Ajutor', [
+      { l: 'Caută o comandă…', k: 'Mod+K', run: () => openPalette() },
+      { l: 'Scurtături de tastatură', run: () => $('bKeys').click() },
+      '-',
+      { l: 'Despre Betleem', run: () => toast('Betleem · gratuit, pentru bisericile din rețeaua Betleem') },
+    ]],
+  ];
+  const cmds = MENUS.flatMap(([m, items]) => items.filter(i => i !== '-').map(i => ({ ...i, menu: m })));
+  let openMenu = -1;
+  $('menubar').innerHTML = MENUS.map(([m], i) => `<button data-i="${i}">${m}</button>`).join('') + '<span class="grow"></span><button class="pal-btn" id="palBtn" title="Caută orice comandă">⌕ Comenzi <kbd>' + kb('Mod+K') + '</kbd></button>';
+  function showMenu(i) {
+    openMenu = i; const d = $('menuDrop');
+    document.querySelectorAll('#menubar [data-i]').forEach(b => b.classList.toggle('sel', +b.dataset.i === i));
+    if (i < 0) { d.hidden = true; return; }
+    const items = MENUS[i][1];
+    d.innerHTML = items.map((it, k) => it === '-' ? '<hr>' : `<button data-k="${k}" ${it.on && !it.on() ? 'disabled' : ''}><i>${it.chk?.() ? '✓' : ''}</i><span>${esc(it.l)}</span><kbd>${it.k ? esc(kb(it.k)) : ''}</kbd></button>`).join('');
+    const r = document.querySelector(`#menubar [data-i="${i}"]`).getBoundingClientRect();
+    d.style.left = r.left + 'px'; d.style.top = (r.bottom + 4) + 'px'; d.hidden = false;
+    d.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { showMenu(-1); items[+b.dataset.k].run(); });
+  }
+  document.querySelectorAll('#menubar [data-i]').forEach(b => {
+    b.onclick = e => { e.stopPropagation(); showMenu(openMenu === +b.dataset.i ? -1 : +b.dataset.i); };
+    b.onmouseenter = () => { if (openMenu >= 0) showMenu(+b.dataset.i); };
+  });
+  addEventListener('click', e => { if (openMenu >= 0 && !$('menuDrop').contains(e.target)) showMenu(-1); });
+  // the palette: type a few letters of anything the program can do
+  let palSel = 0, palItems = [];
+  function openPalette() { $('palette').classList.add('show'); $('palQ').value = ''; renderPalette(); setTimeout(() => $('palQ').focus(), 30); }
+  const foldC = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  function renderPalette() {
+    const q = foldC($('palQ').value.trim());
+    palItems = cmds.filter(c => (!c.on || c.on()) && (!q || foldC(c.menu + ' ' + c.l).includes(q) || foldC(c.l).split(/\W+/).some(w => w.startsWith(q))));
+    palSel = Math.min(palSel, Math.max(0, palItems.length - 1));
+    $('palList').innerHTML = palItems.map((c, i) => `<button class="${i === palSel ? 'sel' : ''}" data-i="${i}"><small>${esc(c.menu)}</small><span>${esc(c.l)}</span><kbd>${c.k ? esc(kb(c.k)) : ''}</kbd></button>`).join('') || '<p class="hint">Nimic găsit.</p>';
+    $('palList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => runPal(+b.dataset.i));
+    $('palList').querySelector('.sel')?.scrollIntoView({ block: 'nearest' });
+  }
+  const runPal = i => { const c = palItems[i]; $('palette').classList.remove('show'); c?.run(); };
+  $('palQ').oninput = () => { palSel = 0; renderPalette(); };
+  $('palQ').onkeydown = e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); palSel = Math.min(palItems.length - 1, palSel + 1); renderPalette(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); palSel = Math.max(0, palSel - 1); renderPalette(); }
+    else if (e.key === 'Enter') { e.preventDefault(); runPal(palSel); }
+    else if (e.key === 'Escape') $('palette').classList.remove('show');
+  };
+  $('palette').onclick = e => { if (e.target === $('palette')) $('palette').classList.remove('show'); };
+  $('palBtn').onclick = e => { e.stopPropagation(); openPalette(); };
+  addEventListener('keydown', e => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); return; }
+    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.querySelector('.modal.show')) return;
+    if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); stepBg(1); }
+    else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); stepBg(-1); }
+    else if (e.key === 'F8') { e.preventDefault(); if (layout.R) togglePart('R'); showTab('bible'); $('bibQ').focus(); }
+    else if (mod && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomSlides(30); }
+    else if (mod && e.key === '-') { e.preventDefault(); zoomSlides(-30); }
+  }, true);
 
   // ---- 🖥 several computers
   async function renderPcs() {
