@@ -120,6 +120,13 @@
 
   /* teams */
   #v-teams{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px}
+  /* ---------- "Duminica e gata?": the checklist of a service */
+  .ready{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.04);border:.5px solid var(--stroke)}
+  .ready>b{font-size:13px;margin-right:4px} .ready.ok{background:rgba(61,220,132,.1);border-color:rgba(61,220,132,.45)}
+  .ready span{display:inline-flex;gap:5px;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;background:rgba(255,255,255,.06)}
+  .ready span.y{color:#bff5d6} .ready span.n{color:#ffd9a3;background:rgba(255,170,40,.12);cursor:pointer}
+  .ready:empty{display:none}
+  .mode-chip{padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:650;background:rgba(255,255,255,.08);border:.5px solid var(--stroke);color:var(--fg);cursor:pointer}
   /* ---------- Cântări: how often each song was sung, and its categories */
   #v-songs{grid-template-columns:240px minmax(0,1fr);gap:14px}
   #v-songs .panel{display:flex;flex-direction:column;gap:10px;min-height:0}
@@ -206,6 +213,7 @@
 <div class="app">
   <header class="top glass">
     <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
+    <button class="mode-chip" id="modeChip" title="Schimbă ce faci: Pregătesc / Proiectez / Cânt">🗓 Pregătesc ▾</button>
     <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP">Muzică</button><button class="sel">Planificare</button></div>
     <div class="seg views" id="views">
       <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button><button data-v="songs">Cântări</button>
@@ -244,6 +252,7 @@
         <span class="grow"></span><label class="zoomit" title="Mărimea scrisului din program">A<input type="range" id="itZoom" min="80" max="170" step="5" value="100"><b style="font-size:16px">A</b></label><span class="hint" id="total"></span>
         <button id="bDelSvc" class="ghost" title="Șterge serviciul">🗑</button>
       </div>
+      <div class="ready" id="ready"></div>
       <div id="items" class="scroll" style="flex:1"></div>
       <div class="add">
         <input id="songQ" class="grow" placeholder="＋ Adaugă cântare: scrie titlul…" autocomplete="off">
@@ -383,7 +392,7 @@
   const pcoApi = (url, body) => fetch(url, { method: body ? 'POST' : 'GET', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
     .then(async r => { const j = await r.json().catch(() => ({ error: 'Închide și redeschide Betleem pe laptop.' })); if (!r.ok) throw new Error(j.error); return j; });
   $('bPco').onclick = openPco;
-  $('toMusicP').onclick = () => { location.href = '/control.html#muzica'; };
+  $('toMusicP').onclick = () => { location.href = '/control.html?mode=complet#muzica'; };
   if (/[?&]pco=1/.test(location.search)) setTimeout(() => { history.replaceState(null, '', '/planning.html'); openPco(); }, 600);   // came from Live: open the import right away
   async function openPco() {
     let st; try { st = await pcoApi('/api/pco/settings'); } catch (e) { return toast(e.message); }
@@ -455,7 +464,8 @@
   }
 
   // on a phone, "Live" opens the phone view (lyrics, program, slide control) instead of the big operator screen
-  $('toLive').onclick = () => location.href = matchMedia('(max-width: 900px)').matches ? '/live.html' : '/control.html';
+  $('modeChip').onclick = () => location.href = '/control.html?doors=1';
+  $('toLive').onclick = () => location.href = matchMedia('(max-width: 900px)').matches ? '/live.html' : '/control.html?mode=complet';
   document.querySelectorAll('#views button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#views button').forEach(x => x.classList.toggle('sel', x === b));
     document.querySelectorAll('.view').forEach(v => v.classList.toggle('sel', v.id === 'v-' + b.dataset.v));
@@ -575,7 +585,34 @@
 
   // program items
   let dragFrom = -1, saveT;
+  // "Duminica e gata?": what is still missing, at a glance
+  let chordsOf = null;
+  async function renderReady(s) {
+    if (!chordsOf) { chordsOf = new Map((await fetch('/api/songs').then(r => r.json()).catch(() => [])).map(x => [x.id, x.chords])); }
+    const songs = s.items.filter(i => i.kind === 'song');
+    const noKey = songs.filter(i => !i.key), noChords = songs.filter(i => chordsOf.has(i.songId) && !chordsOf.get(i.songId));
+    const noSlides = s.items.filter(i => i.kind === 'media' && !i.slides?.length), noTime = s.items.filter(i => !i.minutes);
+    const team = (s.warnings || []).filter(w => /poziții|două ori|lipsește/.test(w));
+    const checks = [
+      [songs.length > 0, songs.length ? `${songs.length} cântări` : 'Nicio cântare'],
+      [!noKey.length, noKey.length ? `${noKey.length} fără ton` : 'Tonuri puse', noKey[0]],
+      [!noChords.length, noChords.length ? `${noChords.length} fără acorduri` : 'Acorduri', noChords[0]],
+      [!noSlides.length, noSlides.length ? `${noSlides.length} prezentări goale` : 'Prezentări', noSlides[0]],
+      [!noTime.length, noTime.length ? `${noTime.length} fără minute` : 'Minute', noTime[0]],
+      [!team.length, team.length ? team.join(' · ') : 'Echipa completă', 'team'],
+    ];
+    const ok = checks.every(c => c[0]);
+    $('ready').className = 'ready' + (ok ? ' ok' : '');
+    $('ready').innerHTML = `<b>${ok ? '✓ Duminica e gata' : 'Duminica e gata?'}</b>` + checks.map(([y, t], k) => `<span class="${y ? 'y' : 'n'}" data-k="${k}">${y ? '✓' : '•'} ${esc(t)}</span>`).join('');
+    $('ready').querySelectorAll('.n').forEach(el => el.onclick = () => {
+      const c = checks[+el.dataset.k][2];
+      if (c === 'team') return document.querySelector('#team')?.scrollIntoView({ behavior: 'smooth' });
+      const i = s.items.indexOf(c); const row = document.querySelector(`#items .it[data-i="${i}"]`);
+      if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.animate([{ outline: '2px solid #f5b301' }, { outline: '2px solid transparent' }], { duration: 1600 }); }
+    });
+  }
   function renderItems(s) {
+    renderReady(s);
     let t = new Date(s.date), total = 0;
     $('items').innerHTML = s.items.map((it, i) => {
       const at = hhmm(t); t = new Date(t.getTime() + (it.minutes || 0) * 60000); total += it.minutes || 0;
