@@ -312,6 +312,7 @@ function snapshot() {
       stems: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.stems || [] : undefined,
       cues: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.cues || [] : undefined,
       origBpm: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.bpm || 0 : undefined,
+      beatOffset: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.beatOffset || 0 : undefined,
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
     })),
@@ -602,7 +603,7 @@ function handleMessage(ws, m) {
           })).filter(x => x.file && fs.existsSync(path.join(MEDIA_DIR, x.file)));
         } else {
           song.cues = (Array.isArray(m.cues) ? m.cues : []).slice(0, 300)
-            .map(c => ({ t: Math.max(0, Math.round(Number(c.t) * 100) / 100), slide: Math.max(0, Math.floor(Number(c.slide) || 0)) }))
+            .map(c => ({ t: Math.max(0, Math.round(Number(c.t) * 100) / 100), slide: Math.max(0, Math.floor(Number(c.slide) || 0)), ...(c.mark ? { mark: true } : {}) }))
             .filter(c => Number.isFinite(c.t)).sort((a, b) => a.t - b.t);
           song.cueOrder = it.arrangement || song.arrangement || null;   // the order the cues were made with
         }
@@ -619,8 +620,13 @@ function handleMessage(ws, m) {
       }
       case 'setBpm': {                               // tempo for this program (the library keeps its own)
         const it = db.setlist[m.item]; if (!it) break;
-        const b = Math.round(Number(m.bpm));
-        it.bpm = b >= 30 && b <= 300 ? b : undefined;
+        const song = it.kind === 'song' && db.songs.find(x => x.id === it.songId);
+        if ('offset' in m && song) song.beatOffset = Math.max(0, Math.round(Number(m.offset) * 1000) / 1000) || 0;   // where the first beat falls in the tracks
+        if ('bpm' in m) {
+          const b = Math.round(Number(m.bpm));
+          if (song && !song.bpm && b >= 30 && b <= 300) { song.bpm = b; it.bpm = undefined; }   // the first tempo given is the song's own
+          else it.bpm = b >= 30 && b <= 300 && b !== song?.bpm ? b : undefined;
+        }
         save(); break;
       }
       case 'setKey': {                               // key for this program; chords on the stage follow it

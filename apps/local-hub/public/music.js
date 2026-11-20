@@ -125,7 +125,27 @@ export class Metronome {
       }
     }, 25);
   }
-  pause() { this.playing = false; clearInterval(this.timer); this.onBeat(-1); }
+  /** Click locked to the tracks: beats fall on the song's grid (first beat at `offset` s), following tempo changes. */
+  async playWith(track, offset = 0) {
+    this.init(); await this.ctx.resume();
+    this.pause(); this.playing = true; this.synced = true;
+    let lastBeat = null;
+    this.timer = setInterval(() => {
+      const rate = track.rate || 1, tt = track.time, now = this.ctx.currentTime, spb = 60 / this.bpm;   // seconds per beat, in song time
+      if (!track.playing) return;
+      let n = Math.ceil((tt - offset) / spb - 1e-6);
+      for (;; n++) {
+        const tb = offset + n * spb, at = now + (tb - tt) / rate;
+        if (at > now + 0.12) break;
+        if (at < now - 0.005 || n === lastBeat || tb < 0) continue;
+        lastBeat = n;
+        const b = ((n % this.beats) + this.beats) % this.beats;
+        this.click(at, b === 0 && this.beats > 1);
+        setTimeout(() => this.playing && this.onBeat(b), Math.max(0, (at - now) * 1000));
+      }
+    }, 20);
+  }
+  pause() { this.playing = false; this.synced = false; clearInterval(this.timer); this.onBeat(-1); }
   setBpm(b) { this.bpm = Math.min(300, Math.max(30, Math.round(b) || 120)); }
   async output(deviceId) { this.init(); return setOutput(this.ctx, deviceId); }
 }
@@ -155,8 +175,14 @@ export class Multitrack {
     this.masterMeter = this.ctx.createAnalyser(); this.masterMeter.fftSize = 512;
     this.master.connect(this.masterMeter);
     this.routes = this.routes || {}; this.masterOut = this.masterOut || 'main';
+    this.rate = this.rate || 1; this.semis = this.semis || 0;
+    this.pitchReady = this.ctx.audioWorklet ? this.ctx.audioWorklet.addModule('/pitch-worklet.js').then(() => true, () => false) : Promise.resolve(false);
     this.wire();
   }
+  /** tempo: every track faster or slower, without changing the key (rate 1 = original) */
+  setRate(r) { this.rate = Math.min(2, Math.max(0.5, r || 1)); for (const c of this.ch) { c.el.preservesPitch = true; c.el.playbackRate = this.rate; } }
+  /** key: every track up or down in semitones, without changing the tempo */
+  setPitch(semis) { this.semis = Math.max(-12, Math.min(12, Math.round(semis) || 0)); for (const c of this.ch) c.shift?.parameters.get('semitones').setValueAtTime(this.semis, this.ctx.currentTime); }
   // ---- routing to the outputs of an audio interface: every track to the main mix (1-2), one output, or a pair
   /** how many outputs the chosen device has (2 for normal speakers) */
   get outCount() { return this.ctx ? Math.max(2, this.ctx.destination.maxChannelCount || 2) : 2; }
@@ -202,11 +228,16 @@ export class Multitrack {
   async load(stems) {
     this.init(); this.stop(true);
     for (const c of this.ch) { try { c.el.pause(); c.src.disconnect(); } catch {} }
+    const pitch = await this.pitchReady;
     this.ch = stems.map(s => {
       const el = new Audio(); el.preload = 'auto'; el.src = '/media/' + encodeURIComponent(s.file); el.crossOrigin = 'anonymous';
+      el.preservesPitch = true; el.playbackRate = this.rate;
       const src = this.ctx.createMediaElementSource(el), gain = this.ctx.createGain(), pan = this.ctx.createStereoPanner(), meter = this.ctx.createAnalyser();
-      meter.fftSize = 512; src.connect(gain); gain.connect(pan);
-      const c = { ...s, panValue: Number(s.pan) || 0, el, src, gain, pan, meter, solo: false };
+      let shift = null;
+      if (pitch) { shift = new AudioWorkletNode(this.ctx, 'pitch-shift', { outputChannelCount: [2] }); shift.parameters.get('semitones').value = this.semis; src.connect(shift); shift.connect(gain); }
+      else src.connect(gain);
+      meter.fftSize = 512; gain.connect(pan);
+      const c = { ...s, panValue: Number(s.pan) || 0, el, src, gain, pan, meter, shift, solo: false };
       this.routeTrack(c); return c;
     });
     this.apply();

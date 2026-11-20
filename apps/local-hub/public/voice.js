@@ -156,3 +156,32 @@ export async function listenOn({ deviceId, channel = 1, onText, onState = () => 
   }, 80);
   return { channels: n, stop() { alive = false; clearInterval(timer); if (rec) try { rec.stop(); } catch {} stream.getTracks().forEach(t => t.stop()); ctx.close(); } };
 }
+
+/** Whisper on a whole audio file (a cue / guide track): the words with their times. */
+export async function transcribeTimed(url, onState = () => {}) {
+  const model = await whisper(onState);
+  onState({ working: true, note: 'Ascult track-ul…' });
+  const buf = await fetch(url).then(r => r.arrayBuffer());
+  const pcm = (await new OfflineAudioContext(1, 1, 16000).decodeAudioData(buf)).getChannelData(0);
+  const out = await model(pcm, { return_timestamps: true, chunk_length_s: 30, stride_length_s: 5 });
+  onState({ working: false });
+  return (out?.chunks || []).map(c => ({ text: String(c.text || '').trim(), start: c.timestamp?.[0] ?? 0, end: c.timestamp?.[1] ?? null }));
+}
+const CUE_WORDS = [[/\b(pre ?chorus|pre ?refren|pre)\b/, 'pre'], [/\b(chorus|refren|cor)\b/, 'refren'], [/\b(verse|vers|strofa|strofă)\b/, 'strofa'], [/\b(bridge|punte|pod)\b/, 'bridge'],
+  [/\b(intro)\b/, 'intro'], [/\b(outro|ending|end|final)\b/, 'final'], [/\b(tag)\b/, 'tag'], [/\b(instrumental|interlude|turnaround|solo)\b/, 'instrumental']];
+const EN_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, first: 1, second: 2, third: 3 };
+/** "Verse two", "Chorus", "Bridge"… heard in the cue track → [{ t, kind, n }] */
+export function cuesFromWords(chunks) {
+  const out = [];
+  for (const c of chunks) {
+    const t = fold(c.text);
+    for (const [re, kind] of CUE_WORDS) {
+      const m = t.match(re); if (!m) continue;
+      const after = t.slice(m.index + m[0].length).trim().split(' ')[0];
+      const n = Number.isFinite(+after) && +after ? +after : EN_NUM[after] ?? num(after);
+      if (out.length && out.at(-1).kind === kind && out.at(-1).n === (n || null) && c.start - out.at(-1).t < 4) break;   // the same cue said twice
+      out.push({ t: Math.max(0, c.start), kind, n: n || null }); break;
+    }
+  }
+  return out;
+}
