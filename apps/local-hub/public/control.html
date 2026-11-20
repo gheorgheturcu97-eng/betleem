@@ -516,6 +516,17 @@
   .mediabar{display:inline-flex;gap:6px;order:1;align-items:center}
   .mediabar input[type=number]{width:52px;border:0;background:transparent;padding:2px 4px;font-weight:650;text-align:center}
   .mediabar .check{font-size:11.5px;margin-left:4px}
+  .transport{flex-wrap:nowrap!important;gap:6px} .msgbox #msg{width:120px} .msgbox select{max-width:84px}
+  .screens[data-vis=none]{display:none!important} .screens[data-vis=none]+.gut{display:none}
+  @media (max-width:1440px){
+    .msgbox #msg{width:84px} .msgbox select{max-width:66px} .navtabs button{padding:5px 9px} .top{gap:6px}
+    .transport button{padding:6px 10px} #bNext{padding:7px 16px!important} .brand small{display:none}
+  }
+  @media (max-width:1300px){ #role,.brand b+small{display:none} .clr #bClear{display:none} #bKeys{display:none} }
+  .main.noL{grid-template-columns:minmax(0,1fr) 8px var(--colR,340px)} .main.noR{grid-template-columns:var(--colL,270px) 8px minmax(0,1fr)}
+  .main.noL.noR{grid-template-columns:minmax(0,1fr)}
+  .main.noL>#pLeft,.main.noL>.gut[data-g=colL],.main.noR>#pRight,.main.noR>.gut[data-g=colR]{display:none}
+  .layout-t{padding:2px} .layout-t button{padding:3px 8px!important;font-size:13px!important;opacity:.45} .layout-t button.sel{opacity:1}
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
   .pc-list{display:flex;flex-direction:column;gap:6px}
@@ -567,6 +578,7 @@
       <input id="pin" type="password" inputmode="numeric" placeholder="PIN"><button id="bLogin">OK</button>
     </div>
     <button id="bUndo" class="icon" title="Anulează">↶</button><button id="bRedo" class="icon" title="Refă">↷</button>
+    <span class="layout-t seg mini" id="layoutT" title="Arată / ascunde părțile ecranului"><button data-p="L" title="Programul (Ctrl/⌘+1)">▤</button><button data-p="S" title="Ecranele (Ctrl/⌘+2)">▭</button><button data-p="R" title="Cântări, Biblia, Internet (Ctrl/⌘+3)">▥</button></span>
     <button id="bInbox" class="icon inbox-btn" title="📥 Primite: trimite de pe telefon (cod QR) sau prin AirDrop">📥<i id="inboxN" hidden></i></button>
     <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
     <button id="aiTop" class="ai-top" title="Asistentul Betleem">✦</button>
@@ -574,9 +586,9 @@
     <span id="role"></span>
   </header>
 
-  <div class="main">
+  <div class="main" id="mainGrid">
     <!-- left: service order -->
-    <aside class="panel glass">
+    <aside class="panel glass" id="pLeft">
       <div class="panel-head"><h2>Program</h2><select id="progSel" class="grow" title="Alege programul (duminică, Crăciun…)"></select></div>
       <div class="svc">
         <input id="svcTitle" placeholder="Titlul serviciului">
@@ -642,7 +654,7 @@
     <div class="gut v" data-g="colR" title="Trage ca să lărgești · dublu-clic = normal"></div>
 
     <!-- right: library / internet / editor -->
-    <aside class="panel glass">
+    <aside class="panel glass" id="pRight">
       <div class="seg" id="tabs">
         <button data-t="lib" class="sel">Cântări</button>
         <button data-t="bible">Biblia</button>
@@ -1250,13 +1262,30 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('bCount').textContent = left > 0 ? Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : '⏱';
     $('cNow').textContent = left > 0 ? `Acum: ${c.label} ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : '';
   }, 500);
+  // hide the program, the screen previews or the library, to give the slides room; one click brings them back
+  const layout = (() => { try { return JSON.parse(localStorage.getItem('betleem.layout') || '{}'); } catch { return {}; } })();
+  let lastVis = 'both';
+  function applyParts() {
+    $('mainGrid').classList.toggle('noL', !!layout.L); $('mainGrid').classList.toggle('noR', !!layout.R);
+    document.querySelectorAll('#layoutT button').forEach(b => b.classList.toggle('sel', !layout[b.dataset.p]));
+    try { localStorage.setItem('betleem.layout', JSON.stringify(layout)); } catch {}
+  }
+  function togglePart(p) {
+    if (p === 'S') { const v = $('screens').dataset.vis; if (v !== 'none') { lastVis = v; setVis('none'); layout.S = true; } else { setVis(lastVis || 'both'); layout.S = false; } }
+    else layout[p] = !layout[p];
+    applyParts();
+  }
+  document.querySelectorAll('#layoutT button').forEach(b => b.onclick = () => togglePart(b.dataset.p));
+  addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['1', '2', '3'].includes(e.key)) { e.preventDefault(); togglePart({ 1: 'L', 2: 'S', 3: 'R' }[e.key]); } });
   // previews of the two screens: both, one, or hidden (the real screens do not change)
   const setVis = v => {
     $('screens').dataset.vis = v; document.querySelectorAll('#scrVis button').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
     try { localStorage.setItem('betleem.scr', v); } catch {}
+    layout.S = v === 'none'; document.querySelector('#layoutT [data-p=S]').classList.toggle('sel', v !== 'none');
   };
   document.querySelectorAll('#scrVis button').forEach(b => b.onclick = e => { e.stopPropagation(); setVis(b.dataset.v); });
   setVis((() => { try { return localStorage.getItem('betleem.scr') || 'both'; } catch { return 'both'; } })());
+  layout.S = $('screens').dataset.vis === 'none'; applyParts();
   $('bLogo').onclick = () => send({ type: 'logo' });
   $('msg').onkeydown = e => { if (e.key === 'Enter') { send({ type: 'message', value: e.target.value, to: $('msgTo').value }); toast(e.target.value ? 'Mesaj afișat' : 'Mesaj șters'); } };
   $('bLogin').onclick = () => hub.login($('pin').value);
