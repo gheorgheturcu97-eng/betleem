@@ -112,7 +112,7 @@ const controlBase = () => { try { return new URL(control.webContents.getURL()).o
 // ---------------------------------------------------------------- web search window
 function openWebSearch(query) {
   const w = new BrowserWindow({
-    width: 1200, height: 860, title: 'Caută versuri – Betleem', autoHideMenuBar: true,
+    width: 1200, height: 860, title: 'Caută versuri – Echipa Betleem', autoHideMenuBar: true,
     webPreferences: { preload: path.join(APP_DIR, 'preload-web.cjs'), contextIsolation: true, sandbox: true, partition: 'persist:web' },
   });
   w.webContents.setWindowOpenHandler(({ url }) => { w.loadURL(url); return { action: 'deny' }; });  // keep everything in this window
@@ -154,7 +154,7 @@ async function importFreeShow() {
     try { const s = convertShow(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')), f); if (s) songs.push(s); } catch {}
   }
   const added = hub.addSongs(songs);
-  dialog.showMessageBox(control, { title: 'Betleem', type: 'info', message: `Am adăugat ${added} cântări noi din FreeShow.`, detail: added ? '' : 'Toate cântările erau deja în bibliotecă.' });
+  dialog.showMessageBox(control, { title: 'Echipa Betleem', type: 'info', message: `Am adăugat ${added} cântări noi din FreeShow.`, detail: added ? '' : 'Toate cântările erau deja în bibliotecă.' });
 }
 
 // ---------------------------------------------------------------- menu
@@ -169,7 +169,7 @@ function buildMenu() {
   }));
   const page = id => () => control?.webContents.executeJavaScript(`document.getElementById('${id}')?.click()`).catch(() => {});
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    ...(process.platform === 'darwin' ? [{ role: 'appMenu', label: 'Betleem' }] : []),
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu', label: 'Echipa Betleem' }] : []),
     { label: 'Editare', submenu: [   // Ctrl on Windows, ⌘ on Mac; undo/redo are handled by the page so text boxes keep their own undo
       { label: 'Anulează', accelerator: 'CmdOrCtrl+Z', registerAccelerator: false, click: page('bUndo') },
       { label: 'Refă', accelerator: 'CmdOrCtrl+Shift+Z', registerAccelerator: false, click: page('bRedo') },
@@ -191,7 +191,7 @@ function buildMenu() {
       { label: 'Deschide folderul cu date', click: () => shell.openPath(DATA_DIR) },
     ] },
     { label: 'Telefoane', submenu: [
-      { label: 'Adrese și PIN-uri…', click: () => dialog.showMessageBox(control, { title: 'Betleem',
+      { label: 'Adrese și PIN-uri…', click: () => dialog.showMessageBox(control, { title: 'Echipa Betleem',
         type: 'info', message: 'Telefoanele din aceeași rețea Wi-Fi',
         detail: `Deschide în browserul telefonului:\n${lanAddresses().join('\n') || '(nu ești conectat la o rețea)'}\n\nPIN operator: ${settings.pin}\nPIN lider: ${settings.leaderPin}\n\nPIN-urile se pot schimba în ${SETTINGS_FILE}`,
       }) },
@@ -228,7 +228,7 @@ app.whenReady().then(async () => {
   }
 
   control = new BrowserWindow({
-    width: 1440, height: 900, minWidth: 1100, minHeight: 700, title: 'Betleem', backgroundColor: '#121316', show: false,
+    width: 1440, height: 900, minWidth: 1100, minHeight: 700, title: 'Echipa Betleem', backgroundColor: '#121316', show: false,
     icon: path.join(APP_DIR, 'icon.png'),
     webPreferences: { preload: path.join(APP_DIR, 'preload-control.cjs'), contextIsolation: true, sandbox: true },
   });

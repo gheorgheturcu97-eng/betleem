@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="/fonts/inter.css">
 <link rel="stylesheet" href="/fonts/display/display.css">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Betleem – Sală</title>
+<title>Echipa Betleem – Sală</title>
 <style>
   html,body{margin:0;height:100%;background:#000;color:#fff;overflow:hidden;cursor:none;font-family:"Helvetica Neue",Arial,sans-serif}
   #bg,#bg>*{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
@@ -35,7 +35,7 @@
 <div id="bg"></div><div id="shade"></div>
 <div id="text"></div>
 <div id="pic"></div>
-<div id="logo"><img src="/media/logo.png" alt="" onerror="this.remove()"></div>
+<div id="logo"></div>
 <div id="count"><small id="countLabel"></small><b id="countTime"></b></div>
 <div id="black"></div>
 <div id="msg"></div>
@@ -137,6 +137,12 @@
     if (!L.blank && !L.noText) { $('text').innerHTML = html; fit(); }
     $('black').classList.toggle('on', !!L.blank);
     $('logo').style.display = L.logo ? 'flex' : 'none';
+    if (L.logo) {                                    // logo.png from Fundaluri, otherwise the church's own logo
+      const img = $('logo').querySelector('img') || $('logo').appendChild(Object.assign(document.createElement('img'), { alt: '' }));
+      const want = s.church?.logo ? '/media/' + encodeURIComponent(s.church.logo) : '/media/logo.png';
+      if (img.dataset.w !== want) { img.dataset.w = want; img.onerror = () => { if (img.src.endsWith('/media/logo.png')) img.remove(); };
+        fetch('/media/logo.png', { method: 'HEAD' }).then(r => { img.src = r.ok ? '/media/logo.png' : want; }).catch(() => { img.src = want; }); }
+    }
     $('msg').style.display = L.message && L.messageTo !== 'stage' ? 'block' : 'none';
     $('msg').textContent = L.message;
   });

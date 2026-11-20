@@ -12,7 +12,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/fonts/inter.css">
 <link rel="stylesheet" href="/fonts/display/display.css">
-<title>Betleem</title>
+<title>Echipa Betleem</title>
 <style>
   :root{
     --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
@@ -581,6 +581,7 @@
   .mixer .strip .bigplay.sm{width:34px;height:34px;font-size:13px}
   .mixer .strip select{font-size:9.5px!important;padding:2px!important}
   .mixer .strip.master{background:rgba(255,191,47,.07)!important;margin-left:auto}
+  .brand img.blogo{width:28px;height:28px;border-radius:8px;object-fit:contain;background:#fff;flex:none}
   .remote-pill.upd{background:rgba(255,191,47,.18)!important;border-color:rgba(255,191,47,.6)!important;color:#ffe2a3}
   .remote-pill{padding:5px 12px;font-size:12px;font-weight:600;border-radius:999px;background:rgba(61,220,132,.16)!important;border-color:rgba(61,220,132,.5)!important;color:#bff5d6}
   .modal .glass.pcs{width:min(520px,94vw);display:flex;flex-direction:column;gap:10px}
@@ -1019,6 +1020,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function renderChurches() {
     if (!S?.church) return;
     $('churchName').textContent = S.church.name;
+    {                                                // the church's own logo in the corner
+      const st = document.querySelector('#churchBtn .star, #churchBtn .blogo');
+      const want = S.church.logo ? `<img class="blogo" src="/media/${encodeURIComponent(S.church.logo)}" alt="">` : '<span class="star">✦</span>';
+      if (st && st.dataset.k !== (S.church.logo || '-')) { st.outerHTML = want; document.querySelector('#churchBtn .star, #churchBtn .blogo').dataset.k = S.church.logo || '-'; }
+    }
     $('churchCity').textContent = S.church.city || '';
     $('churchList').innerHTML = S.churches.map(c => `<div class="ch ${c.id === S.church.id ? 'on' : ''}" data-id="${c.id}">
       <span class="t"><b>${esc(c.name)}</b><small>${esc(c.city || '')}</small></span>
@@ -1212,7 +1218,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       { l: 'Scurtături de tastatură', run: () => $('bKeys').click() },
       '-',
       { l: 'Caută actualizări', run: async () => { toast('Caut…'); try { const u = await api('/api/update', { method: 'POST', body: '{}' }); toast(u.ready ? `Versiunea ${u.ready} e gata: repornește Betleem` : u.error || 'Ai cea mai nouă versiune (' + u.version + ')'); } catch (err) { toast(err.message); } } },
-      { l: 'Despre Betleem', run: async () => { const u = await fetch('/api/update').then(r => r.json()).catch(() => ({})); toast(`Betleem ${u.version || ''} · gratuit, pentru bisericile din rețeaua Betleem`); } },
+      { l: 'Despre Echipa Betleem', run: async () => { const u = await fetch('/api/update').then(r => r.json()).catch(() => ({})); toast(`Echipa Betleem ${u.version || ''} · gratuit, pentru bisericile din rețeaua Betleem`); } },
     ]],
   ];
   const cmds = MENUS.flatMap(([m, items]) => items.filter(i => i !== '-').map(i => ({ ...i, menu: m })));

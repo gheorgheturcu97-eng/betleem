@@ -275,7 +275,7 @@ function snapshot() {
   return {
     service: db.service,
     display: db.display,
-    church: (({ id, name, city }) => ({ id, name, city }))(activeChurch()),
+    church: (({ id, name, city, logo, vision }) => ({ id, name, city, logo: logo || '', vision: vision || '' }))(activeChurch()),
     churches: db.churches.map(c => ({ id: c.id, name: c.name, city: c.city, locked: !!c.code })),
     setlist: db.setlist.map((it, i) => ({
       ...it,
@@ -669,6 +669,17 @@ function handleMessage(ws, m) {
         save(); break;
       }
       // --- leader only: the service order ---
+      case 'churchProfile': {                        // the team's logo and vision, shown in Planificare and on the screens
+        if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba viziunea și logo-ul.' });
+        const c = activeChurch();
+        if (typeof m.vision === 'string') c.vision = m.vision.trim().slice(0, 2000);
+        if (typeof m.logo === 'string') {
+          const f = path.basename(m.logo);
+          if (f && !(/^logo-echipa-/.test(f) && fs.existsSync(path.join(MEDIA_DIR, f)))) return reply({ type: 'error', error: 'Logo-ul nu s-a încărcat' });
+          c.logo = f;
+        }
+        save(); break;
+      }
       case 'switchChurch': case 'addChurch': case 'editChurch': {
         if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba biserica.' });
         const clean = v => String(v || '').trim().slice(0, 60);
@@ -1160,7 +1171,7 @@ async function handle(req, res) {
       catch (e) { return json(res, 200, { error: e.message }); }
     }
     if (p === '/api/media' && req.method === 'GET') {
-      const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.') && !f.startsWith('pres-'));
+      const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.') && !f.startsWith('pres-') && !f.startsWith('logo-echipa-'));
       return json(res, 200, files);
     }
     if (p === '/api/media' && req.method === 'POST') {      // upload background (raw body, ?name=)
