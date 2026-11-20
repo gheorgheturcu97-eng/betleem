@@ -165,11 +165,17 @@ test('Planning Center songs and plans go into the library and the programs', asy
     { pcoId: 's2', title: 'MARE E DOMNUL', body: 'Strofa 1:\nG      D\nMare e Domnul' },   // already in the library (it has chords already)
     { pcoId: 's3', title: 'Goală', body: '' },
   ]);
-  assert.deepEqual(r, { added: 1, chords: 0, skipped: 1 });
+  assert.deepEqual(r, { added: 1, chords: 0, skipped: 1, replaced: 0 });
   const songs = await fetch('http://localhost:4599/api/songs?q=cantare pco').then(x => x.json());
   const full = await fetch('http://localhost:4599/api/songs/' + songs[0].id).then(x => x.json());
   assert.deepEqual(full.arrangement, ['Verse 1', 'Chorus', 'Chorus'], 'order kept, unknown sections dropped');
   assert.equal(mergePcoSongs([{ pcoId: 's1', title: 'Cântare din PCO', body: '[G]x' }]).added, 0, 'no duplicates on a second import');
+  // "Planning Center has the right version": its words and chords replace ours, ours is kept in song.before
+  const fixed = mergePcoSongs([{ pcoId: 's2', title: 'Mare e Domnul', key: 'A', body: 'VERSE 1\n[A]Mare e [E]Domnul cel corect' }], { prefer: true });
+  assert.equal(fixed.replaced, 1);
+  const mare = (await fetch('http://localhost:4599/api/songs?q=mare e domnul').then(x => x.json()))[0];
+  const m2 = await fetch('http://localhost:4599/api/songs/' + mare.id).then(x => x.json());
+  assert.match(m2.body, /cel corect/); assert.equal(m2.key, 'A'); assert.ok(m2.before?.body, 'the old version is kept');
   const p = mergePcoPlans([{ pcoId: 'p1', title: 'Crăciun PCO', date: '2027-12-25T10:00:00Z',
     items: [{ type: 'song', songId: 's1', key: 'A', seconds: 300, title: '' }, { type: 'item', title: 'Predică', seconds: 2100 }] }]);
   assert.deepEqual(p, { added: 1, updated: 0 });

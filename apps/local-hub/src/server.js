@@ -67,6 +67,29 @@ db.churchData ||= {};
 db.plan ||= defaultPlan();          // planning of the ACTIVE church (others wait in churchData)
 const activeChurch = () => db.churches.find(c => c.id === db.activeChurch) || db.churches[0];
 
+// --- What comes with the app --------------------------------------------------------
+// Backgrounds made for Echipa Betleem (free, original): put in the media folder once; one you delete stays deleted.
+function installBundled() {
+  db.bundledBg ||= [];
+  for (const dir of [path.join(ROOT, 'backgrounds'), process.env.BUILTIN_HUB && path.join(process.env.BUILTIN_HUB, 'backgrounds')].filter(Boolean)) {
+    let files = []; try { files = fs.readdirSync(dir); } catch { continue; }
+    for (const f of files) {
+      if (!/\.(jpg|png|mp4)$/i.test(f) || db.bundledBg.includes(f)) continue;
+      try { if (!fs.existsSync(path.join(MEDIA_DIR, f))) fs.copyFileSync(path.join(dir, f), path.join(MEDIA_DIR, f)); db.bundledBg.push(f); } catch (e) { logError('fundaluri', e); }
+    }
+  }
+  // the church's song library, only inside the installer (never in the public updates): used when this computer has no songs yet
+  if (!db.songs?.length && !db.starterDone) {
+    for (const f of [path.join(ROOT, 'starter', 'library.json'), process.env.BUILTIN_HUB && path.join(process.env.BUILTIN_HUB, 'starter', 'library.json')].filter(Boolean)) {
+      try {
+        const songs = JSON.parse(fs.readFileSync(f, 'utf8')).songs;
+        if (Array.isArray(songs) && songs.length) { db.songs = songs.filter(x => x?.id && x.title && typeof x.body === 'string'); db.starterDone = true; console.log(`Biblioteca de început: ${db.songs.length} cântări`); break; }
+      } catch {}
+    }
+  }
+}
+installBundled();
+
 function hashCode(code, salt = crypto.randomBytes(16).toString('hex')) {
   return { salt, hash: crypto.scryptSync(String(code), salt, 32).toString('hex') };
 }
@@ -839,14 +862,26 @@ function pcoEvent(o) {
 const foldTitle = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
 /** Put Planning Center songs into the library: new ones are added, existing ones only get chords if they had none. */
-export function mergePcoSongs(list) {
-  let added = 0, chords = 0, skipped = 0;
+export function mergePcoSongs(list, { prefer = false } = {}) {
+  let added = 0, chords = 0, skipped = 0, replaced = 0;
   for (const x of list) {
     const body = core.normalizeImported(x.body || '');
     if (!x.title || !body.trim()) { skipped++; continue; }
     const have = db.songs.find(s => s.pcoId === x.pcoId) || db.songs.find(s => foldTitle(s.title) === foldTitle(x.title));
     if (have) {
       have.pcoId = x.pcoId;
+      // "Planning Center has the right version": its words, chords, key and order replace ours (ours stays in song.before)
+      if (prefer && core.hasChords(body) && body.trim() !== have.body.trim()) {
+        have.before = { body: have.body, key: have.key || '', arrangement: have.arrangement, savedAt: new Date().toISOString() };
+        have.body = body; have.key = x.key || core.readMeta(body).key || have.key || '';
+        if (x.bpm >= 30 && x.bpm <= 300) have.bpm = Math.round(x.bpm);
+        const labels = core.parseSong(body).map(sec => sec.label.toLowerCase());
+        const order = (x.sequence || []).map(l => String(l)).filter(l => labels.includes(l.toLowerCase()));
+        const arr = order.length >= 2 ? order : core.autoArrangement(body);
+        if (arr) have.arrangement = arr; else delete have.arrangement;
+        have.source = 'planningcenter'; have.updatedAt = new Date().toISOString(); replaced++;
+        continue;
+      }
       if (!core.hasChords(have.body) && core.hasChords(body)) {
         const r = core.applyChords(have.body, body);
         if (r.match >= 0.6) { have.body = r.body; have.key ||= x.key || core.guessKey(r.body) || ''; have.updatedAt = new Date().toISOString(); chords++; }
@@ -861,7 +896,7 @@ export function mergePcoSongs(list) {
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     added++;
   }
-  return { added, chords, skipped };
+  return { added, chords, skipped, replaced };
 }
 
 /** Planning Center plans become programs of the selected church (the teams stay as they are in Betleem). */
@@ -883,13 +918,13 @@ export function mergePcoPlans(plans) {
   return { added, updated };
 }
 
-async function runPcoImport({ songs, plans, only = null, openId = null }) {
+async function runPcoImport({ songs, plans, only = null, openId = null, prefer = false }) {
   Object.assign(pcoJob, { running: true });
   const res = {};
   try {
     if (songs) {
       const list = await pco.fetchSongs(pcoSettings, { onProgress: e => pcoEvent({ running: true, step: 'cântări', ...e }) });
-      Object.assign(res, mergePcoSongs(list)); save();
+      Object.assign(res, mergePcoSongs(list, { prefer })); save();
     }
     if (plans) {
       pcoEvent({ running: true, step: 'programe', done: 0, total: 0 });
@@ -899,7 +934,7 @@ async function runPcoImport({ songs, plans, only = null, openId = null }) {
       if (missing.length) {
         const extra = [];
         for (const id of missing) extra.push(...(await pco.fetchSongs(pcoSettings, { onlyIds: [id] }).catch(() => [])));
-        mergePcoSongs(extra);
+        mergePcoSongs(extra, { prefer });
       }
       Object.assign(res, { plans: mergePcoPlans(list) });
       const open = openId && db.plan.services.find(x => x.pcoId === openId);
@@ -1020,7 +1055,47 @@ async function ensureFonts(families) {
   return { css: '/userfonts/fonts.css?v=' + Date.now(), got, missing };
 }
 
+// Keynote (on every Mac) or PowerPoint draw the slides exactly as they look there; LibreOffice is next; our own drawing is the last resort.
+const KEYNOTE_SCRIPT = `on run argv
+  set inF to POSIX file (item 1 of argv)
+  set outF to POSIX file (item 2 of argv)
+  tell application "Keynote"
+    set wasOpen to running
+    set d to open inF
+    try
+      export d to outF as PDF with properties {PDF image quality:Best, skipped slides:false}
+    on error
+      export d to outF as PDF
+    end try
+    close d saving no
+  end tell
+end run`;
+const PPT_SCRIPT = `param($in, $out)
+$app = New-Object -ComObject PowerPoint.Application
+$p = $app.Presentations.Open($in, $true, $false, $false)
+$p.SaveAs($out, 32)
+$p.Close()
+if ($app.Presentations.Count -eq 0) { $app.Quit() }`;
+async function nativePdf(file) {
+  const { execFile } = await import('node:child_process');
+  const work = path.join(DATA_DIR, 'conversie'); fs.mkdirSync(work, { recursive: true });
+  const out = path.join(work, 'p-' + Date.now().toString(36) + '.pdf');
+  const run = (cmd, args) => new Promise((ok, no) => execFile(cmd, args, { timeout: 240000, windowsHide: true }, e => e ? no(e) : ok()));
+  try {
+    if (process.platform === 'darwin' && fs.existsSync('/Applications/Keynote.app')) {
+      // Keynote is sandboxed: give it a copy inside Documente/Betleem
+      const src = path.join(work, 'p-' + Date.now().toString(36) + path.extname(file));
+      fs.copyFileSync(file, src);
+      try { await run('osascript', ['-e', KEYNOTE_SCRIPT, src, out]); } finally { fs.rmSync(src, { force: true }); }
+    } else if (process.platform === 'win32') {
+      const ps1 = path.join(work, 'ppt-pdf.ps1'); fs.writeFileSync(ps1, PPT_SCRIPT);
+      await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1, path.resolve(file), out]);
+    } else return null;
+    return fs.existsSync(out) && fs.statSync(out).size > 0 ? out : null;
+  } catch (e) { logError('convert', e); fs.rmSync(out, { force: true }); return null; }
+}
 async function toPdf(file) {
+  if (/\.(pptx?|ppsx?|key|odp)$/i.test(file) && process.env.NATIVE_OFFICE !== '0') { const pdf = await nativePdf(file); if (pdf) return pdf; }
   const office = findOffice(); if (!office) return null;
   const { execFile } = await import('node:child_process');
   const { pathToFileURL } = await import('node:url');
@@ -1144,7 +1219,7 @@ async function handle(req, res) {
         if (pcoJob.running) return json(res, 409, { error: 'Importul rulează deja' });
         const v = JSON.parse((await body(req, 10_000)) || '{}');
         const only = Array.isArray(v.only) ? v.only.slice(0, 40).map(r => ({ typeId: String(r.typeId), id: String(r.id) })).filter(r => /^\d+$/.test(r.typeId) && /^\d+$/.test(r.id)) : null;
-        runPcoImport({ songs: !!v.songs, plans: !!v.plans || !!only?.length, only: only?.length ? only : null, openId: v.open ? String(v.open) : null });
+        runPcoImport({ songs: !!v.songs, plans: !!v.plans || !!only?.length, only: only?.length ? only : null, openId: v.open ? String(v.open) : null, prefer: !!v.prefer });
         return json(res, 200, { started: true });
       }
       return json(res, 404, { error: 'Nu există' });
@@ -1262,14 +1337,17 @@ async function handle(req, res) {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       const name = path.basename(url.searchParams.get('name') || '').replace(/[^\w.\- ]/g, '_');
       if (!SHOW_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Tip de fișier nepermis' });
-      if (!findOffice()) return json(res, 200, { office: false });
+      const native = (process.platform === 'darwin' && fs.existsSync('/Applications/Keynote.app')) || process.platform === 'win32';
+      if (!findOffice() && !native) return json(res, 200, { office: false });
       const buf = await body(req, 300 * 1024 * 1024, true);
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-show-')), src = path.join(dir, name);
       fs.writeFileSync(src, buf);
       try {
         const pdf = await toPdf(src);
-        if (!pdf) return json(res, 200, { office: true, error: 'LibreOffice nu a putut deschide prezentarea' });
-        res.writeHead(200, { 'content-type': 'application/pdf' }); return res.end(fs.readFileSync(pdf));
+        if (!pdf) return json(res, 200, { office: false, error: 'Nu am putut deschide prezentarea cu Keynote / PowerPoint / LibreOffice' });
+        res.writeHead(200, { 'content-type': 'application/pdf' }); const data = fs.readFileSync(pdf);
+        if (pdf.includes(path.sep + 'conversie' + path.sep)) fs.rmSync(pdf, { force: true });
+        return res.end(data);
       } catch (e) { logError('convert', e); return json(res, 200, { office: true, error: 'Conversia a eșuat: ' + e.message }); }
       finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }

@@ -12,7 +12,7 @@ import { execFile } from 'node:child_process';
 const PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAFc9Dhzjmu1rhomiT3Z/s8HOM3dPl+GNA8h9IYHbUz8Y=
 -----END PUBLIC KEY-----`;
-const PARTS = ['src', 'public', 'bibles', 'core-dist', 'package.json', 'node_modules'];
+const PARTS = ['src', 'public', 'bibles', 'backgrounds', 'core-dist', 'package.json', 'node_modules'];   // never starter/: the songs stay in the installer
 
 /** "2026.11.20.2" > "2026.11.20.1" */
 export function newer(a, b) {

@@ -2511,7 +2511,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const html = [tile('', 'Fără fundal', '')].concat(media.filter(m => m !== 'logo.png' && !/\.(mp3|wav|m4a|ogg|aac)$/i.test(m)).map(m => {
       const src = '/media/' + encodeURIComponent(m);
       const inner = /\.(mp4|webm|mov)$/i.test(m) ? `<video src="${src}#t=1" muted preload="metadata"></video>` : `<img src="${src}" loading="lazy" alt="">`;
-      return tile(m, m.replace(/\.[^.]+$/, '').replace(/^\d+\s*/, ''), inner);
+      // the backgrounds that come with the app: "fundal-apus-cald.jpg" → "Apus cald", "miscare-aurora.mp4" → "▶ Aurora"
+      const nice = m.replace(/\.[^.]+$/, '').replace(/^\d+\s*/, '').replace(/^(fundal|miscare)-/, '').replace(/-/g, ' ');
+      const label = (/^miscare-/.test(m) ? '▶ ' : '') + nice.charAt(0).toUpperCase() + nice.slice(1);
+      return tile(m, /^(fundal|miscare)-/.test(m) ? label : m.replace(/\.[^.]+$/, '').replace(/^\d+\s*/, ''), inner);
     })).join('');
     if ($('gallery').dataset.html !== html) { $('gallery').innerHTML = html; $('gallery').dataset.html = html; }
     document.querySelectorAll('#gallery .bg').forEach(el => el.onclick = () => send({ type: 'background', value: el.dataset.n }));

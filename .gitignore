@@ -3,3 +3,4 @@ apps/local-hub/data/
 .DS_Store
 .env
 *.log
+apps/local-hub/starter/

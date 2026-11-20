@@ -352,13 +352,14 @@
       <div class="pco-types" id="pcoTypes"></div>
       <div class="pco-list" id="pcoList"><div class="hint">Caut programele din Planning Center…</div></div>
       <p class="hint">Programele alese intră în <b>${esc($('church').firstChild?.textContent || '')}</b>, cu cântările lor (cu acorduri și ordinea strofelor). Echipele rămân cele din Betleem.</p>
+      <label class="check" style="flex-direction:row;align-items:center;gap:8px;color:var(--fg)"><input type="checkbox" id="pcoPrefer" checked> Cântările din Planning Center sunt cele corecte: înlocuiesc versurile și acordurile din bibliotecă (cele vechi rămân salvate)</label>
       <div id="pcoProg" class="hint"></div>
       <div class="btns" style="flex-wrap:wrap"><button id="pcoOff" class="ghost" title="Șterge legătura de pe acest calculator">Deconectează</button><span style="flex:1"></span>
         <button id="pcoSongs" class="ghost" title="Toate cântările din Planning Center, fără programe">Doar cântările</button><button id="mNo">Închide</button>
         <button id="pcoGo" class="acc" disabled>Importă</button></div>`;
     $('mNo').onclick = () => $('modal').classList.remove('show');
     $('pcoOff').onclick = async () => { await pcoApi('/api/pco/settings', { disconnect: true }); toast('Deconectat'); $('modal').classList.remove('show'); };
-    $('pcoSongs').onclick = async () => { try { await pcoApi('/api/pco/import', { songs: true }); $('pcoProg').textContent = 'Iau cântările…'; } catch (e) { toast(e.message); } };
+    $('pcoSongs').onclick = async () => { try { await pcoApi('/api/pco/import', { songs: true, prefer: $('pcoPrefer').checked }); $('pcoProg').textContent = 'Iau cântările…'; } catch (e) { toast(e.message); } };
     let data = null;
     const fmtD = iso => new Date(iso).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' });
     const picked = () => [...document.querySelectorAll('#pcoList input:checked')].map(i => ({ typeId: i.dataset.t, id: i.value }));
@@ -380,7 +381,7 @@
     }
     $('pcoGo').onclick = async () => {
       const only = picked(); if (!only.length) return;
-      try { await pcoApi('/api/pco/import', { only, open: only.length === 1 ? only[0].id : null }); $('pcoProg').textContent = 'Import…'; $('pcoGo').disabled = true; }
+      try { await pcoApi('/api/pco/import', { only, open: only.length === 1 ? only[0].id : null, prefer: $('pcoPrefer').checked }); $('pcoProg').textContent = 'Import…'; $('pcoGo').disabled = true; }
       catch (e) { toast(e.message); }
     };
     loadPlans();

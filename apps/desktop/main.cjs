@@ -45,6 +45,7 @@ for (const f of fs.existsSync(BG_SRC) ? fs.readdirSync(BG_SRC) : []) {
 }
 
 process.env.DATA_DIR = DATA_DIR;
+process.env.BUILTIN_HUB = BUILTIN_HUB;           // backgrounds and the starter song library that came with the app
 
 // An error must never close Betleem on a Sunday: write it down (Documents\Betleem\erori.log) and keep going.
 function logError(where, err) {

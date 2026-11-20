@@ -148,6 +148,12 @@ const deep = (el, tag) => el ? el.getElementsByTagNameNS('*', tag)[0] || null : 
 const resolve = (dir, target) => { const parts = (dir + '/' + target).split('/'), out = []; for (const p of parts) { if (p === '..') out.pop(); else if (p && p !== '.') out.push(p); } return out.join('/'); };
 
 const themeFonts = { major: 'Inter', minor: 'Inter' };
+// the part of a picture PowerPoint shows (srcRect: what is cut from each side, in 1/1000 %)
+function crop(im, sr) {
+  const v = a => +(sr?.getAttribute(a) || 0) / 100000;
+  const l = v('l'), t = v('t'), r = v('r'), b = v('b');
+  return [im.width * l, im.height * t, Math.max(1, im.width * (1 - l - r)), Math.max(1, im.height * (1 - t - b))];
+}
 async function pptxPages(file, progress) {
   const z = await unzip(file);
   const rels = async path => {
@@ -186,13 +192,37 @@ async function pptxPages(file, progress) {
     themeFonts.minor = deep(deep(theme, 'minorFont'), 'latin')?.getAttribute('typeface') || 'Inter';
     if (cs) for (const c of cs.children) { const v = c.firstElementChild; scheme[c.localName] = '#' + (v?.getAttribute('val') || v?.getAttribute('lastClr') || '000000'); }
     const alias = { bg1: 'lt1', tx1: 'dk1', bg2: 'lt2', tx2: 'dk2' };
+    // a color with PowerPoint's adjustments (lighter/darker, see-through), as css rgba()
     const color = el => {
       if (!el) return null;
-      const s = kid(el, 'srgbClr'), sc = kid(el, 'schemeClr'), sys = kid(el, 'sysClr');
-      if (s) return '#' + s.getAttribute('val');
-      if (sys) return '#' + (sys.getAttribute('lastClr') || '000000');
-      if (sc) { const v = sc.getAttribute('val'); return scheme[alias[v] || v] || null; }
-      return null;
+      const node = kid(el, 'srgbClr') || kid(el, 'schemeClr') || kid(el, 'sysClr') || kid(el, 'prstClr');
+      if (!node) return null;
+      let hex = node.localName === 'srgbClr' ? node.getAttribute('val') : node.localName === 'sysClr' ? (node.getAttribute('lastClr') || '000000')
+        : node.localName === 'schemeClr' ? (scheme[alias[node.getAttribute('val')] || node.getAttribute('val')] || '').slice(1)
+        : ({ white: 'ffffff', black: '000000', red: 'ff0000' })[node.getAttribute('val')] || '000000';
+      if (!/^[0-9a-f]{6}$/i.test(hex)) return null;
+      let [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255), a = 1;
+      for (const m of node.children) {
+        const v = +m.getAttribute('val') / 100000;
+        if (m.localName === 'alpha') a = v;
+        else if (m.localName === 'lumMod') [r, g, b] = [r, g, b].map(c => c * v);
+        else if (m.localName === 'lumOff') [r, g, b] = [r, g, b].map(c => Math.min(1, c + v));
+        else if (m.localName === 'tint') [r, g, b] = [r, g, b].map(c => 1 - (1 - c) * v);
+        else if (m.localName === 'shade') [r, g, b] = [r, g, b].map(c => c * v);
+      }
+      return `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${+a.toFixed(3)})`;
+    };
+    // a fill: plain color, or a gradient across the box
+    const paint = (spPr, [x, y, w, h]) => {
+      const sf = kid(spPr, 'solidFill'); if (sf) return color(sf);
+      const gf = kid(spPr, 'gradFill'); if (!gf) return null;
+      const stops = [...gf.getElementsByTagNameNS('*', 'gs')].map(g => [+g.getAttribute('pos') / 100000, color(g)]).filter(s => s[1]);
+      if (!stops.length) return null;
+      const ang = (+(deep(gf, 'lin')?.getAttribute('ang') || 0) / 60000) * Math.PI / 180, dx = Math.cos(ang) * w / 2, dy = Math.sin(ang) * h / 2;
+      const gr = deep(gf, 'path') ? ctx.createRadialGradient(x + w / 2, y + h / 2, 0, x + w / 2, y + h / 2, Math.max(w, h) / 2)
+        : ctx.createLinearGradient(x + w / 2 - dx, y + h / 2 - dy, x + w / 2 + dx, y + h / 2 + dy);
+      for (const [p, c] of stops) gr.addColorStop(Math.min(1, Math.max(0, p)), c);
+      return gr;
     };
     const c = Object.assign(document.createElement('canvas'), { width: W, height: h });
     const ctx = c.getContext('2d');
@@ -200,9 +230,9 @@ async function pptxPages(file, progress) {
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, h);
     for (const [d, rr] of [[doc, r], [layout, lr], [master, mr]]) {
       const bg = deep(d, 'bg'); if (!bg) continue;
-      const fill = color(deep(bg, 'solidFill')) || color(kid(bg, 'bgRef'));
+      const bgPr = kid(bg, 'bgPr'), fill = (bgPr && paint(bgPr, [0, 0, W, h])) || color(kid(bg, 'bgRef'));
       const blip = deep(bg, 'blip');
-      if (blip) { const im = await image(rr[blip.getAttribute('r:embed')]?.target); if (im) { ctx.drawImage(im, 0, 0, W, h); break; } }
+      if (blip) { const im = await image(rr[blip.getAttribute('r:embed')]?.target); if (im) { ctx.drawImage(im, ...crop(im, deep(bg, 'srcRect')), 0, 0, W, h); break; } }
       if (fill) { ctx.fillStyle = fill; ctx.fillRect(0, 0, W, h); break; }
     }
     // placeholders without a position take it from the layout / master
@@ -214,24 +244,65 @@ async function pptxPages(file, progress) {
       const key = phKey(sp); if (!key) return null;
       return deep(kid(findPh(layout, key), 'spPr'), 'xfrm') || deep(kid(findPh(master, key), 'spPr'), 'xfrm');
     };
-    const box = x => { const o = kid(x, 'off'), e = kid(x, 'ext'); return o && e ? [+o.getAttribute('x') * k, +o.getAttribute('y') * k, +e.getAttribute('cx') * k, +e.getAttribute('cy') * k] : null; };
-    const drawTree = async (tree, rr, skipPh) => {
+    // a box in slide pixels; inside a group the children have their own coordinates, mapped onto the group's box
+    const ID = { ox: 0, oy: 0, sx: 1, sy: 1 };
+    const box = (x, T = ID) => {
+      const o = kid(x, 'off'), e = kid(x, 'ext'); if (!o || !e) return null;
+      return [(T.ox + +o.getAttribute('x') * T.sx) * k, (T.oy + +o.getAttribute('y') * T.sy) * k, +e.getAttribute('cx') * T.sx * k, +e.getAttribute('cy') * T.sy * k];
+    };
+    // draw with the shape's rotation and mirroring
+    const turned = (x, b, fn) => {
+      const rot = +(x?.getAttribute('rot') || 0) / 60000, fh = x?.getAttribute('flipH') === '1', fv = x?.getAttribute('flipV') === '1';
+      if (!rot && !fh && !fv) return fn(b);
+      ctx.save(); ctx.translate(b[0] + b[2] / 2, b[1] + b[3] / 2); ctx.rotate(rot * Math.PI / 180); ctx.scale(fh ? -1 : 1, fv ? -1 : 1);
+      const r = fn([-b[2] / 2, -b[3] / 2, b[2], b[3]]); ctx.restore(); return r;
+    };
+    const shapePath = (spPr, [x, y, w, hh]) => {
+      const g = deep(spPr, 'prstGeom')?.getAttribute('prst') || 'rect';
+      ctx.beginPath();
+      if (g === 'ellipse') ctx.ellipse(x + w / 2, y + hh / 2, Math.abs(w / 2), Math.abs(hh / 2), 0, 0, Math.PI * 2);
+      else if (/roundRect/.test(g) && ctx.roundRect) ctx.roundRect(x, y, w, hh, Math.min(Math.abs(w), Math.abs(hh)) * 0.1667);
+      else ctx.rect(x, y, w, hh);
+    };
+    const outline = (spPr, b) => {
+      const ln = kid(spPr, 'ln'); if (!ln || kid(ln, 'noFill')) return;
+      const c = color(kid(ln, 'solidFill')); if (!c) return;
+      ctx.strokeStyle = c; ctx.lineWidth = Math.max(1, +(ln.getAttribute('w') || 12700) * k); shapePath(spPr, b); ctx.stroke();
+    };
+    const picture = async (el, rr, b, x) => {
+      const bf = kid(el, 'blipFill') || kid(kid(el, 'spPr'), 'blipFill'), blip = deep(bf, 'blip');
+      const im = blip && await image(rr[blip.getAttribute('r:embed')]?.target); if (!im) return;
+      const am = deep(blip, 'alphaModFix'); ctx.save(); if (am) ctx.globalAlpha = +(am.getAttribute('amt') || 100000) / 100000;
+      turned(x, b, bb => { shapePath(kid(el, 'spPr'), bb); ctx.clip(); ctx.drawImage(im, ...crop(im, deep(bf, 'srcRect')), ...bb); });
+      ctx.restore();
+    };
+    const drawTree = async (tree, rr, skipPh, T = ID) => {
       for (const el of tree.children) {
-        if (el.localName === 'grpSp') { await drawTree(el, rr, skipPh); continue; }
+        if (el.localName === 'grpSp') {
+          const gx = deep(kid(el, 'grpSpPr'), 'xfrm'), o = kid(gx, 'off'), e = kid(gx, 'ext'), co = kid(gx, 'chOff'), ce = kid(gx, 'chExt');
+          let G = T;
+          if (o && e && co && ce) {
+            const sx = (+e.getAttribute('cx') / (+ce.getAttribute('cx') || 1)) || 1, sy = (+e.getAttribute('cy') / (+ce.getAttribute('cy') || 1)) || 1;
+            G = { sx: T.sx * sx, sy: T.sy * sy, ox: T.ox + T.sx * (+o.getAttribute('x') - +co.getAttribute('x') * sx), oy: T.oy + T.sy * (+o.getAttribute('y') - +co.getAttribute('y') * sy) };
+          }
+          await drawTree(el, rr, skipPh, G); continue;
+        }
         if (el.localName === 'pic') {
-          const x = xfrmOf(el) || deep(el, 'xfrm'), b = x && box(x); const blip = deep(el, 'blip');
-          const im = blip && await image(rr[blip.getAttribute('r:embed')]?.target);
-          if (b && im) ctx.drawImage(im, ...b);
+          const x = xfrmOf(el) || deep(el, 'xfrm'), b = x && box(x, T);
+          if (b) await picture(el, rr, b, x);
           continue;
         }
-        if (el.localName !== 'sp') continue;
+        if (el.localName !== 'sp' && el.localName !== 'cxnSp') continue;
         if (skipPh && phKey(el)) continue;                           // the layout's empty "Click to add title" boxes
-        const x = xfrmOf(el); const b = x && box(x); if (!b) continue;
-        const spPr = kid(el, 'spPr'), fill = color(kid(spPr, 'solidFill'));
-        if (fill) { ctx.fillStyle = fill; ctx.fillRect(...b); }
-        const blip = deep(kid(spPr, 'blipFill'), 'blip');
-        if (blip) { const im = await image(rr[blip.getAttribute('r:embed')]?.target); if (im) ctx.drawImage(im, ...b); }
-        const tx = kid(el, 'txBody'); if (tx) drawText(ctx, tx, b, phKey(el), color, k);
+        const x = xfrmOf(el); const b = x && box(x, T); if (!b) continue;
+        const spPr = kid(el, 'spPr');
+        await turned(x, b, async bb => {
+          const fill = paint(spPr, bb);
+          if (fill) { ctx.fillStyle = fill; shapePath(spPr, bb); ctx.fill(); }
+          outline(spPr, bb);
+        });
+        if (deep(kid(spPr, 'blipFill'), 'blip')) await picture(el, rr, b, x);
+        const tx = kid(el, 'txBody'); if (tx) turned(x, b, bb => drawText(ctx, tx, bb, phKey(el), color, k, master));
       }
     };
     if (master) await drawTree(deep(master, 'spTree'), mr, true);
@@ -242,7 +313,12 @@ async function pptxPages(file, progress) {
   return pages;
 }
 
-function drawText(ctx, tx, [x, y, w, h], ph, color, k) {
+function drawText(ctx, tx, [x, y, w, h], ph, color, k, master) {
+  // text without its own color takes the master's: title style or body style
+  const style = deep(deep(master, 'txStyles'), ph && /title/i.test(ph.type) ? 'titleStyle' : ph ? 'bodyStyle' : 'otherStyle');
+  const lst = kid(tx, 'lstStyle');
+  const baseColor = color(deep(deep(lst, 'defRPr'), 'solidFill')) || color(deep(deep(style, 'defRPr'), 'solidFill')) || '#000';
+  const baseSize = +(deep(lst, 'defRPr')?.getAttribute('sz') || deep(style, 'defRPr')?.getAttribute('sz') || 0) / 100;
   const body = kid(tx, 'bodyPr');
   const ins = a => (body?.hasAttribute(a) ? +body.getAttribute(a) : a.startsWith('l') || a.startsWith('r') ? 91440 : 45720) * k;
   const L = x + ins('lIns'), T = y + ins('tIns'), Wd = w - ins('lIns') - ins('rIns'), Ht = h - ins('tIns') - ins('bIns');
@@ -256,20 +332,21 @@ function drawText(ctx, tx, [x, y, w, h], ph, color, k) {
     for (const r of p.children) {
       if (r.localName === 'br') { runs.push({ br: true }); continue; }
       if (r.localName !== 'r' && r.localName !== 'fld') continue;
-      const rp = kid(r, 'rPr'), sz = +(rp?.getAttribute('sz') || 0) / 100 || (title ? 40 : 24);
+      const rp = kid(r, 'rPr'), sz = +(rp?.getAttribute('sz') || 0) / 100 || +(kid(pPr, 'defRPr')?.getAttribute('sz') || 0) / 100 || baseSize || (title ? 40 : 24);
       size = Math.max(size, sz);
       let face = deep(rp, 'latin')?.getAttribute('typeface') || (title ? '+mj-lt' : '+mn-lt');
       if (face.startsWith('+mj')) face = themeFonts.major; else if (face.startsWith('+mn')) face = themeFonts.minor;
       runs.push({ text: kid(r, 't')?.textContent || '', sz, bold: rp?.getAttribute('b') === '1', italic: rp?.getAttribute('i') === '1',
-        color: color(kid(rp, 'solidFill')) || '#000', face: face || 'Inter' });
+        color: color(kid(rp, 'solidFill')) || color(deep(kid(pPr, 'defRPr'), 'solidFill')) || baseColor, face: face || 'Inter' });
     }
-    lines.push({ runs, size: size || (title ? 40 : 24), align });
+    const lnPct = +(deep(deep(pPr, 'lnSpc'), 'spcPct')?.getAttribute('val') || 100000) / 100000;
+    lines.push({ runs, size: size || baseSize || (title ? 40 : 24), align, ln: lnPct });
   }
   // wrap words into rows that fit the box
   const rows = [];
   for (const l of lines) {
-    let row = { parts: [], width: 0, size: l.size, align: l.align };
-    const push = () => { rows.push(row); row = { parts: [], width: 0, size: l.size, align: l.align }; };
+    let row = { parts: [], width: 0, size: l.size, align: l.align, ln: l.ln };
+    const push = () => { rows.push(row); row = { parts: [], width: 0, size: l.size, align: l.align, ln: l.ln }; };
     if (!l.runs.length) { push(); continue; }
     for (const r of l.runs) {
       if (r.br) { push(); continue; }
@@ -285,7 +362,7 @@ function drawText(ctx, tx, [x, y, w, h], ph, color, k) {
     }
     push();
   }
-  const rowH = r => Math.max(...r.parts.map(p => p.px), r.size * scale * 12700 * k) * 1.2;
+  const rowH = r => Math.max(...r.parts.map(p => p.px), r.size * scale * 12700 * k) * 1.2 * (r.ln || 1);
   const total = rows.reduce((a, r) => a + rowH(r), 0);
   const anchor = body?.getAttribute('anchor') || (title ? 'ctr' : 't');
   let yy = anchor === 'ctr' ? T + (Ht - total) / 2 : anchor === 'b' ? T + Ht - total : T;
