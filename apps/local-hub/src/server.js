@@ -19,6 +19,7 @@ import { addChordsToSongs } from './chords.js';
 import { runAssistant } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings } from './plan.js';
 import * as pco from './pco.js';
+import { createUpdater, newer } from './updater.js';
 import { bookName, formatRef, parseRef, BOOKS } from '../public/bibleref.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1111,6 +1112,16 @@ async function handle(req, res) {
     }
     if (p === '/api/bibles' && req.method === 'GET') return json(res, 200, bibleList());
     if (p === '/api/peers' && req.method === 'GET') return json(res, 200, peerList());
+    if (p === '/api/update' && req.method === 'GET') return json(res, 200, { ...updater.state, repo: UPDATE_REPO, auto: UPDATES });
+    if (p === '/api/update' && req.method === 'POST') {       // "Caută acum"
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      await updater.fromGithub(); return json(res, 200, updater.state);
+    }
+    if (p === '/api/update/manifest' && req.method === 'GET') { const pk = updater.packageForPeers(); return pk ? json(res, 200, pk.manifest) : json(res, 404, { error: 'nu am' }); }
+    if (p === '/api/update/package' && req.method === 'GET') {  // signed: the other computer checks it before using it
+      const pk = updater.packageForPeers(); if (!pk || !fs.existsSync(pk.file)) return json(res, 404, { error: 'nu am' });
+      res.writeHead(200, { 'content-type': 'application/gzip' }); return fs.createReadStream(pk.file).pipe(res);
+    }
     if (p === '/api/send' && req.method === 'POST') return handleSend(req, res, url);
     if (p === '/api/tunnel' && req.method === 'GET') return json(res, 200, tunnelState());
     if (p === '/api/tunnel' && req.method === 'POST') {
@@ -1261,13 +1272,14 @@ if (process.env.DISCOVERY !== '0') (async () => {
       try {
         const m = JSON.parse(buf);
         if (m.app !== 'betleem' || m.id === instanceId) return;
-        peers.set(m.id, { name: String(m.name).slice(0, 60), church: String(m.church || '').slice(0, 60), address: rinfo.address, port: Number(m.port) || 4545, seen: Date.now() });
+        peers.set(m.id, { name: String(m.name).slice(0, 60), church: String(m.church || '').slice(0, 60), address: rinfo.address, port: Number(m.port) || 4545, seen: Date.now(), version: String(m.version || '') });
+        if (UPDATES && newer(m.version, updater.state.ready || VERSION)) updater.fromPeer(`http://${rinfo.address}:${Number(m.port) || 4545}`, String(m.version));
       } catch {}
     });
     sock.bind(DISCOVERY_PORT, () => {
       try { sock.setBroadcast(true); } catch {}
       const beat = () => {
-        const msg = Buffer.from(JSON.stringify({ app: 'betleem', id: instanceId, name: os.hostname().replace(/\.local$/, ''), church: activeChurch()?.name || '', port: PORT }));
+        const msg = Buffer.from(JSON.stringify({ app: 'betleem', id: instanceId, name: os.hostname().replace(/\.local$/, ''), church: activeChurch()?.name || '', port: PORT, version: updater.state.ready || VERSION }));
         // the broadcast address of every network this computer is on (hotspots do not always pass 255.255.255.255)
         const targets = new Set(['255.255.255.255']);
         for (const i of lanIPs()) {
@@ -1281,6 +1293,14 @@ if (process.env.DISCOVERY !== '0') (async () => {
     sock.unref();
   } catch (e) { logError('găsirea altor calculatoare', e); }
 })();
+// --- Updates: from GitHub, or from another Betleem in the network that already has them (signed, see updater.js)
+const VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; } catch { return '0'; } })();
+const UPDATE_REPO = (() => { try { return JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'update-sursa.json'), 'utf8')).repo; } catch { return process.env.UPDATE_REPO || 'gheorgheturcu97-eng/betleem'; } })();
+const updater = createUpdater({ root: ROOT, dataDir: DATA_DIR, version: VERSION, repo: UPDATE_REPO, log: logError,
+  onState: st => { const msg = JSON.stringify({ type: 'update', ...st }); for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role !== 'viewer') ws.send(msg); } });
+const UPDATES = !!process.versions.electron && process.env.UPDATES !== '0';
+if (UPDATES) { setTimeout(() => updater.fromGithub(), 30000).unref(); setInterval(() => updater.fromGithub(), 6 * 3600 * 1000).unref(); }
+
 function peerList() {
   const now = Date.now();
   return [...peers.values()].filter(p => now - p.seen < 12000).sort((a, b) => a.name.localeCompare(b.name))
