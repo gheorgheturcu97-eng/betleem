@@ -661,6 +661,41 @@
   .struct .sa{all:unset;cursor:pointer;color:var(--mute);font-size:12px;padding:0 5px;border-radius:6px} .struct .sa:hover{color:var(--fg);background:rgba(255,255,255,.08)}
   body.mode-cant .transport,body.mode-cant .navtabs{display:none!important}
   body.mode-cant .app,body.mode-proiectez .app{grid-template-rows:auto 1fr!important;padding-top:10px!important}   /* no menu bar: the work area takes the whole height */
+  /* ---------- right-click menu, drop hints, the element clicked last */
+  .ctx{position:fixed;z-index:200;display:none;flex-direction:column;min-width:230px;padding:5px!important;background:rgba(30,32,40,.92)!important;border-radius:12px!important;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+  .ctx button{display:flex;align-items:center;gap:18px;justify-content:space-between;text-align:left;background:transparent!important;border:0!important;box-shadow:none!important;padding:6px 10px!important;border-radius:7px;font-size:13px;color:var(--fg);white-space:nowrap}
+  .ctx button:hover:not(:disabled){background:var(--acc)!important;color:var(--acc-ink,#1a1200)} .ctx button:disabled{opacity:.35}
+  .ctx kbd{font:500 11.5px ui-monospace,Menlo,monospace;color:var(--mute)} .ctx button:hover kbd{color:inherit}
+  .ctx hr{border:0;border-top:1px solid var(--stroke);margin:4px 6px}
+  .picked-any{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+  .drop-hint{position:fixed;z-index:210;pointer-events:none;padding:8px 14px;border-radius:999px;background:var(--acc);color:#1a1200;font-weight:700;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.4)} .drop-hint[hidden]{display:none}
+  .drop-on{outline:2px dashed var(--acc)!important;outline-offset:3px;border-radius:12px}
+  /* ---------- MD&TRACK: a nicer face, a digital console */
+  #musicView,#musicView button,#musicView select,#musicView input,.routing{font-family:"Figtree","Inter",system-ui,sans-serif}
+  #musicView .mbar .song b{font-family:"Montserrat","Figtree",sans-serif;font-weight:700;letter-spacing:-.01em}
+  #musicView .panel-head h2{font-family:"Montserrat",sans-serif;font-weight:700;letter-spacing:.02em}
+  .mixer{background:linear-gradient(180deg,#17191d,#0f1013)!important}
+  .mixer .strip{background:linear-gradient(180deg,#25282e 0%,#1d2025 30%,#1a1c20 100%)!important;border-top:0!important;border-radius:4px!important;box-shadow:inset 1px 0 0 rgba(255,255,255,.04),inset -1px 0 0 rgba(0,0,0,.6)!important}
+  .mixer .strip .scr{order:-1;margin:-6px -5px 2px;padding:5px 4px 4px;background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 85%,#fff 10%),color-mix(in srgb,var(--tc) 70%,#000));color:#0b0c10;text-align:center;
+    font:800 10.5px "Figtree",sans-serif;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 0 14px color-mix(in srgb,var(--tc) 45%,transparent),inset 0 -1px 0 rgba(0,0,0,.4)}
+  .mixer .strip .scr small{display:block;font:700 9px ui-monospace,Menlo,monospace;opacity:.75;letter-spacing:0}
+  .mixer .strip .nm{display:none}
+  .fd .cap{background:linear-gradient(180deg,#3b3e45 0%,#17181b 48%,#0d0e10 52%,#2a2c31 100%)!important;box-shadow:0 4px 8px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.25)!important;height:26px!important;margin-bottom:-13px!important;border-radius:2px!important}
+  .fd .cap::after{background:#fff!important;box-shadow:none!important;height:2px!important;left:2px!important;right:2px!important}
+  .fd .slot{width:3px!important;background:#000!important}
+  .mixer .strip .lcd{background:#050607!important;color:#9cf;border:1px solid #2a2d33;font-family:ui-monospace,Menlo,monospace}
+  .mixer .strip .meter{width:8px!important;background:#000!important}
+  .mixer .strip .bt button{background:linear-gradient(180deg,#30333a,#24262b)!important}
+  .mixer .strip .bt .m.on{background:linear-gradient(180deg,#ffd84a,#e8b600)!important;box-shadow:0 0 10px rgba(255,216,74,.6)!important}
+  .mixer .strip .bt .s.on{background:linear-gradient(180deg,#5fe08a,#2fb85f)!important;box-shadow:0 0 10px rgba(95,224,138,.6)!important}
+  .mixer .strip.mic{--tc:#ff6b9d}
+  .modal .glass.routing{width:min(760px,95vw);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:10px}
+  .rt-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .rt-row select{width:auto;min-width:200px;flex:1} .rt-l{width:190px;color:var(--mute);font-size:13px}
+  .rt-n{font-size:12px;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.08)}
+  .rt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px} .rt-grid label{display:flex!important;flex-direction:row!important;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.05);font-size:13px}
+  .rt-grid label i{width:10px;height:10px;border-radius:3px;background:var(--tc);flex:none} .rt-grid label b{flex:1;font-weight:600} .rt-grid select{width:auto;min-width:120px;font-size:12.5px}
+  .rt-meter{width:120px;height:8px;border-radius:4px;background:#000;overflow:hidden} .rt-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22c55e,#facc15 70%,#ef4444)}
+  #mVoice.md{box-shadow:0 0 0 2px #ff6b9d}
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
   .doors{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(1200px 700px at 30% 20%,rgba(255,191,47,.14),transparent 60%),radial-gradient(900px 600px at 80% 90%,rgba(90,160,255,.14),transparent 60%),rgba(8,9,12,.82);backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4)}
   .doors[hidden]{display:none}
@@ -747,7 +782,7 @@
     </button>
     <span id="dot" title="Conexiune"></span>
     <button id="modeChip" class="mode-chip" title="Schimbă ce faci: Pregătesc / Proiectez / Cânt"></button>
-    <div class="seg navtabs"><button class="sel" id="toLive">Live</button><button id="toMusic" title="Ton, tempo, metronom, pad și track pentru trupă">Muzică <i class="playing-dot"></i></button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button><button id="bLook" title="Ecranele: sală și scenă — aspect, ce apare pe ele, timer">Ecrane</button></div>
+    <div class="seg navtabs"><button class="sel" id="toLive">Live</button><button id="toMusic" title="MD&TRACK: track-uri, ton, tempo, metronom, pad și mixer pentru trupă">MD&amp;TRACK <i class="playing-dot"></i></button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button><button id="bLook" title="Ecranele: sală și scenă — aspect, ce apare pe ele, timer">Ecrane</button></div>
     <div class="transport">
       <button id="bPrev" class="icon" title="Înapoi (←)">◀</button>
       <button id="bNext" class="acc" title="Înainte (Spațiu / →)">Înainte ▶</button>
@@ -940,7 +975,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Învață cue-urile</button>
         <label class="check"><input type="checkbox" id="tlAuto" checked> Versurile merg singure după track</label>
         <label class="btn pill" title="Unul sau mai multe fișiere audio: click, guide, tobe, bas, clape…">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*" multiple hidden></label>
-        <button id="audioOut" class="pill" title="Unde se aude fiecare (căști, mixer)">🔈 Unde se aude fiecare</button>
+        <button id="audioOut" class="pill" title="Ce iese pe fiecare ieșire a plăcii de sunet; microfonul MD">🎛 Rutare audio și microfon MD</button>
       </div>
       <div class="voice-say" id="voiceSay" hidden></div>
       <div class="glass arrange" id="lane">
@@ -1006,7 +1041,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <div class="door-row">
       <button class="door" data-m="pregatesc"><i>🗓</i><b>Pregătesc</b><span>Programul serviciului, cântările, echipele, categoriile. Pentru lideri, în timpul săptămânii.</span></button>
       <button class="door acc" data-m="proiectez"><i>▶</i><b>Proiectez</b><span>Duminică, la proiector: versurile, prezentările și fundalurile. Doar butoanele de care ai nevoie.</span></button>
-      <button class="door" data-m="cant"><i>♫</i><b>Cânt</b><span>Pentru trupă: acorduri, ton, tempo, track-uri, metronom și codul pentru telefoane.</span></button>
+      <button class="door" data-m="cant"><i>♫</i><b>MD&amp;TRACK</b><span>Pentru trupă și MD: track-uri, ton, tempo, structura cântărilor, mixer, rutare și comenzi vocale.</span></button>
     </div>
     <button class="door-all" data-m="complet">Toate funcțiile (pentru operatori avansați)</button>
     <label class="door-keep"><input type="checkbox" id="doorKeep" checked> Ține minte alegerea pe acest calculator</label>
@@ -1037,8 +1072,22 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="pcs"><i>🖥</i><b>Mai multe calculatoare</b><span>Versuri pe unul, track-uri pe altul</span></button>
     <button data-s="bible"><i>📖</i><b>Traduceri Biblie</b><span>Adaugă EDCR, NTR, NIV…</span></button>
     <button data-s="phones"><i>📱</i><b>Telefoane</b><span>Codul QR pentru muzicieni și echipă</span></button>
-    <button data-s="audio"><i>🔈</i><b>Sunet</b><span>Unde se aud click-ul, track-urile, pad-ul</span></button>
+    <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
   </div>
+</div></div>
+<div class="modal" id="routeModal"><div class="glass routing">
+  <div class="look-head"><b>🎛 Rutare audio</b><span class="hint">ce iese pe fiecare ieșire a plăcii de sunet</span><span class="grow"></span><button id="rtClose" class="icon" title="Închide">✕</button></div>
+  <div class="rt-row"><span class="rt-l">Placa de sunet (ieșiri)</span><select id="rtDev"></select><span class="rt-n" id="rtN"></span><button id="rtScan" class="mini" title="Arată numele tuturor plăcilor conectate">↻ Caută</button></div>
+  <div class="rt-grid" id="rtGrid"></div>
+  <div class="rt-row"><span class="rt-l">Click (metronomul aplicației)</span><select id="rtMet"></select></div>
+  <div class="rt-row"><span class="rt-l">Pad</span><select id="rtPad"></select></div>
+  <div class="sep" style="height:1px;background:var(--stroke);margin:4px 0"></div>
+  <div class="look-head"><b>🎙 Microfonul MD</b><span class="hint">o intrare a plăcii (de ex. microfonul cu senzor de apropiere)</span></div>
+  <div class="rt-row"><span class="rt-l">Intrarea</span><select id="rtIn"></select><span class="hint">canalul</span><input id="rtInCh" type="number" min="1" max="64" value="1" style="width:64px"><span class="rt-meter"><i id="rtLvl"></i></span></div>
+  <div class="rt-row"><span class="rt-l">Se aude în căști pe</span><select id="rtTalk"></select><label class="check"><input type="checkbox" id="rtTalkOn"> Pornit</label></div>
+  <div class="rt-row"><span class="rt-l">Comenzi vocale</span><label class="check"><input type="checkbox" id="rtVoiceOn"> Ascultă comenzile din acest microfon (ex. „refrenul”, „strofa doi”, „mut la tobe”)</label></div>
+  <div class="rt-row"><span class="rt-l">Sensibilitate</span><input type="range" id="rtSens" min="1" max="10" value="4" style="flex:1"><span class="hint" id="rtVState"></span></div>
+  <p class="hint">Ieșirile 1-2 sunt mixul principal. Pune click-ul și guide-ul pe ieșiri separate (de ex. 3 și 4) ca să meargă doar în căștile trupei. Pe Mac, placa trebuie aleasă și în Audio MIDI Setup cu toate canalele.</p>
 </div></div>
 <div class="modal" id="phonesModal"><div class="glass phones">
   <div class="look-head"><b>📱 Pe telefon</b><span class="grow"></span><button id="phClose" class="icon" title="Închide">✕</button></div>
@@ -1172,7 +1221,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   import { backdrop } from '/glass.js';
   import * as BR from '/bibleref.js';
   import { connect, esc, paintBackground } from '/client.js';
-  import { Pad, Metronome, Multitrack, PAD_SOUNDS, tapper, outputs } from '/music.js';
+  import { Pad, Metronome, Multitrack, PAD_SOUNDS, tapper, outputs, inputs } from '/music.js';
   import { stripChords, sectionColor } from '/core/song.js';
   const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', reading: 'citire', bible: 'biblie' };
   const $ = id => document.getElementById(id);
@@ -1322,7 +1371,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       const kind = IMG.test(f.name) ? '🖼' : VID.test(f.name) ? '🎬' : AUD.test(f.name) ? '🎵' : SHOW.test(f.name) ? '📊' : '📄';
       const acts = (IMG.test(f.name) || VID.test(f.name) ? `<button class="mini" data-a="bg">Fundal</button><button class="mini acc" data-a="prog">În program</button>`
         : SHOW.test(f.name) ? `<button class="mini acc" data-a="show">În program</button>`
-        : AUD.test(f.name) ? `<button class="mini" data-a="keep" title="În folderul media, de unde îl pui ca track la Muzică">Păstrează</button>` : '')
+        : AUD.test(f.name) ? `<button class="mini" data-a="keep" title="În folderul media, de unde îl pui ca track la MD&TRACK">Păstrează</button>` : '')
         + `<button class="icon" data-a="del" title="Șterge">🗑</button>`;
       const thumb = IMG.test(f.name) ? `<img src="/api/inbox/file?name=${encodeURIComponent(f.name)}&pin=${encodeURIComponent(hub.pin())}" alt="">` : `<span class="k">${kind}</span>`;
       return `<div class="in-f" data-n="${esc(f.name)}">${thumb}<div class="t"><b>${esc(f.name)}</b><small>${sizeTxt(f.size)}</small></div><div class="acts">${acts}</div></div>`;
@@ -1426,7 +1475,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     ]],
     ['Vizualizare', [
       { l: 'Live', chk: () => !$('toLive').classList.contains('x') && $('toLive').classList.contains('sel'), run: () => $('toLive').click() },
-      { l: 'Muzică (track-uri, pad, metronom)', run: () => $('toMusic').click() },
+      { l: 'MD&TRACK (track-uri, pad, metronom, mixer)', run: () => $('toMusic').click() },
       { l: 'Planificare', run: () => $('toPlan').click() },
       '-',
       { l: 'Programul', k: 'Mod+1', chk: () => !layout.L, run: () => togglePart('L') },
@@ -1671,14 +1720,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
     return c.toDataURL('image/jpeg', 0.85).split(',')[1];
   }
-  $('aiFile').onchange = async e => {
-    for (const f of [...e.target.files]) {
+  $('aiFile').onchange = e => { const f = [...e.target.files]; e.target.value = ''; aiAddFiles(f); };
+  async function aiAddFiles(list) {
+    for (const f of list) {
       try {
         if (/^image\//.test(f.type)) aiAttach.push({ name: f.name, image: true, type: 'image/jpeg', data: await shrinkImage(f) });
         else aiAttach.push({ name: f.name, text: (await fileText(f)).slice(0, 25000) });
       } catch (err) { toast('Nu pot citi ' + f.name + ': ' + err.message); }
     }
-    e.target.value = ''; renderAiFiles();
+    renderAiFiles();
     if (!$('aiText').value.trim()) $('aiText').value = 'Fă programul după lista atașată: caută cântările în bibliotecă, pune-le în ordine, cu tonul și structura scrise acolo.';
     $('aiText').focus();
   };
@@ -2196,6 +2246,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const prefs = (() => { try { return JSON.parse(localStorage.getItem('betleem.music') || '{}'); } catch { return {}; } })();
   const savePrefs = () => { try { localStorage.setItem('betleem.music', JSON.stringify(prefs)); } catch {} };
   pad.vol = prefs.padVol ?? 0.6; met.vol = prefs.metVol ?? 0.7; pad.sound = prefs.padSound || 'cald'; met.beats = prefs.beats || 4; mt.vol = prefs.mtVol ?? 1;
+  mt.setRoutes(prefs.routes || {}, prefs.masterOut || 'main');
   $('beats').value = String(met.beats);
   const PAD_KEYS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
   let mSel = -1, padKeyManual = '';
@@ -2207,7 +2258,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('toMusic').onclick = () => showView('music'); $('toLive').onclick = () => showView('live');
 
   // ---- the three doors: Pregătesc (planning) / Proiectez (Sunday, simple) / Cânt (the band) / complet (everything)
-  const MODES = { proiectez: '▶ Proiectez', cant: '♫ Cânt', complet: '✦ Toate funcțiile', pregatesc: '🗓 Pregătesc' };
+  const MODES = { proiectez: '▶ Proiectez', cant: '♫ MD&TRACK', complet: '✦ Toate funcțiile', pregatesc: '🗓 Pregătesc' };
   const getMode = () => { try { return localStorage.getItem('betleem.mode') || ''; } catch { return ''; } };
   function setMode(m, keep = true) {
     if (m === 'pregatesc') { if (keep) try { localStorage.setItem('betleem.mode', m); } catch {} location.href = '/planning.html'; return; }
@@ -2414,6 +2465,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       const text = await V.listen({ onState: st => { $('mVoice').classList.toggle('on', !!st.listening); $('mVoice').classList.toggle('busy', !!(st.loading || st.working));
         say(st.listening ? '🎙 ' + (st.text || 'Te ascult…') : st.note || ''); } });
       if (!text) return say('');
+      await runVoiceText(text);
+    } catch (e) { $('voiceSay').hidden = true; toast(e.message); $('mVoice').classList.remove('on', 'busy'); }
+  }
+  async function runVoiceText(text) {
+    const V = await import('/voice.js');
+    const say = t => { $('voiceSay').hidden = !t; $('voiceSay').textContent = t || ''; };
+    try {
       const c = V.parseMusicCommand(text);
       say('🎙 „' + text + '”'); setTimeout(() => say(''), 2500);
       if (!c) { $('aiText').value = text; $('aiBtn').click(); return aiSend(); }       // not a music command: the assistant takes it
@@ -2593,6 +2651,64 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); e.stopImmediatePropagation(); learnNext(); }
   }, true);
 
+  // ---- 🎛 routing: every track to an output of the audio interface; the MD's mic in the in-ears and as voice commands
+  const outName = o => o === 'main' ? 'OUT 1-2' : /^m(\d+)$/.test(o) ? 'OUT ' + o.slice(1) : /^s(\d+)$/.test(o) ? `OUT ${+o.slice(1)}-${+o.slice(1) + 1}` : o;
+  const outOptions = (n, cur, withNone) => (withNone ? '<option value="">— nicăieri</option>' : '') + [['main', 'Principal 1-2'],
+    ...Array.from({ length: Math.floor(n / 2) - 1 }, (_, k) => ['s' + (3 + 2 * k), `Stereo ${3 + 2 * k}-${4 + 2 * k}`]),
+    ...Array.from({ length: n }, (_, k) => ['m' + (k + 1), `Mono ${k + 1}`])].map(([v, l]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${l}</option>`).join('');
+  let mdVoice = null;
+  async function openRouting() {
+    $('routeModal').classList.add('show'); mt.init();
+    const outs = await outputs(), ins = await inputs();
+    const devOpt = (list, cur) => list.map((d, k) => `<option value="${esc(d.deviceId)}" ${d.deviceId === cur ? 'selected' : ''}>${esc(d.label || (d.kind === 'audioinput' ? 'Intrare ' : 'Ieșire ') + (k + 1))}</option>`).join('');
+    $('rtDev').innerHTML = devOpt(outs, prefs.trDev || 'default'); $('rtMet').innerHTML = devOpt(outs, prefs.metDev || 'default'); $('rtPad').innerHTML = devOpt(outs, prefs.padDev || 'default');
+    $('rtIn').innerHTML = devOpt(ins, prefs.mdIn || 'default'); $('rtInCh').value = prefs.mdCh || 1; $('rtSens').value = prefs.mdSens || 4;
+    $('rtTalkOn').checked = !!mt.mic; $('rtVoiceOn').checked = !!mdVoice;
+    renderRouteGrid();
+  }
+  function renderRouteGrid() {
+    const n = mt.outCount; $('rtN').textContent = n + ' ieșiri';
+    const rows = [['__master', 'Master (restul)', '#ffbf2f', mt.masterOut || 'main'], ...mt.ch.map((c, k) => [String(c.name || c.file).toLowerCase(), c.name || c.file, trackColor(k, c.name), c.out || 'main'])];
+    $('rtGrid').innerHTML = rows.map(([key, label, color, cur]) => `<label style="--tc:${color}"><i></i><b>${esc(label)}</b><select data-r="${esc(key)}">${outOptions(n, cur)}</select></label>`).join('')
+      + (mt.ch.length ? '' : '<p class="hint">Alege o cântare cu track-uri ca să le rutezi. Rutarea se ține minte după numele track-ului (Click, Guide, Tobe…), pentru toate cântările.</p>');
+    $('rtGrid').querySelectorAll('[data-r]').forEach(sel => sel.onchange = () => {
+      if (sel.dataset.r === '__master') prefs.masterOut = sel.value; else (prefs.routes ||= {})[sel.dataset.r] = sel.value;
+      savePrefs(); mt.setRoutes(prefs.routes || {}, prefs.masterOut || 'main'); renderMixer(); toast(outName(sel.value));
+    });
+    $('rtTalk').innerHTML = outOptions(n, prefs.mdOut || ('m' + Math.min(3, n)));
+  }
+  $('rtClose').onclick = () => $('routeModal').classList.remove('show');
+  $('rtScan').onclick = async () => { try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach(t => t.stop()); } catch {} openRouting(); };
+  $('rtDev').onchange = async () => { prefs.trDev = $('rtDev').value; savePrefs(); await mt.output(prefs.trDev); renderRouteGrid(); renderMixer(); };
+  $('rtMet').onchange = async () => { prefs.metDev = $('rtMet').value; savePrefs(); await met.output(prefs.metDev); };
+  $('rtPad').onchange = async () => { prefs.padDev = $('rtPad').value; savePrefs(); await pad.output(prefs.padDev); };
+  const mdPrefs = () => { prefs.mdIn = $('rtIn').value; prefs.mdCh = +$('rtInCh').value || 1; prefs.mdOut = $('rtTalk').value; prefs.mdSens = +$('rtSens').value; savePrefs(); };
+  async function talkback() {
+    mdPrefs();
+    if (!$('rtTalkOn').checked) { mt.micOff(); return renderMixer(); }
+    try { const n = await mt.micOn({ deviceId: prefs.mdIn, channel: prefs.mdCh, out: prefs.mdOut }); toast(`Microfonul MD (canalul ${prefs.mdCh} din ${n}) se aude pe ${outName(prefs.mdOut)}`); }
+    catch (e) { $('rtTalkOn').checked = false; toast('Nu pot deschide intrarea: ' + e.message); }
+  }
+  async function mdListen() {
+    mdPrefs(); mdVoice?.stop(); mdVoice = null; $('mVoice').classList.remove('md');
+    if (!$('rtVoiceOn').checked) { $('rtVState').textContent = ''; return; }
+    try {
+      const V = await import('/voice.js');
+      mdVoice = await V.listenOn({ deviceId: prefs.mdIn, channel: prefs.mdCh, threshold: 0.006 * (11 - prefs.mdSens),
+        onText: text => runVoiceText(text),
+        onState: st => { if ('level' in st) $('rtLvl').style.width = Math.min(100, st.level * 400) + '%';
+          if (st.note) $('rtVState').textContent = st.note; if (st.listening) $('rtVState').textContent = '🎙 aud…'; if (st.working === false) $('rtVState').textContent = 'ascult';
+          $('mVoice').classList.toggle('on', !!st.listening); } });
+      $('mVoice').classList.add('md'); $('rtVState').textContent = 'ascult';
+      toast('Comenzile vocale vin din microfonul MD');
+    } catch (e) { $('rtVoiceOn').checked = false; toast('Nu pot asculta intrarea: ' + e.message); }
+  }
+  $('rtTalkOn').onchange = talkback; $('rtVoiceOn').onchange = mdListen;
+  for (const id of ['rtIn', 'rtInCh', 'rtTalk']) $(id).onchange = () => { if ($('rtTalkOn').checked) talkback(); else mdPrefs(); if (mdVoice) mdListen(); };
+  $('rtSens').onchange = () => { mdPrefs(); if (mdVoice) mdListen(); };
+  $('audioOut').onclick = () => { $('mToolsPop').classList.remove('show'); openRouting(); };
+  if (prefs.trDev && prefs.trDev !== 'default') mt.output(prefs.trDev).catch(() => {});
+
   // ---- mixer: Click, Pad, every stem, Master
   const dB = v => v <= 0.001 ? '−∞' : ((v >= 1 ? '+' : '') + (20 * Math.log10(v)).toFixed(1)).replace('+0.0', '0.0');
   // a console fader: the travel is in dB, like on a real desk (0 dB high up, −∞ at the bottom)
@@ -2606,7 +2722,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function strip(id, name, vol, extra = '', cls = '', pan = null) {
     const color = /^\d+$/.test(String(id)) ? trackColor(+id, name) : id === 'master' ? '#ffbf2f' : id === 'pad' ? '#b38cff' : '#9aa3ad';
     const ticks = FADER_TICKS.map(([d, t]) => `<span style="bottom:${(dbToPos(d) * 100).toFixed(1)}%">${t}</span>`).join('');
-    return `<div class="strip ${cls}" data-ch="${id}" style="--tc:${color}"><div class="ex">${extra}</div>
+    const route = /^\d+$/.test(String(id)) ? outName(mt.ch[+id]?.out || 'main') : id === 'master' ? outName(mt.masterOut || 'main') : '';
+    return `<div class="strip ${cls}" data-ch="${id}" style="--tc:${color}"><div class="scr" title="${esc(name)}">${esc(name)}<small>${esc(route || '·')}</small></div><div class="ex">${extra}</div>
       ${pan === null ? '<div class="knob off"></div><small class="pv">&nbsp;</small>' : `<div class="knob" data-pan="${id}" style="--a:${pan * 135}deg" title="Stânga / dreapta · dublu-clic = centru"><i></i></div><small class="pv">${panTxt(pan)}</small>`}
       <small class="lcd" data-db="${id}">${dB(vol)}</small>
       <div class="fz"><div class="scale">${ticks}</div>
@@ -2687,8 +2804,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   setInterval(() => { if (!mt.playing && !$('musicView').hidden) meters(); }, 400);
   // add stems: several audio files at once; the name comes from the file (Click, Guide, Drums…)
-  $('stemFiles').onchange = async e => {
-    const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+  $('stemFiles').onchange = e => { const f = [...e.target.files]; e.target.value = ''; addStems(f); };
+  async function addStems(files) {
+    if (!files.length) return;
     const i = musicItemIndex(), it = S.setlist[i]; if (!it || it.kind !== 'song') return toast('Alege întâi o cântare');
     if (mt.playing) return toast('Oprește întâi track-urile');
     const added = [];
@@ -2716,7 +2834,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('bpmDown').onclick = () => setBpm((+$('bpm').value || met.bpm) - 1);
   $('tap').onclick = () => { const b = tap(); if (b) setBpm(b); };
   // where each sound goes (e.g. click to in-ear headphones, tracks and pad to the mixer)
-  $('audioOut').onclick = async () => {
+  $('audioOutOld') && ($('audioOutOld').onclick = async () => {
     const list = await outputs();
     if (list.length < 2) return toast('Se aude pe ieșirea de sunet a laptopului. Pentru căști separate, conectează o placă de sunet.');
     const opts = list.map((d, i) => `${i + 1}. ${d.label || 'Ieșire ' + (i + 1)}`).join('\n');
@@ -2725,7 +2843,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     [prefs.metOut, prefs.padOut, prefs.trOut] = v.map(Number); savePrefs();
     await met.output(list[prefs.metOut - 1]?.deviceId); await pad.output(list[prefs.padOut - 1]?.deviceId); await mt.output(list[prefs.trOut - 1]?.deviceId);
     toast('Ieșiri schimbate');
-  };
+  });
 
   // ---- key: pick any key, or one semitone up/down; slides and stage chords follow
   async function renderKey(it) {
@@ -3097,14 +3215,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     send({ type: 'itemBackground', item: sel, value: S.live.background });
     toast(S.live.background ? 'Fundal fixat pe „' + it.title + '”' : 'Fundalul cântării a fost scos');
   };
-  $('upload').onchange = async e => {
-    for (const f of e.target.files) {
+  async function uploadBackgrounds(files) {
+    for (const f of files) {
       toast('Se încarcă ' + f.name + '…');
-      try { await api('/api/media?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }); }
+      try { await api('/api/media?name=' + encodeURIComponent(f.name.replace(/[^\w.\- ]/g, '_')), { method: 'POST', body: f }); }
       catch (err) { toast(err.message); }
     }
-    toast('Încărcat'); e.target.value = ''; loadMedia();
-  };
+    toast('Încărcat la Fundaluri'); loadMedia();
+  }
+  $('upload').onchange = async e => { const f = [...e.target.files]; e.target.value = ''; uploadBackgrounds(f); };
 
   // chords for the whole library (or one song) from resursecrestine.ro, put on OUR lyrics
   function chordsProgress(e) {
@@ -3171,6 +3290,204 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (window.bnc?.webSearch) window.bnc.webSearch(q);
     else window.open('https://duckduckgo.com/?q=' + encodeURIComponent(q + ' versuri'), '_blank');
   };
+
+  // =====================================================================================
+  // Everywhere: right-click menus, the usual shortcuts (copy, cut, paste, delete, duplicate)
+  // on every element, and files pasted or dropped anywhere go where they belong.
+  // =====================================================================================
+  const MK = ON_MAC ? '⌘' : 'Ctrl+', DEL = ON_MAC ? '⌫' : 'Del';
+  let pick = null;                                    // what was clicked last: { kind: 'item'|'slide'|'bg'|'song'|'track', ... }
+  let clip = null;                                    // our own clipboard: { kind, data }
+  const cmEl = Object.assign(document.createElement('div'), { className: 'ctx glass', id: 'ctxMenu' }); document.body.append(cmEl);
+  function ctxOpen(x, y, items) {
+    cmEl.innerHTML = items.filter(Boolean).map((it, k) => it === '-' ? '<hr>' : `<button data-k="${k}" ${it.dis ? 'disabled' : ''}><span>${esc(it.l)}</span><kbd>${esc(it.k || '')}</kbd></button>`).join('');
+    const list = items.filter(Boolean);
+    cmEl.querySelectorAll('button').forEach(b => b.onclick = () => { closeMenu(); list[+b.dataset.k].run(); });
+    cmEl.style.display = 'flex'; const r = cmEl.getBoundingClientRect();
+    cmEl.style.left = Math.min(x, innerWidth - r.width - 8) + 'px'; cmEl.style.top = Math.min(y, innerHeight - r.height - 8) + 'px';
+  }
+  const closeMenu = () => { cmEl.style.display = 'none'; };
+  addEventListener('mousedown', e => { if (!cmEl.contains(e.target)) closeMenu(); }, true);
+  addEventListener('blur', closeMenu);
+  // what an element on the page is
+  function whatIs(el) {
+    let x;
+    if ((x = el.closest('#setlist .item'))) return { kind: 'item', i: +x.dataset.i, el: x };
+    if ((x = el.closest('#mList .it'))) return { kind: 'item', i: +x.dataset.i, el: x };
+    if ((x = el.closest('#slides .slide'))) return { kind: 'slide', i: +x.dataset.s, el: x };
+    if ((x = el.closest('#gallery .bg'))) return { kind: 'bg', name: x.dataset.n, el: x };
+    if ((x = el.closest('#results .lib:not(.web)'))) return { kind: 'song', id: x.dataset.id, el: x };
+    if ((x = el.closest('#tracks .trk, #mixer .strip[data-ch]'))) { const id = x.dataset.ch ?? x.querySelector('[data-mute]')?.dataset.mute; return /^\d+$/.test(String(id)) ? { kind: 'track', i: +id, el: x } : null; }
+    return null;
+  }
+  addEventListener('mousedown', e => { const w = whatIs(e.target); if (w) { pick = w; document.querySelectorAll('.picked-any').forEach(x => x.classList.remove('picked-any')); w.el.classList.add('picked-any'); } }, true);
+  const typingIn = el => /INPUT|TEXTAREA|SELECT/.test(el?.tagName) || el?.isContentEditable;
+  // ---- what each thing can do
+  const itemCopy = i => { const { title, slideCount, rev, track, stems, cues, origBpm, origKey, ...it } = S.setlist[i]; return { ...structuredClone(it), id: undefined, title: it.kind === 'song' ? '' : title }; };
+  const A = {
+    item: {
+      copy: p => { clip = { kind: 'item', data: itemCopy(p.i) }; copyText(S.setlist[p.i].title || ''); toast('Copiat: ' + (S.setlist[p.i].title || KIND[S.setlist[p.i].kind])); },
+      cut: p => { A.item.copy(p); A.item.del(p, true); },
+      del: (p, quiet) => { const it = S.setlist[p.i]; if (!it) return; const { title, slideCount, ...item } = it; send({ type: 'removeItem', item: p.i }); if (sel === p.i) sel = -1; else if (sel > p.i) sel--;
+        toast((quiet ? 'Tăiat: „' : 'Am scos „') + (title || KIND[it.kind]) + '”', () => send({ type: 'addItem', item, at: p.i })); },
+      dup: p => { send({ type: 'addItem', item: itemCopy(p.i), at: p.i + 1 }); toast('Dublat'); },
+      open: p => { sel = p.i; pickedSlide = -1; render(); },
+    },
+    slide: {
+      copy: p => { const sl = lastSlides[p.i]; if (!sl) return; clip = { kind: 'slide', data: sl }; copyText(sl.lines.map(l => stripChords(l)).join('\n')); toast('Textul slide-ului e copiat'); },
+      cut: p => { A.slide.copy(p); removeSlide(p.i); },
+      del: p => removeSlide(p.i),
+      dup: p => { send({ type: 'duplicateSlide', item: sel, slide: p.i }); toast('Slide-ul se repetă'); },
+      open: p => openSlideEditor(p.i, lastSlides),
+    },
+    bg: {
+      copy: p => { clip = { kind: 'bg', data: p.name }; toast('Fundal copiat — lipește-l pe o cântare'); },
+      cut: p => { A.bg.copy(p); A.bg.del(p); },
+      del: async p => { if (!p.name) return; await api('/api/media/trash', { method: 'POST', body: JSON.stringify({ name: p.name }) }).catch(e => toast(e.message));
+        loadMedia(); toast('Fundalul e în Coș', async () => { await api('/api/media/restore', { method: 'POST', body: JSON.stringify({ name: p.name }) }); loadMedia(); }); },
+      dup: p => A.bg.copy(p),
+      open: p => send({ type: 'background', value: p.name }),
+    },
+    song: {
+      copy: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json()); clip = { kind: 'song', data: s.id }; copyText(s.title + '\n\n' + s.body.split('\n').map(l => stripChords(l)).join('\n')); toast('Versurile „' + s.title + '” sunt copiate'); },
+      cut: p => A.song.copy(p),
+      del: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json());
+        if (!(await ask('Ștergi „' + s.title + '” din bibliotecă?', [], 'Șterge'))) return; send({ type: 'deleteSong', id: p.id }); toast('Ștearsă (Anulează cu ' + MK + 'Z)'); setTimeout(search, 300); },
+      dup: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json()); const { id, ...rest } = s; send({ type: 'saveSong', song: { ...rest, title: s.title + ' (copie)' } }); toast('Copie făcută'); setTimeout(search, 400); },
+      open: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json()); fillEditor(s); showTab('edit'); },
+    },
+    track: {
+      copy: p => { clip = { kind: 'track', data: { ...mt.ch[p.i] } }; toast('Track copiat'); },
+      cut: p => { A.track.copy(p); A.track.del(p); },
+      del: p => { if (mt.playing) return toast('Oprește întâi track-urile'); $('mixer').querySelector(`[data-rm="${p.i}"]`)?.click(); },
+      dup: p => toast('Un track nu se poate dubla'),
+      open: p => { const c = mt.ch[p.i]; c.solo = !c.solo; mt.apply(); renderMixer(); },
+    },
+  };
+  // paste: files, then our own clipboard, then text
+  async function pasteHere(p) {
+    if (!clip) return toast('Nimic de lipit. Copiază ceva întâi (' + MK + 'C).');
+    const at = p?.kind === 'item' ? p.i + 1 : sel >= 0 ? sel + 1 : S.setlist.length;
+    if (clip.kind === 'item') { send({ type: 'addItem', item: { ...structuredClone(clip.data), id: undefined }, at }); toast('Lipit în program'); }
+    else if (clip.kind === 'song') { const s = await fetch('/api/songs/' + clip.data).then(r => r.json()); send({ type: 'addItem', kind: 'song', songId: s.id, key: s.key, minutes: 5, at }); toast('„' + s.title + '” e în program'); }
+    else if (clip.kind === 'bg') { const i = p?.kind === 'item' ? p.i : sel; if (S.setlist[i]) { send({ type: 'itemBackground', item: i, value: clip.data }); toast('Fundal pus pe „' + (S.setlist[i].title || '') + '”'); } else send({ type: 'background', value: clip.data }); }
+    else if (clip.kind === 'slide') { if (S.setlist[sel]?.kind === 'song') { send({ type: 'duplicateSlide', item: sel, slide: lastSlides.indexOf(clip.data) >= 0 ? lastSlides.indexOf(clip.data) : 0 }); toast('Slide lipit'); } }
+    else toast('Aici nu se poate lipi asta');
+  }
+  // the right-click menus
+  addEventListener('contextmenu', e => {
+    if (typingIn(e.target)) {                          // text boxes: the usual text menu
+      e.preventDefault(); const t = e.target;
+      return ctxOpen(e.clientX, e.clientY, [
+        { l: 'Taie', k: MK + 'X', run: () => { t.focus(); document.execCommand('cut'); } },
+        { l: 'Copiază', k: MK + 'C', run: () => { t.focus(); document.execCommand('copy'); } },
+        { l: 'Lipește', k: MK + 'V', run: async () => { t.focus(); if (!document.execCommand('paste')) { const x = await navigator.clipboard?.readText?.().catch(() => ''); if (x) document.execCommand('insertText', false, x); } } },
+        '-', { l: 'Selectează tot', k: MK + 'A', run: () => { t.focus(); t.select?.(); } },
+      ]);
+    }
+    const p = whatIs(e.target); if (p) pick = p;
+    e.preventDefault();
+    const common = p ? [
+      { l: 'Copiază', k: MK + 'C', run: () => A[p.kind].copy(p) },
+      { l: 'Taie', k: MK + 'X', run: () => A[p.kind].cut(p) },
+      { l: 'Lipește după', k: MK + 'V', run: () => pasteHere(p), dis: !clip },
+      { l: 'Dublează', k: MK + 'D', run: () => A[p.kind].dup(p) },
+      '-', { l: p.kind === 'bg' ? 'Mută în Coș' : p.kind === 'song' ? 'Șterge din bibliotecă…' : 'Șterge', k: DEL, run: () => A[p.kind].del(p) },
+    ] : [];
+    let own = [];
+    if (p?.kind === 'item') { const it = S.setlist[p.i];
+      own = [{ l: 'Pune pe ecran', k: '↵', run: () => send({ type: 'go', item: p.i, slide: 0 }) }, { l: 'Deschide', run: () => A.item.open(p) },
+        it?.kind === 'song' ? { l: 'Deschide în MD&TRACK', run: () => { mSel = p.i; $('mFollow').checked = false; showView('music'); } } : null,
+        it?.kind !== 'song' && it?.kind !== 'bible' ? { l: 'Atașează prezentare…', run: () => attachTo(p.i) } : null,
+        it?.kind !== 'song' && it?.kind !== 'bible' ? { l: 'Prezentare din Canva…', run: () => openCanva(p.i) } : null,
+        it?.kind !== 'song' ? { l: 'Redenumește…', run: async () => { const v = await ask('Numele momentului', [{ label: 'Nume', value: it.title || '' }], 'Salvează'); if (v) send({ type: 'updateItem', item: p.i, patch: { title: v[0] } }); } } : null,
+        { l: 'Mută mai sus', k: '⌥↑', run: () => send({ type: 'moveItem', item: p.i, dir: -1 }), dis: p.i === 0 },
+        { l: 'Mută mai jos', k: '⌥↓', run: () => send({ type: 'moveItem', item: p.i, dir: 1 }), dis: p.i === S.setlist.length - 1 }, '-'];
+    } else if (p?.kind === 'slide') own = [{ l: 'Pune pe ecran', k: '↵', run: () => send({ type: 'go', item: sel, slide: p.i }) }, { l: 'Editează…', k: MK + 'E', run: () => A.slide.open(p) }, '-'];
+    else if (p?.kind === 'bg') own = [{ l: 'Pune ca fundal', k: '↵', run: () => A.bg.open(p) }, { l: 'Fixează pe cântarea aleasă', run: () => { clip = { kind: 'bg', data: p.name }; pasteHere(); } }, '-'];
+    else if (p?.kind === 'song') own = [{ l: 'Adaugă în program', k: '↵', run: async () => addSongToProgram(await fetch('/api/songs/' + p.id).then(r => r.json())) }, { l: 'Editează', k: MK + 'E', run: () => A.song.open(p) }, '-'];
+    else if (p?.kind === 'track') { const c = mt.ch[p.i];
+      own = [{ l: c?.muted ? 'Pornește (fără mut)' : 'Mut', k: 'M', run: () => { c.muted = !c.muted; mt.apply(); renderMixer(); saveStemsSoon(); } },
+        { l: c?.solo ? 'Fără solo' : 'Solo', k: 'S', run: () => { c.solo = !c.solo; mt.apply(); renderMixer(); } },
+        { l: 'Redenumește…', run: async () => { const v = await ask('Numele track-ului', [{ label: 'Nume', value: c.name || '' }], 'Salvează'); if (v) { c.name = v[0].slice(0, 30); renderMixer(); renderLane(); saveStemsSoon(); } } }, '-'];
+    }
+    const general = [
+      { l: 'Lipește', k: MK + 'V', run: () => pasteHere(null), dis: !clip },
+      { l: 'Adaugă fișiere (PowerPoint, PDF, poze, video, audio)…', run: () => pickFiles() },
+      '-', { l: 'Anulează', k: MK + 'Z', run: () => undo() }, { l: 'Refă', k: ON_MAC ? '⇧⌘Z' : 'Ctrl+Y', run: () => redo() },
+      { l: 'Toate comenzile…', k: MK + 'K', run: () => openPalette() },
+    ];
+    ctxOpen(e.clientX, e.clientY, p ? [...own, ...common] : general);
+  });
+  // ---- the shortcuts, on whatever was clicked last
+  addEventListener('keydown', e => {
+    if (typingIn(document.activeElement) || $('modal').classList.contains('show') || $('sedModal').classList.contains('show')) return;
+    const mod = ON_MAC ? e.metaKey : e.ctrlKey, k = e.key.toLowerCase(), p = pick && (pick.kind !== 'item' || S.setlist[pick.i]) ? pick : null;
+    if (mod && k === 'c' && p && !e.shiftKey) { e.preventDefault(); A[p.kind].copy(p); }
+    else if (mod && k === 'x' && p) { e.preventDefault(); A[p.kind].cut(p); }
+    else if (mod && k === 'd' && p) { e.preventDefault(); e.stopImmediatePropagation(); A[p.kind].dup(p); }
+    else if (mod && k === 'e' && p && (p.kind === 'song' || p.kind === 'slide')) { e.preventDefault(); e.stopImmediatePropagation(); A[p.kind].open(p); }
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && p && p.kind !== 'slide') { e.preventDefault(); e.stopImmediatePropagation(); A[p.kind].del(p); pick = null; }
+    else if (e.key === 'Enter' && p) { e.preventDefault(); p.kind === 'item' ? send({ type: 'go', item: p.i, slide: 0 }) : p.kind === 'slide' ? send({ type: 'go', item: sel, slide: p.i }) : A[p.kind].open(p); }
+    else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && p?.kind === 'item') { e.preventDefault(); e.stopImmediatePropagation(); send({ type: 'moveItem', item: p.i, dir: e.key === 'ArrowUp' ? -1 : 1 }); pick.i += e.key === 'ArrowUp' ? -1 : 1; }
+  }, true);
+  // ---- files: paste (⌘V) or drop, anywhere; each kind goes where it belongs
+  const SHOW_RE = /\.(pptx?|ppsx?|key|odp|pdf)$/i, IMG_RE = /\.(jpe?g|png|gif|webp|heic|bmp)$/i, VID_RE = /\.(mp4|mov|webm|m4v)$/i, AUD_RE = /\.(mp3|wav|m4a|aac|ogg|flac|aiff?)$/i, DOC_RE = /\.(txt|md|docx|csv|rtf)$/i;
+  function areaAt(el) {
+    if (!el) return '';
+    if (el.closest?.('#ai')) return 'ai';
+    if (el.closest?.('#gallery, .gallery-panel, #bgPanel')) return 'bg';
+    if (el.closest?.('#lane, #mixer, #musicView')) return 'music';
+    const it = el.closest?.('#setlist .item'); if (it) return 'item:' + it.dataset.i;
+    return 'program';
+  }
+  async function routeFiles(files, area) {
+    files = [...files]; if (!files.length) return;
+    const docs = files.filter(f => DOC_RE.test(f.name)), audio = files.filter(f => AUD_RE.test(f.name));
+    const pics = files.filter(f => IMG_RE.test(f.name) || VID_RE.test(f.name) || /^(image|video)\//.test(f.type)), shows = files.filter(f => SHOW_RE.test(f.name));
+    const other = files.filter(f => !docs.includes(f) && !audio.includes(f) && !pics.includes(f) && !shows.includes(f));
+    if (area === 'ai') { $('ai').classList.contains('show') || $('aiBtn').click(); return aiAddFiles(files); }
+    if (docs.length) { $('ai').classList.contains('show') || $('aiBtn').click(); aiAddFiles(docs); toast('Asistentul citește ' + docs.map(f => f.name).join(', ')); }
+    if (audio.length) { if (!$('musicView').hidden || area === 'music') addStems(audio); else { showView('music'); addStems(audio); } }
+    if (area === 'bg' && pics.length) uploadBackgrounds(pics);
+    const forProgram = [...shows, ...(area === 'bg' ? [] : pics)];
+    if (forProgram.length) { const into = area.startsWith('item:') ? +area.slice(5) : -1;
+      const it = S.setlist[into]; importFiles(forProgram, it && it.kind !== 'song' && it.kind !== 'bible' ? into : -1); }
+    if (other.length) toast('Nu știu ce să fac cu: ' + other.map(f => f.name).join(', '));
+  }
+  function pickFiles() {
+    const inp = Object.assign(document.createElement('input'), { type: 'file', multiple: true });
+    inp.onchange = () => routeFiles(inp.files, $('musicView').hidden ? 'program' : 'music'); inp.click();
+  }
+  addEventListener('paste', async e => {
+    if (typingIn(document.activeElement) && !e.clipboardData?.files?.length) return;     // text into a text box: as usual
+    const files = [...(e.clipboardData?.files || [])];
+    if (files.length) { e.preventDefault(); return routeFiles(files, areaAt(document.activeElement) === 'ai' || $('ai').contains(document.activeElement) ? 'ai' : pick?.kind === 'bg' ? 'bg' : pick?.kind === 'item' ? 'item:' + pick.i : $('musicView').hidden ? 'program' : 'music'); }
+    if (typingIn(document.activeElement)) return;
+    e.preventDefault();
+    if (clip) return pasteHere(pick);
+    const text = e.clipboardData?.getData('text/plain')?.trim();
+    if (text && text.includes('\n')) { $('ai').classList.contains('show') || $('aiBtn').click(); $('aiText').value = 'Fă programul după lista aceasta:\n' + text; toast('Am dat lista asistentului: apasă ➤'); }
+  });
+  // drag files over the window: the place under the pointer lights up, with what will happen
+  const dropHint = Object.assign(document.createElement('div'), { className: 'drop-hint', hidden: true }); document.body.append(dropHint);
+  const DROP_TXT = { ai: '📎 Pentru asistent', bg: '🖼 La Fundaluri', music: '♫ Track-uri pentru cântarea aleasă', program: '＋ În program (PowerPoint, PDF, poze, video)' };
+  let dropEl = null;
+  addEventListener('dragover', e => {
+    if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+    const a = areaAt(e.target), it = a.startsWith('item:') ? S.setlist[+a.slice(5)] : null;
+    dropHint.hidden = false; dropHint.style.left = e.clientX + 16 + 'px'; dropHint.style.top = e.clientY + 16 + 'px';
+    dropHint.textContent = it ? (it.kind !== 'song' && it.kind !== 'bible' ? '📎 Prezentarea pentru „' + (it.title || KIND[it.kind]) + '”' : DROP_TXT.program) : DROP_TXT[a] || DROP_TXT.program;
+    const el = e.target.closest?.('#ai, #gallery, #lane, #mixer, #setlist .item, #setlist, #slides') || null;
+    if (el !== dropEl) { dropEl?.classList.remove('drop-on'); dropEl = el; dropEl?.classList.add('drop-on'); }
+  });
+  const dropEnd = () => { dropHint.hidden = true; dropEl?.classList.remove('drop-on'); dropEl = null; };
+  addEventListener('dragleave', e => { if (!e.relatedTarget) dropEnd(); });
+  addEventListener('drop', e => {
+    if (!e.dataTransfer?.files?.length) return dropEnd();
+    e.preventDefault(); const a = areaAt(e.target); dropEnd(); routeFiles(e.dataTransfer.files, a);
+  });
   window.bnc?.onImport?.(r => {
     fillEditor({ title: r.title, body: r.body, source: r.source }); showTab('edit');
     toast(r.body ? 'Importat. Verifică versurile, apoi Salvează.' : 'Nu am găsit text. Selectează versurile pe pagină și încearcă din nou.');

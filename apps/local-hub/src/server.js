@@ -1351,6 +1351,16 @@ async function handle(req, res) {
       const files = fs.readdirSync(MEDIA_DIR).filter(f => TYPES[path.extname(f).toLowerCase()] && !f.startsWith('.') && !f.startsWith('pres-') && !f.startsWith('logo-echipa-'));
       return json(res, 200, files);
     }
+    if ((p === '/api/media/trash' || p === '/api/media/restore') && req.method === 'POST') {   // a background to the bin (Coș), and back
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const name = path.basename(String(JSON.parse(await body(req, 10_000)).name || ''));
+      const BIN = path.join(DATA_DIR, 'cos'); fs.mkdirSync(BIN, { recursive: true });
+      const [from, to] = p.endsWith('trash') ? [MEDIA_DIR, BIN] : [BIN, MEDIA_DIR];
+      if (!name || !fs.existsSync(path.join(from, name))) return json(res, 404, { error: 'Fișierul nu există' });
+      fs.renameSync(path.join(from, name), path.join(to, name));
+      if (p.endsWith('trash') && live.background === name) { live.background = ''; broadcast(); }
+      return json(res, 200, { ok: true, name });
+    }
     if (p === '/api/media' && req.method === 'POST') {      // upload background (raw body, ?name=)
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       const name = path.basename(url.searchParams.get('name') || '').replace(/[^\w.\- ]/g, '_');

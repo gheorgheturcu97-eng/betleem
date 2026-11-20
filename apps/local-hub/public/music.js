@@ -150,19 +150,64 @@ export class Multitrack {
   constructor() { this.ctx = null; this.ch = []; this.playing = false; this.onTime = () => {}; this.onEnd = () => {}; this.vol = 1; }
   init() {
     if (this.ctx) return;
-    this.ctx = new AudioContext();
+    this.ctx = new AudioContext({ latencyHint: 'interactive' });
     this.master = this.ctx.createGain(); this.master.gain.value = this.vol;
     this.masterMeter = this.ctx.createAnalyser(); this.masterMeter.fftSize = 512;
-    this.master.connect(this.masterMeter); this.master.connect(this.ctx.destination);
+    this.master.connect(this.masterMeter);
+    this.routes = this.routes || {}; this.masterOut = this.masterOut || 'main';
+    this.wire();
   }
+  // ---- routing to the outputs of an audio interface: every track to the main mix (1-2), one output, or a pair
+  /** how many outputs the chosen device has (2 for normal speakers) */
+  get outCount() { return this.ctx ? Math.max(2, this.ctx.destination.maxChannelCount || 2) : 2; }
+  wire() {
+    const ctx = this.ctx, n = this.outCount, d = ctx.destination;
+    try { d.channelCount = n; d.channelCountMode = 'explicit'; d.channelInterpretation = 'discrete'; } catch {}
+    try { this.merger?.disconnect(); } catch {}
+    this.merger = ctx.createChannelMerger(n); this.merger.connect(d);
+    try { this.master.disconnect(); } catch {} this.master.connect(this.masterMeter);
+    this.link(this.master, this.masterOut);
+    for (const c of this.ch) this.routeTrack(c);
+    if (this.mic) this.link(this.mic.gain, this.mic.out);
+  }
+  /** connect a stereo node to an output: 'main' = 1-2, 'm5' = output 5 alone (mono), 's3' = outputs 3-4 */
+  link(node, out) {
+    const n = this.outCount, sp = this.ctx.createChannelSplitter(2);
+    const m = /^m(\d+)$/.exec(out || ''), st = /^s(\d+)$/.exec(out || '');
+    if (m && +m[1] <= n) { const mono = this.ctx.createGain(); mono.channelCount = 1; mono.channelCountMode = 'explicit'; mono.channelInterpretation = 'speakers'; node.connect(mono); mono.connect(this.merger, 0, +m[1] - 1); return; }
+    const a = st && +st[1] < n ? +st[1] - 1 : 0;
+    node.connect(sp); sp.connect(this.merger, 0, a); sp.connect(this.merger, 1, a + 1);
+  }
+  routeTrack(c) {
+    try { c.pan.disconnect(); } catch {}
+    c.pan.connect(c.meter);
+    const out = this.routes[String(c.name || c.file).toLowerCase()] || 'main';
+    c.out = out;
+    if (out === 'main') c.pan.connect(this.master); else this.link(c.pan, out);   // a track on its own output skips the master fader
+  }
+  setRoutes(routes, masterOut) { this.routes = { ...routes }; if (masterOut) this.masterOut = masterOut; if (this.ctx) this.wire(); }
+  // ---- an input of the interface (the music director's mic): heard on an output (talkback in the in-ears)
+  async micOn({ deviceId, channel = 1, out = 'm3', vol = 1 } = {}) {
+    this.init(); await this.ctx.resume(); this.micOff();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 32 } } });
+    const src = this.ctx.createMediaStreamSource(stream), n = Math.max(1, src.channelCount || 2), sp = this.ctx.createChannelSplitter(n), gain = this.ctx.createGain(), meter = this.ctx.createAnalyser();
+    meter.fftSize = 512; gain.gain.value = vol; src.connect(sp);
+    const k = Math.min(Math.max(1, channel), n) - 1;
+    const mono = this.ctx.createGain(); sp.connect(mono, k); mono.connect(gain); gain.connect(meter);
+    this.mic = { stream, src, sp, gain, meter, out, channels: n, channel: k + 1 };
+    this.link(gain, out);
+    return n;
+  }
+  micOff() { if (!this.mic) return; try { this.mic.gain.disconnect(); this.mic.src.disconnect(); } catch {} this.mic.stream.getTracks().forEach(t => t.stop()); this.mic = null; }
   async load(stems) {
     this.init(); this.stop(true);
     for (const c of this.ch) { try { c.el.pause(); c.src.disconnect(); } catch {} }
     this.ch = stems.map(s => {
       const el = new Audio(); el.preload = 'auto'; el.src = '/media/' + encodeURIComponent(s.file); el.crossOrigin = 'anonymous';
       const src = this.ctx.createMediaElementSource(el), gain = this.ctx.createGain(), pan = this.ctx.createStereoPanner(), meter = this.ctx.createAnalyser();
-      meter.fftSize = 512; src.connect(gain); gain.connect(pan); pan.connect(meter); pan.connect(this.master);
-      return { ...s, panValue: Number(s.pan) || 0, el, src, gain, pan, meter, solo: false };
+      meter.fftSize = 512; src.connect(gain); gain.connect(pan);
+      const c = { ...s, panValue: Number(s.pan) || 0, el, src, gain, pan, meter, solo: false };
+      this.routeTrack(c); return c;
     });
     this.apply();
     await Promise.all(this.ch.map(c => new Promise(ok => { if (c.el.readyState >= 1) ok(); else { c.el.onloadedmetadata = ok; c.el.onerror = ok; } })));
@@ -203,5 +248,9 @@ export class Multitrack {
     const d = new Float32Array(a.fftSize); a.getFloatTimeDomainData(d);
     let p = 0; for (const v of d) p = Math.max(p, Math.abs(v)); return Math.min(1, p);
   }
-  async output(deviceId) { this.init(); return setOutput(this.ctx, deviceId); }
+  async output(deviceId) { this.init(); const ok = await setOutput(this.ctx, deviceId); this.wire(); return ok; }
+}
+/** every microphone / interface input */
+export async function inputs() {
+  try { return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput'); } catch { return []; }
 }

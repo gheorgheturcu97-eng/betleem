@@ -118,3 +118,41 @@ export function sectionMatches(label, kind, n) {
   if (!n) return true;
   const m = l.match(/(\d+)/); return m ? +m[1] === n : n === 1;
 }
+
+/**
+ * Always listening on one input of the audio interface (e.g. the music director's mic with a proximity gate):
+ * every time someone speaks into it, the phrase is turned into text and given to onText.
+ * Returns stop().
+ */
+export async function listenOn({ deviceId, channel = 1, onText, onState = () => {}, threshold = 0.03 }) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: deviceId ? { exact: deviceId } : undefined, echoCancellation: false, noiseSuppression: true, autoGainControl: false, channelCount: { ideal: 32 } } });
+  const ctx = new AudioContext(), src = ctx.createMediaStreamSource(stream), n = Math.max(1, src.channelCount || 1);
+  const sp = ctx.createChannelSplitter(n), one = ctx.createGain(), an = ctx.createAnalyser(), dest = ctx.createMediaStreamDestination();
+  an.fftSize = 1024; src.connect(sp); sp.connect(one, Math.min(Math.max(1, channel), n) - 1); one.connect(an); one.connect(dest);
+  const model = whisper(onState);
+  let rec = null, parts = [], quietSince = 0, startedAt = 0, alive = true;
+  const buf = new Float32Array(an.fftSize);
+  const begin = () => { parts = []; rec = new MediaRecorder(dest.stream); rec.ondataavailable = e => e.data.size && parts.push(e.data); rec.start(); startedAt = Date.now(); onState({ listening: true, text: '' }); };
+  const finish = () => {
+    const r = rec; rec = null; if (!r) return;
+    r.onstop = async () => {
+      onState({ listening: false, working: true, note: 'Înțeleg…' });
+      try {
+        const pcm = (await new OfflineAudioContext(1, 1, 16000).decodeAudioData(await new Blob(parts).arrayBuffer())).getChannelData(0);
+        const out = await (await model)(pcm, { language: 'romanian', task: 'transcribe' });
+        const text = String(out?.text || '').trim(); if (text) onText(text);
+      } catch (e) { onState({ error: e.message }); }
+      finally { onState({ working: false }); }
+    };
+    r.stop();
+  };
+  const timer = setInterval(() => {
+    if (!alive) return;
+    an.getFloatTimeDomainData(buf); let e = 0; for (const v of buf) e += v * v; const loud = Math.sqrt(e / buf.length) > threshold;
+    if (loud) { quietSince = 0; if (!rec) begin(); }
+    else if (rec) { if (!quietSince) quietSince = Date.now(); if (Date.now() - quietSince > 900) finish(); }
+    if (rec && Date.now() - startedAt > 10000) finish();
+    onState({ level: Math.sqrt(e / buf.length) });
+  }, 80);
+  return { channels: n, stop() { alive = false; clearInterval(timer); if (rec) try { rec.stop(); } catch {} stream.getTracks().forEach(t => t.stop()); ctx.close(); } };
+}
