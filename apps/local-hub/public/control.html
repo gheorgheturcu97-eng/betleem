@@ -521,10 +521,13 @@
   .mediabar input[type=number]{width:52px;border:0;background:transparent;padding:2px 4px;font-weight:650;text-align:center}
   .mediabar .check{font-size:11.5px;margin-left:4px}
   .transport{flex-wrap:nowrap!important;gap:6px} .msgbox #msg{width:120px} .msgbox select{max-width:84px}
-  .screens[data-vis=none]{display:flex!important;min-height:0!important;height:auto!important;padding:4px!important;justify-content:center} .screens[data-vis=none]+.gut{display:none}
-  .screens[data-vis=none] .scr-vis{opacity:1!important}
-  .screens[data-vis=none] .scr-vis button[data-v=none]{display:none}
-  .screens[data-vis=none] .scr-vis::before{content:"🖥 Ecranele sunt ascunse · arată:";align-self:center;font-size:12px;color:var(--mute);padding:0 8px}
+  .screens[data-vis=none],.screens[data-vis=none]+.gut{display:none!important}
+  .transport .clr[hidden],.transport .old-t[hidden]{display:none!important}
+  #bOff{height:44px;padding:0 22px;border-radius:14px;font-weight:700;font-size:15px;white-space:nowrap}
+  #bOff.on{background:#e5484d;color:#fff;box-shadow:0 0 0 3px rgba(229,72,77,.35);animation:offPulse 1.6s ease-in-out infinite}
+  @keyframes offPulse{50%{box-shadow:0 0 0 6px rgba(229,72,77,.15)}}
+  #bScrT{width:44px;height:44px;font-size:18px;border-radius:14px} #bScrT.sel{background:var(--glass-3);box-shadow:inset 0 0 0 1px var(--acc)}
+  body.mode-proiectez #bOff{height:52px;padding:0 30px;font-size:17px;border-radius:16px} body.mode-proiectez #bScrT{width:52px;height:52px;border-radius:16px}
   @media (max-width:1440px){
     .msgbox #msg{width:84px} .msgbox select{max-width:66px} .navtabs button{padding:5px 9px} .top{gap:6px}
     .transport button{padding:6px 10px} #bNext{padding:7px 16px!important} .brand small{display:none}
@@ -853,9 +856,10 @@
     <button id="modeChip" class="mode-chip" title="Schimbă ce faci: Planificare / Proiectez / MD&TRACK"></button>
     <div class="seg navtabs"><button class="sel" id="toLive">Live</button><button id="toMusic" title="MD&TRACK: track-uri, ton, tempo, metronom, pad și mixer pentru trupă">MD&amp;TRACK <i class="playing-dot"></i></button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button><button id="bLook" title="Ecranele: sală și scenă — aspect, ce apare pe ele, timer">Ecrane</button></div>
     <div class="transport">
-      <button id="bPrev" class="icon" title="Înapoi (←)">◀</button>
-      <button id="bNext" class="acc" title="Înainte (Spațiu / →)">Înainte ▶</button>
-      <span class="clr">
+      <button id="bOff" class="off-btn" title="Ecran gol: nimic pe ecrane. Apasă iar (sau Esc) ca să revină ce era.">⏻ Ecran gol</button>
+      <button id="bScrT" class="icon" title="🖥 Arată / ascunde previzualizarea ecranelor (Ctrl/⌘+2)">🖥</button>
+      <span class="old-t" hidden><button id="bPrev">◀</button><button id="bNext">▶</button></span>
+      <span class="clr" hidden>
         <button id="bNoText" title="Fără text: rămâne doar fundalul (T)">Text</button>
         <button id="bBlank" title="Ecran negru (B)">Negru</button>
         <button id="bLogo" title="Logo (L)">Logo</button>
@@ -874,7 +878,6 @@
     <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
     <button id="aiTop" class="ai-top" title="Asistentul Betleem">✦</button>
     <button id="bMore" class="more-btn" title="Mai multe: logo, numărătoare, telefoane, Canva, asistent…">⋯ Mai mult</button>
- <button id="bScreens" class="icon" title="🖥 Ecrane: arată previzualizarea și setările ecranelor (sală, scenă)">🖥</button>
     <button id="bTheme" class="icon" title="Mod luminos (zi) / mod întunecat (noapte)">☀</button>
     <button id="bSettings" class="icon" title="⚙ Setări: Planning Center, Canva, asistent, biserici, calculatoare">⚙</button>
     <button id="updPill" class="remote-pill upd" hidden></button>
@@ -1127,8 +1130,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   </div>
 </div>
 <div class="pop glass more-pop" id="morePop">
-  <button data-x="logo" data-fold="bLogo">🖼 Logo pe ecran</button>
-  <button data-x="notext" data-fold="bNoText">Aa Ascunde textul (rămâne fundalul)</button>
+  <button data-x="logo">🖼 Logo pe ecran</button>
+  <button data-x="notext">Aa Ascunde textul (rămâne fundalul)</button>
   <button data-x="count" data-fold="bCount">⏱ Numărătoare și timerul slujbei</button>
   <button data-x="msgto" data-fold="msgTo">✉ Mesajul apare: <span id="moreMsgTo"></span></button>
   <button data-x="phones" data-fold="bPhones">📱 Telefoane (cod QR)</button>
@@ -1573,7 +1576,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       { l: 'Planificare', run: () => $('toPlan').click() },
       '-',
       { l: 'Programul', k: 'Mod+1', chk: () => !layout.L, run: () => togglePart('L') },
-      { l: 'Ecranele: ambele / doar sala', k: 'Mod+2', chk: () => $('screens').dataset.vis === 'both', run: () => togglePart('S') },
+      { l: 'Ecranele (previzualizare)', k: 'Mod+2', chk: () => $('screens').dataset.vis !== 'none', run: () => togglePart('S') },
       { l: 'Cântări · Biblia · Internet', k: 'Mod+3', chk: () => !layout.R, run: () => togglePart('R') },
       '-',
       { l: 'Cântări', run: () => { if (layout.R) togglePart('R'); showTab('lib'); } },
@@ -1713,12 +1716,6 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   const closeLook = () => { look.classList.remove('show'); $('bLook').classList.remove('sel'); };
   $('bLook').onclick = e => { e.stopPropagation(); look.classList.contains('show') ? closeLook() : openLook(); };
-  $('bScreens').onclick = e => {                     // from any mode: back to Live, the screens shown, their settings open
-    e.stopPropagation();
-    if (!$('musicView').hidden) showView('live');
-    if ($('screens').dataset.vis === 'none') { setVis('both'); layout.S = false; applyParts(); }
-    look.classList.contains('show') ? closeLook() : openLook();
-  };
   $('lookClose').onclick = closeLook;
   addEventListener('click', e => { if (look.classList.contains('show') && !look.contains(e.target) && !e.target.closest('#bLook,.screen')) closeLook(); });
   document.querySelectorAll('#lookTabs button').forEach(b => b.onclick = () => openLook(b.dataset.s));
@@ -1922,6 +1919,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('bBlank').onclick = () => send({ type: 'blank' });
   $('bNoText').onclick = () => send({ type: 'noText' });
   $('bClear').onclick = () => { send({ type: 'clearAll' }); toast('Curat: doar ecranul gol'); };
+  // ⏻ one command: the screens show nothing (black), press again and what was there comes back
+  const offToggle = () => { const on = !S?.live.blank; send({ type: 'blank' }); toast(on ? 'Ecran gol: nu se mai vede nimic' : 'Ecranele arată iar'); };
+  $('bOff').onclick = offToggle;
+  $('bScrT').onclick = e => { e.stopPropagation(); if (!$('musicView').hidden) showView('live');
+    setVis($('screens').dataset.vis === 'none' ? (lastVis || 'both') : 'none'); };
   $('msgTo').onchange = e => { if ($('msg').value) send({ type: 'message', value: $('msg').value, to: e.target.value }); else send({ type: 'message', value: '', to: e.target.value }); };
   // ⏱ countdown
   const cPop = $('countPop');
@@ -1967,7 +1969,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     try { localStorage.setItem('betleem.layout', JSON.stringify(layout)); } catch {}
   }
   function togglePart(p) {
-    if (p === 'S') { const v = $('screens').dataset.vis; setVis(v === 'both' ? 'main' : 'both'); layout.S = false; }
+    if (p === 'S') { const v = $('screens').dataset.vis; setVis(v === 'none' ? (lastVis || 'both') : 'none'); }
     else layout[p] = !layout[p];
     applyParts();
   }
@@ -1975,8 +1977,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['1', '2', '3'].includes(e.key)) { e.preventDefault(); togglePart({ 1: 'L', 2: 'S', 3: 'R' }[e.key]); } });
   // previews of the two screens: both, one, or hidden (the real screens do not change)
   const setVis = v => {
-    if (!['both', 'main', 'stage'].includes(v)) v = 'both';   // the screens are always in view (never fully hidden)
-    $('screens').dataset.vis = v; document.querySelectorAll('#scrVis button').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
+    if (!['both', 'main', 'stage', 'none'].includes(v)) v = 'both';
+    if (v !== 'none') lastVis = v;
+    $('screens').dataset.vis = v; $('bScrT')?.classList.toggle('sel', v !== 'none'); document.querySelectorAll('#scrVis button').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
     try { localStorage.setItem('betleem.scr', v); } catch {}
     layout.S = v === 'none'; document.querySelector('#layoutT [data-p=S]').classList.toggle('sel', v !== 'none');
   };
@@ -2038,11 +2041,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if ($('modal').classList.contains('show') || $('sedModal').classList.contains('show') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); send({ type: 'next' }); }
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') send({ type: 'prev' });
-    if (e.key === 'b' || e.key === 'B' || e.key === '.') send({ type: 'blank' });
+    if (e.key === 'b' || e.key === 'B' || e.key === '.') offToggle();
     if ((e.key === 'Delete' || e.key === 'Backspace') && pickedSlide >= 0) { e.preventDefault(); removeSlide(pickedSlide); }
     if (e.key === 'l' || e.key === 'L') send({ type: 'logo' });
     if (e.key === 't' || e.key === 'T') send({ type: 'noText' });
-    if (e.key === 'Escape') { if (Date.now() - (window._esc || 0) < 600) { send({ type: 'clearAll' }); toast('Curat'); } window._esc = Date.now(); }
+    if (e.key === 'Escape' && !document.querySelector('.pop.show,#look.show,#morePop.show')) offToggle();
   });
 
   // service + program
@@ -2243,7 +2246,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
-    $('bBlank').classList.toggle('on', S.live.blank); $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);
+    $('bBlank').classList.toggle('on', S.live.blank); $('bOff').classList.toggle('on', !!S.live.blank); $('bOff').textContent = S.live.blank ? '⏻ Ecran gol · Esc ca să revină' : '⏻ Ecran gol'; $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);
     if (document.activeElement !== $('msgTo')) $('msgTo').value = S.live.messageTo || 'both';
     renderMediaBar();
     const slHtml = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true" ${it.kind !== 'song' ? `data-k="${esc(it.kind)}"` : ''}>
@@ -2492,7 +2495,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else { setMode('complet', false); showDoors(); }
   }, 0);
   // a narrow screen (a laptop): the less used buttons of the top bar move into ⋯ Mai mult, one by one, until everything fits
-  const FOLD = ['bKeys', 'layoutT', 'bPhones', 'bRedo', 'bUndo', 'bInbox', 'msgTo', 'bCount', 'bLogo', 'bNoText'];
+  const FOLD = ['bKeys', 'layoutT', 'bPhones', 'bRedo', 'bUndo', 'bInbox'];
   function fitHeader() {
     const h = document.querySelector('header.top'); if (!h) return;
     FOLD.forEach(id => $(id)?.classList.remove('fold')); $('bMore').classList.remove('need');
