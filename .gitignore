@@ -4,3 +4,4 @@ apps/local-hub/data/
 .env
 *.log
 apps/local-hub/starter/
+build/
