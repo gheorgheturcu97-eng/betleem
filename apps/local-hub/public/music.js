@@ -119,7 +119,8 @@ export class Metronome {
   }
   async play() {
     this.init(); await this.ctx.resume();
-    if (this.playing) return;
+    if (this.playing && !this.synced) return;
+    if (this.synced) { clearInterval(this.timer); this.synced = false; this.playing = false; }
     this.playing = true; this.beat = 0; this.next = this.ctx.currentTime + 0.08;
     this.timer = setInterval(() => {                 // schedule a little ahead so the click is steady
       while (this.next < this.ctx.currentTime + 0.12) {

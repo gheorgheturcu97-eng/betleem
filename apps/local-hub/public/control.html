@@ -734,6 +734,8 @@
   .arrange .blk.armed{background:color-mix(in srgb,var(--sc) 40%,transparent)!important;animation:armed .5s ease-in-out infinite alternate}
   @keyframes armed{to{background:color-mix(in srgb,var(--sc) 15%,transparent)}}
   .arrange .blk.now{background:color-mix(in srgb,var(--sc) 28%,transparent)!important;box-shadow:inset 0 -2px 0 var(--sc)}
+  .met-btn{padding:7px 14px!important;border-radius:999px!important;font-weight:750;white-space:nowrap}
+  .met-btn.on{background:linear-gradient(180deg,#7dffb0,#2fb85f)!important;color:#05200f!important;box-shadow:0 0 14px rgba(95,224,138,.5)}
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
   .doors{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(1200px 700px at 30% 20%,rgba(255,191,47,.14),transparent 60%),radial-gradient(900px 600px at 80% 90%,rgba(90,160,255,.14),transparent 60%),rgba(8,9,12,.82);backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4)}
   .doors[hidden]{display:none}
@@ -759,9 +761,11 @@
   .more-pop{position:fixed;z-index:62;display:none;flex-direction:column;min-width:270px;padding:6px!important}
   .more-pop.show{display:flex} .more-pop button{text-align:left;background:transparent!important;border:0!important;box-shadow:none!important;padding:9px 12px!important;border-radius:9px;font-size:14px}
   .more-pop button:hover{background:rgba(255,255,255,.1)!important} .more-pop .sep{height:1px;background:var(--stroke);margin:4px 6px}
-  .modal .glass.settings{width:min(820px,95vw);display:flex;flex-direction:column;gap:12px}
-  .set-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .set-grid button{display:grid;grid-template-columns:40px 1fr;grid-template-rows:auto auto;gap:2px 10px;text-align:left;padding:14px!important;border-radius:16px!important;align-items:center}
+  .modal .glass.settings{width:min(860px,94vw);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:14px;box-sizing:border-box;margin:auto}
+  .set-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .set-grid button{display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-rows:auto auto;gap:2px 12px;text-align:left;padding:14px!important;border-radius:16px!important;align-items:center;
+    white-space:normal!important;min-width:0;width:100%!important;height:auto!important;min-height:76px;box-sizing:border-box}
+  .set-grid b,.set-grid span{min-width:0;overflow-wrap:anywhere}
   .set-grid i{grid-row:1/3;font-style:normal;font-size:20px;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:rgba(255,255,255,.08)}
   .set-grid b{font-size:14.5px} .set-grid span{color:var(--mute);font-size:12px;line-height:1.35}
   @media (max-width: 800px){ .set-grid{grid-template-columns:1fr} }
@@ -1004,6 +1008,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <span class="tool" title="Tempo pentru acest program"><small>BPM</small><button id="bpmDown" class="icon">−</button><input id="bpm" type="number" min="30" max="300" placeholder="—"><button id="bpmUp" class="icon">＋</button>
           <button id="tap" class="mini">Tap</button></span>
         <span class="tool" title="Măsura"><select id="beats" title="Timpi pe măsură"><option value="4">4/4</option><option value="3">3/4</option><option value="6">6/8</option><option value="2">2/4</option></select><span class="dots" id="dots"></span></span>
+        <button id="metTop" class="met-btn" title="Pornește / oprește click-ul (metronomul). Dacă merg track-urile, se aliniază cu ele.">♩ Click</button>
         <button id="mVoice" class="voice-btn" title="🎙 Comandă vocală: „refrenul”, „strofa doi”, „următoarea”, „tobele mai încet”, „tempo 72”…">🎙</button>
         <button id="mTools" class="icon" title="Cue-uri, track-uri, sunet">⋯</button>
         <small class="hint" id="mOrig" hidden></small>
@@ -2685,7 +2690,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       else if (c.do === 'next') stepSection(1); else if (c.do === 'prev') stepSection(-1);
       else if (c.do === 'bpm') { $('bpm').value = c.value; $('bpm').dispatchEvent(new Event('change')); }
       else if (c.do === 'key') send({ type: 'setKey', item: i, key: c.value });
-      else if (c.do === 'metronome') { if (!!met.playing !== c.on) $('mixer').querySelector('#metPlay')?.click(); }
+      else if (c.do === 'metronome') { if (!!met.playing !== c.on) toggleMet(); }
       else if (c.do === 'track') {
         const ch = mt.ch.find(x => (x.name || x.file).toLowerCase().includes(c.name)); if (!ch) return toast('Nu găsesc track-ul ' + c.name);
         if (c.solo) ch.solo = !ch.solo; if (typeof c.muted === 'boolean') ch.muted = c.muted;
@@ -2841,12 +2846,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   mt.onEnd = () => { setPlay(false); if (learning) finishLearning(); };
   const setPlay = on => { $('tlPlay').textContent = on ? '❚❚' : '▶'; $('tlPlay').classList.toggle('on', on); $('toMusic').classList.toggle('playing', anyPlaying()); };
   $('tlPlay').onclick = async () => {
-    if (mt.playing) { mt.pause(); return setPlay(false); }
+    if (mt.playing) { mt.pause(); if (met.synced) met.play(); return setPlay(false); }   // the click keeps going on its own
     if (!mt.ch.length) return toast('Cântarea nu are track-uri. Adaugă-le cu ＋ Track-uri.');
     lastCue = -2; await mt.play(); setPlay(true);
     if (met.playing && !met.synced) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0);   // a running click locks onto the tracks
   };
-  $('tlStop').onclick = () => { mt.stop(); mt.seek(0); setPlay(false); lastCue = -2; markSection(); if (learning) finishLearning(); };
+  $('tlStop').onclick = () => { mt.stop(); mt.seek(0); setPlay(false); if (met.synced) met.play(); lastCue = -2; markSection(); if (learning) finishLearning(); };
   $('tlStart').onclick = () => { mt.seek(0); lastCue = -2; };
 
   // ---- learn the cues: play the song and press → (or Space) when each slide should come
@@ -2939,6 +2944,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('audioOut').onclick = () => { $('mToolsPop').classList.remove('show'); openRouting(); };
   if (prefs.trDev && prefs.trDev !== 'default') mt.output(prefs.trDev).catch(() => {});
 
+  // ♩ the click: from the top bar, from the mixer, or by voice
+  async function toggleMet() {
+    if (met.playing) { met.pause(); } else { met.setBpm(+$('bpm').value || songBpmNow() || 120); if (!$('bpm').value) $('bpm').value = met.bpm;
+      if (mt.duration && mt.playing) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0); else await met.play(); }   // with the tracks when they play, on its own otherwise
+    $('metTop').classList.toggle('on', met.playing); $('metTop').textContent = met.playing ? '♩ Click ❚❚' : '♩ Click';
+    renderMixer(); $('toMusic').classList.toggle('playing', anyPlaying());
+  }
+  $('metTop').onclick = toggleMet;
   // ---- mixer: Click, Pad, every stem, Master
   const dB = v => v <= 0.001 ? '−∞' : ((v >= 1 ? '+' : '') + (20 * Math.log10(v)).toFixed(1)).replace('+0.0', '0.0');
   // a console fader: the travel is in dB, like on a real desk (0 dB high up, −∞ at the bottom)
@@ -3018,11 +3031,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       const left = mt.ch.filter((_, i) => i !== +b.dataset.rm).map(({ file, name, vol, muted, panValue }) => ({ file, name, vol, muted, pan: panValue }));
       send({ type: 'setStems', item: mtItem, stems: left }); mtKey = '';
     });
-    $('metPlay').onclick = async () => {
-      if (met.playing) { met.pause(); } else { met.setBpm(+$('bpm').value || songBpmNow() || 120); if (!$('bpm').value) $('bpm').value = met.bpm;
-        if (mt.duration) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0); else await met.play(); }
-      renderMixer(); $('toMusic').classList.toggle('playing', anyPlaying());
-    };
+    $('metPlay').onclick = toggleMet;
     $('padPlay').onclick = async () => {
       if (pad.playing) pad.pause();
       else { const key = padKeyManual || songKeyNow().replace(/m$/, ''); if (!key) return toast('Alege tonul pad-ului'); await pad.play(key); }
