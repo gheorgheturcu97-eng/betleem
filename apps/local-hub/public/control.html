@@ -526,6 +526,9 @@
   #bOff{height:44px;padding:0 22px;border-radius:14px;font-weight:700;font-size:15px;white-space:nowrap}
   #bOff.on{background:#e5484d;color:#fff;box-shadow:0 0 0 3px rgba(229,72,77,.35);animation:offPulse 1.6s ease-in-out infinite}
   @keyframes offPulse{50%{box-shadow:0 0 0 6px rgba(229,72,77,.15)}}
+  #bPreach{height:44px;padding:0 14px;border-radius:14px;font-weight:650;white-space:nowrap;background:rgba(46,204,113,.18);border:1px solid rgba(46,204,113,.5)}
+  #bPreach.off{background:rgba(229,72,77,.15);border-color:rgba(229,72,77,.5)} #bPreach[hidden]{display:none}
+  .ph .pin{font:700 22px ui-monospace,Menlo,monospace;letter-spacing:.15em}
   #bScrT{width:44px;height:44px;font-size:18px;border-radius:14px} #bScrT.sel{background:var(--glass-3);box-shadow:inset 0 0 0 1px var(--acc)}
   body.mode-proiectez #bOff{height:52px;padding:0 30px;font-size:17px;border-radius:16px} body.mode-proiectez #bScrT{width:52px;height:52px;border-radius:16px}
   @media (max-width:1440px){
@@ -857,6 +860,7 @@
     <div class="seg navtabs"><button class="sel" id="toLive">Live</button><button id="toMusic" title="MD&TRACK: track-uri, ton, tempo, metronom, pad și mixer pentru trupă">MD&amp;TRACK <i class="playing-dot"></i></button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button><button id="bLook" title="Ecranele: sală și scenă — aspect, ce apare pe ele, timer">Ecrane</button></div>
     <div class="transport">
       <button id="bOff" class="off-btn" title="Ecran gol: nimic pe ecrane. Apasă iar (sau Esc) ca să revină ce era.">⏻ Ecran gol</button>
+      <button id="bPreach" hidden title="Predicatorul schimbă singur slide-urile predicii din telefon. Apasă ca să preiei tu controlul (sau să i-l dai înapoi).">🎤</button>
       <button id="bScrT" class="icon" title="🖥 Arată / ascunde previzualizarea ecranelor (Ctrl/⌘+2)">🖥</button>
       <span class="old-t" hidden><button id="bPrev">◀</button><button id="bNext">▶</button></span>
       <span class="clr" hidden>
@@ -1191,6 +1195,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="ph-row">
     <div class="ph"><div class="qr" id="phQr1"></div><b>Muzicieni</b><small>Programul și fiecare cântare cu acorduri, în tonul ales. Merge singur după ecran.</small></div>
     <div class="ph"><div class="qr" id="phQr2"></div><b>Echipă și oricine</b><small>Versurile de pe ecran și programul.</small></div>
+    <div class="ph" id="phPred"><div class="qr" id="phQr3"></div><b>🎤 Predicator</b><small>Schimbă singur slide-urile predicii (doar ale predicii). Tu le poți prelua oricând din bara de sus.</small>
+      <span class="pin" id="phPin"></span><button id="phNewPin" class="mini ghost" title="Codul vechi nu mai merge">↻ PIN nou</button></div>
   </div>
   <p class="hint" id="phUrl"></p>
   <p class="hint">Pe iPhone: în Safari → Partajează → <b>Adaugă pe ecranul principal</b> și arată ca o aplicație. Cine are PIN-ul de operator poate schimba și slide-urile din telefon.</p>
@@ -1922,6 +1928,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // ⏻ one command: the screens show nothing (black), press again and what was there comes back
   const offToggle = () => { const on = !S?.live.blank; send({ type: 'blank' }); toast(on ? 'Ecran gol: nu se mai vede nimic' : 'Ecranele arată iar'); };
   $('bOff').onclick = offToggle;
+  $('bPreach').onclick = () => { const off = !S.live.preacherOff; send({ type: 'preacher', off }); toast(off ? 'Ai preluat controlul slide-urilor' : 'Predicatorul poate schimba iar slide-urile'); };
   $('bScrT').onclick = e => { e.stopPropagation(); if (!$('musicView').hidden) showView('live');
     setVis($('screens').dataset.vis === 'none' ? (lastVis || 'both') : 'none'); };
   $('msgTo').onchange = e => { if ($('msg').value) send({ type: 'message', value: $('msg').value, to: e.target.value }); else send({ type: 'message', value: '', to: e.target.value }); };
@@ -2086,11 +2093,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // 📱 phones: a QR code for the musicians (chords) and one for everyone (lyrics)
   $('bPhones').onclick = async () => {
     $('phonesModal').classList.add('show');
-    let base = location.origin;
-    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
+    let base = location.origin, t = null;
+    try { t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
     const { default: qrcode } = await import('/vendor/qrcode.js');
     const draw = (el, link) => { const q = qrcode(0, 'M'); q.addData(link); q.make(); $(el).innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); };
     draw('phQr1', base + '/live.html?v=chords'); draw('phQr2', base + '/live.html');
+    $('phPred').hidden = !t?.preacherPin;
+    if (t?.preacherPin) { draw('phQr3', base + '/live.html?v=pred#p=' + t.preacherPin); $('phPin').textContent = 'PIN ' + t.preacherPin; }
+    $('phNewPin').onclick = async () => { const r = await fetch('/api/preacher/pin', { method: 'POST', headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({}));
+      if (r.preacherPin) { draw('phQr3', base + '/live.html?v=pred#p=' + r.preacherPin); $('phPin').textContent = 'PIN ' + r.preacherPin; toast('PIN nou pentru predicator. Codul vechi nu mai merge.'); } else toast(r.error || 'N-a mers'); };
     $('phUrl').innerHTML = `Sau scrie în browser: <b>${esc(base)}/live.html</b>` + (/localhost|127\.0\.0\.1/.test(base) ? ' — calculatorul nu pare conectat la Wi-Fi.' : '');
   };
   $('phClose').onclick = () => $('phonesModal').classList.remove('show');
@@ -2246,7 +2257,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
-    $('bBlank').classList.toggle('on', S.live.blank); $('bOff').classList.toggle('on', !!S.live.blank); $('bOff').textContent = S.live.blank ? '⏻ Ecran gol · Esc ca să revină' : '⏻ Ecran gol'; $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);
+    $('bBlank').classList.toggle('on', S.live.blank); $('bOff').classList.toggle('on', !!S.live.blank);
+    $('bPreach').hidden = !S.live.preachers; $('bPreach').classList.toggle('off', !!S.live.preacherOff);
+    $('bPreach').textContent = S.live.preacherOff ? '🎤 Dă-i controlul' : '🎤 Predicatorul · Preia'; $('bOff').textContent = S.live.blank ? '⏻ Ecran gol · Esc ca să revină' : '⏻ Ecran gol'; $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);
     if (document.activeElement !== $('msgTo')) $('msgTo').value = S.live.messageTo || 'both';
     renderMediaBar();
     const slHtml = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true" ${it.kind !== 'song' ? `data-k="${esc(it.kind)}"` : ''}>

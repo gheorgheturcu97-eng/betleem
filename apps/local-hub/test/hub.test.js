@@ -391,3 +391,45 @@ test('feedback is kept with a proposal (or kept anyway when no AI answers)', asy
   assert.equal(list[0].status, 'de-facut');
   assert.match(fs.readFileSync(path.join(dir, 'propuneri.md'), 'utf8'), /numele track-ului mai mare/);
 });
+
+test('🎤 the preacher moves only the sermon slides, and the operator can take them back; the office QR has no personal data', async () => {
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' };
+  const P = await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify({ op: 'addService', title: 'Predicator test', date: new Date(Date.now() + 86400000).toISOString() }) }).then(r => r.json());
+  const s = P.services.find(x => x.title === 'Predicator test');
+  await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify({ op: 'setItems', id: s.id, items: [
+    { kind: 'prayer', title: 'Rugăciune', minutes: 3 },
+    { kind: 'sermon', title: 'Predica', minutes: 30, notes: 'Ioan 3:16 la slide 2', slides: ['/media/p1.png', '/media/p2.png', '/media/p3.png'] },
+    { kind: 'announcement', title: 'Anunțuri', minutes: 2 }] }) });
+  await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify({ op: 'updateService', id: s.id, status: 'published' }) });
+  await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify({ op: 'goLive', id: s.id }) });
+  const pin = JSON.parse(fs.readFileSync(path.join(dir, 'library.json'), 'utf8')).preacherPin;
+  assert.match(pin, /^\d{4}$/);
+
+  const pr = client(), op = client(); await pr.open; await op.open;
+  await pr.next(m => m.type === 'hello'); await op.next(m => m.type === 'hello');
+  op.send({ type: 'login', pin: '1111' }); await op.next(m => m.type === 'login');
+  pr.send({ type: 'login', pin });
+  assert.equal((await pr.next(m => m.type === 'login')).role, 'preacher');
+  const seen = await op.next(m => m.type === 'state' && m.state.live.preachers === 1);
+  assert.equal(seen.state.setlist[1].planNotes, 'Ioan 3:16 la slide 2', 'the preacher sees his notes');
+
+  pr.send({ type: 'blank' });
+  assert.match((await pr.next(m => m.type === 'error')).error, /doar slide-urile predicii/);
+  pr.send({ type: 'start' });
+  await pr.next(m => m.type === 'state' && m.state.live.item === 1 && m.state.live.slide === 0);
+  for (let i = 0; i < 5; i++) pr.send({ type: 'next' });          // never runs past the sermon into the announcements
+  await pr.next(m => m.type === 'state' && m.state.live.slide === 2);
+  await new Promise(r => setTimeout(r, 150));
+  op.send({ type: 'preacher', off: true });
+  await pr.next(m => m.type === 'state' && m.state.live.preacherOff === true);
+  pr.send({ type: 'prev' });
+  assert.match((await pr.next(m => m.type === 'error')).error, /Regia a preluat/);
+  op.send({ type: 'preacher', off: false });
+
+  const nx = await fetch('http://localhost:4599/api/next').then(r => r.json());   // no PIN
+  assert.equal(nx.service.title, 'Predicator test');
+  assert.ok(!JSON.stringify(nx).includes('phone') && !('assignments' in nx.service));
+  const plan = await fetch('http://localhost:4599/api/plan', { headers: L }).then(r => r.json());
+  assert.equal(plan.services.find(x => x.id === s.id).items[1].notes, 'Ioan 3:16 la slide 2', 'plan notes survive the live program');
+  pr.ws.close(); op.ws.close();
+});

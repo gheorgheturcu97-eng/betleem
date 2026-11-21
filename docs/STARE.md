@@ -1,4 +1,4 @@
-# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.21.10)
+# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.21.11)
 
 Totul de mai jos e în cod și publicat. Unde scrie **„neverificat”**, merge în teste, dar n-a fost încercat pe
 aparatura reală. Asta e primul lucru de verificat (vezi PLAN.md, Pasul 0).
@@ -19,6 +19,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   (add_songs și pick_songs, cu căutare iertătoare, ex. „adorare” găsește „Închinare”). Are și modul „💡 Părere”,
   care strânge propuneri de dezvoltare în Documents/Betleem/propuneri.md.
 - Clic dreapta și scurtături (copiază, taie, lipește, șterge, duplică). Lipești sau tragi orice fișier în program.
+- **📄 PDF** la fiecare serviciu (`public/print.html`): programul cu ore, moment, cine, ton și minute, opțional cu
+  echipa (doar nume) și cu acordurile cântărilor. Se salvează ca PDF din fereastra de tipărire.
+- **▦ QR pentru birou** (`print.html?qr=1`): un afiș cu cod QR care deschide mereu programul următor
+  (`live.html?v=next`, ruta publică `/api/next`, fără PIN și fără date personale). Merge doar pe Wi-Fi-ul bisericii
+  până la Pasul 3.
 
 ## Proiectez (`public/control.html`, `main.html`, `stage.html`)
 - Versuri, Biblie, PowerPoint și PDF (pe Mac prin Keynote, pe Windows prin PowerPoint, altfel prin randarea proprie),
@@ -31,6 +36,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   portocaliu la 3 min, roșu care pulsează când trece de timp.
 - Selector de program cu **+** pentru import rapid din PCO. Lista de servicii se strânge când începe slujba.
 - 📱 **Telefoane**: cod QR care deschide pe telefon programul și cântările cu acorduri, live.
+- 🎤 **Modul Predicator** (`live.html?v=pred`, al treilea QR din 📱, cu PIN propriu și „↻ PIN nou”): slide-ul de
+  acum și următorul, notițele din Planificare, timpul rămas, butoane mari ◀ ▶. Merge și cu un clicker sau cu
+  tastatura. Poate mișca doar slide-urile predicii și nu trece în alt moment. În regie apare
+  „🎤 Predicatorul · Preia” în bara de sus. Rolul `preacher` e pe server (`sermonIndex`, `case 'preacher'`).
+  Neverificat pe telefoane reale.
 - 📥 **Primite**: fișiere trimise de pe telefon (QR) sau prin AirDrop.
 - Mod zi și noapte (☀), mod rapid pentru calculatoare slabe, Setări în carduri.
 

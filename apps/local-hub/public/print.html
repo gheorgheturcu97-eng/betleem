@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/fonts/inter.css">
+<title>Program</title>
+<style>
+  /* 📄 the program as a clean page: saved as PDF from the print window, sent on WhatsApp, printed for the office */
+  :root{--ink:#16171a;--mute:#6b7078;--line:#e3e5e8;--acc:#d99a00}
+  *{box-sizing:border-box}
+  body{margin:0;background:#e9eaec;color:var(--ink);font:14px/1.45 Inter,-apple-system,system-ui,Segoe UI,Roboto,sans-serif}
+  .bar{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 16px;background:#16171a;color:#eee}
+  .bar button{border:0;border-radius:999px;padding:9px 16px;font:600 14px system-ui;background:#2a2c31;color:#eee;cursor:pointer}
+  .bar .go{background:#f5b301;color:#000} .bar label{display:flex;gap:6px;align-items:center;font-size:13px} .bar .grow{flex:1}
+  .page{width:210mm;min-height:297mm;margin:16px auto;background:#fff;padding:16mm 16mm 14mm;box-shadow:0 4px 24px rgba(0,0,0,.12)}
+  header.h{display:flex;gap:14px;align-items:center;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  header.h img{height:46px;width:auto} header.h .c{flex:1} header.h .c small{color:var(--mute);display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  header.h h1{margin:0;font-size:24px;line-height:1.15} header.h .d{text-align:right;font-size:13px} header.h .d b{display:block;font-size:20px}
+  .draft{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid var(--acc);color:var(--acc);font-size:11px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse} th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top} td.t{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--mute);width:56px}
+  td.k{width:92px;color:var(--mute);font-size:12px} td.n b{font-size:15px} td.n small{display:block;color:var(--mute)} td.key{width:46px;font-weight:700} td.m{width:52px;text-align:right;color:var(--mute);white-space:nowrap}
+  tr.song td.n b::before{content:"♪ ";color:var(--acc)} tr.sermon td{background:#fbf7ec}
+  .sum{display:flex;justify-content:space-between;margin-top:10px;color:var(--mute);font-size:12.5px}
+  h2{font-size:15px;margin:22px 0 8px;text-transform:uppercase;letter-spacing:.06em}
+  .team{columns:2;column-gap:24px;font-size:13px} .team div{break-inside:avoid;margin-bottom:8px} .team b{display:block;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+  .chart{break-before:page;padding-top:4mm} .chart h3{margin:0 0 2px;font-size:20px} .chart .meta{color:var(--mute);margin-bottom:10px}
+  .chart .lab{color:var(--acc);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin:12px 0 2px}
+  .chart .line{display:flex;flex-wrap:wrap;font-size:14px} .chart .seg{display:inline-flex;flex-direction:column;white-space:pre} .chart .seg b{color:#b37400;font-size:12px;min-height:1em} .chart .seg i{font-style:normal}
+  .foot{margin-top:18px;color:var(--mute);font-size:11px;text-align:center}
+  /* the QR poster for the office */
+  .poster{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px}
+  .poster img.logo{height:70px} .poster h1{font-size:34px;margin:0} .poster p{font-size:18px;color:var(--mute);margin:0;max-width:150mm}
+  .poster .qr{width:120mm;height:120mm} .poster .qr svg{width:100%;height:100%} .poster .u{font:600 14px ui-monospace,Menlo,monospace;color:var(--ink)}
+  @media print{ @page{size:A4;margin:0} body{background:#fff} .bar{display:none} .page{margin:0;box-shadow:none;width:auto;min-height:auto} }
+</style>
+</head>
+<body>
+<div class="bar">
+  <button id="back">↩ Înapoi</button>
+  <span class="grow"></span>
+  <span id="opts"><label><input type="checkbox" id="oTeam" checked> Cu echipa</label> <label><input type="checkbox" id="oChords"> Cu acordurile cântărilor</label></span>
+  <button class="go" id="print">📄 Salvează PDF / Tipărește</button>
+</div>
+<div class="page" id="page"><p>Se pregătește…</p></div>
+<script type="module">
+  import { esc } from '/client.js';
+  import { chordLineToHtml, toSlides, arrange, parseSong, transpose, originalKey, keyDistance, prefersFlats } from '/core/song.js';
+  const $ = id => document.getElementById(id), q = new URLSearchParams(location.search);
+  const pin = (() => { try { return localStorage.getItem('bnc-pin') || ''; } catch { return ''; } })();
+  const KIND = { song: 'Cântare', sermon: 'Predică', prayer: 'Rugăciune', reading: 'Citire', announcement: 'Anunțuri', other: '', media: 'Prezentare', bible: 'Biblia' };
+  const hhmm = d => d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+  $('back').onclick = () => history.length > 1 ? history.back() : (location.href = '/planning.html');
+  $('print').onclick = () => print();
+  const info = await fetch('/api/next').then(r => r.json()).catch(() => ({}));
+  const logo = info.logo ? `<img src="${esc(info.logo)}" alt="">` : '';
+
+  if (q.get('qr')) {                               // ▦ the poster with a QR for the pastor's office: always the next program
+    $('opts').hidden = true;
+    let base = location.origin;
+    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
+    const link = base + '/live.html?v=next';
+    const { default: qrcode } = await import('/vendor/qrcode.js');
+    const c = qrcode(0, 'M'); c.addData(link); c.make();
+    document.title = 'QR program · ' + (info.church || 'Betleem');
+    $('page').innerHTML = `<div class="poster" style="min-height:265mm">${info.logo ? `<img class="logo" src="${esc(info.logo)}" alt="">` : ''}
+      <h1>${esc(info.church || 'Biserica')}</h1><p>Scanează cu camera telefonului și vezi <b>programul următor</b>, mereu la zi.</p>
+      <div class="qr">${c.createSvgTag({ cellSize: 8, margin: 1, scalable: true })}</div>
+      <div class="u">${esc(link)}</div><p style="font-size:13px">Merge când telefonul e conectat la Wi-Fi-ul bisericii.</p></div>`;
+  } else {
+    const P = await fetch('/api/plan', { headers: { 'x-pin': pin } }).then(r => r.ok ? r.json() : Promise.reject(r)).catch(() => null);
+    const s = P?.services.find(x => x.id === q.get('id'));
+    if (!s) $('page').innerHTML = '<p>Nu găsesc serviciul (sau lipsește PIN-ul). Întoarce-te în Planificare și încearcă din nou.</p>';
+    else {
+      const songs = new Map();
+      const draw = async () => {
+        const d = new Date(s.date); let t = d.getTime(), total = 0;
+        const rows = s.items.map(it => { const at = new Date(t); t += (it.minutes || 0) * 60000; total += it.minutes || 0;
+          return `<tr class="${it.kind}"><td class="t">${hhmm(at)}</td><td class="k">${esc(KIND[it.kind] ?? '')}</td>
+            <td class="n"><b>${esc(it.title || KIND[it.kind] || '')}</b>${it.leader ? `<small>${esc(it.leader)}</small>` : ''}</td>
+            <td class="key">${esc(it.kind === 'song' ? it.key || '' : '')}</td><td class="m">${it.minutes ? it.minutes + ' min' : ''}</td></tr>`; }).join('');
+        let team = '';
+        if ($('oTeam').checked) {                      // names only: no phone numbers on a page that gets shared
+          const name = id => P.volunteers.find(v => v.id === id)?.name || '';
+          team = P.departments.map(dp => { const ppl = dp.positions.flatMap(po => Array.from({ length: po.needed }, (_, i) => s.assignments[`${po.id}#${i}`]).filter(Boolean).map(a => `${esc(name(a.volunteer))} <span style="color:var(--mute)">· ${esc(po.name)}</span>`)).filter(Boolean);
+            return ppl.length ? `<div><b>${esc(dp.name)}</b>${ppl.join('<br>')}</div>` : ''; }).join('');
+          if (team) team = `<h2>Echipa</h2><div class="team">${team}</div>`;
+        }
+        let charts = '';
+        if ($('oChords').checked) for (const it of s.items.filter(x => x.kind === 'song' && x.songId)) {
+          if (!songs.has(it.songId)) songs.set(it.songId, await fetch('/api/songs/' + it.songId).then(r => r.ok ? r.json() : null).catch(() => null));
+          const song = songs.get(it.songId); if (!song?.body) continue;
+          const orig = originalKey(song.key, song.body), steps = it.key && orig ? keyDistance(orig, it.key) : 0;
+          const slides = toSlides(arrange(parseSong(transpose(song.body, steps, prefersFlats(it.key || orig || 'C'))), it.arrangement || song.arrangement), 99);
+          let last = null;
+          charts += `<div class="chart"><h3>${esc(it.title || song.title)}</h3><div class="meta">${[it.key || orig ? 'Ton ' + (it.key || orig) : '', song.bpm ? song.bpm + ' BPM' : '', song.author || ''].filter(Boolean).map(esc).join(' · ')}</div>
+            ${slides.map(sl => { const h = sl.label && sl.label !== last ? `<div class="lab">${esc(sl.label)}</div>` : ''; last = sl.label; return h + sl.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join(''); }).join('')}</div>`;
+        }
+        const end = new Date(d.getTime() + total * 60000);
+        document.title = `Program ${s.title} ${d.toLocaleDateString('ro-RO')}`;
+        $('page').innerHTML = `<header class="h">${logo}<div class="c"><small>${esc(info.church || '')}</small><h1>${esc(s.title)}${s.status !== 'published' ? '<span class="draft">ciornă</span>' : ''}</h1></div>
+          <div class="d">${esc(d.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}<b>${hhmm(d)}${total ? ' – ' + hhmm(end) : ''}</b></div></header>
+          <table><thead><tr><th>Ora</th><th>Moment</th><th>Ce</th><th>Ton</th><th style="text-align:right">Durata</th></tr></thead><tbody>${rows || '<tr><td colspan="5">Programul e gol.</td></tr>'}</tbody></table>
+          <div class="sum"><span>${s.items.length} momente · ${s.items.filter(x => x.kind === 'song').length} cântări</span><span>Total ${Math.floor(total / 60) ? Math.floor(total / 60) + ' h ' : ''}${total % 60} min</span></div>
+          ${team}${charts}<div class="foot">Făcut cu Echipa Betleem · ${esc(new Date().toLocaleDateString('ro-RO'))}</div>`;
+      };
+      $('oTeam').onchange = draw; $('oChords').onchange = draw;
+      await draw();
+    }
+  }
+</script>
+</body>
+</html>

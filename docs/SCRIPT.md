@@ -71,7 +71,7 @@ reîncarcă după câteva ore.
 > - Ghidul are fader propriu în mixer și rutare proprie (de obicei doar în căștile trupei).
 > Spune-mi Înainte / Acum.”
 
-## ☐ 5 · Export PDF și QR pentru program
+## ☑ 5 · Export PDF și QR pentru program (FĂCUT în 2026.11.21.11)
 > „Din Pasul 4 din docs/PLAN.md, doar exportul PDF și QR-ul:
 > - În Planificare, la fiecare serviciu, un buton «📄 PDF»: programul aranjat frumos (biserica, data, ora, fiecare
 >   moment cu minutele și ora la care începe, cântările cu tonul, cine conduce, invitații), cu logo-ul și culorile
@@ -103,7 +103,7 @@ reîncarcă după câteva ore.
 > - Planificat pentru până la 100 de oameni.
 > Spune-mi Înainte / Acum.”
 
-## ☐ 8 · Modul Predicator
+## ☑ 8 · Modul Predicator (FĂCUT în 2026.11.21.11)
 > „Din Pasul 6 din docs/PLAN.md, modul Predicator:
 > - Un QR (în 📱 Telefoane) care deschide pe telefon sau tabletă: slide-ul de acum și următorul, butoane mari ◀ ▶,
 >   notițele predicii, timpul rămas din timerul slujbei.

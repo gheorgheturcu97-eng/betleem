@@ -53,6 +53,24 @@
   .login{padding:16px;color:var(--mute);font-size:14px}
   .login input{width:110px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
   .login button{padding:8px 12px;border-radius:8px;border:0;background:var(--acc)}
+  /* 🎤 Predicator: big, simple, nothing else on the page */
+  body.pred nav,body.pred #tools,body.pred #lyrics,body.pred #order,body.pred #songhead,body.pred #nextsong,body.pred #pad{display:none!important}
+  #pred{display:none;flex-direction:column;gap:12px;padding:12px 16px calc(120px + env(safe-area-inset-bottom))} body.pred #pred{display:flex}
+  .pv{border-radius:14px;background:#000;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden;position:relative;border:1px solid var(--line)}
+  .pv img{width:100%;height:100%;object-fit:contain} .pv .tx{padding:4%;text-align:center;font-size:clamp(14px,4vw,26px);line-height:1.3;white-space:pre-line}
+  .pv .tag{position:absolute;left:8px;top:8px;font:700 11px system-ui;letter-spacing:.08em;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.6)}
+  .pv.now{border:2px solid var(--acc)} .pv.nx{width:55%;opacity:.8} .prow{display:flex;gap:12px;align-items:flex-start}
+  .pinfo{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+  #pTime{font:700 38px/1 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums} #pTime.over{color:#ff5a5a} #pTime small{display:block;font:500 12px system-ui;color:var(--mute);margin-top:4px}
+  #pCount{color:var(--mute);font-size:14px} #pState{padding:10px 12px;border-radius:10px;background:var(--card);font-size:15px} #pState.off{background:#5a1d1d}
+  #pNotes{white-space:pre-wrap;background:var(--card);border-radius:10px;padding:12px;font-size:17px;line-height:1.45} #pNotes:empty{display:none}
+  #pBtns{position:fixed;left:0;right:0;bottom:0;display:none;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)} body.pred #pBtns{display:flex}
+  #pBtns button{flex:1;height:84px;border:0;border-radius:18px;font:700 26px system-ui;background:var(--card);color:var(--fg)} #pBtns .go{flex:2;background:var(--acc);color:#000}
+  #pBtns button:disabled{opacity:.35}
+  /* ▦ the office QR: the next program, read only */
+  body.nextv nav,body.nextv #tools,body.nextv #lyrics,body.nextv #order,body.nextv #songhead,body.nextv #nextsong,body.nextv #pad,body.nextv #login{display:none!important}
+  #nextv{display:none;padding:12px 16px 30px} body.nextv #nextv{display:block}
+  #nextv h2{margin:6px 0 2px;font-size:22px} #nextv .when{color:var(--mute);margin-bottom:12px} #nextv .draft{color:var(--acc);font-size:13px}
 </style>
 </head>
 <body>
@@ -68,6 +86,14 @@
 <div id="lyrics"></div>
 <div class="nextsong" id="nextsong" hidden></div>
 <ul class="order" id="order" hidden></ul>
+<div id="pred">
+  <div id="pState"></div>
+  <div class="pv now" id="pNow"></div>
+  <div class="prow"><div class="pv nx" id="pNext"></div><div class="pinfo"><div id="pTime"></div><div id="pCount"></div></div></div>
+  <div id="pNotes"></div>
+</div>
+<div id="nextv"></div>
+<div id="pBtns"><button id="pPrev" title="Slide-ul anterior">◀</button><button class="go" id="pGo">Înainte ▶</button></div>
 <div class="login" id="login">Faci parte din echipa media? <input id="pin" type="password" inputmode="numeric" placeholder="PIN"> <button id="ok">Intră</button></div>
 <div id="pad"><button id="prev">◀ Înapoi</button><button id="blank">Negru</button><button class="go" id="next">Înainte ▶</button></div>
 <script type="module">
@@ -76,7 +102,13 @@
   const $ = id => document.getElementById(id);
   // musicians open this with ?v=chords (from the QR code in Live): chords, the program, and any song of it
   let view = new URLSearchParams(location.search).get('v') || 'lyrics', S = null, browse = -1, browseSlides = null;
-  if (!['lyrics', 'chords', 'order'].includes(view)) view = 'lyrics';
+  if (!['lyrics', 'chords', 'order', 'pred', 'next'].includes(view)) view = 'lyrics';
+  if (view === 'next') document.body.classList.add('nextv');
+  if (view === 'pred') {                             // 🎤 the preacher's QR carries its PIN after # (never sent to the network as part of the address)
+    document.body.classList.add('pred');
+    const hp = new URLSearchParams(location.hash.slice(1)).get('p');
+    if (hp) { try { localStorage.setItem('bnc-pin', hp); } catch {} history.replaceState(null, '', location.pathname + location.search); }
+  }
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x.dataset.v === view));
   let fz = (() => { try { return +localStorage.getItem('betleem.fz') || 1; } catch { return 1; } })();
   const setFz = v => { fz = Math.min(2.2, Math.max(0.6, v)); document.documentElement.style.setProperty('--fz', fz); try { localStorage.setItem('betleem.fz', fz); } catch {} };
@@ -99,9 +131,9 @@
     render(); scrollTo({ top: 0 });
   }
   stayAwake();
-  const hub = connect(s => { S = s; if ($('follow').checked) { browse = -1; browseSlides = null; } render(); }, e => {
+  const hub = connect(s => { S = s; S._at = Date.now(); if ($('follow').checked) { browse = -1; browseSlides = null; } render(); }, e => {
     if (e.type === 'online' || e.type === 'offline') $('dot').classList.toggle('on', e.type === 'online');
-    if (e.role) { const ctl = e.role !== 'viewer'; $('pad').style.display = ctl ? 'flex' : 'none'; $('login').hidden = ctl; }
+    if (e.role) { const ctl = e.role !== 'viewer' && e.role !== 'preacher'; $('pad').style.display = ctl ? 'flex' : 'none'; $('login').hidden = ctl || (view === 'pred' && e.role === 'preacher'); if (view === 'pred' && S) renderPred(); }
     if (e.type === 'login' && !e.ok) alertBox('PIN greșit');
     if (e.type === 'error') alertBox(e.error);
   });
@@ -113,13 +145,52 @@
   $('next').onclick = () => hub.send({ type: 'next' });
   $('prev').onclick = () => hub.send({ type: 'prev' });
   $('blank').onclick = () => hub.send({ type: 'blank' });
+  $('pGo').onclick = () => hub.send({ type: S && S.live.item === S.live.sermon ? 'next' : 'start' });
+  $('pPrev').onclick = () => hub.send({ type: 'prev' });
+  addEventListener('keydown', e => { if (view !== 'pred') return;   // a clicker / keyboard on the preacher's laptop works too
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); $('pGo').click(); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); $('pPrev').click(); } });
+  setInterval(() => { if (view === 'pred' && S) renderPred(); }, 1000);
+  function renderPred() {
+    const L = S.live, si = L.sermon, it = S.setlist[si], on = si >= 0 && L.item === si, ctl = hub.role === 'preacher' || hub.role === 'operator' || hub.role === 'leader';
+    $('login').hidden = ctl;
+    $('pState').className = L.preacherOff ? 'off' : '';
+    $('pState').textContent = !ctl ? 'Introdu PIN-ul de predicator (e lângă codul QR, în 📱 Telefoane).'
+      : si < 0 ? 'Nu există o predică în programul de azi.'
+      : L.preacherOff ? 'Regia a preluat controlul slide-urilor. Așteaptă sau roagă regia să ți-l dea înapoi.'
+      : on ? `🎤 Ai controlul: ${it.title || 'Predica'}` : `Predica „${it.title || 'Predica'}” nu e încă pe ecran. Apasă ▶ ca s-o pornești.`;
+    const sl = it?.slides || [], cur = on ? L.slide : -1;
+    const show = (el, src, tag) => { el.innerHTML = (tag ? `<span class="tag">${tag}</span>` : '') + (src ? (/\.(mp4|webm|mov)$/i.test(src) ? '<div class="tx">▶ video</div>' : `<img src="${esc(src)}" alt="">`) : `<div class="tx">${tag === 'ACUM' && on && !sl.length ? esc((L.slides[L.slide]?.lines || []).map(stripChords).join('\n')) || '—' : '—'}</div>`); };
+    show($('pNow'), on ? sl[cur] : sl[0], on ? 'ACUM' : 'PRIMUL'); show($('pNext'), on ? sl[cur + 1] : sl[1], 'URMEAZĂ');
+    $('pCount').textContent = sl.length ? `Slide ${on ? cur + 1 : 0} din ${sl.length}` : 'Predica nu are slide-uri atașate.';
+    $('pNotes').textContent = it?.planNotes || '';
+    const mins = it?.minutes || 0, drift = S.now ? S.now - (S._at || Date.now()) : 0;
+    if (on && mins && L.since) {
+      const left = Math.round(mins * 60 - (Date.now() + drift - L.since) / 1000), a = Math.abs(left);
+      $('pTime').className = left < 0 ? 'over' : ''; $('pTime').innerHTML = `${left < 0 ? '+' : ''}${Math.floor(a / 60)}:${String(a % 60).padStart(2, '0')}<small>${left < 0 ? 'peste timp' : 'rămase din ' + mins + ' min'}</small>`;
+    } else $('pTime').innerHTML = mins ? `${mins}:00<small>timpul predicii</small>` : '';
+    $('pGo').textContent = on ? 'Înainte ▶' : '▶ Pornește'; $('pGo').disabled = $('pPrev').disabled = !ctl || si < 0 || !!L.preacherOff;
+    $('pPrev').disabled ||= !on || cur <= 0;
+  }
 
   function times(s) {
     let t = s.service.startsAt ? new Date(s.service.startsAt).getTime() : null;
     return s.setlist.map(it => { const at = t; if (t) t += (it.minutes || 0) * 60000; return at; });
   }
+  let nextT;
+  async function renderNext() {                       // the next program of the church, as the pastor sees it from the office QR
+    const r = await fetch('/api/next').then(x => x.json()).catch(() => null), s = r?.service;
+    $('title').textContent = r?.church || 'Betleem'; $('now').textContent = '';
+    if (!s) { $('nextv').innerHTML = '<p style="color:var(--mute)">Niciun program planificat încă.</p>'; return; }
+    const d = new Date(s.date); let t = d.getTime();
+    $('nextv').innerHTML = `<h2>${esc(s.title)}</h2><div class="when">${esc(d.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}${s.draft ? ' · <span class="draft">ciornă, se mai poate schimba</span>' : ''}</div>
+      <ul class="order" style="padding:0">${s.items.map(it => { const at = new Date(t); t += it.minutes * 60000;
+        return `<li style="cursor:default"><time>${at.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}</time><div>${esc(it.title || it.kind)}<small>${esc([it.key && 'ton ' + it.key, it.leader, it.minutes && it.minutes + ' min'].filter(Boolean).join(' · '))}</small></div></li>`; }).join('')}</ul>`;
+  }
   function render() {
     if (!S) return;
+    if (view === 'pred') return renderPred();
+    if (view === 'next') { clearTimeout(nextT); nextT = setTimeout(renderNext, 400); return; }   // the program changed somewhere: read it again
     const L = S.live, item = S.setlist[L.item];
     $('title').textContent = S.service.title || 'Betleem';
     $('now').textContent = item ? item.title : '';
@@ -150,7 +221,7 @@
       return `${head}<div class="slide ${i === cur || cur < 0 ? 'now' : ''}" data-i="${i}">${body}</div>`;
     }).join('') || `<p style="color:var(--mute)">Nimic pe ecran acum. Deschide <b>Program</b> și alege o cântare.</p>`;
     if (cur >= 0) document.querySelector('.slide.now')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    if (hub.role !== 'viewer') document.querySelectorAll('.slide').forEach(el => el.onclick = () => hub.send({ type: 'go', item: browse >= 0 ? browse : L.item, slide: +el.dataset.i }));
+    if (hub.role !== 'viewer' && hub.role !== 'preacher') document.querySelectorAll('.slide').forEach(el => el.onclick = () => hub.send({ type: 'go', item: browse >= 0 ? browse : L.item, slide: +el.dataset.i }));
   }
 </script>
 </body>

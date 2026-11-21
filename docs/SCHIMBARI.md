@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-21 · 2026.11.21.11
+- **Notițele din Planificare.** Înainte: se pierdeau când programul era pus pe Live. Acum: rămân în plan și le vede
+  predicatorul.
+- **Planificare.** Acum: butoanele **📄 PDF** și **▦ QR** lângă „Pune pe Live”. Nu s-a mutat nimic din ce era.
+- **📱 Telefoane.** Înainte: două coduri (muzicieni, echipă). Acum: are și al treilea, **🎤 Predicator**, cu PIN
+  propriu.
+
 ## 2026-11-21 · 2026.11.21.10
 - **Bara de sus (Proiectez).** Înainte: ◀ Înainte ▶, Aa, Negru, 🖼, Curăță. Acum: **⏻ Ecran gol** (și Esc), **🖥**
   pentru previzualizarea ecranelor, ⏱ și mesaj cu ținta. Slide-urile se schimbă cu Spațiu, → și ←, iar Logo și

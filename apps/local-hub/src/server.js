@@ -66,6 +66,9 @@ if (!Array.isArray(db.churches) || !db.churches.length) {
 }
 db.churchData ||= {};
 db.plan ||= defaultPlan();          // planning of the ACTIVE church (others wait in churchData)
+/** 🎤 The preacher's PIN: moves only the sermon's slides, from a phone or tablet. Separate from the team PINs. */
+function newPreacherPin() { let p; do { p = String(crypto.randomInt(1000, 10000)); } while (p === PIN || p === LEADER_PIN); return p; }
+db.preacherPin ||= newPreacherPin();
 const activeChurch = () => db.churches.find(c => c.id === db.activeChurch) || db.churches[0];
 const canva = createCanva({ dataDir: DATA_DIR, port: PORT, mediaDir: MEDIA_DIR, log: (w, e) => logError(w, e) });
 function broadcastCanva() { const msg = JSON.stringify({ type: 'canva', ...canva.status() }); for (const ws of wss?.clients || []) if (ws.readyState === 1) ws.send(msg); }
@@ -320,7 +323,7 @@ function snapshot() {
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
     })),
-    live: { ...live, slides: slidesFor(live.item), title: live.item === -2 ? live.bible?.title || '' : undefined },
+    live: { ...live, slides: slidesFor(live.item), title: live.item === -2 ? live.bible?.title || '' : undefined, preachers: preacherCount(), sermon: sermonIndex() },
     now: Date.now(),                                 // screens on other devices correct their clock with this
     // the planned programs of this church (titles and dates only — teams and phone numbers stay out)
     inbox: inboxList().length,                       // files waiting in 📥 Primite
@@ -359,13 +362,21 @@ function broadcast() {
   for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
 }
 
-const ROLE_RANK = { viewer: 0, operator: 1, leader: 2 };
+const ROLE_RANK = { viewer: 0, preacher: 0, operator: 1, leader: 2 };
+const preacherCount = () => [...sessions.values()].filter(x => x.role === 'preacher').length;
+/** The sermon the preacher controls: the one on screen now, else the next one in the program, else the first. */
+function sermonIndex() {
+  const isS = i => ['sermon'].includes(db.setlist[i]?.kind);
+  if (isS(live.item)) return live.item;
+  const after = db.setlist.findIndex((it, i) => i > live.item && isS(i));
+  return after >= 0 ? after : db.setlist.findIndex((it, i) => isS(i));
+}
 const need = (ws, role) => ROLE_RANK[sessions.get(ws)?.role ?? 'viewer'] >= ROLE_RANK[role];
 
 wss.on('connection', (ws, req) => {
   sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) ? 'leader' : 'viewer' });
   ws.send(JSON.stringify({ type: 'hello', role: sessions.get(ws).role, state: snapshot() }));
-  ws.on('close', () => sessions.delete(ws));
+  ws.on('close', () => { const was = sessions.get(ws)?.role; sessions.delete(ws); if (was === 'preacher') broadcast(); });
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     try { handleMessage(ws, m); }
@@ -422,9 +433,25 @@ function handleMessage(ws, m) {
     }
 
     if (m.type === 'login') {
-      const role = safeEq(m.pin, LEADER_PIN) && LEADER_PIN ? 'leader' : safeEq(m.pin, PIN) && PIN ? 'operator' : null;
+      const role = safeEq(m.pin, LEADER_PIN) && LEADER_PIN ? 'leader' : safeEq(m.pin, PIN) && PIN ? 'operator'
+        : safeEq(m.pin, db.preacherPin) ? 'preacher' : null;
       if (role) sessions.get(ws).role = role;
-      return reply({ type: 'login', ok: !!role, role: sessions.get(ws).role });
+      reply({ type: 'login', ok: !!role, role: sessions.get(ws).role });
+      if (role === 'preacher') broadcast();            // the operator sees that the preacher is connected
+      return;
+    }
+    if (sessions.get(ws)?.role === 'preacher') {     // 🎤 only the sermon's slides, and only while the operator allows it
+      if (!['next', 'prev', 'start', 'go'].includes(m.type)) return reply({ type: 'error', error: 'Predicatorul poate schimba doar slide-urile predicii.' });
+      if (live.preacherOff) return reply({ type: 'error', error: 'Regia a preluat controlul slide-urilor.' });
+      const si = sermonIndex();
+      if (si < 0) return reply({ type: 'error', error: 'Nu există o predică în programul de azi.' });
+      const n = Math.max(1, slidesFor(si).length);
+      if (live.item !== si) {                         // not on the sermon yet: any button starts it, from its first slide
+        applyItemBackground(si); live.item = si; live.slide = 0;
+      } else if (m.type === 'go') live.slide = clamp(Number(m.slide) || 0, 0, n - 1);
+      else if (m.type !== 'start') live.slide = clamp(live.slide + (m.type === 'next' ? 1 : -1), 0, n - 1);
+      live.blank = false; live.logo = false; live.preacherAt = Date.now();
+      broadcast(); return;
     }
     if (!need(ws, 'operator')) return reply({ type: 'error', error: 'Nu ai drept de control. Introdu PIN-ul.' });
 
@@ -458,6 +485,7 @@ function handleMessage(ws, m) {
         break;
       }
       case 'blank': live.blank = !live.blank; break;
+      case 'preacher': live.preacherOff = !!m.off; break;     // the operator takes the slides back (or gives them again)
       case 'resetTimer': live.since = live.item >= 0 ? Date.now() : 0; break;
       case 'logo': live.logo = !live.logo; break;
       case 'background': live.background = String(m.value || ''); break;
@@ -848,10 +876,10 @@ function planToLive() {
   const s = db.plan.services.find(x => x.id === db.service.planId);
   if (!s) { db.service = { ...db.service, planId: undefined }; return; }
   db.service = { ...db.service, title: s.title, startsAt: s.date };
-  const strip = list => JSON.stringify(list.map(({ notes, ...it }) => it));
+  const strip = list => JSON.stringify(list.map(({ notes, planNotes, ...it }) => it));
   if (strip(s.items) !== strip(db.setlist)) {
     const liveId = db.setlist[live.item]?.id;
-    db.setlist = s.items.map(it => ({ ...structuredClone(it), notes: db.setlist.find(x => x.id === it.id)?.notes || [] }));
+    db.setlist = s.items.map(it => ({ ...structuredClone(it), notes: db.setlist.find(x => x.id === it.id)?.notes || [], ...(it.notes ? { planNotes: it.notes } : {}) }));
     live.item = liveId ? db.setlist.findIndex(x => x.id === liveId) : -1;
     if (live.item < 0) live.slide = 0;
   }
@@ -861,7 +889,7 @@ function planToLive() {
 function syncLiveToPlan() {
   const s = db.service.planId && db.plan?.services.find(x => x.id === db.service.planId);
   if (!s) return;
-  s.items = db.setlist.map(({ notes, ...it }) => structuredClone(it));
+  s.items = db.setlist.map(({ notes, planNotes, ...it }) => ({ ...structuredClone(it), ...(planNotes ? { notes: planNotes } : {}) }));
   s.title = db.service.title || s.title;
   if (db.service.startsAt) s.date = db.service.startsAt;
 }
@@ -1359,7 +1387,7 @@ async function handle(req, res) {
           song.title = t; song.updatedAt = new Date().toISOString(); save(); broadcast();
         } else if (op.op === 'goLive') {                       // make this service the program on the screens
           const s = db.plan.services.find(x => x.id === op.id); if (!s) return json(res, 404, { error: 'Serviciul nu există' });
-          db.setlist = s.items.map(it => ({ ...structuredClone(it), notes: [] }));
+          db.setlist = s.items.map(it => ({ ...structuredClone(it), notes: [], ...(it.notes ? { planNotes: it.notes } : {}) }));
           db.service = { title: s.title, startsAt: s.date, planId: s.id };
           Object.assign(live, { item: -1, slide: 0, blank: false, logo: false, serviceStart: 0 });
           save(); broadcast();
@@ -1528,7 +1556,22 @@ async function handle(req, res) {
     }
     if (p === '/api/this' && req.method === 'GET') {         // only on this computer: its addresses and PINs, to join from another one
       if (!(TRUST_LOCALHOST && isLocal(req.socket.remoteAddress))) return json(res, 403, { error: 'Doar pe acest calculator' });
-      return json(res, 200, { name: os.hostname().replace(/\.local$/, ''), urls: lanIPs().map(i => `http://${i.address}:${PORT}`), pin: PIN, leaderPin: LEADER_PIN });
+      return json(res, 200, { name: os.hostname().replace(/\.local$/, ''), urls: lanIPs().map(i => `http://${i.address}:${PORT}`), pin: PIN, leaderPin: LEADER_PIN, preacherPin: db.preacherPin });
+    }
+    if (p === '/api/preacher/pin' && req.method === 'POST') {   // ↻ a new preacher PIN: the old QR stops working
+      if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul (PIN de lider).' });
+      db.preacherPin = newPreacherPin(); save();
+      for (const [w, x] of sessions) if (x.role === 'preacher') x.role = 'viewer';
+      broadcast(); return json(res, 200, { preacherPin: db.preacherPin });
+    }
+    if (p === '/api/next' && req.method === 'GET') {          // the QR at the office: the next program, read only, no PIN, no personal data
+      const now = Date.now() - 3 * 3600_000, list = (db.plan?.services || []).filter(x => new Date(x.date).getTime() >= now).sort((a, b) => a.date.localeCompare(b.date));
+      const s = list.find(x => x.status === 'published') || list[0];
+      const church = activeChurch();
+      if (!s) return json(res, 200, { church: church?.name || '', service: null });
+      return json(res, 200, { church: church?.name || '', logo: church?.logo || '', service: { title: s.title, date: s.date, draft: s.status !== 'published',
+        items: s.items.map(it => ({ kind: it.kind, minutes: it.minutes || 0, key: it.kind === 'song' ? it.key || '' : '', leader: it.leader || '',
+          title: it.kind === 'song' ? db.songs.find(x => x.id === it.songId)?.title || it.title || '' : it.title || '' })) } });
     }
     if (p === '/api/bible' && req.method === 'GET') {        // one chapter: ?v=vdc&b=42&c=3
       const b = bible(url.searchParams.get('v')); if (!b) return json(res, 404, { error: 'Traducerea nu există' });

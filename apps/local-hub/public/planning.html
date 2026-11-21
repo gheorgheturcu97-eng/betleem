@@ -268,6 +268,8 @@
         <input id="sTitle" placeholder="Titlul serviciului">
         <input id="sDate" type="datetime-local">
         <select id="sStatus" style="width:auto"><option value="draft">Ciornă</option><option value="published">Publicat</option></select>
+        <button id="bPdf" title="📄 Programul ca PDF: îl trimiți pe WhatsApp sau îl tipărești (opțional cu echipa și acordurile)">📄 PDF</button>
+        <button id="bQrOffice" title="▦ Un cod QR de pus la birou: arată mereu programul următor">▦ QR</button>
         <button id="bLive" class="acc" title="Programul acesta apare pe ecrane, în Live">▶ Pune pe Live</button>
       </div>
       <div class="row">
@@ -619,6 +621,8 @@
   $('copyFrom').onchange = () => { const from = $('copyFrom').value; if (!from) return;
     dialog('Copiez programul?', '<p class="hint">Programul acestui serviciu va fi înlocuit cu cel ales.</p>', () => op({ op: 'copyItems', id: selId, from }), 'Copiază'); };
   $('bDelSvc').onclick = () => dialog('Ștergi serviciul?', '<p class="hint">Se șterg programul și echipa acestui serviciu.</p>', () => { op({ op: 'deleteService', id: selId }); selId = null; }, 'Șterge');
+  $('bPdf').onclick = () => { if (selId) location.href = '/print.html?id=' + encodeURIComponent(selId); };
+  $('bQrOffice').onclick = () => { location.href = '/print.html?qr=1'; };
   $('bLive').onclick = async () => { try { P = await api({ op: 'goLive', id: selId }); render(); toast('Programul e acum pe Live'); } catch (e) { toast(e.message); } };
 
   // program items
