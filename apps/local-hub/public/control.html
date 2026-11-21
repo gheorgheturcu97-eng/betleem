@@ -730,6 +730,10 @@
   .idea{padding:12px;border-radius:14px;background:rgba(255,255,255,.05);border-left:3px solid var(--ic,#7fd6ff)} .idea.facut{--ic:#3ec98a;opacity:.7} .idea.nu{--ic:#777;opacity:.55} .idea.de-facut{--ic:#f5b301}
   .idea .h{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mute)} .idea .h select{width:auto;font-size:12px;margin-left:auto}
   .idea p{margin:6px 0;font-size:13.5px} .idea pre{white-space:pre-wrap;font:13px/1.5 inherit;margin:0;color:var(--fg)}
+  .arrange .blk{cursor:pointer} .arrange .blk:hover{background:color-mix(in srgb,var(--sc) 22%,transparent)!important}
+  .arrange .blk.armed{background:color-mix(in srgb,var(--sc) 40%,transparent)!important;animation:armed .5s ease-in-out infinite alternate}
+  @keyframes armed{to{background:color-mix(in srgb,var(--sc) 15%,transparent)}}
+  .arrange .blk.now{background:color-mix(in srgb,var(--sc) 28%,transparent)!important;box-shadow:inset 0 -2px 0 var(--sc)}
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
   .doors{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(1200px 700px at 30% 20%,rgba(255,191,47,.14),transparent 60%),radial-gradient(900px 600px at 80% 90%,rgba(90,160,255,.14),transparent 60%),rgba(8,9,12,.82);backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4)}
   .doors[hidden]{display:none}
@@ -2550,7 +2554,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   // jump to a section: on the tracks if the song is loaded with cues, otherwise straight to its slide
   async function jumpSection(j, p) {
-    if (j === mtItem && mt.duration) { const b = sectionBlocks(); const blk = b[p] || null; if (blk) { mt.seek(blk.start); lastCue = -2; followCues(blk.start, true); return; } }
+    if (j === mtItem && mt.duration) { const b = sectionBlocks(); const blk = b[p] || null; if (blk) return jumpTo(blk.start, blk.label); }
     const slides = j === S.live.item ? S.live.slides : await previewSlides(S.setlist[j]);
     let starts = [], last = null; slides.forEach((sl, k) => { if (k === 0 || sl.label !== last || sl.first) starts.push(k); last = sl.label; });
     send({ type: 'go', item: j, slide: starts[p] ?? 0 });
@@ -2634,7 +2638,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const { b, k } = curSection();
     if (mt.duration && b.length) {
       let n = d > 0 ? k + 1 : (k >= 0 && mt.time - b[k].start > 2 ? k : k - 1);
-      n = Math.max(0, Math.min(b.length - 1, n)); mt.seek(b[n].start); lastCue = -2; followCues(b[n].start, true); markSection(); return;
+      n = Math.max(0, Math.min(b.length - 1, n)); jumpTo(b[n].start, b[n].label); return;
     }
     const L = S.live, sl = L.slides, i = musicItemIndex();          // no tracks: from section to section on the screen
     if (L.item !== i) return send({ type: 'go', item: i, slide: 0 });
@@ -2771,7 +2775,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('laneEmpty').innerHTML = !has ? 'Adaugă track-urile cântării (＋ Track-uri): click, guide, tobe, bas, clape…<br>Fiecare apare aici ca o pistă și primește un fader jos.'
       : 'Dublu-clic aici unde începe fiecare secțiune (sau clic dreapta ca s-o alegi) · ✦ în ⋯ le pune AI-ul din track-ul de cue.';
     const blocks = sectionBlocks(), pct = t => dur ? (t / dur * 100) : 0;
-    $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
+    $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" data-l="${esc(b.label)}" title="Apasă ca să sari aici (la următoarea măsură, dacă merge)" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
       ${esc(b.label)}<small>${fmt(b.start)}</small>${b.ticks.map(t => `<i class="tick" style="left:${(t - b.start) / Math.max(0.01, b.end - b.start) * 100}%"></i>`).join('')}</div>`).join('') : '';
     const stepS = dur > 600 ? 60 : dur > 240 ? 30 : 15;
     $('ruler').innerHTML = dur ? Array.from({ length: Math.floor(dur / stepS) + 1 }, (_, k) => `<span style="left:${pct(k * stepS)}%">${fmt(k * stepS)}</span>`).join('') : '';
@@ -2800,8 +2804,22 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const blk = e.target.closest('.blk'), th = 150, r = $('lane').getBoundingClientRect();
     if (!blk && e.clientX - r.left < th) return;
     const t = blk ? +blk.dataset.t : (e.clientX - r.left - th) / (r.width - th) * mt.duration;
+    if (blk) return jumpTo(t, blk.dataset.l);
     mt.seek(t); lastCue = -2; followCues(t, true);
   };
+  // into a section "fluently": while playing, the jump waits for the next bar and fades, so the band stays on time
+  let pendingJump = null;
+  function jumpTo(t, label = '') {
+    clearTimeout(pendingJump?.timer); document.querySelectorAll('#blocks .blk.armed').forEach(x => x.classList.remove('armed'));
+    if (!mt.playing) { mt.seek(t); lastCue = -2; followCues(t, true); markSection(); return; }
+    const it = S.setlist[mtItem], bpm = it?.bpm || it?.origBpm, off = it?.beatOffset || 0;
+    let wait = 0;
+    if (bpm) { const bar = 60 / bpm * (met.beats || 4), now = mt.time, next = off + Math.ceil((now - off + 0.02) / bar) * bar; wait = Math.max(0, (next - now) / (mt.rate || 1)); }
+    const el = [...document.querySelectorAll('#blocks .blk')].find(x => Math.abs(+x.dataset.t - t) < 0.05); el?.classList.add('armed');
+    say2(`→ ${label || 'secțiunea'}${wait > 0.05 ? ' la următoarea măsură' : ''}`);
+    pendingJump = { t, timer: setTimeout(async () => { el?.classList.remove('armed'); await mt.seekSmooth(t); lastCue = -2; followCues(t, true); markSection(); say2(''); }, wait * 1000) };
+  }
+  const say2 = t => { $('voiceSay').hidden = !t; $('voiceSay').textContent = t || ''; };
   // lyrics follow the tracks: when the play head passes a cue, that slide goes on screen
   let lastCue = -2;
   function followCues(t, force) {
@@ -2850,7 +2868,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   function finishLearning() {
     learning = false; $('tlLearn').classList.remove('rec'); $('tlLearn').textContent = '⏺ Învață cue-urile';
-    if (learnCues.length) { send({ type: 'setCues', item: mtItem, cues: learnCues }); toast(`Am ținut minte ${learnCues.length} cue-uri. Data viitoare versurile merg singure.`); }
+    if (learnCues.length) {
+      const starts = sectionStarts(mtSlides);
+      const cues = learnCues.map(c => starts.includes(c.slide) ? { ...c, mark: true } : c);     // the start of each section: a marker
+      send({ type: 'setCues', item: mtItem, cues });
+      toast(`Am ținut minte ${learnCues.length} cue-uri, ${cues.filter(c => c.mark).length} secțiuni. Apasă pe o secțiune ca să sari în ea.`);
+    }
     renderLane();
   }
   addEventListener('keydown', e => {                   // while learning, → / Space mark the next slide (instead of the normal "next")

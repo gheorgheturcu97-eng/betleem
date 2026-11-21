@@ -286,6 +286,15 @@ export class Multitrack {
   pause() { this.playing = false; clearInterval(this.sync); cancelAnimationFrame(this.raf); this.ch.forEach(c => c.el.pause()); this.onTime(this.time); }
   stop(quiet) { this.pause(); this.seek(0, quiet); }
   seek(t, quiet) { t = Math.max(0, Math.min(t, this.duration || 0)); this.ch.forEach(c => { try { c.el.currentTime = t; } catch {} }); if (!quiet) this.onTime(t); }
+  /** Jump without a click in the sound: a very short fade out, the jump, a short fade in. */
+  async seekSmooth(t) {
+    if (!this.ctx || !this.playing) return this.seek(t);
+    const g = this.master.gain, now = this.ctx.currentTime, v = this.vol;
+    g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0.0001, now + 0.04);
+    await new Promise(r => setTimeout(r, 45));
+    this.seek(t);
+    const n2 = this.ctx.currentTime; g.cancelScheduledValues(n2); g.setValueAtTime(0.0001, n2); g.linearRampToValueAtTime(v, n2 + 0.09);
+  }
   level(c) {                                        // 0..1 for the meters
     const a = c ? c.meter : this.masterMeter; if (!a) return 0;
     const d = new Float32Array(a.fftSize); a.getFloatTimeDomainData(d);
