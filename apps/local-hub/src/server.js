@@ -1680,7 +1680,7 @@ const UPDATE_REPO = (() => { try { return JSON.parse(fs.readFileSync(path.join(D
 const updater = createUpdater({ root: ROOT, dataDir: DATA_DIR, version: VERSION, repo: UPDATE_REPO, log: logError,
   onState: st => { const msg = JSON.stringify({ type: 'update', ...st }); for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role !== 'viewer') ws.send(msg); } });
 const UPDATES = !!process.versions.electron && process.env.UPDATES !== '0';
-if (UPDATES) { setTimeout(() => updater.fromGithub(), 30000).unref(); setInterval(() => updater.fromGithub(), 6 * 3600 * 1000).unref(); }
+if (UPDATES) { setTimeout(() => updater.fromGithub(), 30000).unref(); setInterval(() => updater.fromGithub(), 30 * 60 * 1000).unref(); }
 
 function peerList() {
   const now = Date.now();

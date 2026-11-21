@@ -909,7 +909,7 @@
     <!-- center: screens, slides, backgrounds -->
     <section class="center">
       <div class="screens glass" id="screens">
-        <div class="scr-vis seg mini" id="scrVis" title="Ce ecrane vezi aici (nu schimbă nimic pe ecranele reale)"><button data-v="both">Ambele</button><button data-v="main">Sală</button><button data-v="stage">Scenă</button><button data-v="none">Ascunde</button></div>
+        <div class="scr-vis seg mini" id="scrVis" title="Ce ecrane vezi aici (nu schimbă nimic pe ecranele reale)"><button data-v="both">Ambele</button><button data-v="main">Sală</button><button data-v="stage">Scenă</button></div>
         <div class="screen"><iframe src="/main.html" title="Sală" tabindex="-1"></iframe>
           <span class="cap"><i></i>SALĂ</span><button class="open" id="bMain" title="Deschide pe proiector">Proiector ↗</button></div>
         <div class="screen"><iframe src="/stage.html" title="Scenă" tabindex="-1"></iframe>
@@ -1573,7 +1573,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       { l: 'Planificare', run: () => $('toPlan').click() },
       '-',
       { l: 'Programul', k: 'Mod+1', chk: () => !layout.L, run: () => togglePart('L') },
-      { l: 'Ecranele', k: 'Mod+2', chk: () => !layout.S, run: () => togglePart('S') },
+      { l: 'Ecranele: ambele / doar sala', k: 'Mod+2', chk: () => $('screens').dataset.vis === 'both', run: () => togglePart('S') },
       { l: 'Cântări · Biblia · Internet', k: 'Mod+3', chk: () => !layout.R, run: () => togglePart('R') },
       '-',
       { l: 'Cântări', run: () => { if (layout.R) togglePart('R'); showTab('lib'); } },
@@ -1967,7 +1967,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     try { localStorage.setItem('betleem.layout', JSON.stringify(layout)); } catch {}
   }
   function togglePart(p) {
-    if (p === 'S') { const v = $('screens').dataset.vis; if (v !== 'none') { lastVis = v; setVis('none'); layout.S = true; } else { setVis(lastVis || 'both'); layout.S = false; } }
+    if (p === 'S') { const v = $('screens').dataset.vis; setVis(v === 'both' ? 'main' : 'both'); layout.S = false; }
     else layout[p] = !layout[p];
     applyParts();
   }
@@ -1975,6 +1975,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['1', '2', '3'].includes(e.key)) { e.preventDefault(); togglePart({ 1: 'L', 2: 'S', 3: 'R' }[e.key]); } });
   // previews of the two screens: both, one, or hidden (the real screens do not change)
   const setVis = v => {
+    if (!['both', 'main', 'stage'].includes(v)) v = 'both';   // the screens are always in view (never fully hidden)
     $('screens').dataset.vis = v; document.querySelectorAll('#scrVis button').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
     try { localStorage.setItem('betleem.scr', v); } catch {}
     layout.S = v === 'none'; document.querySelector('#layoutT [data-p=S]').classList.toggle('sel', v !== 'none');
