@@ -868,11 +868,27 @@ function syncLiveToPlan() {
 
 // Musician notes can be posted by anyone logged in as operator+ (musicians use operator PIN or
 // the future Supabase login). Kept separate so it is easy to open up later.
-function searchSongs(query, tag) {
-  const list = db.songs.filter(s => !tag || (s.tags || []).includes(tag));
-  const ranked = query && String(query).trim()
+const nrm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const allTags = () => [...new Set(db.songs.flatMap(s => s.tags || []))].sort((a, b) => a.localeCompare(b, 'ro'));
+/** Tag names written loosely ("lauda", "închinare", "adorare" → Închinare) match the real ones. */
+function tagMatch(tag) {
+  const t = nrm(tag); if (!t) return null;
+  const syn = { adorare: 'inchinare', worship: 'inchinare', praise: 'lauda', rapide: 'lauda', lente: 'inchinare' };
+  const want = [t, syn[t]].filter(Boolean);
+  return s => (s.tags || []).some(x => { const n = nrm(x); return want.some(w => n === w || n.startsWith(w) || w.startsWith(n)); });
+}
+function searchSongs(query, tag, loose = false) {
+  const tm = tagMatch(tag);
+  const list = db.songs.filter(s => !tm || tm(s));
+  let ranked = query && String(query).trim()
     ? core.rankSongs(list, query)
     : list.sort((a, b) => a.title.localeCompare(b.title, 'ro'));
+  if (loose && !ranked.length && query) {                 // assistant: drop filler words, then accept any word in the title
+    const words = nrm(query).split(' ').filter(w => w.length > 2 && !['cantari', 'cantare', 'piese', 'piesa', 'pentru', 'din', 'sau', 'care'].includes(w));
+    const tagWord = words.find(w => tagMatch(w) && db.songs.some(tagMatch(w)));
+    if (tagWord && !tm) return searchSongs(words.filter(w => w !== tagWord).join(' '), tagWord, true);
+    ranked = list.map(s => ({ s, n: words.filter(w => nrm(s.title).includes(w)).length })).filter(x => x.n).sort((a, b) => b.n - a.n).map(x => x.s);
+  }
   return ranked.map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
 }
 const mediaList = () => fs.readdirSync(MEDIA_DIR).filter(f => /^(image|video)\//.test(TYPES[path.extname(f).toLowerCase()] || '') && !f.startsWith('.') && f !== 'logo.png');
@@ -893,8 +909,29 @@ const aiHub = {
     display: db.display,
   }),
   run(m) { aiSocket.last = null; handleMessage(aiSocket, m); return aiSocket.last; },
-  searchSongs, media: mediaList,
+  searchSongs, media: mediaList, tags: allTags,
   song: id => db.songs.find(s => s.id === id),
+  /** The library song best matching a written title (or null). strict = only a clear title match. */
+  findSong(title, strict = false) {
+    const q = nrm(String(title).replace(/\(.*?\)|\b(in|în)\s+[A-G][#b]?m?\b|-\s*[A-G][#b]?m?$/g, ' '));
+    if (!q) return null;
+    const exact = db.songs.find(s => nrm(s.title) === q) || db.songs.find(s => nrm(s.title).startsWith(q) && q.length >= 6)
+      || db.songs.find(s => q.startsWith(nrm(s.title)) && nrm(s.title).length >= 6);
+    if (exact || strict) return exact || null;
+    const r = core.rankSongs(db.songs, q); if (r.length) return r[0];
+    const words = q.split(' ').filter(w => w.length > 2);      // most title words in common
+    const best = db.songs.map(s => { const t = nrm(s.title); return { s, n: words.filter(w => t.includes(w)).length }; }).sort((a, b) => b.n - a.n)[0];
+    return best && best.n >= Math.max(2, Math.ceil(words.length * 0.6)) ? best.s : null;
+  },
+  /** n songs from a category: rar = not sung for longest, des = most sung, oricare = shuffled. Skips songs already in the program. */
+  pickSongs(n, tag, how) {
+    const tm = tagMatch(tag), inProg = new Set((this.programSongIds?.() || db.setlist.map(i => i.songId)).filter(Boolean));
+    let list = songUsage(60).filter(u => !inProg.has(u.id) && (!tm || tm(u)));
+    if (how === 'rar') list.sort((a, b) => a.count - b.count || a.last - b.last);
+    else if (how === 'des') list.sort((a, b) => b.count - a.count || b.last - a.last);
+    else list = list.map(u => ({ u, r: Math.random() })).sort((a, b) => a.r - b.r).map(x => x.u);
+    return list.slice(0, n);
+  },
   usage: (days, tag) => songUsage(days || 60).filter(u => !tag || u.tags.some(t => t.toLowerCase() === String(tag).toLowerCase())),
   structure(i) { return songStructure(db.setlist[i]); },
 };
@@ -942,6 +979,7 @@ export function planHub(serviceId) {
       commit(items); return null;
     },
     structure: i => songStructure(svc()?.items[i]),
+    programSongIds: () => (svc()?.items || []).map(i => i.songId),
   };
 }
 

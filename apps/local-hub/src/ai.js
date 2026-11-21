@@ -6,12 +6,13 @@ const SYSTEM = `Ești asistentul aplicației Betleem, folosită de o biserică p
 Vorbești în română, scurt și prietenos. Faci lucrurile cerute folosind uneltele, apoi spui în una-două propoziții ce ai făcut.
 Reguli:
 - Când nu știi ce e acum în program sau pe ecrane, apelează întâi get_state.
-- Pentru cântări folosește search_songs (caută după titlu, vers sau etichetă) și folosește id-urile primite. Nu inventa id-uri.
+- Cântările le PUI EFECTIV în program, niciodată nu scrii doar titlurile în răspuns. Ai titluri → add_songs (o singură dată, cu toată lista, în ordine). Vrei „N cântări de laudă / necântate de mult / cele mai cântate” → pick_songs. Altfel search_songs + add_song_to_program. Nu inventa id-uri.
+- Nu întreba utilizatorul după o listă dacă poți alege singur din bibliotecă cu pick_songs.
 - Pozițiile din program încep de la 1.
 - Mărimea textului e în procente din înălțimea ecranului: 2.5 foarte mic, 6 normal pe proiector, 9 mare, 12 foarte mare.
 - „Sală”/„proiector”/„ecranul mare” = screen "main". „Scenă”/„monitor”/„muzicieni” = screen "stage".
 - Ordinea strofelor („aranjamentul”): citește întâi get_song_structure, apoi set_arrangement cu numele secțiunilor exact cum apar (ex. ["Strofa 1","Refren","Strofa 2","Refren","Bridge","Refren"]). O secțiune se poate repeta.
-- Când primești o listă (scrisă, dintr-un fișier sau dintr-o poză) cu cântări și structuri: caută fiecare cântare cu search_songs, adaug-o în ordine cu add_song_to_program (cu tonul, dacă e scris), apoi pune structura cu set_arrangement. Track-urile vin singure cu cântarea; volumul sau mut-ul lor le schimbi cu set_track. La final spune ce n-ai găsit în bibliotecă.
+- Când primești o listă (scrisă, dintr-un fișier sau dintr-o poză) cu cântări și structuri: pune-le toate cu add_songs (cu tonurile, dacă sunt scrise), apoi pune structura cu set_arrangement. Track-urile vin singure cu cântarea; volumul sau mut-ul lor le schimbi cu set_track. La final spune ce n-ai găsit în bibliotecă.
 - Pentru „cântări necântate de mult”, „ceva din categoria X” sau „să nu repetăm” folosește song_usage.
 - Dacă get_state spune că ești în Planificare, lucrezi pe serviciul ales acolo (programul planificat), nu pe ecrane: fundalul, slide-urile și aspectul nu se schimbă de aici.
 - Dacă cererea e neclară sau ar șterge mult, întreabă înainte.`;
@@ -22,6 +23,10 @@ export const TOOLS = [
     params: { query: { type: 'string', description: 'text de căutat (poate lipsi)' }, tag: { type: 'string', description: 'etichetă (poate lipsi)' } } },
   { name: 'add_song_to_program', description: 'Adaugă o cântare la sfârșitul programului.',
     params: { song_id: { type: 'string' }, key: { type: 'string', description: 'tonul pentru acest serviciu, opțional' } }, required: ['song_id'] },
+  { name: 'add_songs', description: 'Pune în program cântări din bibliotecă după titlu (caută singur cea mai potrivită). Trimite toată lista odată, în ordine. Răspunde ce a pus și ce n-a găsit.',
+    params: { titles: { type: 'array', items: { type: 'string' }, description: 'titlurile, în ordine' }, keys: { type: 'array', items: { type: 'string' }, description: 'tonurile, în aceeași ordine (opțional)' } }, required: ['titles'] },
+  { name: 'pick_songs', description: 'Alege singur cântări din bibliotecă și le pune în program: câte, din ce categorie (etichetă) și cum: "rar" = necântate de mult, "des" = cele mai cântate, "oricare".',
+    params: { count: { type: 'number' }, tag: { type: 'string', description: 'categoria, ex. Laudă, Închinare (opțional)' }, how: { type: 'string', enum: ['rar', 'des', 'oricare'] } }, required: ['count'] },
   { name: 'add_item_to_program', description: 'Adaugă în program altceva decât o cântare (predică, rugăciune, anunțuri, altceva).',
     params: { kind: { type: 'string', enum: ['sermon', 'prayer', 'announcement', 'other'] }, title: { type: 'string' }, minutes: { type: 'number' } }, required: ['kind', 'title'] },
   { name: 'remove_from_program', description: 'Scoate din program elementul de la poziția dată (1 = primul).', params: { position: { type: 'number' } }, required: ['position'] },
@@ -59,12 +64,37 @@ export function runTool(hub, name, a = {}) {
   const done = (err, ok) => err ? { error: err } : { ok: ok || 'gata' };
   switch (name) {
     case 'get_state': return hub.state();
-    case 'search_songs': return hub.searchSongs(a.query || '', a.tag || '').slice(0, 25);
+    case 'search_songs': {
+      const r = hub.searchSongs(a.query || '', a.tag || '', true).slice(0, 25);
+      return r.length ? r : { results: [], tags: hub.tags?.() || [], hint: 'Nimic găsit. Încearcă fără etichetă, cu mai puține cuvinte, sau folosește pick_songs.' };
+    }
     case 'add_song_to_program': {
       const s = hub.song(a.song_id); if (!s) return { error: 'Nu există cântarea cu acest id. Folosește search_songs.' };
       return done(hub.run({ type: 'addItem', kind: 'song', songId: s.id, key: a.key || s.key, minutes: 5 }), `adăugată: ${s.title}`);
     }
-    case 'add_item_to_program': return done(hub.run({ type: 'addItem', kind: a.kind, title: a.title, minutes: a.minutes || 5 }));
+    case 'add_songs': {
+      const titles = (Array.isArray(a.titles) ? a.titles : String(a.titles || '').split(/\n|;|,(?=\s*[A-ZĂÂÎȘȚ])/)).map(t => String(t).trim()).filter(Boolean).slice(0, 30);
+      const keys = Array.isArray(a.keys) ? a.keys : [];
+      const added = [], missing = [];
+      titles.forEach((t, i) => { const s = hub.findSong?.(t);
+        if (!s) { missing.push(t); return; }
+        const err = hub.run({ type: 'addItem', kind: 'song', songId: s.id, key: keys[i] || s.key, minutes: 5 });
+        err ? missing.push(t + ' (' + err + ')') : added.push(s.title); });
+      return { added, missing, ...(missing.length ? { hint: 'Spune-i utilizatorului ce n-ai găsit; poate fi scris altfel sau nu e în bibliotecă.' } : {}) };
+    }
+    case 'pick_songs': {
+      const n = Math.max(1, Math.min(15, Math.round(Number(a.count) || 3)));
+      const picked = hub.pickSongs ? hub.pickSongs(n, a.tag || '', a.how || 'oricare') : [];
+      if (!picked.length) return { error: 'Nu am găsit cântări' + (a.tag ? ' cu eticheta ' + a.tag : '') + '. Etichete existente: ' + (hub.tags?.() || []).join(', ') };
+      const added = [];
+      for (const s of picked) if (!hub.run({ type: 'addItem', kind: 'song', songId: s.id, key: s.key, minutes: 5 })) added.push(s.title);
+      return { added };
+    }
+    case 'add_item_to_program': {
+      const s = a.kind === 'other' || a.kind === 'song' ? hub.findSong?.(a.title || '', true) : null;   // a song title written as text → the real song
+      if (s) return done(hub.run({ type: 'addItem', kind: 'song', songId: s.id, key: s.key, minutes: 5 }), `adăugată cântarea: ${s.title}`);
+      return done(hub.run({ type: 'addItem', kind: a.kind, title: a.title, minutes: a.minutes || 5 }));
+    }
     case 'remove_from_program': return done(hub.run({ type: 'removeItem', item: pos(a.position) }));
     case 'move_in_program': return done(hub.run({ type: 'moveItem', item: pos(a.from), to: pos(a.to) }));
     case 'set_key': return done(hub.run({ type: 'updateItem', item: pos(a.position), patch: { key: String(a.key || '') } }));

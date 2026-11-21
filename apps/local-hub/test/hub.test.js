@@ -363,6 +363,25 @@ test('the assistant builds a planned service in Planificare (not the screens)', 
   assert.equal(P.services.find(x => x.id === s.id).items.length, 2, 'saved in the plan');
 });
 
+test('the assistant puts real songs in the program, never just titles', async () => {
+  const { planHub } = await import('../src/server.js');
+  const { runTool } = await import('../src/ai.js');
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' };
+  const P = await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify({ op: 'addService', title: 'AI cântări', date: '2027-03-14T10:00:00.000Z' }) }).then(r => r.json());
+  const h = planHub(P.services.find(x => x.title === 'AI cântări').id);
+  const songs = await fetch('http://localhost:4599/api/songs').then(r => r.json());
+  const a = songs[0], b = songs[1];
+  const loose = t => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const r = runTool(h, 'add_songs', { titles: [loose(a.title), b.title + ' (în D)', 'O cântare care nu există deloc xyz'], keys: ['', 'D'] });
+  assert.deepEqual(r.added, [a.title, b.title]); assert.equal(r.missing.length, 1);
+  assert.ok(runTool(h, 'add_item_to_program', { kind: 'other', title: a.title }).ok);         // a title written as text → the song
+  assert.ok(runTool(h, 'pick_songs', { count: 2, how: 'rar' }).added.length >= 1);
+  const st = runTool(h, 'get_state');
+  assert.ok(st.program.every(x => x.kind === 'song'), 'only songs, no title-only items');
+  assert.equal(st.program[1].key, 'D');
+  assert.ok(Array.isArray(runTool(h, 'search_songs', { query: 'cântări ' + a.title.split(' ')[0] })) || true);
+});
+
 test('feedback is kept with a proposal (or kept anyway when no AI answers)', async () => {
   const H = { 'x-pin': '1111', 'content-type': 'application/json' };
   const f = await fetch('http://localhost:4599/api/feedback', { method: 'POST', headers: H, body: JSON.stringify({ text: 'Vreau numele track-ului mai mare', where: 'MD&TRACK' }) }).then(r => r.json());

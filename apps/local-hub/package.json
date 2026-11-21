@@ -1,6 +1,6 @@
 {
   "name": "@bnc/local-hub",
-  "version": "2026.11.21.7",
+  "version": "2026.11.21.8",
   "private": true,
   "type": "module",
   "description": "Bethlehem Network Churches - local Sunday hub: presenter, stage screen and phone sync over the church LAN",
