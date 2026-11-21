@@ -1,4 +1,7 @@
-# Scriptul pentru Claude Code: de azi până joi (prezentarea pentru echipă) și după
+# Scriptul pentru Claude Code: pașii în ordine
+
+Fă-i de sus în jos, în ritmul tău. Un pas = o sesiune. Bifează-i aici când sunt gata.
+Pentru prezentarea de joi contează pașii 1–9; dacă nu ajungi la toți, sari peste ce nu e gata și arată ce merge.
 
 **Cum îl folosești:** deschizi Terminal în folderul `betleem`, scrii `claude`, apoi lipești promptul sesiunii, cu
 textul dintre ghilimele. O sesiune = un pas. La final, Claude Code testează, publică actualizarea și îți scrie ce
@@ -8,7 +11,7 @@ Dacă ceva nu merge, scrie-i simplu ce ai văzut sau trage poza în Terminal. Da
 cu `/exit` și începe una nouă cu același prompt: el citește STARE.md și știe unde a rămas.
 
 **Ritmul:** cu Pro îți ajung, de obicei, una-două sesiuni pe zi; cu Max, mai multe. Dacă îți atinge limita, se
-reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine după.
+reîncarcă după câteva ore. 
 
 ---
 
@@ -21,7 +24,7 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 
 ---
 
-## SESIUNEA 0 · Sâmbătă seara / duminică dimineață · Pregătire pentru Peștera
+## ☐ 1 · Pregătire pentru Peștera (înainte de duminică, fără funcții noi)
 > „Mâine folosesc aplicația pentru prima dată la o slujbă reală, la biserica din Peștera (biserică mică de sat).
 > NU adăuga funcții noi. Fă doar asta:
 > 1) rulează testele și spune-mi dacă e totul verde;
@@ -31,15 +34,15 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 > 4) spune-mi cum pregătesc programul de la Peștera ca o biserică separată în aplicație.
 > Nu schimba codul decât dacă găsești o eroare care ar strica duminica. Dacă găsești una, repar-o și publică.”
 
-**Duminică, după slujbă:** notează pe telefon tot ce s-a încurcat. Luni începi cu asta.
+**După slujbă:** notează pe telefon tot ce s-a încurcat. Cu asta începi pasul 2.
 
 ---
 
-## SESIUNEA 1 · Luni dimineață · Ce n-a mers la Peștera
-> „Ieri am folosit aplicația la Peștera. Iată ce n-a mers: <lista ta>. Repară pe rând, începând cu ce ar strica o
+## ☐ 2 · Ce n-a mers la Peștera
+> „Am folosit aplicația la Peștera. Iată ce n-a mers: <lista ta>. Repară pe rând, începând cu ce ar strica o
 > duminică. Respectă regula de aur.”
 
-## SESIUNEA 2 · Luni · Harta cântării și AI-ul pe ghidul vorbit (PLAN Pasul 1a)
+## ☐ 3 · Harta cântării și AI-ul pe ghidul vorbit
 > „Pasul 1a din docs/PLAN.md. Ce vreau, cap-coadă:
 > - Fiecare cântare are o hartă salvată în bibliotecă (tempo, ton, măsură, secțiunile cu timpul lor). Versurile,
 >   track-urile și comenzile vocale folosesc aceeași hartă. Unește cu ce există: cues, mark, beatOffset, bpm,
@@ -55,8 +58,8 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 >   sau eu apăs.
 > Testează pe track-ul de cue din «Domnul Miracolelor» din Documents/Betleem (caută-l). Spune-mi Înainte / Acum.”
 
-## SESIUNEA 3 · Luni seara · Cântări fără track: click, pad și ghid (PLAN Pasul 1b)
-Înainte: pune arhiva cu vocile de ghid în `Documents/Betleem/ghid-voci.zip`.
+## ☐ 4 · Cântări fără track: click, pad și ghid
+Înainte de acest pas: pune arhiva cu vocile de ghid în `Documents/Betleem/ghid-voci.zip`.
 > „Pasul 1b din docs/PLAN.md. Arhiva cu vocile de ghid e în Documents/Betleem/ghid-voci.zip. Dezarhiveaz-o în
 > Documents/Betleem/ghid (NU în repo: e licențiată și rămâne locală) și leagă fiecare fișier de numele secțiunii lui.
 > - Pentru o cântare fără track-uri, MD&TRACK face singur «track-ul virtual»: click + pad în tonul cântării + ghidul
@@ -68,7 +71,7 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 > - Ghidul are fader propriu în mixer și rutare proprie (de obicei doar în căștile trupei).
 > Spune-mi Înainte / Acum.”
 
-## SESIUNEA 4 · Marți dimineață · Export PDF și QR pentru program (PLAN Pasul 4)
+## ☐ 5 · Export PDF și QR pentru program
 > „Din Pasul 4 din docs/PLAN.md, doar exportul PDF și QR-ul:
 > - În Planificare, la fiecare serviciu, un buton «📄 PDF»: programul aranjat frumos (biserica, data, ora, fiecare
 >   moment cu minutele și ora la care începe, cântările cu tonul, cine conduce, invitații), cu logo-ul și culorile
@@ -79,7 +82,7 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 >   poate fi extinsă.
 > Spune-mi Înainte / Acum.”
 
-## SESIUNEA 5 · Marți · Întâlnirea de marți: agendă, sarcini, remindere (PLAN Pasul 5, prima parte)
+## ☐ 6 · Întâlnirea de marți: agendă, sarcini, remindere
 > „Pasul 5 din docs/PLAN.md, prima parte. În Planificare, o zonă nouă «Lideri», separată de duminică:
 > - Întâlniri (ex. «Marți, echipa de lideri»): agendă pe puncte, văzută de toți din timp; notițe în timpul întâlnirii.
 > - Sarcini: ce, cine, până când, stare (de făcut / făcut). Din agendă transformi un punct în sarcină dintr-un clic.
@@ -88,7 +91,7 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 > - Drepturi: doar liderii văd zona. Folosește PIN-ul de lider până la conturile din Pasul 3 și scrie asta în STARE.md.
 > Refolosește lista de oameni din Echipe; nu face o a doua listă de oameni. Spune-mi Înainte / Acum.”
 
-## SESIUNEA 6 · Miercuri dimineață · Departamente, roluri și voluntari (PLAN Pasul 4)
+## ☐ 7 · Departamente, roluri și voluntari
 > „Pasul 4 din docs/PLAN.md, partea cu oamenii, pe rețeaua bisericii (din afară abia după Pasul 3):
 > - Departamente (închinare, ospitalitate, media, copii… fiecare biserică își face lista ei) și roluri în fiecare.
 > - Programarea pe duminici: în grila lunară existentă alegi omul pentru fiecare rol. Extinde grila, nu face alta.
@@ -100,7 +103,7 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 > - Planificat pentru până la 100 de oameni.
 > Spune-mi Înainte / Acum.”
 
-## SESIUNEA 7 · Miercuri · Modul Predicator (PLAN Pasul 6)
+## ☐ 8 · Modul Predicator
 > „Din Pasul 6 din docs/PLAN.md, modul Predicator:
 > - Un QR (în 📱 Telefoane) care deschide pe telefon sau tabletă: slide-ul de acum și următorul, butoane mari ◀ ▶,
 >   notițele predicii, timpul rămas din timerul slujbei.
@@ -110,35 +113,35 @@ reîncarcă după câteva ore. Pentru joi contează sesiunile 0–7. Restul vine
 > - Combină cu pagina de telefon existentă (live.html) dacă se poate, ca mod nou al ei.
 > Spune-mi Înainte / Acum.”
 
-## SESIUNEA 8 · Miercuri seara · Repetiția prezentării de joi
-> „Joi prezint aplicația echipei. Fă-mi un scenariu de demonstrație de 15 minute care arată tot ce merge sigur:
+## ☐ 9 · Repetiția prezentării pentru echipă
+> „Prezint aplicația echipei. Fă-mi un scenariu de demonstrație de 15 minute care arată tot ce merge sigur:
 > Planificare cu asistentul (vorbesc și face programul), PDF și QR, Lideri, voluntari, Proiectez, MD&TRACK cu
 > secțiuni, telefoane și predicator. Pentru fiecare pas: ce apăs și ce spun. Treci prin el pe aplicația pornită local
 > și repară orice se strică pe drum. Fără funcții noi.”
 
 ---
 
-## După joi (în ordinea asta)
-9. **Lumini pentru colinde** (Pasul 2):
+## După prezentare
+### ☐ 10 · **Lumini pentru colinde** (Pasul 2):
    > „Pasul 2 din docs/PLAN.md. Dimmer-ul e Eurolite <model>; în manual scrie că primește MIDI <...>.”
-10. **Securitate și server** (Pasul 3), obligatoriu înainte de orice acces din afară:
+### ☐ 11 · **Securitate și server** (Pasul 3), obligatoriu înainte de orice acces din afară:
     > „Pasul 3 din docs/PLAN.md. Întâi planul de securitate pe hârtie, arată-mi-l, abia apoi codul.
     > NAS-ul e <model>, Mac mini-ul are <X> GB.”
-11. **Pastorul își încarcă prezentarea singur** (Pasul 4):
+### ☐ 12 · **Pastorul își încarcă prezentarea singur** (Pasul 4):
     > „Pasul 4, pastorul își încarcă singur prezentarea din Planificare și o vede în biblioteca duminicii.”
-12. **Asistentul programează voluntarii** (Pasul 4):
+### ☐ 13 · **Asistentul programează voluntarii** (Pasul 4):
     > „Pasul 4, programarea automată de către asistent, cu blocări, limite și împărțire corectă.”
-13. **Mesajele păstorului și mulțumirile** (Pasul 4):
+### ☐ 14 · **Mesajele păstorului și mulțumirile** (Pasul 4):
     > „Pasul 4, mesajele păstorului: verset, încurajare, mulțumiri automate pentru cei care au slujit.”
-14. **Pad-uri de calitate și folderul unic de track-uri** (Pasul 1c):
+### ☐ 15 · **Pad-uri de calitate și folderul unic de track-uri** (Pasul 1c):
     > „Pasul 1c din docs/PLAN.md; pad-urile sunt în <folder>.”
-15. **Îmbinări de secțiuni între cântări** (Pasul 1d):
+### ☐ 16 · **Îmbinări de secțiuni între cântări** (Pasul 1d):
     > „Pasul 1d din docs/PLAN.md.”
-16. **Obiective și graficul „oameni versus programe”, apoi jurnalul** (Pasul 5):
+### ☐ 17 · **Obiective și graficul „oameni versus programe”, apoi jurnalul** (Pasul 5):
     > „Pasul 5, obiectivele și graficul lunar oameni versus programe.” Apoi: „Pasul 5, jurnalul zilnic.”
-17. **Proiecție peste ProPresenter** (Pasul 6):
+### ☐ 18 · **Proiecție peste ProPresenter** (Pasul 6):
     > „Pasul 6, studiul ProPresenter, fără cod.” Apoi câte un prompt pe fiecare funcție din listă.
-18. **Poze pe NAS cu Immich** (Pasul 7):
+### ☐ 19 · **Poze pe NAS cu Immich** (Pasul 7):
     > „Pasul 7 din docs/PLAN.md.”
-19. **River: miez și personalizare** (Pasul 8):
+### ☐ 20 · **River: miez și personalizare** (Pasul 8):
     > „Pasul 8 din docs/PLAN.md. Întâi arhitectura pe hârtie.”
