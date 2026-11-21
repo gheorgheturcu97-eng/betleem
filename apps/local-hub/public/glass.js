@@ -1,3 +1,5 @@
+// Day or night: chosen once on this computer (☀ / 🌙 in Live), the same on every page.
+try { if (localStorage.getItem('betleem.theme') === 'light') document.documentElement.classList.add('light'); } catch {}
 // The live background, blurred behind the app; its average colour tints the glass.
 let current = null;
 export function backdrop(name) {

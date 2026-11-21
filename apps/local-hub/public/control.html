@@ -755,6 +755,8 @@
   .prog-pick .more{font-size:12px;color:var(--mute);background:transparent!important;border:0!important;box-shadow:none!important;text-align:left;padding:4px 10px!important}
   .pco-list button[data-id]{display:grid}
   .pco-list #pcoPopConnect{display:block;width:100%;padding:10px!important;font-weight:700}
+  #results .lib .acts .del{opacity:.7} #results .lib .acts .del:hover{background:#e5484d!important;opacity:1}
+  #gallery .bg .bg-x{opacity:.55!important} #gallery .bg:hover .bg-x{opacity:1!important}
   #gallery .bg{position:relative} #gallery .bg .bg-x{position:absolute;top:5px;right:5px;width:24px;height:24px;padding:0!important;border-radius:50%!important;font-size:11px;
     background:rgba(0,0,0,.65)!important;color:#fff!important;border:0!important;opacity:0;transition:opacity .15s} #gallery .bg:hover .bg-x{opacity:1} #gallery .bg .bg-x:hover{background:#e5484d!important}
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
@@ -792,13 +794,14 @@
   @media (max-width: 800px){ .set-grid{grid-template-columns:1fr} }
 
   /* ---------- Proiectez: only what a volunteer needs on Sunday, big and calm */
-  body.mode-proiectez .menubar,body.mode-proiectez .navtabs,body.mode-proiectez #bNoText,body.mode-proiectez #bLogo,body.mode-proiectez #bCount,
-  body.mode-proiectez #msgTo,body.mode-proiectez #bUndo,body.mode-proiectez #bRedo,body.mode-proiectez #layoutT,body.mode-proiectez #bPhones,
-  body.mode-proiectez #bInbox,body.mode-proiectez #bKeys,body.mode-proiectez #aiBtn,body.mode-proiectez .add-row,
+  body.mode-proiectez .menubar,body.mode-proiectez .navtabs,
+  body.mode-proiectez #bUndo,body.mode-proiectez #bRedo,body.mode-proiectez #layoutT,
+  body.mode-proiectez #bKeys,body.mode-proiectez #aiBtn,body.mode-proiectez #addKind,body.mode-proiectez #bAddItem,
   body.mode-proiectez #setlist .acts,body.mode-proiectez #tabs [data-t=web],body.mode-proiectez #tabs [data-t=edit],body.mode-proiectez #arrRow,
   body.mode-proiectez .slides-panel [data-t=dup],body.mode-proiectez .slides-panel [data-t=del],body.mode-proiectez .slides-panel [data-t=edit],
   body.mode-proiectez #bPin,body.mode-proiectez .svc input[type=datetime-local]{display:none!important}
-  body.mode-proiectez .more-btn{display:inline-flex}
+  body.mode-proiectez #bNoText,body.mode-proiectez #bLogo,body.mode-proiectez #bCount{width:44px!important;height:52px!important;padding:0!important;font-size:18px!important;border-radius:16px!important}
+  body.mode-proiectez #msgTo{width:auto;max-width:96px;font-size:12px} body.mode-proiectez .add-row{justify-content:flex-end}
   body.mode-proiectez .transport{gap:10px}
   body.mode-proiectez #bPrev{width:58px!important;height:52px!important;font-size:18px!important;border-radius:16px!important}
   body.mode-proiectez #bNext{height:52px!important;padding:0 34px!important;font-size:19px!important;border-radius:16px!important}
@@ -868,6 +871,7 @@
     <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
     <button id="aiTop" class="ai-top" title="Asistentul Betleem">✦</button>
     <button id="bMore" class="more-btn" title="Mai multe: logo, numărătoare, telefoane, Canva, asistent…">⋯ Mai mult</button>
+ <button id="bTheme" class="icon" title="Mod luminos (zi) / mod întunecat (noapte)">☀</button>
     <button id="bSettings" class="icon" title="⚙ Setări: Planning Center, Canva, asistent, biserici, calculatoare">⚙</button>
     <button id="updPill" class="remote-pill upd" hidden></button>
     <button id="remotePill" class="remote-pill" hidden title="Lucrezi pe programul altui calculator · apasă pentru detalii"></button>
@@ -1119,17 +1123,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   </div>
 </div>
 <div class="pop glass more-pop" id="morePop">
-  <button data-x="logo">🖼 Logo pe ecran</button>
-  <button data-x="notext">Aa Ascunde textul (rămâne fundalul)</button>
-  <button data-x="count">⏱ Numărătoare și timerul slujbei</button>
-  <button data-x="msgto">✉ Mesajul apare: <span id="moreMsgTo"></span></button>
-  <div class="sep"></div>
-  <button data-x="phones">📱 Telefoane (cod QR)</button>
-  <button data-x="inbox">📥 Primite de pe telefon</button>
-  <button data-x="canva">🎨 Din Canva</button>
-  <button data-x="media">⇪ PowerPoint, PDF, video</button>
-  <button data-x="ai">✦ Asistentul</button>
-  <div class="sep"></div>
+  <button data-x="logo" data-fold="bLogo">🖼 Logo pe ecran</button>
+  <button data-x="notext" data-fold="bNoText">Aa Ascunde textul (rămâne fundalul)</button>
+  <button data-x="count" data-fold="bCount">⏱ Numărătoare și timerul slujbei</button>
+  <button data-x="msgto" data-fold="msgTo">✉ Mesajul apare: <span id="moreMsgTo"></span></button>
+  <button data-x="phones" data-fold="bPhones">📱 Telefoane (cod QR)</button>
+  <button data-x="inbox" data-fold="bInbox">📥 Primite de pe telefon</button>
   <button data-x="undo" data-fold="bUndo">↶ Anulează</button>
   <button data-x="redo" data-fold="bRedo">↷ Refă</button>
   <button data-x="pL" data-fold="layoutT">▥ Arată / ascunde Programul</button>
@@ -1149,6 +1148,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="pcs"><i>🖥</i><b>Mai multe calculatoare</b><span>Versuri pe unul, track-uri pe altul</span></button>
     <button data-s="bible"><i>📖</i><b>Traduceri Biblie</b><span>Adaugă EDCR, NTR, NIV…</span></button>
     <button data-s="phones"><i>📱</i><b>Telefoane</b><span>Codul QR pentru muzicieni și echipă</span></button>
+    <button data-s="theme"><i>☀</i><b>Zi / Noapte</b><span>Aplicația luminoasă (ziua, în sală luminată) sau întunecată (seara, regie)</span></button>
     <button data-s="lite"><i>⚡</i><b>Mod rapid</b><span id="liteState">Mai puține efecte (fără sticlă și animații) pentru calculatoare mai slabe</span></button>
     <button data-s="ideas"><i>💡</i><b>Propuneri</b><span>Păreri și propuneri de îmbunătățire, pentru dezvoltarea aplicației</span></button>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
@@ -2457,6 +2457,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     for (const k of Object.keys(MODES)) document.body.classList.toggle('mode-' + k, k === m);
     $('modeChip').textContent = MODES[m] || MODES.complet;
     $('bClear').textContent = m === 'proiectez' ? 'Curăță' : '⌫';
+    $('bNoText').textContent = m === 'proiectez' ? 'Aa' : 'Text'; $('bLogo').textContent = m === 'proiectez' ? '🖼' : 'Logo';   // compact, but in sight
     if (keep) try { localStorage.setItem('betleem.mode', m); } catch {}
     $('doors').hidden = true; setTimeout(fitHeader, 50);
     const bar = document.querySelector('.mbar'), head = document.querySelector('header');
@@ -2485,7 +2486,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const h = document.querySelector('header.top'); if (!h) return;
     FOLD.forEach(id => $(id)?.classList.remove('fold')); $('bMore').classList.remove('need');
     for (const id of FOLD) { if (h.scrollWidth <= h.clientWidth + 1) break; $(id)?.classList.add('fold'); $('bMore').classList.add('need'); }
-    more.querySelectorAll('[data-fold]').forEach(b => b.hidden = !$(b.dataset.fold)?.classList.contains('fold') && !document.body.classList.contains('mode-proiectez'));
+    more.querySelectorAll('[data-fold]').forEach(b => b.hidden = !$(b.dataset.fold)?.classList.contains('fold'));
   }
   addEventListener('resize', () => { clearTimeout(fitHeader.t); fitHeader.t = setTimeout(fitHeader, 120); });
   setTimeout(fitHeader, 300); setTimeout(fitHeader, 1500);
@@ -2505,6 +2506,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'undo') $('bUndo').click(); else if (x === 'redo') $('bRedo').click(); else if (x === 'keys') $('bKeys').click();
     else if (/^p[LSR]$/.test(x)) togglePart(x[1]);
   });
+  // ☀ / 🌙 day or night look, remembered on this computer
+  function setTheme(light) {
+    document.documentElement.classList.toggle('light', light); try { localStorage.setItem('betleem.theme', light ? 'light' : 'dark'); } catch {}
+    $('bTheme').textContent = light ? '🌙' : '☀'; $('bTheme').title = light ? 'Treci pe modul întunecat (noapte)' : 'Treci pe modul luminos (zi)';
+  }
+  $('bTheme').onclick = () => setTheme(!document.documentElement.classList.contains('light'));
+  try { if (localStorage.getItem('betleem.theme') === 'light') setTheme(true); } catch {}
   // ⚡ fast mode: no glass blur, no animations (the heaviest part for an older laptop or a busy Mac mini)
   function setLite(on) {
     document.documentElement.classList.toggle('lite', on); try { localStorage.setItem('betleem.lite', on ? '1' : '0'); } catch {}
@@ -2523,6 +2531,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'ai') $('aiSet').click(); else if (x === 'pcs') openPcs(); else if (x === 'bible') $('bibImport').click();
     else if (x === 'phones') $('bPhones').click(); else if (x === 'audio') { showView('music'); $('audioOut').click(); }
     else if (x === 'lite') setLite(!document.documentElement.classList.contains('lite'));
+    else if (x === 'theme') setTheme(!document.documentElement.classList.contains('light'));
     else if (x === 'ideas') openIdeas();
   });
   if (location.hash === '#muzica') { history.replaceState(null, '', '/control.html'); setTimeout(() => showView('music'), 400); }
@@ -3416,7 +3425,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     loadTagFilter();
     $('results').innerHTML = list.map(s => `<div class="lib" data-id="${s.id}" title="Apasă ca s-o adaugi în program">
         <span class="t">${esc(s.title)}${s.chords ? ' <span class="ch" title="are acorduri">♪</span>' : ''}${(s.tags || []).map(t => `<span class="tg">#${esc(t)}</span>`).join('')}</span>${s.key ? `<span class="chip">${esc(s.key)}</span>` : ''}
-        <span class="acts"><button data-a="edit" title="Editează">✎</button><button data-a="add" title="Adaugă în program">＋</button></span></div>`).join('')
+        <span class="acts"><button data-a="edit" title="Editează">✎</button><button data-a="add" title="Adaugă în program">＋</button><button data-a="del" class="del" title="Șterge din bibliotecă">🗑</button></span></div>`).join('')
       || '<p class="hint" id="noHit">Nu e în bibliotecă.</p>';
     clearTimeout(webTimer);
     const q = $('q').value.trim();
@@ -3425,6 +3434,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       webTimer = setTimeout(() => webFallback(q), 600);
     }
     document.querySelectorAll('#results .lib:not(.web)').forEach(el => el.onclick = async e => {
+      if (e.target.dataset.a === 'del') { e.stopPropagation(); return A.song.del({ id: el.dataset.id }); }
       const song = await fetch('/api/songs/' + el.dataset.id).then(r => r.json());
       if (e.target.dataset.a === 'edit') { fillEditor(song); showTab('edit'); return; }
       addSongToProgram(song);
@@ -3700,7 +3710,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       copy: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json()); clip = { kind: 'song', data: s.id }; copyText(s.title + '\n\n' + s.body.split('\n').map(l => stripChords(l)).join('\n')); toast('Versurile „' + s.title + '” sunt copiate'); },
       cut: p => A.song.copy(p),
       del: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json());
-        if (!(await ask('Ștergi „' + s.title + '” din bibliotecă?', [], 'Șterge'))) return; send({ type: 'deleteSong', id: p.id }); toast('Ștearsă (Anulează cu ' + MK + 'Z)'); setTimeout(search, 300); },
+        if (!(await ask('Ștergi „' + s.title + '” din bibliotecă?', [], 'Șterge'))) return;
+        send({ type: 'deleteSong', id: p.id });
+        const { id, ...back } = s;
+        toast('„' + s.title + '” e ștearsă', () => { send({ type: 'saveSong', song: s }); setTimeout(search, 300); });
+        setTimeout(search, 300); },
       dup: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json()); const { id, ...rest } = s; send({ type: 'saveSong', song: { ...rest, title: s.title + ' (copie)' } }); toast('Copie făcută'); setTimeout(search, 400); },
       open: async p => { const s = await fetch('/api/songs/' + p.id).then(r => r.json()); fillEditor(s); showTab('edit'); },
     },
