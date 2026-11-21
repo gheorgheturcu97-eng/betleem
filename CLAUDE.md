@@ -9,9 +9,29 @@ simply. Volunteers are not technical, so every screen must be obvious. He works 
 You do the work, test it, publish it, and then tell him in a few lines what changed and where to find it.
 He tests on a Mac (MacBook) and a Windows PC, and later on a Mac mini M4 Pro at church.
 
-Read first:
+Read first (every session):
 - `docs/STARE.md`: what exists today (every feature and the file it lives in).
 - `docs/PLAN.md`: what comes next, in order, with the agreed decisions.
+- `docs/SCHIMBARI.md`: what changed and how it worked before. `docs/SCRIPT.md`: the session-by-session prompts.
+
+## THE GOLDEN RULE: build on what exists, never on top of it
+This is one app that keeps growing. Never start a second app, a parallel screen or a duplicate feature.
+Before writing any code for a request:
+1. **Look for overlap.** Read `docs/STARE.md` and `docs/PLAN.md`, then search the code (grep) for anything that already
+   does part of it: same button, same data, same shortcut, same screen area, same API route, same assistant tool.
+2. **Decide, in this order:**
+   - **Extend.** If an older feature can grow into the new one, upgrade the old one, so one stronger feature replaces
+     two weak ones. Do it yourself, without asking.
+   - **Combine.** If both must live, make them work together: shared data, one place in the UI, no clashing
+     shortcuts (check the keyboard map in control.html and planning.html).
+   - **Warn and stop.** If the new request truly contradicts something he asked for before (it would remove or break
+     it), do not code yet. Tell him in Romanian, in 2–3 lines: what he asked before, what clashes, and 1–2 ways out.
+3. **Report every change in behaviour**, in Romanian, as **„Înainte: … / Acum: …”**, in your final message.
+   Add the same line to `docs/SCHIMBARI.md` (newest on top, with date and version).
+4. **Keep the map true.** After every finished step, update `docs/STARE.md` (what exists, where, verified or not)
+   and tick the step in `docs/PLAN.md`. The next session relies on them.
+5. **Sunday safety.** A change must not move or remove something volunteers already use on Sunday without saying so
+   in „Înainte / Acum”. Prefer adding next to, or switched off, over replacing.
 
 ## Repository
 ```
