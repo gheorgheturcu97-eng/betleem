@@ -736,6 +736,27 @@
   .arrange .blk.now{background:color-mix(in srgb,var(--sc) 28%,transparent)!important;box-shadow:inset 0 -2px 0 var(--sc)}
   .met-btn{padding:7px 14px!important;border-radius:999px!important;font-weight:750;white-space:nowrap}
   .met-btn.on{background:linear-gradient(180deg,#7dffb0,#2fb85f)!important;color:#05200f!important;box-shadow:0 0 14px rgba(95,224,138,.5)}
+  .prog-add{flex:none;width:32px;height:32px;font-size:18px;font-weight:700;background:var(--acc)!important;color:#1a1200!important;border-radius:10px!important}
+  .pco-pop{position:fixed;z-index:62;display:none;flex-direction:column;gap:8px;width:380px;max-height:70vh;padding:12px!important}
+  .pco-pop.show{display:flex} .pco-list{overflow:auto;display:flex;flex-direction:column;gap:4px}
+  .pco-list .grp{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:6px 2px 2px}
+  .pco-list button[data-id]{grid-template-columns:78px 1fr;gap:2px 10px;text-align:left;padding:8px 10px!important;border-radius:10px!important;white-space:normal!important;height:auto!important;background:rgba(255,255,255,.05)!important}
+  .pco-list button[data-id]:hover{background:rgba(255,255,255,.12)!important} .pco-list button .d{grid-row:1/3;font-weight:700;color:var(--acc);font-size:12.5px}
+  .pco-list button b{font-size:13.5px;font-weight:650} .pco-list button small{color:var(--mute);font-size:11.5px} .pco-list button.done b::after{content:" ✓";color:#7fe0a8}
+  .prog-cur{display:flex;align-items:center;gap:6px;min-width:0;justify-content:space-between;padding:6px 10px!important;border-radius:10px!important;font-weight:650;white-space:nowrap}
+  .prog-cur span{overflow:hidden;text-overflow:ellipsis} .prog-cur i{font-style:normal;opacity:.6;transition:transform .2s} .prog-cur.open i{transform:rotate(180deg)}
+  .prog-pick{display:flex;flex-direction:column;gap:4px;max-height:44%;overflow:auto;padding:2px 0 8px;border-bottom:1px solid var(--stroke);margin-bottom:6px}
+  .prog-pick[hidden]{display:none}
+  .prog-pick .pc{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:10px;text-align:left;padding:7px 10px!important;border-radius:12px!important;height:auto!important;white-space:normal!important;background:rgba(255,255,255,.04)!important}
+  .prog-pick .pc:hover{background:rgba(255,255,255,.1)!important} .prog-pick .pc.cur{background:rgba(245,179,1,.16)!important;box-shadow:inset 0 0 0 1px rgba(245,179,1,.5)!important}
+  .prog-pick .pc .dt{display:flex;flex-direction:column;align-items:center;line-height:1.05} .prog-pick .pc .dt small{font-size:10px;text-transform:uppercase;color:var(--mute)} .prog-pick .pc .dt b{font-size:18px}
+  .prog-pick .pc .tt{min-width:0} .prog-pick .pc .tt b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .prog-pick .pc .tt small{color:var(--mute);font-size:11.5px}
+  .prog-pick .pc .today{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--acc);color:#1a1200}
+  .prog-pick .more{font-size:12px;color:var(--mute);background:transparent!important;border:0!important;box-shadow:none!important;text-align:left;padding:4px 10px!important}
+  .pco-list button[data-id]{display:grid}
+  .pco-list #pcoPopConnect{display:block;width:100%;padding:10px!important;font-weight:700}
+  #gallery .bg{position:relative} #gallery .bg .bg-x{position:absolute;top:5px;right:5px;width:24px;height:24px;padding:0!important;border-radius:50%!important;font-size:11px;
+    background:rgba(0,0,0,.65)!important;color:#fff!important;border:0!important;opacity:0;transition:opacity .15s} #gallery .bg:hover .bg-x{opacity:1} #gallery .bg .bg-x:hover{background:#e5484d!important}
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
   .doors{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(1200px 700px at 30% 20%,rgba(255,191,47,.14),transparent 60%),radial-gradient(900px 600px at 80% 90%,rgba(90,160,255,.14),transparent 60%),rgba(8,9,12,.82);backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4)}
   .doors[hidden]{display:none}
@@ -856,7 +877,10 @@
   <div class="main" id="mainGrid">
     <!-- left: service order -->
     <aside class="panel glass" id="pLeft">
-      <div class="panel-head"><h2>Program</h2><select id="progSel" class="grow" title="Alege programul (duminică, Crăciun…)"></select></div>
+      <div class="panel-head"><h2>Program</h2><select id="progSel" class="grow" hidden title="Alege programul (duminică, Crăciun…)"></select>
+        <button id="progCur" class="prog-cur grow" title="Alege alt program (serviciu)"><span id="progCurT">—</span><i>▾</i></button>
+        <button id="progAdd" class="icon prog-add" title="Adaugă un program din Planning Center (sau unul nou)">＋</button></div>
+      <div class="prog-pick" id="progPick"></div>
       <div class="svc">
         <input id="svcTitle" placeholder="Titlul serviciului">
         <input id="svcStart" type="datetime-local">
@@ -1130,6 +1154,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
   </div>
 </div></div>
+<div class="pop glass pco-pop" id="pcoPop">
+  <div class="look-head"><b>⇄ Din Planning Center</b><span class="hint" id="pcoPopChurch"></span><span class="grow"></span><button id="pcoPopNew" class="mini" title="Un program gol, făcut aici">＋ Program nou</button></div>
+  <div id="pcoPopList" class="pco-list"><p class="hint">Se încarcă…</p></div>
+  <p class="hint" id="pcoPopState"></p>
+</div>
 <div class="modal" id="ideasModal"><div class="glass ideas">
   <div class="look-head"><b>💡 Propuneri pentru aplicație</b><span class="hint">din părerile voastre, făcute de asistent</span><span class="grow"></span>
     <button id="ideasCopy" class="mini" title="Copiază tot, ca să-l trimiți celui care dezvoltă aplicația">⧉ Copiază tot</button><button id="ideasClose" class="icon">✕</button></div>
@@ -1315,6 +1344,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
     if (e.type === 'inbox') onInbox(e);
     if (e.type === 'canva' && $('canvaModal').classList.contains('show')) canvaRefresh();
+    if (e.type === 'pco') onPcoEvent(e);
     if (e.type === 'tunnel') renderNet(e);
     if (e.type === 'update' && e.ready) showUpdate(e);
     if (e.type === 'undone') toast(e.ok ? (e.what === 'undo' ? 'Anulat: ' : 'Refăcut: ') + (e.name || 'ultima schimbare') : (e.what === 'undo' ? 'Nu mai am ce anula' : 'Nu mai am ce reface'));
@@ -2112,6 +2142,70 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       .concat('<option value="+new">＋ Program nou…</option>', '<option value="+pco">⇄ Din Planning Center…</option>').join('');
     if ($('progSel').dataset.html !== opts) { $('progSel').innerHTML = opts; $('progSel').dataset.html = opts; }
     $('progSel').value = cur;
+    renderPick();
+  }
+  // the services, as cards right above the program: open until the service starts, then folded away (▾ brings them back)
+  let pickOpen = null, pickAll = false, pickFor = '';
+  function renderPick() {
+    const cur = S.service.planId || '', started = S.live.item >= 0;
+    if (pickFor !== cur) { pickFor = cur; pickOpen = null; }                 // a new program: back to automatic
+    const open = pickOpen ?? (!started || !S.setlist.length);
+    const curP = (S.programs || []).find(p => p.id === cur);
+    $('progCurT').textContent = curP ? fmtDay(curP.date) + ' · ' + curP.title : (S.service.title || 'Alege programul');
+    $('progCur').classList.toggle('open', open); $('progPick').hidden = !open;
+    if (!open) return;
+    const now = Date.now(), dayStart = new Date().setHours(0, 0, 0, 0);
+    const list = (S.programs || []), upcoming = list.filter(p => Date.parse(p.date) >= dayStart), past = list.filter(p => Date.parse(p.date) < dayStart).reverse();
+    const shown = [...upcoming.slice(0, pickAll ? 99 : 6), ...(pickAll ? past.slice(0, 12) : [])];
+    const card = p => { const d = new Date(p.date), today = d.toDateString() === new Date().toDateString();
+      return `<button class="pc ${p.id === cur ? 'cur' : ''}" data-p="${p.id}"><span class="dt"><small>${d.toLocaleDateString('ro-RO', { weekday: 'short' })}</small><b>${d.getDate()}</b><small>${d.toLocaleDateString('ro-RO', { month: 'short' })}</small></span>
+        <span class="tt"><b>${esc(p.title)}</b><small>${d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })} · ${p.count} în program</small></span>${today ? '<span class="today">AZI</span>' : ''}</button>`; };
+    const html = (shown.length ? shown.map(card).join('') : '<p class="hint" style="padding:4px 10px">Niciun serviciu programat. Apasă ＋ ca să aduci unul din Planning Center sau să faci unul nou.</p>')
+      + (upcoming.length > 6 || past.length ? `<button class="more" id="pickMore">${pickAll ? '▴ Mai puține' : '▾ Toate serviciile (și cele trecute)'}</button>` : '');
+    if ($('progPick').dataset.html !== html) {
+      $('progPick').innerHTML = html; $('progPick').dataset.html = html;
+      $('progPick').querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+        if (b.dataset.p === cur) { pickOpen = false; return renderPick(); }
+        $('progSel').value = b.dataset.p; $('progSel').dispatchEvent(new Event('change'));
+      });
+      $('pickMore')?.addEventListener('click', () => { pickAll = !pickAll; renderPick(); });
+    }
+  }
+  $('progCur').onclick = () => { pickOpen = $('progPick').hidden; renderPick(); };
+  // ＋ next to the program: the plans from Planning Center, one click to bring one in and open it
+  const pcoPop = $('pcoPop');
+  async function openPcoPop() {
+    const r = $('progAdd').getBoundingClientRect();
+    pcoPop.style.left = Math.max(8, r.left - 20) + 'px'; pcoPop.style.top = (r.bottom + 8) + 'px'; pcoPop.classList.add('show');
+    $('pcoPopChurch').textContent = S?.church?.name ? '· ' + S.church.name : ''; $('pcoPopState').textContent = '';
+    $('pcoPopList').innerHTML = '<p class="hint">Se încarcă programele din Planning Center…</p>';
+    let data;
+    try { data = await api('/api/pco/plans'); }
+    catch (e) {
+      $('pcoPopList').innerHTML = `<p class="hint">${esc(/leader|lider|PIN/i.test(e.message) ? 'Doar liderul (PIN de lider) poate aduce programe din Planning Center.' : 'Planning Center nu e conectat pentru această biserică.')}</p>
+        <button id="pcoPopConnect" class="acc">⇄ Conectează Planning Center</button>`;
+      $('pcoPopConnect').onclick = () => location.href = '/planning.html?pco=1'; return;
+    }
+    const day = d => new Date(d).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' });
+    const row = p => `<button data-id="${esc(p.id)}" data-t="${esc(p.typeId)}" class="${p.imported ? 'done' : ''}"><span class="d">${esc(day(p.date))}</span><b>${esc(p.title || p.dates || 'Serviciu')}</b>
+      <small>${esc([data.types.length > 1 ? p.typeName : '', p.items != null ? p.items + ' elemente' : '', p.imported ? 'importat · îl aduc din nou' : ''].filter(Boolean).join(' · '))}</small></button>`;
+    const fut = data.plans.filter(p => p.when === 'future'), past = data.plans.filter(p => p.when === 'past').slice(0, 8);
+    $('pcoPopList').innerHTML = (fut.length ? '<div class="grp">Urmează</div>' + fut.map(row).join('') : '<p class="hint">Niciun program viitor în Planning Center.</p>') + (past.length ? '<div class="grp">Recente</div>' + past.map(row).join('') : '');
+    $('pcoPopList').querySelectorAll('button[data-id]').forEach(b => b.onclick = async () => {
+      if (anyPlaying() && !(await ask('Track-urile și pad-ul merg. Schimbi programul?', [], 'Schimbă'))) return;
+      $('pcoPopState').textContent = 'Aduc programul și cântările…';
+      try { await api('/api/pco/import', { method: 'POST', body: JSON.stringify({ only: [{ typeId: b.dataset.t, id: b.dataset.id }], open: b.dataset.id }) }); }
+      catch (e) { $('pcoPopState').textContent = e.message; }
+    });
+  }
+  $('progAdd').onclick = e => { e.stopPropagation(); pcoPop.classList.contains('show') ? pcoPop.classList.remove('show') : openPcoPop(); };
+  $('pcoPopNew').onclick = () => { pcoPop.classList.remove('show'); $('progSel').value = '+new'; $('progSel').dispatchEvent(new Event('change')); };
+  addEventListener('click', e => { if (pcoPop.classList.contains('show') && !pcoPop.contains(e.target) && e.target !== $('progAdd')) pcoPop.classList.remove('show'); });
+  // the import tells everyone how far it got; when it opened the program, the list closes
+  function onPcoEvent(e) {
+    if (!pcoPop.classList.contains('show')) { if (e.finished && e.opened) toast('„' + e.opened + '” e în Live'); return; }
+    if (e.running) $('pcoPopState').textContent = e.step === 'programe' ? 'Iau programul…' : `Cântări: ${e.done} din ${e.total}`;
+    if (e.finished) { if (e.error) $('pcoPopState').textContent = 'Eroare: ' + e.error; else { pcoPop.classList.remove('show'); toast(e.opened ? '„' + e.opened + '” e în Live' : 'Gata'); } }
   }
   $('progSel').onchange = async e => {
     const v = e.target.value;
@@ -3448,7 +3542,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (!S) return;
     if (media === null) return loadMedia();
     const cur = S.live.background, pinned = S.setlist[sel]?.background || '';
-    const tile = (name, label, inner) => `<div class="bg ${name === cur ? 'on' : ''}" data-n="${esc(name)}" title="${esc(label)}">${inner}${name && name === pinned ? '<b class="pin">📌</b>' : ''}<span>${esc(label)}</span></div>`;
+    const tile = (name, label, inner) => `<div class="bg ${name === cur ? 'on' : ''}" data-n="${esc(name)}" title="${esc(label)}">${inner}${name && name === pinned ? '<b class="pin">📌</b>' : ''}<span>${esc(label)}</span>${name ? '<button class="bg-x" title="Mută în Coș (se poate anula)">✕</button>' : ''}</div>`;
     const html = [tile('', 'Fără fundal', '')].concat(media.filter(m => m !== 'logo.png' && !/\.(mp3|wav|m4a|ogg|aac)$/i.test(m)).map(m => {
       const src = '/media/' + encodeURIComponent(m);
       const inner = /\.(mp4|webm|mov)$/i.test(m) ? `<video src="${src}#t=1" muted preload="metadata"></video>` : `<img src="${src}" loading="lazy" alt="">`;
@@ -3458,7 +3552,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       return tile(m, /^(fundal|miscare)-/.test(m) ? label : m.replace(/\.[^.]+$/, '').replace(/^\d+\s*/, ''), inner);
     })).join('');
     if ($('gallery').dataset.html !== html) { $('gallery').innerHTML = html; $('gallery').dataset.html = html; }
-    document.querySelectorAll('#gallery .bg').forEach(el => el.onclick = () => send({ type: 'background', value: el.dataset.n }));
+    document.querySelectorAll('#gallery .bg').forEach(el => el.onclick = e => {
+      if (e.target.closest('.bg-x')) { e.stopPropagation(); return A.bg.del({ name: el.dataset.n }); }    // ✕ on the picture: to the bin
+      send({ type: 'background', value: el.dataset.n });
+    });
   }
   $('bPin').onclick = () => {
     const it = S && S.setlist[sel];

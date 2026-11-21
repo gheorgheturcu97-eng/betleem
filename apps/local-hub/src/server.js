@@ -74,6 +74,10 @@ function broadcastCanva() { const msg = JSON.stringify({ type: 'canva', ...canva
 // Backgrounds made for Echipa Betleem (free, original): put in the media folder once; one you delete stays deleted.
 function installBundled() {
   db.bundledBg ||= [];
+  for (const f of db.removedBg || []) {                // the app copies its backgrounds at every start: the ones you deleted go back to the bin
+    const src = path.join(MEDIA_DIR, f), bin = path.join(DATA_DIR, 'cos');
+    try { if (fs.existsSync(src)) { fs.mkdirSync(bin, { recursive: true }); if (fs.existsSync(path.join(bin, f))) fs.rmSync(src); else fs.renameSync(src, path.join(bin, f)); } } catch {}
+  }
   for (const dir of [path.join(ROOT, 'backgrounds'), process.env.BUILTIN_HUB && path.join(process.env.BUILTIN_HUB, 'backgrounds')].filter(Boolean)) {
     let files = []; try { files = fs.readdirSync(dir); } catch { continue; }
     for (const f of files) {
@@ -1426,6 +1430,9 @@ async function handle(req, res) {
       const [from, to] = p.endsWith('trash') ? [MEDIA_DIR, BIN] : [BIN, MEDIA_DIR];
       if (!name || !fs.existsSync(path.join(from, name))) return json(res, 404, { error: 'Fișierul nu există' });
       fs.renameSync(path.join(from, name), path.join(to, name));
+      db.removedBg = (db.removedBg || []).filter(x => x !== name);                     // a deleted built-in one must not come back with the next start
+      if (p.endsWith('trash')) db.removedBg.push(name);
+      save();
       if (p.endsWith('trash') && live.background === name) { live.background = ''; broadcast(); }
       return json(res, 200, { ok: true, name });
     }
