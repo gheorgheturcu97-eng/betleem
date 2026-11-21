@@ -36,13 +36,14 @@ export class Pad {
   constructor() { this.ctx = null; this.voice = null; this.key = ''; this.sound = 'cald'; this.vol = 0.6; this.playing = false; }
   init() {
     if (this.ctx) return;
-    const ctx = this.ctx = new AudioContext();
+    const g = typeof this.graph === 'function' ? this.graph() : this.graph;     // inside the tracks' sound (routable) or on its own
+    const ctx = this.ctx = g?.ctx || new AudioContext();
     this.master = ctx.createGain(); this.master.gain.value = 0;
     const dry = ctx.createGain(), wet = ctx.createGain(), rv = reverb(ctx);
     dry.gain.value = 0.55; wet.gain.value = 0.75;
     this.bus = ctx.createGain();
     this.bus.connect(dry); this.bus.connect(rv); rv.connect(wet);
-    dry.connect(this.master); wet.connect(this.master); this.master.connect(ctx.destination);
+    dry.connect(this.master); wet.connect(this.master); this.master.connect(g?.out || ctx.destination);
   }
   /** One sounding key: low root, root, fifth, octave (+ a soft high shimmer). */
   makeVoice(key) {
@@ -104,7 +105,11 @@ export class Pad {
 
 export class Metronome {
   constructor() { this.ctx = null; this.bpm = 120; this.beats = 4; this.vol = 0.7; this.playing = false; this.onBeat = () => {}; }
-  init() { if (!this.ctx) { this.ctx = new AudioContext(); this.out = this.ctx.createGain(); this.out.connect(this.ctx.destination); } }
+  init() {
+    if (this.ctx) return;
+    const g = typeof this.graph === 'function' ? this.graph() : this.graph;
+    this.ctx = g?.ctx || new AudioContext(); this.out = this.ctx.createGain(); this.out.connect(g?.out || this.ctx.destination);
+  }
   click(time, accent) {
     const ctx = this.ctx, osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = 'square'; osc.frequency.value = accent ? 1760 : 1180;
@@ -194,7 +199,14 @@ export class Multitrack {
     try { this.master.disconnect(); } catch {} this.master.connect(this.masterMeter);
     this.link(this.master, this.masterOut);
     for (const c of this.ch) this.routeTrack(c);
+    for (const [name, g] of Object.entries(this.buses || {})) { try { g.disconnect(); } catch {} this.link(g, this.routes['__' + name] || 'main'); }
     if (this.mic) this.link(this.mic.gain, this.mic.out);
+  }
+  /** a routable input for the click and the pad (they play inside this sound, on any output) */
+  bus(name) {
+    this.init(); this.buses ||= {};
+    if (!this.buses[name]) { const g = this.ctx.createGain(); this.buses[name] = g; this.link(g, this.routes['__' + name] || 'main'); }
+    return this.buses[name];
   }
   /** connect a stereo node to an output: 'main' = 1-2, 'm5' = output 5 alone (mono), 's3' = outputs 3-4 */
   link(node, out) {

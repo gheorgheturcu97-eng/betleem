@@ -16,7 +16,7 @@ import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
-import { runAssistant } from './ai.js';
+import { feedbackProposal, runAssistant } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings } from './plan.js';
 import * as pco from './pco.js';
 import { createCanva } from './canva.js';
@@ -1217,6 +1217,27 @@ async function handle(req, res) {
     if (p === '/api/songs' && req.method === 'GET') {
       const list = searchSongs(url.searchParams.get('q'), url.searchParams.get('tag'));
       return json(res, 200, list);
+    }
+    // 💡 feedback from the people who use the app → a development proposal, kept in Documente/Betleem/propuneri
+    if (p === '/api/feedback') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const FB = path.join(DATA_DIR, 'propuneri.json');
+      const all = (() => { try { return JSON.parse(fs.readFileSync(FB, 'utf8')); } catch { return []; } })();
+      const write = () => {
+        fs.writeFileSync(FB, JSON.stringify(all, null, 1));
+        const md = ['# Propuneri pentru Echipa Betleem', '', ...all.map(f => `## ${f.status === 'facut' ? '✓' : f.status === 'de-facut' ? '→' : '•'} ${f.date.slice(0, 16).replace('T', ' ')} · ${f.where}\n**Părerea:** ${f.text}\n\n${f.proposal || ''}\n`)].join('\n');
+        fs.writeFileSync(path.join(DATA_DIR, 'propuneri.md'), md);                  // easy to read, or to send to whoever develops the app
+      };
+      if (req.method === 'GET') return json(res, 200, all.slice().reverse());
+      const v = JSON.parse(await body(req, 50_000));
+      if (v.id && v.status) { const f = all.find(x => x.id === v.id); if (f && ['noua', 'de-facut', 'facut', 'nu'].includes(v.status)) { f.status = v.status; write(); } return json(res, 200, { ok: true }); }
+      const text = String(v.text || '').trim().slice(0, 4000); if (!text) return json(res, 400, { error: 'Scrie părerea' });
+      const where = String(v.where || '').slice(0, 120);
+      let proposal = '', error = '';
+      try { proposal = await feedbackProposal(aiSettings, text, where); } catch (e) { error = e.message; }
+      const f = { id: crypto.randomUUID(), date: new Date().toISOString(), where, text, proposal, status: 'noua', version: VERSION, church: activeChurch().name };
+      all.push(f); write();
+      return json(res, 200, { ...f, error });
     }
     if (p === '/api/songs/usage' && req.method === 'GET') {   // how often each song was sung lately (from the planned services)
       const days = Math.min(3650, Math.max(7, Number(url.searchParams.get('days')) || 90));

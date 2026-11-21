@@ -362,3 +362,13 @@ test('the assistant builds a planned service in Planificare (not the screens)', 
   P = await fetch('http://localhost:4599/api/plan', { headers: L }).then(r => r.json());
   assert.equal(P.services.find(x => x.id === s.id).items.length, 2, 'saved in the plan');
 });
+
+test('feedback is kept with a proposal (or kept anyway when no AI answers)', async () => {
+  const H = { 'x-pin': '1111', 'content-type': 'application/json' };
+  const f = await fetch('http://localhost:4599/api/feedback', { method: 'POST', headers: H, body: JSON.stringify({ text: 'Vreau numele track-ului mai mare', where: 'MD&TRACK' }) }).then(r => r.json());
+  assert.ok(f.id); assert.equal(f.status, 'noua');
+  await fetch('http://localhost:4599/api/feedback', { method: 'POST', headers: H, body: JSON.stringify({ id: f.id, status: 'de-facut' }) });
+  const list = await fetch('http://localhost:4599/api/feedback', { headers: H }).then(r => r.json());
+  assert.equal(list[0].status, 'de-facut');
+  assert.match(fs.readFileSync(path.join(dir, 'propuneri.md'), 'utf8'), /numele track-ului mai mare/);
+});

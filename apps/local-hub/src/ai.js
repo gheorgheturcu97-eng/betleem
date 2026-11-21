@@ -214,3 +214,35 @@ export async function runAssistant(settings, history, hub, opts) {
     throw e;
   }
 }
+
+// ---- Feedback → a proposal for how to develop the app ------------------------------------------------
+const FEEDBACK_SYSTEM = `Ești analistul de produs al aplicației „Echipa Betleem” (planificare servicii, proiecție versuri/prezentări, MD&TRACK pentru trupă cu track-uri și mixer, telefoane cu acorduri, asistent AI). Utilizatorii sunt voluntari dintr-o biserică, nu programatori.
+Primești o părere (feedback) de la un utilizator, cu locul din aplicație unde era. Răspunde în română, scurt și concret, EXACT în acest format:
+Problema: <ce nu merge sau ce lipsește, într-o propoziție>
+Propunere: <ce să schimbăm în aplicație, concret: unde, ce buton, ce face>
+Pași: <2-4 pași mici de implementare, numerotați>
+Cât de important: <mare / mediu / mic> — <de ce, o propoziție>
+Întrebare: <o întrebare pentru utilizator dacă ceva nu e clar, altfel „—”>
+Nu promite că e gata; e o propunere pentru echipa care dezvoltă aplicația.`;
+
+/** One question to the AI, no tools: used to turn feedback into a development proposal. */
+export async function askAI(settings, system, text, { fetchImpl = fetch } = {}) {
+  const claude = async () => {
+    const r = await fetchImpl('https://api.anthropic.com/v1/messages', { method: 'POST', signal: AbortSignal.timeout(60000),
+      headers: { 'x-api-key': settings.claudeKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: settings.claudeModel || 'claude-sonnet-5-5', max_tokens: 900, system, messages: [{ role: 'user', content: text }] }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error?.message || 'Eroare Claude ' + r.status);
+    return (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  };
+  const ollama = async () => {
+    const base = (settings.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
+    let r; try { r = await fetchImpl(`${base}/api/chat`, { method: 'POST', signal: AbortSignal.timeout(120000), headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: settings.ollamaModel || 'qwen2.5:7b', stream: false, messages: [{ role: 'system', content: system }, { role: 'user', content: text }] }) }); }
+    catch { throw new Error('Nu găsesc AI-ul local (Ollama).'); }
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Eroare AI local'); return String(j.message?.content || '').trim();
+  };
+  if (settings.provider === 'ollama') return ollama();
+  if (settings.claudeKey) { try { return await claude(); } catch (e) { if (settings.provider === 'claude') throw e; } }
+  return ollama();
+}
+export const feedbackProposal = (settings, text, where, opts) => askAI(settings, FEEDBACK_SYSTEM, `Unde era: ${where || 'necunoscut'}\nPărerea: ${text}`, opts);

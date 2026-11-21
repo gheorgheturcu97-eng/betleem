@@ -717,6 +717,19 @@
   /* the window never gets wider than the screen: the top bar folds its extra buttons into ⋯ Mai mult */
   .app{grid-template-columns:minmax(0,1fr)!important} .app>*{min-width:0} header.top{min-width:0;max-width:100%;overflow:hidden}
   .fold{display:none!important} .more-btn.need{display:inline-flex!important}
+  .mixer .strip{border-radius:10px!important;overflow:hidden} .mixer{border-radius:16px!important}
+  .mixer .strip .scr{align-self:stretch!important;width:auto!important;margin:auto -5px 0!important;min-height:34px;display:flex;flex-direction:column;justify-content:center;border-radius:0 0 10px 10px}
+  .mixer .strip .rsel.big{margin:14px 0 6px;font-size:10.5px!important;padding:5px 2px!important}
+  .ai-always{display:inline-flex!important}
+  .ai-mode{display:inline-flex;margin-left:8px;padding:2px;border-radius:999px;background:rgba(0,0,0,.3)} .ai-mode button{padding:3px 10px!important;border-radius:999px!important;font-size:11.5px!important;background:transparent!important;border:0!important;box-shadow:none!important}
+  #ai .ai-mode button.on{background:var(--acc)!important;color:#1a1200!important} #ai .ai-mode button:not(.on){background:transparent!important;color:var(--fg)!important}
+  .ai.fb .ai-in textarea{border-color:#7fd6ff}
+  .msg.prop{border-left:3px solid #7fd6ff;white-space:pre-wrap} .msg.prop .st{display:flex;gap:6px;margin-top:8px} .msg.prop .st button{font-size:11.5px!important;padding:3px 9px!important}
+  .modal .glass.ideas{width:min(820px,95vw);max-height:88vh;display:flex;flex-direction:column;gap:10px}
+  .ideas-list{overflow:auto;display:flex;flex-direction:column;gap:8px}
+  .idea{padding:12px;border-radius:14px;background:rgba(255,255,255,.05);border-left:3px solid var(--ic,#7fd6ff)} .idea.facut{--ic:#3ec98a;opacity:.7} .idea.nu{--ic:#777;opacity:.55} .idea.de-facut{--ic:#f5b301}
+  .idea .h{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mute)} .idea .h select{width:auto;font-size:12px;margin-left:auto}
+  .idea p{margin:6px 0;font-size:13.5px} .idea pre{white-space:pre-wrap;font:13px/1.5 inherit;margin:0;color:var(--fg)}
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
   .doors{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(1200px 700px at 30% 20%,rgba(255,191,47,.14),transparent 60%),radial-gradient(900px 600px at 80% 90%,rgba(90,160,255,.14),transparent 60%),rgba(8,9,12,.82);backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4)}
   .doors[hidden]{display:none}
@@ -752,7 +765,7 @@
   /* ---------- Proiectez: only what a volunteer needs on Sunday, big and calm */
   body.mode-proiectez .menubar,body.mode-proiectez .navtabs,body.mode-proiectez #bNoText,body.mode-proiectez #bLogo,body.mode-proiectez #bCount,
   body.mode-proiectez #msgTo,body.mode-proiectez #bUndo,body.mode-proiectez #bRedo,body.mode-proiectez #layoutT,body.mode-proiectez #bPhones,
-  body.mode-proiectez #bInbox,body.mode-proiectez #bKeys,body.mode-proiectez #aiTop,body.mode-proiectez #aiBtn,body.mode-proiectez .add-row,
+  body.mode-proiectez #bInbox,body.mode-proiectez #bKeys,body.mode-proiectez #aiBtn,body.mode-proiectez .add-row,
   body.mode-proiectez #setlist .acts,body.mode-proiectez #tabs [data-t=web],body.mode-proiectez #tabs [data-t=edit],body.mode-proiectez #arrRow,
   body.mode-proiectez .slides-panel [data-t=dup],body.mode-proiectez .slides-panel [data-t=del],body.mode-proiectez .slides-panel [data-t=edit],
   body.mode-proiectez #bPin,body.mode-proiectez .svc input[type=datetime-local]{display:none!important}
@@ -766,7 +779,7 @@
   body.mode-proiectez .svc input{pointer-events:none;background:transparent!important;border-color:transparent!important}
   /* Cânt: the band's room */
   body.mode-cant .menubar,body.mode-cant #toLive,body.mode-cant #toPlan,body.mode-cant #bLook,body.mode-cant .transport .clr,body.mode-cant #bCount,
-  body.mode-cant .msgbox,body.mode-cant #layoutT,body.mode-cant #bInbox,body.mode-cant #bKeys,body.mode-cant #aiTop,body.mode-cant #aiBtn{display:none!important}
+  body.mode-cant .msgbox,body.mode-cant #layoutT,body.mode-cant #bInbox,body.mode-cant #bKeys,body.mode-cant #aiBtn{display:none!important}
   body.mode-cant .more-btn{display:none}
   /* ---------- Biblia */
   .bib-v select{flex:1;min-width:0;padding:6px 8px;border-radius:999px;font-size:12.5px} .bib-v .plus{color:var(--faint)}
@@ -802,7 +815,7 @@
       <span class="caret">▾</span>
     </button>
     <span id="dot" title="Conexiune"></span>
-    <button id="modeChip" class="mode-chip" title="Schimbă ce faci: Pregătesc / Proiectez / Cânt"></button>
+    <button id="modeChip" class="mode-chip" title="Schimbă ce faci: Planificare / Proiectez / MD&TRACK"></button>
     <div class="seg navtabs"><button class="sel" id="toLive">Live</button><button id="toMusic" title="MD&TRACK: track-uri, ton, tempo, metronom, pad și mixer pentru trupă">MD&amp;TRACK <i class="playing-dot"></i></button><button id="toPlan" title="Planificarea serviciilor și a echipelor">Planificare</button><button id="bLook" title="Ecranele: sală și scenă — aspect, ce apare pe ele, timer">Ecrane</button></div>
     <div class="transport">
       <button id="bPrev" class="icon" title="Înapoi (←)">◀</button>
@@ -1064,7 +1077,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="doors-in">
     <div class="doors-brand"><img id="doorsLogo" alt="" hidden><span class="star" id="doorsStar">✦</span><div><b id="doorsChurch">Echipa Betleem</b><small>Ce faci astăzi?</small></div></div>
     <div class="door-row">
-      <button class="door" data-m="pregatesc"><i>🗓</i><b>Pregătesc</b><span>Programul serviciului, cântările, echipele, categoriile. Pentru lideri, în timpul săptămânii.</span></button>
+      <button class="door" data-m="pregatesc"><i>🗓</i><b>Planificare</b><span>Programul serviciului, cântările, echipele, categoriile. Pentru lideri, în timpul săptămânii.</span></button>
       <button class="door acc" data-m="proiectez"><i>▶</i><b>Proiectez</b><span>Duminică, la proiector: versurile, prezentările și fundalurile. Doar butoanele de care ai nevoie.</span></button>
       <button class="door" data-m="cant"><i>♫</i><b>MD&amp;TRACK</b><span>Pentru trupă și MD: track-uri, ton, tempo, structura cântărilor, mixer, rutare și comenzi vocale.</span></button>
     </div>
@@ -1104,15 +1117,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="bible"><i>📖</i><b>Traduceri Biblie</b><span>Adaugă EDCR, NTR, NIV…</span></button>
     <button data-s="phones"><i>📱</i><b>Telefoane</b><span>Codul QR pentru muzicieni și echipă</span></button>
     <button data-s="lite"><i>⚡</i><b>Mod rapid</b><span id="liteState">Mai puține efecte (fără sticlă și animații) pentru calculatoare mai slabe</span></button>
+    <button data-s="ideas"><i>💡</i><b>Propuneri</b><span>Păreri și propuneri de îmbunătățire, pentru dezvoltarea aplicației</span></button>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
   </div>
+</div></div>
+<div class="modal" id="ideasModal"><div class="glass ideas">
+  <div class="look-head"><b>💡 Propuneri pentru aplicație</b><span class="hint">din părerile voastre, făcute de asistent</span><span class="grow"></span>
+    <button id="ideasCopy" class="mini" title="Copiază tot, ca să-l trimiți celui care dezvoltă aplicația">⧉ Copiază tot</button><button id="ideasClose" class="icon">✕</button></div>
+  <p class="hint">Se salvează și în <b>Documente / Betleem / propuneri.md</b>. Trimite fișierul sau textul copiat celui care dezvoltă aplicația, sau deschide-l într-o conversație cu Claude ca să le facă.</p>
+  <div id="ideasList" class="ideas-list"></div>
 </div></div>
 <div class="modal" id="routeModal"><div class="glass routing">
   <div class="look-head"><b>🎛 Rutare audio</b><span class="hint">ce iese pe fiecare ieșire a plăcii de sunet</span><span class="grow"></span><button id="rtClose" class="icon" title="Închide">✕</button></div>
   <div class="rt-row"><span class="rt-l">Placa de sunet (ieșiri)</span><select id="rtDev"></select><span class="rt-n" id="rtN"></span><button id="rtScan" class="mini" title="Arată numele tuturor plăcilor conectate">↻ Caută</button></div>
   <div class="rt-grid" id="rtGrid"></div>
-  <div class="rt-row"><span class="rt-l">Click (metronomul aplicației)</span><select id="rtMet"></select></div>
-  <div class="rt-row"><span class="rt-l">Pad</span><select id="rtPad"></select></div>
+  <div hidden><select id="rtMet"></select><select id="rtPad"></select></div>
   <div class="sep" style="height:1px;background:var(--stroke);margin:4px 0"></div>
   <div class="look-head"><b>🎙 Microfonul MD</b><span class="hint">o intrare a plăcii (de ex. microfonul cu senzor de apropiere)</span></div>
   <div class="rt-row"><span class="rt-l">Intrarea</span><select id="rtIn"></select><span class="hint">canalul</span><input id="rtInCh" type="number" min="1" max="64" value="1" style="width:64px"><span class="rt-meter"><i id="rtLvl"></i></span></div>
@@ -1203,7 +1222,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 </div>
 <button id="aiBtn" class="ai-btn acc" title="Asistentul Betleem">✦ Asistent</button>
 <div class="ai glass" id="ai">
-  <div class="ai-head"><b>✦ Asistent</b><span class="grow"></span><span id="aiProv" class="hint"></span>
+  <div class="ai-head"><b>✦ Asistent</b><span class="ai-mode"><button id="aiModeDo" class="on" title="Asistentul face lucruri în aplicație">Fă</button><button id="aiModeFb" title="Spune ce nu-ți place sau ce ți-ar trebui: asistentul face o propunere de îmbunătățire a aplicației">💡 Părere</button></span><span class="grow"></span><span id="aiProv" class="hint"></span>
     <button id="aiSet" class="icon" title="Setări">⚙</button><button id="aiClose" class="icon" title="Închide">✕</button></div>
   <div class="ai-log scroll" id="aiLog"><div class="msg bot">Salut! Scrie-mi ce să fac, de exemplu:<br>
     <a href="#" class="ex">pune versurile pe scenă pe mijloc</a><br><a href="#" class="ex">fă textul de pe proiector mai mare și jos</a><br>
@@ -1456,7 +1475,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       '-',
       { l: 'Importă PowerPoint, PDF, video…', run: () => $('importMedia').click() },
       { l: 'Din Canva…', run: () => openCanva() },
-      { l: 'Schimbă: Pregătesc / Proiectez / Cânt…', run: () => showDoors() },
+      { l: 'Schimbă: Planificare / Proiectez / MD&TRACK…', run: () => showDoors() },
       { l: 'Setări…', run: () => $('bSettings').click() },
       { l: 'Telefoane: cod QR pentru muzicieni…', run: () => $('bPhones').click() },
       { l: 'Primite de pe telefon / AirDrop…', run: () => $('bInbox').click() },
@@ -1773,7 +1792,41 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       if (text) { $('aiText').value = text; aiSend(); }
     } catch (err) { toast(err.message); $('aiVoice').classList.remove('on', 'busy'); }
   };
+  // 💡 feedback mode: what someone thinks of the app → a proposal for how to develop it
+  let aiFb = false;
+  const whereNow = () => (MODES[[...document.body.classList].find(c => c.startsWith('mode-'))?.slice(5)] || '') + ' · ' + ($('musicView').hidden ? 'Live' : 'MD&TRACK');
+  function setAiMode(fb) {
+    aiFb = fb; $('aiModeFb').classList.toggle('on', fb); $('aiModeDo').classList.toggle('on', !fb); $('ai').classList.toggle('fb', fb);
+    $('aiText').placeholder = fb ? 'Ce nu-ți place sau ce ți-ar trebui? (scrie sau 🎙)' : 'Scrie sau apasă 🎙 și vorbește… (Enter trimite)';
+    if (fb && !$('aiLog').querySelector('.fbhint')) { const d = aiMsg('Spune-mi liber ce te încurcă sau ce ți-ar plăcea în aplicație. Fac din asta o propunere de dezvoltare și o păstrez la ⚙ Setări → 💡 Propuneri.', 'bot'); d.classList.add('fbhint'); }
+    $('aiText').focus();
+  }
+  $('aiModeDo').onclick = () => setAiMode(false); $('aiModeFb').onclick = () => setAiMode(true);
+  const STATUS = { noua: 'nouă', 'de-facut': 'de făcut', facut: 'făcută', nu: 'nu acum' };
+  async function sendFeedback(text) {
+    aiMsg(text, 'me'); const wait = aiMsg('Mă gândesc la o propunere…', 'bot');
+    try {
+      const f = await api('/api/feedback', { method: 'POST', body: JSON.stringify({ text, where: whereNow() }) });
+      wait.remove();
+      const d = aiMsg(f.proposal || ('Am păstrat părerea. ' + (f.error ? '(AI-ul nu a răspuns: ' + f.error + ')' : '')), 'bot'); d.classList.add('prop');
+      const st = document.createElement('div'); st.className = 'st';
+      st.innerHTML = `<button data-s="de-facut">→ De făcut</button><button data-s="nu">Nu acum</button>`;
+      st.querySelectorAll('button').forEach(b => b.onclick = async () => { await api('/api/feedback', { method: 'POST', body: JSON.stringify({ id: f.id, status: b.dataset.s }) }); st.innerHTML = '<small class="hint">' + STATUS[b.dataset.s] + ' · la ⚙ → 💡 Propuneri</small>'; });
+      d.append(st);
+    } catch (e) { wait.remove(); aiMsg(e.message, 'bot err'); }
+  }
+  async function openIdeas() {
+    $('ideasModal').classList.add('show');
+    const list = await api('/api/feedback').catch(() => []);
+    $('ideasList').innerHTML = list.map(f => `<div class="idea ${f.status}"><div class="h"><span>${new Date(f.date).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span><span>· ${esc(f.where || '')}</span>
+      <select data-id="${f.id}">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === f.status ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <p><b>Părerea:</b> ${esc(f.text)}</p><pre>${esc(f.proposal || '')}</pre></div>`).join('') || '<p class="hint">Încă nu sunt propuneri. Deschide ✦ Asistentul → 💡 Părere.</p>';
+    $('ideasList').querySelectorAll('select[data-id]').forEach(sel => sel.onchange = async () => { await api('/api/feedback', { method: 'POST', body: JSON.stringify({ id: sel.dataset.id, status: sel.value }) }); openIdeas(); });
+    $('ideasCopy').onclick = () => { copyText(list.filter(f => f.status !== 'nu' && f.status !== 'facut').map(f => `• ${f.where}\nPărerea: ${f.text}\n${f.proposal || ''}`).join('\n\n')); toast('Propunerile sunt copiate'); };
+  }
+  $('ideasClose').onclick = () => $('ideasModal').classList.remove('show');
   async function aiSend() {
+    if (aiFb) { const t = $('aiText').value.trim(); if (!t) return; $('aiText').value = ''; return sendFeedback(t); }
     let text = $('aiText').value.trim(); if (!text && !aiAttach.length) return;
     if (!text) text = 'Fă programul după ce am atașat.';
     const files = aiAttach; aiAttach = []; renderAiFiles();
@@ -2280,6 +2333,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const savePrefs = () => { try { localStorage.setItem('betleem.music', JSON.stringify(prefs)); } catch {} };
   pad.vol = prefs.padVol ?? 0.6; met.vol = prefs.metVol ?? 0.7; pad.sound = prefs.padSound || 'cald'; met.beats = prefs.beats || 4; mt.vol = prefs.mtVol ?? 1;
   mt.setRoutes(prefs.routes || {}, prefs.masterOut || 'main');
+  // the click and the pad play inside the tracks' sound, so they can go to any output of the interface too
+  met.graph = () => ({ ctx: mt.bus('click').context, out: mt.bus('click') });
+  pad.graph = () => ({ ctx: mt.bus('pad').context, out: mt.bus('pad') });
   $('beats').value = String(met.beats);
   const PAD_KEYS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
   let mSel = -1, padKeyManual = '';
@@ -2291,7 +2347,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('toMusic').onclick = () => showView('music'); $('toLive').onclick = () => showView('live');
 
   // ---- the three doors: Pregătesc (planning) / Proiectez (Sunday, simple) / Cânt (the band) / complet (everything)
-  const MODES = { proiectez: '▶ Proiectez', cant: '♫ MD&TRACK', complet: '✦ Toate funcțiile', pregatesc: '🗓 Pregătesc' };
+  const MODES = { proiectez: '▶ Proiectez', cant: '♫ MD&TRACK', complet: '✦ Toate funcțiile', pregatesc: '🗓 Planificare' };
   const getMode = () => { try { return localStorage.getItem('betleem.mode') || ''; } catch { return ''; } };
   function setMode(m, keep = true) {
     if (m === 'pregatesc') { if (keep) try { localStorage.setItem('betleem.mode', m); } catch {} location.href = '/planning.html'; return; }
@@ -2321,7 +2377,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else { setMode('complet', false); showDoors(); }
   }, 0);
   // a narrow screen (a laptop): the less used buttons of the top bar move into ⋯ Mai mult, one by one, until everything fits
-  const FOLD = ['bKeys', 'layoutT', 'bPhones', 'bRedo', 'bUndo', 'aiTop', 'bInbox', 'msgTo', 'bCount', 'bLogo', 'bNoText'];
+  const FOLD = ['bKeys', 'layoutT', 'bPhones', 'bRedo', 'bUndo', 'bInbox', 'msgTo', 'bCount', 'bLogo', 'bNoText'];
   function fitHeader() {
     const h = document.querySelector('header.top'); if (!h) return;
     FOLD.forEach(id => $(id)?.classList.remove('fold')); $('bMore').classList.remove('need');
@@ -2364,6 +2420,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'ai') $('aiSet').click(); else if (x === 'pcs') openPcs(); else if (x === 'bible') $('bibImport').click();
     else if (x === 'phones') $('bPhones').click(); else if (x === 'audio') { showView('music'); $('audioOut').click(); }
     else if (x === 'lite') setLite(!document.documentElement.classList.contains('lite'));
+    else if (x === 'ideas') openIdeas();
   });
   if (location.hash === '#muzica') { history.replaceState(null, '', '/control.html'); setTimeout(() => showView('music'), 400); }
   const liveSong = () => S.live.item >= 0 && S.setlist[S.live.item]?.kind === 'song' ? S.live.item : -1;
@@ -2818,11 +2875,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   function renderRouteGrid() {
     const n = mt.outCount; $('rtN').textContent = n + ' ieșiri';
-    const rows = [['__master', 'Master (restul)', '#ffbf2f', mt.masterOut || 'main'], ...mt.ch.map((c, k) => [String(c.name || c.file).toLowerCase(), c.name || c.file, trackColor(k, c.name), c.out || 'main'])];
+    const rows = [['__master', 'Master (restul)', '#ffbf2f', mt.masterOut || 'main'], ['__click', 'Metronom (click-ul aplicației)', '#9aa3ad', mt.routes.__click || 'main'], ['__pad', 'Pad', '#b38cff', mt.routes.__pad || 'main'], ...mt.ch.map((c, k) => [String(c.name || c.file).toLowerCase(), c.name || c.file, trackColor(k, c.name), c.out || 'main'])];
     $('rtGrid').innerHTML = rows.map(([key, label, color, cur]) => `<label style="--tc:${color}"><i></i><b>${esc(label)}</b><select data-r="${esc(key)}">${outOptions(n, cur)}</select></label>`).join('')
       + (mt.ch.length ? '' : '<p class="hint">Alege o cântare cu track-uri ca să le rutezi. Rutarea se ține minte după numele track-ului (Click, Guide, Tobe…), pentru toate cântările.</p>');
     $('rtGrid').querySelectorAll('[data-r]').forEach(sel => sel.onchange = () => {
-      if (sel.dataset.r === '__master') prefs.masterOut = sel.value; else (prefs.routes ||= {})[sel.dataset.r] = sel.value;
+      if (sel.dataset.r === '__master') prefs.masterOut = sel.value; else (prefs.routes ||= {})[sel.dataset.r] = sel.value;   // __click / __pad / track name
       savePrefs(); mt.setRoutes(prefs.routes || {}, prefs.masterOut || 'main'); renderMixer(); toast(outName(sel.value));
     });
     $('rtTalk').innerHTML = outOptions(n, prefs.mdOut || ('m' + Math.min(3, n)));
@@ -2872,9 +2929,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function strip(id, name, vol, extra = '', cls = '', pan = null) {
     const color = /^\d+$/.test(String(id)) ? trackColor(+id, name) : id === 'master' ? '#ffbf2f' : id === 'pad' ? '#b38cff' : '#9aa3ad';
     const ticks = FADER_TICKS.map(([d, t]) => `<span style="bottom:${(dbToPos(d) * 100).toFixed(1)}%">${t}</span>`).join('');
-    const route = /^\d+$/.test(String(id)) ? outName(mt.ch[+id]?.out || 'main') : id === 'master' ? outName(mt.masterOut || 'main') : '';
+    const route = /^\d+$/.test(String(id)) ? outName(mt.ch[+id]?.out || 'main') : id === 'master' ? outName(mt.masterOut || 'main') : (id === 'click' || id === 'pad') ? outName(mt.routes['__' + id] || 'main') : '';
     return `<div class="strip ${cls}" data-ch="${id}" style="--tc:${color}"><div class="scr" title="${esc(name)}">${esc(name)}<small>${esc(route || '·')}</small></div><div class="ex">${extra}</div>
-      ${pan === null ? '<div class="knob off"></div><small class="pv">&nbsp;</small>' : `<div class="knob" data-pan="${id}" style="--a:${pan * 135}deg" title="Stânga / dreapta · dublu-clic = centru"><i></i></div><small class="pv">${panTxt(pan)}</small>`}
+ ${pan === null ? (id === 'click' || id === 'pad' ? `<select class="rsel big" data-route="${id}" title="Unde iese ${esc(name)}">${outOptions(mt.outCount, mt.routes['__' + id] || 'main')}</select>` : '<div class="knob off"></div><small class="pv">&nbsp;</small>') : `<div class="knob" data-pan="${id}" style="--a:${pan * 135}deg" title="Stânga / dreapta · dublu-clic = centru"><i></i></div><small class="pv">${panTxt(pan)}</small>`}
       ${/^\d+$/.test(String(id)) || id === 'master' ? `<select class="rsel" data-route="${id}" title="Unde iese (ieșirea plăcii de sunet)">${outOptions(mt.outCount, /^\d+$/.test(String(id)) ? (mt.ch[+id]?.out || 'main') : (mt.masterOut || 'main'))}</select>` : '<span class="rsel-none"></span>'}
       <small class="lcd" data-db="${id}">${dB(vol)}</small>
       <div class="fz"><div class="scale">${ticks}</div>
@@ -2927,7 +2984,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('addTrk').onclick = () => $('stemFiles').click();
     $('mixer').querySelectorAll('[data-route]').forEach(sel => sel.onchange = () => {   // routing right on the strip
       const id = sel.dataset.route;
-      if (id === 'master') prefs.masterOut = sel.value; else (prefs.routes ||= {})[String(mt.ch[+id].name || mt.ch[+id].file).toLowerCase()] = sel.value;
+      if (id === 'master') prefs.masterOut = sel.value;
+      else if (id === 'click' || id === 'pad') (prefs.routes ||= {})['__' + id] = sel.value;
+      else (prefs.routes ||= {})[String(mt.ch[+id].name || mt.ch[+id].file).toLowerCase()] = sel.value;
       savePrefs(); mt.setRoutes(prefs.routes || {}, prefs.masterOut || 'main'); renderMixer(); toast(outName(sel.value));
     });
     $('mixer').querySelectorAll('[data-solo]').forEach(b => b.onclick = () => { const c = mt.ch[+b.dataset.solo]; c.solo = !c.solo; mt.apply(); renderMixer(); });

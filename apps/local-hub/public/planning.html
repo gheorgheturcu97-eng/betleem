@@ -125,6 +125,8 @@
   .ctx button:hover:not(:disabled){background:var(--acc);color:#1a1200} .ctx button:disabled{opacity:.35} .ctx kbd{font:500 11.5px ui-monospace,Menlo,monospace;color:var(--mute)} .ctx hr{border:0;border-top:1px solid var(--stroke);margin:4px 6px}
   .picked-any{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)} .drop-on{outline:2px dashed var(--acc);outline-offset:3px}
   /* ---------- the assistant in Planificare: speak or write, it makes the program of the chosen service */
+  .pai-mode{display:inline-flex;padding:2px;border-radius:999px;background:rgba(0,0,0,.3)} .pai-mode button{padding:3px 10px;border-radius:999px;font-size:11.5px;background:transparent;border:0;color:var(--fg);cursor:pointer}
+  .pai-mode button.on{background:var(--acc);color:#1a1200} .pai-log .prop{border-left:3px solid #7fd6ff}
   .ai-open{padding:7px 14px!important;border-radius:999px!important;font-weight:700;background:linear-gradient(135deg,#ffd76a,#f5a300)!important;color:#1a1200!important;border:0!important;cursor:pointer;opacity:1!important}
   .pai{position:fixed;right:18px;bottom:18px;width:min(440px,94vw);height:min(620px,80vh);z-index:60;display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(28,30,38,.88);border-radius:20px}
   .pai[hidden]{display:none} .pai-head{display:flex;align-items:center;gap:8px} .pai-head .hint{font-size:12px}
@@ -234,7 +236,7 @@
   <header class="top glass">
     <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
  <button class="ai-open" id="aiOpen" title="Asistentul: spune-i sau scrie-i ce program vrei">✦ Asistent</button>
-    <button class="mode-chip" id="modeChip" title="Schimbă ce faci: Pregătesc / Proiectez / Cânt">🗓 Pregătesc ▾</button>
+    <button class="mode-chip" id="modeChip" title="Schimbă ce faci: Planificare / Proiectez / MD&amp;TRACK">🗓 Planificare ▾</button>
     <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP">MD&amp;TRACK</button><button class="sel">Planificare</button></div>
     <div class="seg views" id="views">
       <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button><button data-v="songs">Cântări</button>
@@ -331,7 +333,7 @@
   </section>
 </div>
 <div class="pai glass" id="pai" hidden>
-  <div class="pai-head"><b>✦ Asistent</b><span class="hint" id="paiFor"></span><span class="grow"></span><button id="paiClose" class="icon" title="Închide">✕</button></div>
+  <div class="pai-head"><b>✦ Asistent</b><span class="pai-mode"><button id="paiDo" class="on">Fă</button><button id="paiFb" title="Părerea ta despre aplicație → o propunere de dezvoltare">💡 Părere</button></span><span class="hint" id="paiFor"></span><span class="grow"></span><button id="paiClose" class="icon" title="Închide">✕</button></div>
   <div class="pai-log" id="paiLog"><div class="msg bot">Spune-mi ce program vrei pentru serviciul ales. De exemplu:<br>
     <a href="#" class="ex">fă programul: 4 cântări de laudă necântate de o lună, apoi predica 35 de minute și o rugăciune</a><br>
     <a href="#" class="ex">pune la Mare e Domnul structura strofa 1, refren, strofa 2, refren, refren</a><br>
@@ -726,7 +728,7 @@
   const PACT = { add_song_to_program: 'am adăugat cântări', add_item_to_program: 'am adăugat momente', remove_from_program: 'am scos din program', move_in_program: 'am mutat',
     set_key: 'am schimbat tonul', set_arrangement: 'am pus structura', set_track: 'am schimbat track-uri', set_item: 'am schimbat detalii', set_service: 'am schimbat serviciul', set_song_tags: 'am pus categorii' };
   function paiOpen() {
-    const s = curSvc(); if (!s) return toast('Alege întâi un serviciu din stânga (sau fă unul nou)');
+    const s = curSvc(); if (!s) { $('pai').hidden = false; $('paiFor').textContent = '· alege un serviciu ca să-ți fac programul'; return; }
     $('pai').hidden = false; $('paiFor').textContent = '· ' + s.title + ' · ' + new Date(s.date).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }); $('paiText').focus();
   }
   $('aiOpen').onclick = () => $('pai').hidden ? paiOpen() : ($('pai').hidden = true);
@@ -769,7 +771,18 @@
       if (text) { $('paiText').value = text; paiSend(); }
     } catch (e) { toast(e.message); $('paiMic').classList.remove('on', 'busy'); }
   };
+  let paiFbOn = false;
+  const paiMode = fb => { paiFbOn = fb; $('paiFb').classList.toggle('on', fb); $('paiDo').classList.toggle('on', !fb);
+    $('paiText').placeholder = fb ? 'Ce nu-ți place sau ce ți-ar trebui în aplicație?' : 'Scrie sau apasă 🎙 și vorbește…'; $('paiText').focus(); };
+  $('paiDo').onclick = () => paiMode(false); $('paiFb').onclick = () => { $('pai').hidden = false; paiMode(true); };
   async function paiSend() {
+    if (paiFbOn) {                                     // 💡 feedback → a development proposal
+      const t = $('paiText').value.trim(); if (!t) return; $('paiText').value = ''; paiMsg(t, 'me'); const w = paiMsg('Mă gândesc la o propunere…', 'bot');
+      try { const f = await fetch('/api/feedback', { method: 'POST', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: JSON.stringify({ text: t, where: 'Planificare · ' + (view || '') }) }).then(r => r.json());
+        w.remove(); const d = paiMsg(f.proposal || 'Am păstrat părerea.' + (f.error ? ' (AI-ul nu a răspuns: ' + f.error + ')' : ''), 'bot prop', '✓ păstrată la Live → ⚙ Setări → 💡 Propuneri'); }
+      catch (e) { w.remove(); paiMsg(e.message, 'bot err'); }
+      return;
+    }
     const s = curSvc(); if (!s) return toast('Alege întâi un serviciu');
     let text = $('paiText').value.trim(); if (!text && !paiAttach.length) return; if (!text) text = 'Fă programul după ce am atașat.';
     const files = paiAttach; paiAttach = []; paiFilesRender();
