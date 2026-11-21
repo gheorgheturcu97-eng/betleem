@@ -714,6 +714,9 @@
   body.mode-cant header #role,body.mode-cant header #bPhones{display:none}
   html.lite *,html.lite *::before,html.lite *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;animation:none!important;transition:none!important}
   html.lite .glass{background:rgba(26,28,34,.97)!important}
+  /* the window never gets wider than the screen: the top bar folds its extra buttons into ⋯ Mai mult */
+  .app{grid-template-columns:minmax(0,1fr)!important} .app>*{min-width:0} header.top{min-width:0;max-width:100%;overflow:hidden}
+  .fold{display:none!important} .more-btn.need{display:inline-flex!important}
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
   .doors{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(1200px 700px at 30% 20%,rgba(255,191,47,.14),transparent 60%),radial-gradient(900px 600px at 80% 90%,rgba(90,160,255,.14),transparent 60%),rgba(8,9,12,.82);backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4)}
   .doors[hidden]{display:none}
@@ -1081,6 +1084,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <button data-x="media">⇪ PowerPoint, PDF, video</button>
   <button data-x="ai">✦ Asistentul</button>
   <div class="sep"></div>
+  <button data-x="undo" data-fold="bUndo">↶ Anulează</button>
+  <button data-x="redo" data-fold="bRedo">↷ Refă</button>
+  <button data-x="pL" data-fold="layoutT">▥ Arată / ascunde Programul</button>
+  <button data-x="pS" data-fold="layoutT">▥ Arată / ascunde Ecranele</button>
+  <button data-x="pR" data-fold="layoutT">▥ Arată / ascunde Biblioteca</button>
+  <button data-x="keys" data-fold="bKeys">⌨ Scurtături</button>
   <button data-x="all">Toate funcțiile →</button>
 </div>
 <div class="modal" id="setModal"><div class="glass settings">
@@ -2290,7 +2299,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('modeChip').textContent = MODES[m] || MODES.complet;
     $('bClear').textContent = m === 'proiectez' ? 'Curăță' : '⌫';
     if (keep) try { localStorage.setItem('betleem.mode', m); } catch {}
-    $('doors').hidden = true;
+    $('doors').hidden = true; setTimeout(fitHeader, 50);
     const bar = document.querySelector('.mbar'), head = document.querySelector('header');
     if (m === 'cant' && bar.parentElement !== head) $('modeChip').after(bar);                       // the song bar joins the top bar
     else if (m !== 'cant' && bar.parentElement === head) document.querySelector('#musicView .daw').prepend(bar);
@@ -2311,6 +2320,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (want === 'pregatesc' && !q.has('doors')) location.href = '/planning.html';
     else { setMode('complet', false); showDoors(); }
   }, 0);
+  // a narrow screen (a laptop): the less used buttons of the top bar move into ⋯ Mai mult, one by one, until everything fits
+  const FOLD = ['bKeys', 'layoutT', 'bPhones', 'bRedo', 'bUndo', 'aiTop', 'bInbox', 'msgTo', 'bCount', 'bLogo', 'bNoText'];
+  function fitHeader() {
+    const h = document.querySelector('header.top'); if (!h) return;
+    FOLD.forEach(id => $(id)?.classList.remove('fold')); $('bMore').classList.remove('need');
+    for (const id of FOLD) { if (h.scrollWidth <= h.clientWidth + 1) break; $(id)?.classList.add('fold'); $('bMore').classList.add('need'); }
+    more.querySelectorAll('[data-fold]').forEach(b => b.hidden = !$(b.dataset.fold)?.classList.contains('fold') && !document.body.classList.contains('mode-proiectez'));
+  }
+  addEventListener('resize', () => { clearTimeout(fitHeader.t); fitHeader.t = setTimeout(fitHeader, 120); });
+  setTimeout(fitHeader, 300); setTimeout(fitHeader, 1500);
   // ⋯ Mai mult: what a volunteer needs now and then
   const more = $('morePop');
   $('bMore').onclick = e => { e.stopPropagation(); const r = $('bMore').getBoundingClientRect(); more.style.left = Math.max(10, r.right - 280) + 'px'; more.style.top = (r.bottom + 8) + 'px';
@@ -2324,6 +2343,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'msgto') { const o = $('msgTo'); o.selectedIndex = (o.selectedIndex + 1) % o.options.length; o.dispatchEvent(new Event('change')); toast('Mesajul apare: ' + o.selectedOptions[0].text); }
     else if (x === 'phones') $('bPhones').click(); else if (x === 'inbox') $('bInbox').click(); else if (x === 'canva') openCanva();
     else if (x === 'media') $('importMedia').click(); else if (x === 'ai') $('aiBtn').click(); else if (x === 'all') setMode('complet');
+    else if (x === 'undo') $('bUndo').click(); else if (x === 'redo') $('bRedo').click(); else if (x === 'keys') $('bKeys').click();
+    else if (/^p[LSR]$/.test(x)) togglePart(x[1]);
   });
   // ⚡ fast mode: no glass blur, no animations (the heaviest part for an older laptop or a busy Mac mini)
   function setLite(on) {
