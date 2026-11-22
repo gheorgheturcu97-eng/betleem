@@ -966,6 +966,15 @@ sessions.set(aiSocket, { role: 'leader' });
 const aiHub = {
   /** 🗓 leaders' meetings and tasks, for the assistant ("pune pe agenda de marți…", "dă-i lui Andrei sarcina…") */
   plan: () => { db.plan.meetings ||= []; db.plan.tasks ||= []; return db.plan; },
+  /** ✦ fill the empty team places of a service fairly (the live program's, unless another one is named) */
+  fillTeam(serviceId, department = '') {
+    const sv = db.plan.services.find(x => x.id === (serviceId || db.service.planId)) || db.plan.services.find(x => new Date(x.date) >= Date.now() - 6 * 3600_000);
+    if (!sv) return { error: 'Nu am un serviciu planificat' };
+    const op = { op: 'autoAssign', id: sv.id, department }; const err = this.planOp(op); if (err) return { error: err };
+    const name = id => db.plan.volunteers.find(v => v.id === id)?.name;
+    return { service: sv.title, date: sv.date, filled: op.filled, team: Object.entries(sv.assignments).map(([k, a]) => ({ place: k.split('#')[0], who: name(a.volunteer), status: a.status })),
+      warnings: serviceWarnings(db.plan, sv) };
+  },
   planOp(op) {
     const err = applyPlanOp(db.plan, op); if (err) return err;
     save(); broadcast(); const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
@@ -1049,6 +1058,7 @@ export function planHub(serviceId) {
       commit(items); return null;
     },
     structure: i => songStructure(svc()?.items[i]),
+    fillTeam: (sid, dept) => aiHub.fillTeam(sid || serviceId, dept),
     programSongIds: () => (svc()?.items || []).map(i => i.songId),
   };
 }
@@ -1617,6 +1627,24 @@ async function handle(req, res) {
       if (!me) return json(res, 404, { error: 'Linkul nu mai e valabil. Cere-i liderului unul nou.' });
       plan.meetings ||= []; plan.tasks ||= [];
       const posName = pid => { for (const d of plan.departments) { const p2 = d.positions.find(x => x.id === pid); if (p2) return { pos: p2.name, dept: d.name, color: d.color }; } return { pos: '', dept: '' }; };
+      const preaches = (sv, key) => /predic|pastor|vorbitor|mesaj/i.test(posName(key.split('#')[0]).pos) && sv.assignments[key]?.volunteer === me.id;
+      if (req.method === 'POST' && url.searchParams.get('upload')) {   // 📎 the preacher puts his own presentation for the sermon (until the last minute)
+        const sv = plan.services.find(x => x.id === url.searchParams.get('service'));
+        if (!sv || !Object.keys(sv.assignments).some(k => preaches(sv, k))) return json(res, 403, { error: 'Poți pune prezentarea doar pentru predica ta.' });
+        const name = inboxName(url.searchParams.get('upload'));
+        if (!name || !INBOX_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Pot primi PowerPoint, Keynote, PDF, poze și video.' });
+        const final = freeName(INBOX_DIR, name), tmp = path.join(INBOX_DIR, '.' + final + '.part'); let size = 0;
+        try {
+          await new Promise((ok, bad) => { const out = fs.createWriteStream(tmp);
+            req.on('data', c => { size += c.length; if (size > 800 * 1024 * 1024) { req.destroy(); bad(new Error('Fișierul e prea mare')); } });
+            req.pipe(out); out.on('finish', ok); out.on('error', bad); req.on('error', bad); });
+        } catch (e) { try { fs.rmSync(tmp, { force: true }); } catch {} return json(res, 400, { error: e.message }); }
+        fs.renameSync(tmp, path.join(INBOX_DIR, final));
+        const it = sv.items.find(x => x.kind === 'sermon');
+        if (it) { it.incoming = { file: final, from: me.name, at: new Date().toISOString() }; if (db.service.planId === sv.id) planToLive(); }
+        save(); broadcast(); inboxEvent({ added: final, via: 'predicator · ' + me.name });
+        return json(res, 200, { ok: true, name: final });
+      }
       if (req.method === 'POST') {
         const m = JSON.parse(await body(req, 20_000) || '{}');
         if (m.action === 'answer') {                          // ✓ I'll be there / ✕ I can't
@@ -1636,7 +1664,12 @@ async function handle(req, res) {
       const now = Date.now() - 6 * 3600_000, name = id => plan.volunteers.find(v => v.id === id)?.name || '';
       const serve = plan.services.filter(x => new Date(x.date).getTime() >= now).flatMap(sv => Object.entries(sv.assignments).filter(([, a]) => a.volunteer === me.id)
         .map(([key, a]) => ({ service: sv.id, key, date: sv.date, title: sv.title, status: a.status, ...posName(key.split('#')[0]) }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 20);
-      return json(res, 200, { name: me.name, church: church?.name || '', away: me.away || [], maxPerMonth: me.maxPerMonth || 0, leader: !!me.leader, serve,
+      const myDepts = new Set(plan.departments.filter(d => d.positions.some(p2 => me.positions.includes(p2.id))).map(d => d.id));
+      const myServices = new Set(plan.services.filter(sv => Object.values(sv.assignments).some(a => a.volunteer === me.id)).map(sv => sv.id));
+      const messages = (plan.messages || []).filter(m => Date.now() - new Date(m.at) < 30 * 864e5 && (m.to === 'all' || (m.to === 'dept' && myDepts.has(m.ref)) || (m.to === 'service' && myServices.has(m.ref)))).slice(0, 5)
+        .map(({ text, from, at }) => ({ text, from, at }));
+      for (const x of serve) { const sv = plan.services.find(y => y.id === x.service); x.preach = preaches(sv, x.key); if (x.preach) x.incoming = sv.items.find(i => i.kind === 'sermon')?.incoming?.file || ''; }
+      return json(res, 200, { name: me.name, church: church?.name || '', away: me.away || [], maxPerMonth: me.maxPerMonth || 0, leader: !!me.leader, serve, messages,
         tasks: plan.tasks.filter(tk => tk.who === me.id).sort((a, b) => (a.done - b.done) || (a.due || '9').localeCompare(b.due || '9')).slice(0, 40),
         meetings: me.leader ? plan.meetings.filter(mt => new Date(mt.date).getTime() >= now).slice(0, 3).map(mt => ({ ...mt,
           tasks: plan.tasks.filter(tk => tk.meeting === mt.id).map(tk => ({ text: tk.text, who: name(tk.who), due: tk.due, done: tk.done })) })) : [] });
@@ -1804,7 +1837,7 @@ ready.catch(() => {});
 // A tunnel (Tailscale Funnel: a fixed https address) brings internet requests to it. No router ports are opened.
 db.security ||= { door: false, publicUrl: '', backupDir: '' };
 const DOOR_PORT = PORT + 1;                          // = SEND_PORT
-const DOOR_PAGES = new Set(['/eu.html', '/live.html', '/client.js', '/core/song.js', '/glass.js', '/glass.css']);
+const DOOR_PAGES = new Set(['/eu.html', '/live.html', '/client.js', '/core/song.js', '/glass.js', '/glass.css', '/manifest.webmanifest', '/icon.svg']);
 const DOOR_API = new Set(['/api/eu', '/api/next']);
 const ACCESS_LOG = path.join(DATA_DIR, 'acces-internet.log');
 /** Called by the internet server for anything that isn't the file sending. Returns false if not one of the door's pages. */

@@ -2,6 +2,7 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg"><link rel="apple-touch-icon" href="/icon.svg">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -29,6 +30,8 @@
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px} select,input[type=date]{background:#23262c;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:15px system-ui}
   .agenda li{margin:4px 0} .agenda .d{color:var(--mute);text-decoration:line-through}
   .empty{color:var(--mute);font-size:15px} .err{padding:30px 0;text-align:center;color:var(--mute)}
+  .up{margin-top:10px;display:flex;flex-direction:column;gap:6px} .upb{display:inline-flex;justify-content:center;padding:12px;border-radius:12px;background:var(--acc);color:#000;font-weight:700;cursor:pointer}
+  .msg{border-color:rgba(245,179,1,.45);background:rgba(245,179,1,.08)}
   .tip{margin-top:26px;color:var(--mute);font-size:13px;text-align:center}
   #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#2b2e35;padding:10px 16px;border-radius:12px;transition:.25s;opacity:0}
   #toast.show{transform:translateX(-50%);opacity:1}
@@ -72,7 +75,9 @@
       <div class="when">${esc(day(x.date))} · ${hm(x.date)}</div>
       <div class="what"><span class="dot" style="background:${esc(x.color || '#888')}"></span>${esc(x.dept)} · <b>${esc(x.pos)}</b> · ${esc(x.title)}</div>
       <div class="btns"><button class="yes ${x.status === 'confirmed' ? 'on' : ''}" data-a="${i}" data-s="confirmed">✓ Vin</button><button class="nope ${x.status === 'declined' ? 'on' : ''}" data-a="${i}" data-s="declined">✕ Nu pot</button></div>
-      <button class="cal" data-c="${i}">📅 Pune în calendar</button></div>`).join('') || '<p class="empty">Nu ești programat în perioada următoare.</p>';
+      <button class="cal" data-c="${i}">📅 Pune în calendar</button>
+      ${x.preach ? `<div class="up"><label class="upb">📎 ${x.incoming ? 'Schimbă prezentarea' : 'Pune prezentarea pentru predică'}<input type="file" data-up="${i}" accept=".pptx,.ppt,.key,.pdf,.odp,image/*,video/*" hidden></label>
+        <span class="what">${x.incoming ? '✓ primită: ' + esc(x.incoming) : 'PowerPoint, Keynote, PDF sau poze. O poți schimba până în ultimul minut.'}</span></div>` : ''}</div>`).join('') || '<p class="empty">Nu ești programat în perioada următoare.</p>';
     const tasks = D.tasks.length ? `<h2>Sarcinile mele</h2>` + D.tasks.map((k, i) => `<div class="card task ${k.done ? 'done' : ''}"><input type="checkbox" data-k="${i}" ${k.done ? 'checked' : ''}>
       <div class="t">${esc(k.text)}${k.due ? `<div class="due ${!k.done && k.due < today() ? 'late' : ''}">până ${esc(new Date(k.due + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))}${!k.done && k.due < today() ? ' · a trecut termenul' : ''}</div><button class="cal" data-kc="${i}">📅 Amintește-mi</button>` : ''}</div></div>`).join('') : '';
     const meets = D.meetings.map((m, i) => `<div class="card"><div class="when">${esc(m.title)}</div><div class="what">${esc(day(m.date))} · ${hm(m.date)}</div>
@@ -82,7 +87,8 @@
     // the next Sundays to block quickly, plus any other day already blocked
     const sundays = []; const d = new Date(); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); for (let i = 0; i < 12; i++) { sundays.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 7); }
     const daysAll = [...new Set([...sundays, ...D.away.filter(x => x >= today())])].sort();
-    $('app').innerHTML = `<h1>Salut, ${esc(D.name.split(' ')[0])}!</h1><div class="sub">${esc(D.church)} · slujirea ta</div>
+    const msgs = (D.messages || []).map(m => `<div class="card msg"><div class="what">📣 ${esc(m.from || 'Păstorul')} · ${esc(new Date(m.at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }))}</div><div style="white-space:pre-wrap;margin-top:6px">${esc(m.text)}</div></div>`).join('');
+    $('app').innerHTML = `<h1>Salut, ${esc(D.name.split(' ')[0])}!</h1><div class="sub">${esc(D.church)} · slujirea ta</div>${msgs}
       <h2>Când slujești</h2>${serve}${tasks}${meets ? '<h2>Întâlnirea liderilor</h2>' + meets : ''}
       <h2>Când nu pot</h2><div class="card"><div class="what" style="margin-bottom:10px">Apasă pe duminicile când lipsești. Liderul nu te va putea pune în acele zile.</div>
         <div class="days">${daysAll.map(x => `<button class="${D.away.includes(x) ? 'off' : ''}" data-d="${x}">${esc(new Date(x + 'T12:00').toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', ...(new Date(x + 'T12:00').getDay() ? { weekday: 'short' } : {}) }))}</button>`).join('')}</div>
@@ -93,6 +99,14 @@
     document.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { const x = D.serve[+b.dataset.c]; ics(`${x.pos} · ${x.title}`, x.date, 120); });
     document.querySelectorAll('[data-kc]').forEach(b => b.onclick = () => { const k = D.tasks[+b.dataset.kc]; ics('Betleem: ' + k.text, k.due, 0, true); });
     document.querySelectorAll('[data-mc]').forEach(b => b.onclick = () => { const m = D.meetings[+b.dataset.mc]; ics(m.title, m.date, 90); });
+    document.querySelectorAll('[data-up]').forEach(inp => inp.onchange = async () => {
+      const f = inp.files[0], x = D.serve[+inp.dataset.up]; if (!f) return;
+      const lab = inp.parentElement; lab.firstChild.textContent = '⏳ Se trimite… ';
+      try {
+        const r = await fetch(`/api/eu?t=${encodeURIComponent(t)}&service=${encodeURIComponent(x.service)}&upload=${encodeURIComponent(f.name)}`, { method: 'POST', body: f });
+        const j = await r.json(); if (!r.ok) throw new Error(j.error); toast('Am primit prezentarea. Mulțumim!'); load();
+      } catch (e) { toast(e.message || 'Nu s-a trimis'); lab.firstChild.textContent = '📎 Încearcă din nou '; }
+    });
     document.querySelectorAll('[data-k]').forEach(c => c.onchange = () => load({ action: 'task', task: D.tasks[+c.dataset.k].id, done: c.checked }));
     const saveAway = away => load({ action: 'away', away, maxPerMonth: +$('max').value });
     document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const x = b.dataset.d; saveAway(D.away.includes(x) ? D.away.filter(y => y !== x) : [...D.away, x]); });

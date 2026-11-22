@@ -507,6 +507,30 @@ test('💡 light scenes and 🎧 the guide map are kept, and linked to the progr
   a.ws.close();
 });
 
+test('✦ fair team auto-fill, 📣 pastor messages and 📎 the preacher sends his own presentation', async () => {
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' };
+  const api = o => fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify(o) }).then(r => r.json());
+  let P = await api({ op: 'addService', title: 'Auto', date: '2027-06-06T07:00:00.000Z' });
+  const prog = P.departments.find(d => d.name === 'Program'), pred = prog.positions.find(p => p.name === 'Predicator');
+  P = await api({ op: 'saveVolunteer', volunteer: { name: 'Pastor Ion', phone: '0700', positions: [pred.id] } });
+  P = await api({ op: 'saveVolunteer', volunteer: { name: 'Pastor Vasile', phone: '0701', positions: [pred.id], away: ['2027-06-06'] } });
+  const sv = P.services.find(s => s.title === 'Auto');
+  await api({ op: 'setItems', id: sv.id, items: [{ kind: 'sermon', title: 'Predica', minutes: 30 }] });
+  P = await api({ op: 'autoAssign', id: sv.id, department: prog.id });
+  const s2 = P.services.find(s => s.id === sv.id), ion = P.volunteers.find(v => v.name === 'Pastor Ion');
+  assert.equal(s2.assignments[pred.id + '#0'].volunteer, ion.id, 'the free one is chosen, the one who blocked the day is not');
+  P = await api({ op: 'saveMessage', message: { text: 'Mulțumesc pentru slujire!', from: 'Păstorul', to: 'service', ref: sv.id } });
+  const me = await fetch('http://localhost:4599/api/eu?t=' + ion.token).then(r => r.json());
+  assert.equal(me.messages[0].text, 'Mulțumesc pentru slujire!');
+  const mine = me.serve.find(x => x.service === sv.id); assert.ok(mine.preach);
+  const up = await fetch(`http://localhost:4599/api/eu?t=${ion.token}&service=${sv.id}&upload=Predica.pdf`, { method: 'POST', body: Buffer.from('%PDF-1.4 test') }).then(r => r.json());
+  assert.equal(up.ok, true);
+  P = await fetch('http://localhost:4599/api/plan', { headers: L }).then(r => r.json());
+  assert.equal(P.services.find(s => s.id === sv.id).items[0].incoming.from, 'Pastor Ion');
+  const other = P.volunteers.find(v => v.name === 'Pastor Vasile');
+  assert.equal((await fetch(`http://localhost:4599/api/eu?t=${other.token}&service=${sv.id}&upload=x.pdf`, { method: 'POST', body: 'x' })).status, 403, 'only the preacher of that service');
+});
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

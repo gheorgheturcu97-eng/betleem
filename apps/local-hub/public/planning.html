@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="/manifest-plan.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -339,6 +339,7 @@
   <!-- 🗓 LIDERI: the leaders' meeting (e.g. Tuesday): agenda seen before, notes, tasks with who and until when -->
   <section class="view" id="v-leaders">
     <aside class="panel glass">
+      <button id="bMsg" class="acc" title="📣 Un cuvânt de la păstor pentru echipă: verset, încurajare, mulțumiri. Apare pe pagina fiecăruia și se trimite pe WhatsApp.">📣 Mesaj pentru echipă</button>
       <div class="row"><h2 class="grow">Întâlniri</h2><button id="bAddMeet" title="O întâlnire nouă (de obicei marțea)">＋</button></div>
       <div id="meetList" class="scroll" style="display:flex;flex-direction:column;gap:6px;flex:1"></div>
     </aside>
@@ -694,7 +695,7 @@
       const n = it.slides?.length || 0, canAttach = it.kind !== 'song' && it.kind !== 'bible';
       return `<div class="it" draggable="true" data-i="${i}" ${it.kind !== 'song' ? `data-k="${it.kind}"` : ''}><time>${at}</time>
         <span class="t"><input class="ti" data-f="title" value="${esc(it.title || '')}" placeholder="${esc(KIND[it.kind])}" title="${it.kind === 'song' ? 'Schimbă numele cântării (și în Bibliotecă)' : 'Scrie numele momentului'}">
-          <span class="sub"><select class="kd" data-f="kind" ${kinds.length < 2 ? 'disabled' : ''} title="Ce fel de moment e">${kinds.map(k => `<option value="${k}" ${k === it.kind ? 'selected' : ''}>${KIND[k]}</option>`).join('')}</select>
+          <span class="sub"><select class="kd" data-f="kind" ${kinds.length < 2 ? 'disabled' : ''} title="Ce fel de moment e">${kinds.map(k => `<option value="${k}" ${k === it.kind ? 'selected' : ''}>${KIND[k]}</option>`).join('')}</select>${it.incoming ? `<span class="att" title="Trimisă de ${esc(it.incoming.from)} pe linkul lui; e în 📥 Primite, în Proiectez">📎 de la ${esc(it.incoming.from)}</span>` : ''}
           ${canAttach ? `<button class="att ${n ? 'has' : ''}" data-att="1" title="${n ? 'Schimbă prezentarea' : 'Adaugă o prezentare (PowerPoint, Keynote, PDF, poze) la acest moment'}">${n ? '🖼 ' + n + ' slide-uri' : '📎 prezentare'}</button>` : ''}</span></span>
         <input data-f="leader" value="${esc(it.leader || '')}" placeholder="Cine">
         ${it.kind === 'song' ? `<input data-f="key" value="${esc(it.key || '')}" placeholder="Ton">` : '<span></span>'}
@@ -973,9 +974,11 @@
           <select class="st" data-p="${p.id}" data-s="${slot}" ${a ? '' : 'disabled'} title="Confirmare">
             <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option></select>
           <button class="icon ghost wa" data-wa="${a ? p.id + '#' + slot : ''}" ${a ? '' : 'disabled'} title="💬 Trimite-i pe WhatsApp: când slujește și linkul lui de confirmare">💬</button></div>`;
-      })).join('')}</div>`).join('') + (P.volunteers.length ? `<button id="waAll" class="ghost" title="Câte un mesaj pe WhatsApp pentru fiecare om programat">💬 Anunță echipa</button>` : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
+      })).join('')}</div>`).join('') + (P.volunteers.length ? `<div class="row"><button id="autoTeam" class="acc" title="✦ Pune oamenii pe locurile goale: cine poate sluji acolo, n-a blocat ziua, e sub limita lui; cine a slujit mai puțin în ultimele 8 săptămâni are prioritate">✦ Completează echipa</button><button id="waAll" class="ghost" title="Câte un mesaj pe WhatsApp pentru fiecare om programat">💬 Anunță echipa</button></div>` : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
     document.querySelectorAll('#team [data-wa]').forEach(b => b.onclick = () => b.dataset.wa && sendWa(s, b.dataset.wa));
     if ($('waAll')) $('waAll').onclick = () => announceTeam(s);
+    if ($('autoTeam')) $('autoTeam').onclick = async () => { const before = Object.keys(s.assignments).length; await op({ op: 'autoAssign', id: s.id });
+      const now = Object.keys(P.services.find(x => x.id === s.id)?.assignments || {}).length; toast(now > before ? `✦ Am pus ${now - before} oameni. Verifică și apoi „💬 Anunță echipa”.` : 'Nu am găsit pe nimeni liber pentru locurile goale (vezi poziții, zile blocate, limite).'); };
     document.querySelectorAll('#team select').forEach(sel => sel.onchange = () => {
       const p = sel.dataset.p, slot = +sel.dataset.s, row = sel.parentElement.querySelectorAll('select');
       op({ op: 'assign', id: s.id, position: p, slot, volunteer: row[0].value, status: row[1].value || 'pending' });
@@ -1061,6 +1064,29 @@
     });
   }
   $('tkFilter').onchange = renderLeaders;
+  // 📣 the pastor's word to the team (everyone, the people of a service — e.g. thanks after Sunday —, or one department)
+  $('bMsg').onclick = () => {
+    const past = P.services.filter(s => new Date(s.date) <= Date.now() + 7 * 864e5).slice(-6).reverse();
+    dialog('📣 Mesaj pentru echipă', `<label>Mesajul<textarea id="msT" rows="6" placeholder="Ex.: Vă mulțumesc pentru slujirea de duminică! „Lucrați din toată inima, ca pentru Domnul.” Coloseni 3:23"></textarea></label>
+      <div class="row"><label class="grow">De la<input id="msF" value="Păstorul"></label>
+        <label class="grow">Pentru<select id="msTo"><option value="all">toată echipa</option>${past.map(s => `<option value="service:${s.id}">cei care au slujit: ${esc(s.title)} · ${new Date(s.date).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}</option>`).join('')}
+          ${P.departments.map(d => `<option value="dept:${d.id}">departamentul ${esc(d.name)}</option>`).join('')}</select></label></div>
+      <p class="hint">Apare pe pagina personală a fiecăruia. După ce salvezi, îl poți trimite și pe WhatsApp, om cu om.</p>`,
+      async () => {
+        const [to, ref = ''] = $('msTo').value.split(':'), text = $('msT').value.trim(), from = $('msF').value.trim();
+        if (!text) { toast('Scrie mesajul'); return false; }
+        await op({ op: 'saveMessage', message: { text, from, to, ref } });
+        const ids = to === 'all' ? P.volunteers.map(v => v.id)
+          : to === 'service' ? [...new Set(Object.values(P.services.find(s => s.id === ref)?.assignments || {}).map(a => a.volunteer))]
+          : P.volunteers.filter(v => P.departments.find(d => d.id === ref)?.positions.some(p => v.positions.includes(p.id))).map(v => v.id);
+        const people = ids.map(id => P.volunteers.find(v => v.id === id)).filter(Boolean);
+        setTimeout(() => {
+          dialog('💬 Trimite pe WhatsApp', `<p class="hint">Mesajul e salvat și apare pe pagina fiecăruia. Apasă pe fiecare om ca să-l trimiți și pe WhatsApp.</p>
+            <div style="display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto">${people.map((v, i) => `<div class="vol" style="grid-template-columns:1fr auto"><span><b>${esc(v.name)}</b></span><button class="ghost" data-w="${i}">💬 Trimite</button></div>`).join('') || '<p class="hint">Nimeni în listă.</p>'}</div>`, () => true, 'Gata');
+          $('mBox').querySelectorAll('[data-w]').forEach(b => b.onclick = async () => { const v = people[+b.dataset.w]; wa(v.phone, `${text}\n— ${from}\n\nPagina ta: ${await linkOf(v)}`); b.textContent = '✓ Deschis'; });
+        }, 50);
+      }, 'Salvează');
+  };
   $('tkForm').onsubmit = e => { e.preventDefault(); const t = $('tkText').value.trim(); if (!t) return;
     op({ op: 'saveTask', task: { text: t, due: $('tkDue').value, meeting: $('tkFilter').value === 'meeting' ? meetId || '' : '' } }); $('tkText').value = ''; };
   $('bAddMeet').onclick = () => { const d = nextTuesday();

@@ -1,12 +1,10 @@
 {
-  "name": "Betleem",
+  "name": "Echipa Betleem",
   "short_name": "Betleem",
-  "start_url": "/planning.html",
+  "description": "Slujirea mea, programul și planificarea bisericii",
+  "start_url": "/eu.html",
   "display": "standalone",
-  "background_color": "#07080c",
-  "theme_color": "#111214",
-  "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+  "background_color": "#121316",
+  "theme_color": "#121316",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }

@@ -51,6 +51,8 @@ export const TOOLS = [
     params: { position: { type: 'number' }, sections: { type: 'array', items: { type: 'string' } } }, required: ['position', 'sections'] },
   { name: 'set_track', description: 'Schimbă un track al unei cântări din program (click, guide, tobe, bas…): volum în procente (0-150) și/sau mut.',
     params: { position: { type: 'number' }, track: { type: 'string' }, volume: { type: 'number' }, muted: { type: 'boolean' } }, required: ['position', 'track'] },
+  { name: 'fill_team', description: 'Programează oamenii: pune voluntari pe locurile goale ale echipei (corect: cine poate sluji acolo, n-a blocat ziua, e sub limita lunară; cine a slujit mai puțin are prioritate). Opțional doar un departament.',
+    params: { department: { type: 'string', description: 'numele departamentului (opțional)' } } },
   { name: 'leaders_tasks', description: 'Întâlnirile liderilor (agenda) și sarcinile (ce, cine, până când, gata sau nu). Folosește-l înainte să adaugi sau să răspunzi la „ce am de făcut”.', params: {} },
   { name: 'add_task', description: 'Adaugă o sarcină pentru echipa de lideri: ce, cui (numele persoanei) și până când (AAAA-LL-ZZ). Dacă spune „la întâlnirea de marți”, o leagă de următoarea întâlnire.',
     params: { text: { type: 'string' }, who: { type: 'string', description: 'numele persoanei (opțional)' }, due: { type: 'string', description: 'AAAA-LL-ZZ (opțional)' }, meeting: { type: 'boolean', description: 'legată de următoarea întâlnire' } }, required: ['text'] },
@@ -121,6 +123,11 @@ export function runTool(hub, name, a = {}) {
     case 'set_background': return done(hub.run({ type: 'background', value: a.name || '' }));
     case 'show_slide': return done(hub.run({ type: 'go', item: pos(a.position), slide: Math.max(0, Math.round(Number(a.slide || 1)) - 1) }));
     case 'set_service': return done(hub.run({ type: 'service', value: { ...(a.title ? { title: a.title } : {}), ...(a.starts_at ? { startsAt: new Date(a.starts_at).toISOString() } : {}) } }));
+    case 'fill_team': {
+      if (!hub.fillTeam) return { error: 'Nu e disponibil aici' };
+      const P = hub.plan?.(), d = a.department && P ? P.departments.find(x => x.name.toLowerCase().includes(String(a.department).toLowerCase())) : null;
+      return hub.fillTeam('', d?.id || '');
+    }
     case 'leaders_tasks': {
       if (!hub.plan) return { error: 'Nu e disponibil aici' };
       const P = hub.plan(), nm = id => P.volunteers.find(v => v.id === id)?.name || '';

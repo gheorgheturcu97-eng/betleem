@@ -160,6 +160,18 @@ export function applyPlanOp(plan, op) {
       break;
     }
     case 'deleteTask': plan.tasks = plan.tasks.filter(t => t.id !== op.id); break;
+    case 'autoAssign': { const s = svc(); if (!s) return 'Serviciul nu există'; op.filled = autoAssign(plan, s, op.department || ''); break; }
+    // 📣 a word from the pastor / leader to the team: everyone, the people of one service, or one department.
+    // It shows on each person's own page; the WhatsApp sending stays a click of the leader (free).
+    case 'saveMessage': {
+      plan.messages ||= [];
+      const m = op.message || {}; if (!str(m.text, 2000)) return 'Scrie mesajul';
+      const to = ['all', 'service', 'dept'].includes(m.to) ? m.to : 'all';
+      plan.messages.unshift({ id: id(), text: str(m.text, 2000), from: str(m.from, 80), to, ref: str(m.ref, 40), at: new Date().toISOString() });
+      plan.messages = plan.messages.slice(0, 100);
+      break;
+    }
+    case 'deleteMessage': plan.messages = (plan.messages || []).filter(m => m.id !== op.id); break;
     case 'deleteVolunteer': {
       plan.volunteers = plan.volunteers.filter(v => v.id !== op.id);
       for (const s of plan.services) for (const k of Object.keys(s.assignments)) if (s.assignments[k].volunteer === op.id) delete s.assignments[k];
@@ -169,6 +181,28 @@ export function applyPlanOp(plan, op) {
   }
   plan.services.sort((a, b) => a.date.localeCompare(b.date));
   return null;
+}
+
+/** ✦ Fill the empty places of a service fairly: people who can serve there, didn't block the day, are under their
+ *  monthly limit and aren't already in this service; whoever served least in the last 8 weeks comes first.
+ *  Returns the number of places filled. Nobody already placed is moved. */
+export function autoAssign(plan, s, onlyDept = '') {
+  const since = new Date(new Date(s.date).getTime() - 56 * 864e5).toISOString();
+  const load = {};
+  for (const x of plan.services) if (x.date >= since && x.date <= s.date) for (const a of Object.values(x.assignments)) load[a.volunteer] = (load[a.volunteer] || 0) + 1;
+  let n = 0;
+  for (const d of plan.departments) {
+    if (onlyDept && d.id !== onlyDept && d.name !== onlyDept) continue;
+    for (const p of d.positions) for (let slot = 0; slot < p.needed; slot++) {
+      const key = `${p.id}#${slot}`; if (s.assignments[key]) continue;
+      const inHere = new Set(Object.values(s.assignments).map(a => a.volunteer));
+      const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key))
+        .sort((a, b) => (load[a.id] || 0) - (load[b.id] || 0) || a.name.localeCompare(b.name, 'ro'))[0];
+      if (!pick) continue;
+      s.assignments[key] = { volunteer: pick.id, status: 'pending', auto: true }; load[pick.id] = (load[pick.id] || 0) + 1; n++;
+    }
+  }
+  return n;
 }
 
 /** Warnings for a service: same person twice, people marked away, empty positions. */

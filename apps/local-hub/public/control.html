@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="/manifest-plan.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1248,6 +1248,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <li>Lipește adresa aici. Din acel moment, linkurile trimise voluntarilor și QR-ul de la birou merg și de acasă.</li>
   </ol>
   <div class="row"><input id="secUrl" class="grow" placeholder="https://betleem-mac.tail1234.ts.net"><button id="secUrlSave" class="acc">Salvează</button></div>
+  <h4 style="margin:16px 0 6px">📱 Liderii și operatorii, de acasă (Planificare, Proiectez, de pe telefon)</h4>
+  <p class="hint">Nu prin ușa de mai sus, ci prin rețeaua privată Tailscale: instalează Tailscale pe telefonul liderului și intră cu <b>același cont</b> al bisericii.
+    Apoi deschide pe telefon <code id="secTail">http://(adresa Tailscale a acestui calculator):4545/planning.html</code> și pune-o pe ecranul principal (Distribuie → Adaugă pe ecranul principal).
+    Doar telefoanele adăugate de tine în contul bisericii pot intra, și tot cu PIN.</p>
   <h4 style="margin:16px 0 6px">💾 Copii de siguranță</h4>
   <p class="hint">În fiecare zi, o copie a tot (cântări, programe, oameni) în Documente/Betleem/backup, ultimele 30 de zile. Dacă pui și folderul NAS-ului, copia ajunge și acolo.</p>
   <div class="row"><input id="secNas" class="grow" placeholder="ex. /Volumes/Betleem-NAS/Betleem (Mac) sau \\NAS\Betleem (Windows)"><button id="secNasSave">Salvează</button><button id="secNow" class="ghost">Fă o copie acum</button></div>
@@ -2317,7 +2321,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     renderMediaBar();
     const slHtml = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true" ${it.kind !== 'song' ? `data-k="${esc(it.kind)}"` : ''}>
       <span class="num">${i + 1}</span>
-      <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${it.kind === 'song' && S.setlist.filter(x => x.songId === it.songId).length > 1 ? '<span class="rep" title="Cântarea apare de mai multe ori în program">repetată</span> ' : ''}${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}</small></span>
+      <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${it.kind === 'song' && S.setlist.filter(x => x.songId === it.songId).length > 1 ? '<span class="rep" title="Cântarea apare de mai multe ori în program">repetată</span> ' : ''}${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}${it.incoming && !it.slideCount ? ` <span class="rep" title="Predicatorul a trimis-o: o găsești în 📥 Primite">📎 prezentare de la ${esc(it.incoming.from)}</span>` : ''}</small></span>
       <span class="acts">${it.kind === 'song' ? '<button data-a="key" title="Schimbă tonul">♯</button>' : ''}${it.kind !== 'song' && it.kind !== 'bible' ? '<button data-a="att" title="Adaugă / schimbă prezentarea acestui moment (PowerPoint, Keynote, PDF, poze)">📎</button><button data-a="cva" title="Prezentarea acestui moment din Canva">🎨</button>' : ''}<button data-a="del" title="Scoate din program">✕</button></span></div>`).join('')
       || '<div class="empty">Programul e gol.<br>Alege cântări din Bibliotecă →</div>';
     if ($('setlist').dataset.html !== slHtml) { $('setlist').innerHTML = slHtml; $('setlist').dataset.html = slHtml; }
@@ -2694,6 +2698,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('secDoorState').textContent = j.door ? (j.doorOpen ? (j.publicUrl ? '· deschisă, la ' + j.publicUrl : '· deschisă; lipsește adresa de mai jos') : '· nu a pornit (vezi portul)') : '· închisă';
     $('secBk').textContent = (j.lastBackup ? 'Ultima copie: ' + new Date(j.lastBackup).toLocaleString('ro-RO') : 'Nicio copie încă.') + (j.backupError ? ' ⚠ ' + j.backupError : '');
     $('secLog').textContent = (j.log || []).join('\n') || 'Nimic încă.';
+    fetch('/api/this').then(r => r.ok ? r.json() : null).then(t => { const ts = (t?.urls || []).find(u => /\/\/100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(u)); if (ts) $('secTail').textContent = ts + '/planning.html'; }).catch(() => {});
   }
   async function openSec() { $('secModal').classList.add('show'); try { secShow(await secApi()); } catch (e) { toast(e.message); } }
   const secSet = async b => { try { secShow(await secApi(b)); toast('Salvat'); } catch (e) { toast(e.message); } };
