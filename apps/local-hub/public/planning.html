@@ -253,11 +253,11 @@
 <div class="app">
   <header class="top glass">
     <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
- <button class="ai-open" id="aiOpen" title="Asistentul: spune-i sau scrie-i ce program vrei">✦ Asistent</button>
+ <button class="ai-open" id="aiOpen" data-mod="asistent" title="Asistentul: spune-i sau scrie-i ce program vrei">✦ Asistent</button>
     <button class="mode-chip" id="modeChip" title="Schimbă ce faci: Planificare / Proiectez / MD&amp;TRACK">🗓 Planificare ▾</button>
-    <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP">MD&amp;TRACK</button><button class="sel">Planificare</button></div>
+    <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP" data-mod="md">MD&amp;TRACK</button><button class="sel">Planificare</button></div>
     <div class="seg views" id="views">
-      <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button><button data-v="songs">Cântări</button><button data-v="leaders" title="Întâlnirea liderilor: agendă, sarcini, remindere">Lideri<span class="badge" id="tkBadge" hidden></span></button>
+      <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button><button data-v="songs">Cântări</button><button data-v="leaders" data-mod="lideri" title="Întâlnirea liderilor: agendă, sarcini, remindere">Lideri<span class="badge" id="tkBadge" hidden></span></button>
     </div>
     <button id="bPco" title="Ia cântările și programele din Planning Center">⇄ Planning Center</button>
     <span id="role" class="hint"></span>
@@ -982,7 +982,7 @@
           <select class="st" data-p="${p.id}" data-s="${slot}" ${a ? '' : 'disabled'} title="Confirmare">
             <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option></select>
           <button class="icon ghost wa" data-wa="${a ? p.id + '#' + slot : ''}" ${a ? '' : 'disabled'} title="💬 Trimite-i pe WhatsApp: când slujește și linkul lui de confirmare">💬</button></div>`;
-      })).join('')}</div>`).join('') + (P.volunteers.length ? `<div class="row"><button id="autoTeam" class="acc" title="✦ Pune oamenii pe locurile goale: cine poate sluji acolo, n-a blocat ziua, e sub limita lui; cine a slujit mai puțin în ultimele 8 săptămâni are prioritate">✦ Completează echipa</button><button id="waAll" class="ghost" title="Câte un mesaj pe WhatsApp pentru fiecare om programat">💬 Anunță echipa</button></div>` : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
+      })).join('')}</div>`).join('') + (P.volunteers.length ? `<div class="row"><button id="autoTeam" class="acc" title="✦ Pune oamenii pe locurile goale: cine poate sluji acolo, n-a blocat ziua, e sub limita lui; cine a slujit mai puțin în ultimele 8 săptămâni are prioritate">✦ Completează echipa</button><button id="waAll" class="ghost" data-mod="voluntari" title="Câte un mesaj pe WhatsApp pentru fiecare om programat">💬 Anunță echipa</button></div>` : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
     document.querySelectorAll('#team [data-wa]').forEach(b => b.onclick = () => b.dataset.wa && sendWa(s, b.dataset.wa));
     if ($('waAll')) $('waAll').onclick = () => announceTeam(s);
     if ($('autoTeam')) $('autoTeam').onclick = async () => { const before = Object.keys(s.assignments).length; await op({ op: 'autoAssign', id: s.id });
@@ -1160,7 +1160,7 @@
       <div class="row"><label class="grow">Poate sluji cel mult<select id="vMax">${[0, 1, 2, 3, 4].map(n => `<option value="${n}" ${n === (v.maxPerMonth || 0) ? 'selected' : ''}>${n ? n + (n === 1 ? ' dată' : ' ori') + ' pe lună' : 'oricât e nevoie'}</option>`).join('')}</select></label>
         <label style="display:flex;gap:8px;align-items:center;margin-top:18px"><input type="checkbox" id="vLead" ${v.leader ? 'checked' : ''} style="width:auto"> Face parte din echipa de lideri</label>
         <label style="display:flex;gap:8px;align-items:center;margin-top:18px"><input type="checkbox" id="vFoto" ${v.photographer ? 'checked' : ''} style="width:auto"> 📷 Fotograf (încarcă pozele)</label></div>
-      ${v.token ? `<div class="vlink"><b class="grow">🔗 Linkul lui personal</b><button type="button" class="ghost" id="vlCopy">Copiază</button><button type="button" class="ghost" id="vlWa">💬 WhatsApp</button><button type="button" class="ghost" id="vlNew" title="Linkul vechi nu mai merge (ex. telefon pierdut)">↻ Link nou</button><code id="vlUrl"></code>
+      ${v.token ? `<div class="vlink" data-mod="voluntari"><b class="grow">🔗 Linkul lui personal</b><button type="button" class="ghost" id="vlCopy">Copiază</button><button type="button" class="ghost" id="vlWa">💬 WhatsApp</button><button type="button" class="ghost" id="vlNew" title="Linkul vechi nu mai merge (ex. telefon pierdut)">↻ Link nou</button><code id="vlUrl"></code>
         <span class="hint">Acolo își vede programările, confirmă, își blochează zilele și sarcinile. Fără parolă. Merge pe Wi-Fi-ul bisericii.</span></div>` : '<p class="hint">După ce salvezi, primește un link personal.</p>'}`,
       () => op({ op: 'saveVolunteer', volunteer: { id: v.id, name: $('vN').value, phone: $('vP').value, email: $('vE').value, maxPerMonth: +$('vMax').value, leader: $('vLead').checked, photographer: $('vFoto').checked,
         positions: [...$('mBox').querySelectorAll('.checks input:checked')].map(i => i.value), away: $('vA').value.split(/[,\s]+/).filter(Boolean) } }));

@@ -1,5 +1,17 @@
 // Day or night: chosen once on this computer (☀ / 🌙 in Live), the same on every page.
 try { if (localStorage.getItem('betleem.theme') === 'light') document.documentElement.classList.add('light'); } catch {}
+// 🎨 The church's own layer (River): accent colour, name, and modules it doesn't use. Kept in Documents/Betleem
+// (never touched by updates). The core stays the same for everyone; only this layer changes.
+const MODS = ['md', 'lumini', 'lideri', 'asistent', 'voluntari'];
+export function applyBrand(b) {
+  if (!b) return;
+  const r = document.documentElement;
+  if (/^#[0-9a-f]{6}$/i.test(b.accent || '')) { r.style.setProperty('--acc', b.accent); r.style.setProperty('--acc-2', b.accent); } else { r.style.removeProperty('--acc'); r.style.removeProperty('--acc-2'); }
+  for (const m of MODS) r.classList.toggle('no-' + m, (b.off || []).includes(m));
+  try { localStorage.setItem('betleem.brand', JSON.stringify(b)); } catch {}
+}
+try { applyBrand(JSON.parse(localStorage.getItem('betleem.brand') || 'null')); } catch {}
+fetch('/api/brand').then(r => r.ok ? r.json() : null).then(applyBrand).catch(() => {});
 // The live background, blurred behind the app; its average colour tints the glass.
 let current = null;
 export function backdrop(name) {

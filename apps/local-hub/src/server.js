@@ -1713,7 +1713,7 @@ async function handle(req, res) {
           tasks: plan.tasks.filter(tk => tk.meeting === mt.id).map(tk => ({ text: tk.text, who: name(tk.who), due: tk.due, done: tk.done })) })) : [] });
     }
     if (p === '/api/security') {                            // 🔒 the leader, on this computer only
-      if (req.viaDoor || !(localReq(req) || checkLeader(req))) return json(res, 403, { error: 'Doar liderul, pe calculatorul bisericii.' });
+      if (req.viaDoor || !checkLeader(req)) return json(res, 403, { error: 'Doar liderul, pe calculatorul bisericii.' });
       if (req.method === 'POST') {
         const m = JSON.parse(await body(req, 5000) || '{}');
         if ('door' in m) db.security.door = !!m.door;
@@ -1783,6 +1783,16 @@ async function handle(req, res) {
       finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
+    if (p === '/api/brand') {                                    // 🎨 the church's own layer: Documents/Betleem/personalizare.json
+      const F = path.join(DATA_DIR, 'personalizare.json'); let b = {}; try { b = JSON.parse(fs.readFileSync(F, 'utf8')); } catch {}
+      if (req.method === 'POST') {
+        if (req.viaDoor || !checkLeader(req)) return json(res, 403, { error: 'Doar liderul.' });
+        const m = JSON.parse(await body(req, 5000) || '{}');
+        b = { accent: /^#[0-9a-f]{6}$/i.test(m.accent || '') ? m.accent : '', off: (Array.isArray(m.off) ? m.off : []).filter(x => ['md', 'lumini', 'lideri', 'asistent', 'voluntari'].includes(x)) };
+        fs.writeFileSync(F, JSON.stringify(b, null, 1)); broadcast();
+      }
+      return json(res, 200, b);
+    }
     if (p === '/api/ghid' && req.method === 'GET') return json(res, 200, guideVoices());          // 🎧 the voices for the guide
     if (p === '/api/pads' && req.method === 'GET') return json(res, 200, audioIn(PAD_DIR));            // 🎹 the church's recorded pads
     if (p.startsWith('/pads/')) return file(res, PAD_DIR, path.basename(decodeURIComponent(p.slice(6))), req);

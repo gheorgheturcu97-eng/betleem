@@ -80,3 +80,6 @@ html.light .msgbox input{background:#fff}
 html.light #screens .cap,html.light #screens .open{color:#fff!important;background:rgba(0,0,0,.55)!important;border-color:rgba(255,255,255,.2)!important}
 html.light .ready span.y{color:#17804a!important;background:rgba(61,220,132,.14)!important} html.light .ready span.n{color:#8a5300!important}
 html.light .dept,html.light .team-box{background:rgba(255,255,255,.6)!important}
+
+/* 🎨 modules a church switched off (⚙ Setări → Aspect și funcții) */
+html.no-md [data-mod~=md], html.no-lumini [data-mod~=lumini], html.no-lideri [data-mod~=lideri], html.no-asistent [data-mod~=asistent], html.no-voluntari [data-mod~=voluntari]{display:none!important}

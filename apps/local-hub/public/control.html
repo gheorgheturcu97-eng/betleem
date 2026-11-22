@@ -967,7 +967,7 @@
 
       <div class="bg-panel glass" id="bgPanel">
         <div class="bg-head">
-          <div class="seg bgtabs"><button data-bt="bg" class="sel">Fundaluri</button><button data-bt="light" title="💡 Scenele de lumini (MIDI), legate de program și de secțiuni">💡 Lumini</button></div><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
+          <div class="seg bgtabs"><button data-bt="bg" class="sel">Fundaluri</button><button data-bt="light" data-mod="lumini" title="💡 Scenele de lumini (MIDI), legate de program și de secțiuni">💡 Lumini</button></div><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
           <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează pe cântare</button>
           <label class="btn">＋ Imagine / video<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
         </div>
@@ -1152,7 +1152,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <div class="door-row">
       <button class="door" data-m="pregatesc"><i>🗓</i><b>Planificare</b><span>Programul serviciului, cântările, echipele, categoriile. Pentru lideri, în timpul săptămânii.</span></button>
       <button class="door acc" data-m="proiectez"><i>▶</i><b>Proiectez</b><span>Duminică, la proiector: versurile, prezentările și fundalurile. Doar butoanele de care ai nevoie.</span></button>
-      <button class="door" data-m="cant"><i>♫</i><b>MD&amp;TRACK</b><span>Pentru trupă și MD: track-uri, ton, tempo, structura cântărilor, mixer, rutare și comenzi vocale.</span></button>
+      <button class="door" data-m="cant" data-mod="md"><i>♫</i><b>MD&amp;TRACK</b><span>Pentru trupă și MD: track-uri, ton, tempo, structura cântărilor, mixer, rutare și comenzi vocale.</span></button>
     </div>
     <button class="door-all" data-m="complet">Toate funcțiile (pentru operatori avansați)</button>
     <label class="door-keep"><input type="checkbox" id="doorKeep" checked> Ține minte alegerea pe acest calculator</label>
@@ -1188,6 +1188,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="lite"><i>⚡</i><b>Mod rapid</b><span id="liteState">Mai puține efecte (fără sticlă și animații) pentru calculatoare mai slabe</span></button>
     <button data-s="ideas"><i>💡</i><b>Propuneri</b><span>Păreri și propuneri de îmbunătățire, pentru dezvoltarea aplicației</span></button>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
+    <button data-s="brand"><i>🎨</i><b>Aspect și funcții</b><span>Culoarea bisericii și ce module folosiți (restul se ascund)</span></button>
     <button data-s="sec"><i>🔒</i><b>Acces de acasă și backup</b><span>Voluntarii își văd programarea de acasă; copii zilnice pe NAS</span></button>
   </div>
 </div></div>
@@ -1237,6 +1238,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="row"><button id="ltAddMsg" class="ghost">＋ mesaj</button><button id="ltLearn" class="ghost">🎓 Învață</button><span class="grow"></span>
     <button id="ltTry">▶ Încearcă</button><button id="ltDel" class="ghost">🗑</button><button id="ltSave" class="acc">Salvează</button></div>
 </div></div>
+<div class="modal" id="brandModal"><div class="glass canva" id="brandBox"></div></div>
 <div class="modal" id="secModal"><div class="glass canva">
   <div class="look-head"><b>🔒 Acces de acasă și backup</b><span class="grow"></span><button id="secClose" class="icon" title="Închide">✕</button></div>
   <p class="hint">Aplicația rămâne pe rețeaua bisericii. De acasă se poate intra <b>doar</b> pe două pagini: linkul personal al voluntarului
@@ -1333,7 +1335,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="lf stage-only"><span>Urmează · culoare</span><input type="color" id="lNextColor"></div>
   <button id="lReset" class="ghost main-only">↺ Scoate setările speciale ale cântării</button>
 </div>
-<button id="aiBtn" class="ai-btn acc" title="Asistentul Betleem">✦ Asistent</button>
+<button id="aiBtn" class="ai-btn acc" data-mod="asistent" title="Asistentul Betleem">✦ Asistent</button>
 <div class="ai glass" id="ai">
   <div class="ai-head"><b>✦ Asistent</b><span class="ai-mode"><button id="aiModeDo" class="on" title="Asistentul face lucruri în aplicație">Fă</button><button id="aiModeFb" title="Spune ce nu-ți place sau ce ți-ar trebui: asistentul face o propunere de îmbunătățire a aplicației">💡 Părere</button></span><span class="grow"></span><span id="aiProv" class="hint"></span>
     <button id="aiSet" class="icon" title="Setări">⚙</button><button id="aiClose" class="icon" title="Închide">✕</button></div>
@@ -2622,7 +2624,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'phones') $('bPhones').click(); else if (x === 'audio') { showView('music'); $('audioOut').click(); }
     else if (x === 'lite') setLite(!document.documentElement.classList.contains('lite'));
     else if (x === 'theme') setTheme(!document.documentElement.classList.contains('light'));
-    else if (x === 'ideas') openIdeas(); else if (x === 'sec') openSec();
+    else if (x === 'ideas') openIdeas(); else if (x === 'sec') openSec(); else if (x === 'brand') openBrand();
   });
 
   // ================= 💡 LUMINI: scenes over MIDI, by hand or by themselves with the program / the song's sections
@@ -2692,6 +2694,27 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else { const key = L.item + ':' + label; if (key === LT.lastKey) return; LT.lastKey = key; id = (label && it?.lights?.[label]) || (L.slide === 0 || !LT.active ? it?.light : '') || ''; }
     const z = S.lights.scenes.find(x => x.id === id); if (!z || z.id === LT.active) return;
     try { const M = await import('/lights.js'); await M.sendScene(S.lights.port, z.msgs, z.fade); LT.active = z.id; ltRender(); } catch (e) { toast('Lumini: ' + e.message); }
+  }
+  // 🎨 the church's layer: accent colour and which modules it uses (the core and its updates stay the same)
+  async function openBrand() {
+    const b = await fetch('/api/brand').then(r => r.json()).catch(() => ({}));
+    const mods = [['md', 'MD&TRACK (track-uri, mixer)'], ['lumini', 'Lumini (MIDI)'], ['lideri', 'Lideri (întâlniri, sarcini, obiective)'], ['voluntari', 'Linkuri personale și WhatsApp pentru voluntari'], ['asistent', 'Asistentul AI']];
+    $('brandBox').innerHTML = `<div class="look-head"><b>🎨 Aspect și funcții</b><span class="grow"></span><button class="icon" onclick="this.closest('.modal').classList.remove('show')">✕</button></div>
+      <p class="hint">Doar pentru biserica voastră; actualizările nu schimbă nimic din ce alegeți aici. Funcțiile noi vin oprite și le porniți voi.</p>
+      <div class="row"><label class="grow">Culoarea bisericii<input id="brAcc" type="color" value="${b.accent || '#ffbf2f'}" style="width:60px;height:38px;padding:2px"></label><button id="brReset" class="ghost">Culoarea Betleem</button></div>
+      <p class="hint" style="margin:10px 0 4px">Ce folosiți (debifat = se ascunde peste tot):</p>
+      ${mods.map(([k, l]) => `<label class="sec-row" style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" data-bm="${k}" ${(b.off || []).includes(k) ? '' : 'checked'} style="width:18px;height:18px"> ${l}</label>`).join('')}
+      <div class="row" style="justify-content:flex-end"><button id="brSave" class="acc">Salvează</button></div>`;
+    $('brandModal').classList.add('show');
+    let acc = b.accent || '';
+    $('brAcc').oninput = () => { acc = $('brAcc').value; document.documentElement.style.setProperty('--acc', acc); };
+    $('brReset').onclick = () => { acc = ''; document.documentElement.style.removeProperty('--acc'); toast('Culoarea Betleem'); };
+    $('brSave').onclick = async () => {
+      const off = [...$('brandBox').querySelectorAll('[data-bm]')].filter(c => !c.checked).map(c => c.dataset.bm);
+      const r = await fetch('/api/brand', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' }, body: JSON.stringify({ accent: acc, off }) }).then(r => r.json()).catch(() => ({}));
+      if (r.error) return toast(r.error);
+      const { applyBrand } = await import('/glass.js'); applyBrand(r); $('brandModal').classList.remove('show'); toast('Salvat pentru biserica voastră');
+    };
   }
   // 🔒 access from home (only the volunteers' pages) and daily backups
   async function secApi(body) {

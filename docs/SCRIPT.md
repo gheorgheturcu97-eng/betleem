@@ -42,7 +42,7 @@ reîncarcă după câteva ore.
 > „Am folosit aplicația la Peștera. Iată ce n-a mers: <lista ta>. Repară pe rând, începând cu ce ar strica o
 > duminică. Respectă regula de aur.”
 
-## ☐ 3 · Harta cântării și AI-ul pe ghidul vorbit
+## ☑ 3 · Harta cântării și AI-ul pe ghidul vorbit (FĂCUT 22 nov; vezi docs/STARE.md)
 > „Pasul 1a din docs/PLAN.md. Ce vreau, cap-coadă:
 > - Fiecare cântare are o hartă salvată în bibliotecă (tempo, ton, măsură, secțiunile cu timpul lor). Versurile,
 >   track-urile și comenzile vocale folosesc aceeași hartă. Unește cu ce există: cues, mark, beatOffset, bpm,
@@ -58,7 +58,7 @@ reîncarcă după câteva ore.
 >   sau eu apăs.
 > Testează pe track-ul de cue din «Domnul Miracolelor» din Documents/Betleem (caută-l). Spune-mi Înainte / Acum.”
 
-## ☐ 4 · Cântări fără track: click, pad și ghid
+## ☑ 4 · Cântări fără track: click, pad și ghid (FĂCUT 22 nov; vezi docs/STARE.md)
 Înainte de acest pas: pune arhiva cu vocile de ghid în `Documents/Betleem/ghid-voci.zip`.
 > „Pasul 1b din docs/PLAN.md. Arhiva cu vocile de ghid e în Documents/Betleem/ghid-voci.zip. Dezarhiveaz-o în
 > Documents/Betleem/ghid (NU în repo: e licențiată și rămâne locală) și leagă fiecare fișier de numele secțiunii lui.
@@ -113,7 +113,7 @@ reîncarcă după câteva ore.
 > - Combină cu pagina de telefon existentă (live.html) dacă se poate, ca mod nou al ei.
 > Spune-mi Înainte / Acum.”
 
-## ☐ 9 · Repetiția prezentării pentru echipă
+## ☑ 9 · Repetiția prezentării pentru echipă (FĂCUT 22 nov; vezi docs/PREZENTARE.md)
 > „Prezint aplicația echipei. Fă-mi un scenariu de demonstrație de 15 minute care arată tot ce merge sigur:
 > Planificare cu asistentul (vorbesc și face programul), PDF și QR, Lideri, voluntari, Proiectez, MD&TRACK cu
 > secțiuni, telefoane și predicator. Pentru fiecare pas: ce apăs și ce spun. Treci prin el pe aplicația pornită local
@@ -122,12 +122,12 @@ reîncarcă după câteva ore.
 ---
 
 ## După prezentare
-### ☐ 10 · **Lumini pentru colinde** (Pasul 2):
+### ☑ 10 · (FĂCUT 22 nov) **Lumini pentru colinde** (Pasul 2):
    > „Pasul 2 din docs/PLAN.md. Dimmer-ul e Eurolite <model>; în manual scrie că primește MIDI <...>.”
 ### ☑ 11 · (FĂCUT în 2026.11.22.2, partea de cod; rămân pașii tăi din docs/SECURITATE.md: Tailscale + NAS) **Securitate și server** (Pasul 3), obligatoriu înainte de orice acces din afară:
     > „Pasul 3 din docs/PLAN.md. Întâi planul de securitate pe hârtie, arată-mi-l, abia apoi codul.
     > NAS-ul e <model>, Mac mini-ul are <X> GB.”
-### ☐ 11b · **Aplicația pe telefon, de oriunde** (după 11, cerută de proprietar)
+### ☑ 11b · (FĂCUT 22 nov) **Aplicația pe telefon, de oriunde** (după 11, cerută de proprietar)
     > „Fă Betleem utilizabil complet de pe telefon, ca aplicație pusă pe ecranul principal (PWA, cu iconiță și
     > manifest), prin serverul bisericii din Pasul 11, ca să meargă și fără calculator lângă mine:
     > Planificare completă pe telefon (servicii, program, echipe, Lideri), Proiectez pe telefon (desfășurătorul de
@@ -135,21 +135,21 @@ reîncarcă după câteva ore.
     > secțiunile pe track-uri). Extinde paginile existente (planning.html, live.html), nu face o aplicație nouă.
     > Respectă regula de aur.”
 
-### ☐ 12 · **Pastorul își încarcă prezentarea singur** (Pasul 4):
+### ☑ 12 · (FĂCUT 22 nov) **Pastorul își încarcă prezentarea singur** (Pasul 4):
     > „Pasul 4, pastorul își încarcă singur prezentarea din Planificare și o vede în biblioteca duminicii.”
-### ☐ 13 · **Asistentul programează voluntarii** (Pasul 4):
+### ☑ 13 · (FĂCUT 22 nov) **Asistentul programează voluntarii** (Pasul 4):
     > „Pasul 4, programarea automată de către asistent, cu blocări, limite și împărțire corectă.”
-### ☐ 14 · **Mesajele păstorului și mulțumirile** (Pasul 4):
+### ☑ 14 · (FĂCUT 22 nov) **Mesajele păstorului și mulțumirile** (Pasul 4):
     > „Pasul 4, mesajele păstorului: verset, încurajare, mulțumiri automate pentru cei care au slujit.”
-### ☐ 15 · **Pad-uri de calitate și folderul unic de track-uri** (Pasul 1c):
+### ☑ 15 · (FĂCUT 22 nov) **Pad-uri de calitate și folderul unic de track-uri** (Pasul 1c):
     > „Pasul 1c din docs/PLAN.md; pad-urile sunt în <folder>.”
-### ☐ 16 · **Îmbinări de secțiuni între cântări** (Pasul 1d):
+### ☑ 16 · (FĂCUT 22 nov) **Îmbinări de secțiuni între cântări** (Pasul 1d):
     > „Pasul 1d din docs/PLAN.md.”
-### ☐ 17 · **Obiective și graficul „oameni versus programe”, apoi jurnalul** (Pasul 5):
+### ☑ 17 · (FĂCUT 22 nov) **Obiective și graficul „oameni versus programe”, apoi jurnalul** (Pasul 5):
     > „Pasul 5, obiectivele și graficul lunar oameni versus programe.” Apoi: „Pasul 5, jurnalul zilnic.”
-### ☐ 18 · **Proiecție peste ProPresenter** (Pasul 6):
+### ☑ 18 · (FĂCUT 22 nov) **Proiecție peste ProPresenter** (Pasul 6):
     > „Pasul 6, studiul ProPresenter, fără cod.” Apoi câte un prompt pe fiecare funcție din listă.
-### ☐ 19 · **Poze pe NAS cu Immich** (Pasul 7):
+### ☑ 19 · (FĂCUT 22 nov) **Poze pe NAS cu Immich** (Pasul 7):
     > „Pasul 7 din docs/PLAN.md.”
-### ☐ 20 · **River: miez și personalizare** (Pasul 8):
+### ☑ 20 · (FĂCUT 22 nov) **River: miez și personalizare** (Pasul 8):
     > „Pasul 8 din docs/PLAN.md. Întâi arhitectura pe hârtie.”

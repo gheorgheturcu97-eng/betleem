@@ -1,4 +1,4 @@
-# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.22.2)
+# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.22.7)
 
 Totul de mai jos e în cod și publicat. Unde scrie **„neverificat”**, merge în teste, dar n-a fost încercat pe
 aparatura reală. Asta e primul lucru de verificat (vezi PLAN.md, Pasul 0).
@@ -69,6 +69,44 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   descărcarea Whisper rămânea la 0%, iar track-ul trebuie să aibă „Cue” sau „Guide” în nume.
 - Comenzi vocale (sări la refren, oprește tobele) și microfonul MD de pe o intrare a plăcii, pentru talkback
   (neverificat).
+
+## Adăugate pe 22 noiembrie (pașii 3–20)
+- **Secțiuni automat** (MD&TRACK, butonul „✦ auto” din rândul Secțiuni sau din ⋯):
+  - găsește singur track-ul cu ghidul vorbit (după nume sau ascultând care track e aproape mereu liniștit);
+  - îl ascultă cu Whisper: descărcarea arată progresul real și se oprește cu un mesaj clar dacă internetul cade;
+  - dacă vocea nu se poate folosi, ia pauzele din ghid ca locuri și numele din ordinea cântării;
+  - marginea stângă a unei secțiuni se poate trage; harta rămâne pe cântare.
+  - `public/voice.js` (speechBursts), `aiCues` în control.html.
+- **Track virtual** pentru cântările fără track-uri (`public/guide.js`):
+  - click + pad în ton + ghid vorbit, cu o măsură înainte de fiecare secțiune, plus numărătoare la început;
+  - harta e în măsuri (`song.guide`) și se construiește live cu tastele 1–9 sau cu clic dreapta → „Pune aici”;
+  - vocile vin din Documents/Betleem/ghid (sau din ghid-voci.zip, dezarhivat singur); fără ele vorbește vocea calculatorului;
+  - ghidul are rutare proprie („Ghid vorbit”).
+- **💡 Lumini** (tabul de lângă Fundaluri, `public/lights.js`):
+  - scene MIDI (CC cu trecere lină, notă, program), cu „🎓 Învață” din pupitru;
+  - pornesc de mână sau singure la un moment din program ori la o secțiune a cântării;
+  - trimite doar calculatorul bifat „Lumini de pe acest calculator”.
+  - Neverificat cu dimmer-ul Eurolite.
+- **Pe telefon ca aplicație**: manifest și iconiță (Planificare, Live, linkul personal). Liderii intră de acasă prin
+  Tailscale (instrucțiunile sunt în ⚙ → 🔒).
+- **Predicatorul își trimite prezentarea** de pe linkul lui. Fișierul ajunge în 📥 Primite, iar momentul Predică
+  arată „📎 de la …”.
+- **✦ Completează echipa** (și asistentul: `fill_team`): pune oamenii corect, după poziție, zile blocate, limita
+  lunară și cine a slujit mai puțin.
+- **📣 Mesaje de la păstor** (Lideri): către toată echipa, cei dintr-un serviciu sau un departament. Apar pe pagina
+  fiecăruia și se trimit pe WhatsApp, om cu om.
+- **🎹 Pad-uri înregistrate** (Documents/Betleem/pad, câte un fișier pe ton) și **🔗 folderul comun de track-uri**
+  (Documents/Betleem/trackuri/<cântare>/).
+- **Îmbinări**: asistentul (`add_part_of_song`) pune o parte din altă cântare după o poziție, în același ton.
+- **🎯 Obiective, 📊 „oameni sau programe”** (pe luni, după focusul fiecărei sarcini) și **📓 jurnal personal** pe
+  linkul liderului. Rezumatul săptămânii îl face doar AI-ul local; jurnalul nu pleacă în cloud.
+- **📷 Fotografi**: încarcă originalele de pe linkul lor, într-un folder pe eveniment (pe NAS, dacă e setat).
+  Reiau încărcarea de unde au rămas. Căutarea cu AI se face prin Immich (de instalat).
+- **ProPresenter**: comparația și ordinea în docs/PROPRESENTER.md.
+- **🎨 Aspect și funcții** (River): culoarea bisericii și modulele ascunse, în Documents/Betleem/personalizare.json.
+  Actualizările nu le ating.
+- **Ecranul de proiecție pe Mac** nu mai folosește ecranul complet al macOS, deci nu mai ia celelalte monitoare.
+  E în aplicația desktop (main.cjs), deci cere reinstalarea aplicației.
 
 ## Asistentul (`src/ai.js`)
 - Claude (cu cheia bisericii, pusă în Setări) sau Ollama local (qwen2.5; pentru poze, qwen2.5vl).

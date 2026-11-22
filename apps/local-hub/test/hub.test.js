@@ -550,6 +550,14 @@ test('✦ the assistant merges a part of another song after a position, in the s
   assert.equal(st.program[1].arrangement.length, 1); assert.match(st.program[1].arrangement[0], /^Refren/);
 });
 
+test('🎨 the church layer (colour, modules switched off) is kept apart and only leaders change it', async () => {
+  assert.equal((await fetch('http://localhost:4599/api/brand', { method: 'POST', body: '{"off":["md"]}' })).status, 403);
+  const b = await fetch('http://localhost:4599/api/brand', { method: 'POST', headers: { 'x-pin': '2222' }, body: JSON.stringify({ accent: '#2e86ff', off: ['md', 'lumini', 'nope'] }) }).then(r => r.json());
+  assert.deepEqual(b, { accent: '#2e86ff', off: ['md', 'lumini'] });
+  assert.deepEqual(await fetch('http://localhost:4599/api/brand').then(r => r.json()), b);
+  assert.ok(fs.existsSync(path.join(dir, 'personalizare.json')));
+});
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

@@ -1,6 +1,23 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-22 · 2026.11.22.3 – .7
+- **„Învață cue-urile” și „Secțiunile din track-ul de cue”.** Înainte: două butoane separate, iar varianta AI cerea
+  un track numit „Cue”. Acum: grupate sub „Secțiunile cântării”. „✦ Secțiuni automat” găsește singur ghidul, iar
+  dacă vocea AI nu merge folosește pauzele.
+- **Cântările fără track-uri în MD&TRACK.** Înainte: doar mesajul „Adaugă track-uri”. Acum: track virtual cu click,
+  pad și ghid.
+- **Fundaluri.** Acum: au alături tabul 💡 Lumini.
+- **Echipa unui serviciu.** Acum: are „✦ Completează echipa”.
+- **Lideri.** Acum: are 📣 Mesaj, 🎯 Obiective și 📊. Fiecare sarcină poate avea focus 👥/📋.
+- **Fișa voluntarului.** Acum: are „📷 Fotograf”.
+- **Ecranul de proiecție pe Mac.** Înainte: ecran complet macOS (lua toate monitoarele dacă „Spații separate” era
+  oprit). Acum: fereastră fără margini peste monitorul ales. Cere reinstalarea aplicației.
+- **⚙ Setări.** Acum: „🎨 Aspect și funcții” (culoare, module ascunse) și, la 🔒, folderul pentru poze plus accesul
+  liderilor de acasă.
+- **Siguranță.** Înainte: setările 🔒 se puteau schimba de pe calculatorul bisericii chiar și fără „încredere în
+  acest calculator”. Acum: doar liderul.
+
 ## 2026-11-22 · 2026.11.22.2
 - **Serverul care primește fișiere din internet.** Înainte: putea doar primi fișiere. Acum: dacă liderul deschide
   „ușa” (⚙ Setări → 🔒), răspunde și la paginile voluntarilor (linkul personal și programul următor), nimic altceva.
