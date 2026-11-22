@@ -45,9 +45,26 @@ export class Pad {
     this.bus.connect(dry); this.bus.connect(rv); rv.connect(wet);
     dry.connect(this.master); wet.connect(this.master); this.master.connect(g?.out || ctx.destination);
   }
-  /** One sounding key: low root, root, fifth, octave (+ a soft high shimmer). */
+  /** 🎹 the church's own pads (Documents/Betleem/pad: one file per key, e.g. "C.wav", "F# Pad.mp3"), looped. */
+  async loadFiles() {
+    this.files = {}; this.buffers ||= {};
+    try { for (const f of await fetch('/api/pads').then(r => r.ok ? r.json() : [])) { const k = keyRoot(String(f).replace(/\.[a-z0-9]+$/i, '').match(/\b([A-G](?:#|b|♯|♭)?)(?![a-z])/i)?.[1]?.replace('♯', '#').replace('♭', 'b') || ''); if (k !== null && !(k in this.files)) this.files[k] = '/pads/' + encodeURIComponent(f); } } catch {}
+    return Object.keys(this.files).length;
+  }
+  async fileBuffer(root) {
+    if (!this.files?.[root]) return null; this.init();
+    this.buffers[root] ||= fetch(this.files[root]).then(r => r.arrayBuffer()).then(b => this.ctx.decodeAudioData(b)).catch(() => null);
+    return this.buffers[root];
+  }
+  /** One sounding key: low root, root, fifth, octave (+ a soft high shimmer). With "Fișierele voastre": the recorded pad. */
   makeVoice(key) {
     const ctx = this.ctx, root = keyRoot(key); if (root === null) return null;
+    if (this.sound === 'fisiere' && this.files?.[root]) {
+      const out = ctx.createGain(); out.gain.value = 0; out.connect(this.master);     // recorded pads already have their own space: no extra reverb
+      const v = { out, oscs: [], key };
+      this.fileBuffer(root).then(buf => { if (!buf || this.voice !== v) return; const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(out); src.start(); v.oscs.push(src); });
+      return v;
+    }
     const s = PAD_SOUNDS[this.sound] || PAD_SOUNDS.cald;
     const out = ctx.createGain(); out.gain.value = 0; out.connect(this.bus);
     const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = s.cutoff; filter.Q.value = 0.6; filter.connect(out);

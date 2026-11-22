@@ -127,7 +127,11 @@
   .ag{display:grid;grid-template-columns:22px 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.04);margin-bottom:6px}
   .ag.done span{text-decoration:line-through;color:var(--mute)} .ag input[type=checkbox]{width:18px;height:18px}
   .tk{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) 30px 30px;gap:6px 8px;align-items:center;padding:7px 8px;border-radius:10px;background:rgba(255,255,255,.04);margin-bottom:6px}
-  .tk .tx{grid-column:2/-1;font-weight:600} .tk .who{grid-column:2}
+  .tk .tx{grid-column:2/4;font-weight:600} .tk .who{grid-column:2} .tk .fc{grid-column:4/6;font-size:11px;padding:4px 6px;border-radius:8px}
+  .goal{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045);cursor:pointer} .goal b{display:block;font-size:13px} .goal small{color:var(--mute)}
+  .goal .bar{height:6px;border-radius:4px;background:rgba(255,255,255,.1);margin-top:6px;overflow:hidden} .goal .bar i{display:block;height:100%;background:var(--acc)}
+  .fchart{display:flex;gap:6px;align-items:flex-end;height:110px;padding:6px 0} .fchart div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;height:100%}
+  .fchart i{display:block;width:100%;border-radius:4px 4px 0 0} .fchart small{font-size:10px;color:var(--mute)} .fleg{display:flex;gap:10px;font-size:11px;color:var(--mute)} .fleg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px}
   .tk.done .tx{text-decoration:line-through;color:var(--mute)} .tk.late .due{border-color:#ff5a5a;color:#ff9a9a} .tk input,.tk select{min-width:0}
   .tk .tx{border:0;background:transparent;padding:4px 2px}
   .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:999px;background:#ff5a5a;color:#fff;font-size:11px;line-height:18px;text-align:center}
@@ -342,6 +346,10 @@
       <button id="bMsg" class="acc" title="📣 Un cuvânt de la păstor pentru echipă: verset, încurajare, mulțumiri. Apare pe pagina fiecăruia și se trimite pe WhatsApp.">📣 Mesaj pentru echipă</button>
       <div class="row"><h2 class="grow">Întâlniri</h2><button id="bAddMeet" title="O întâlnire nouă (de obicei marțea)">＋</button></div>
       <div id="meetList" class="scroll" style="display:flex;flex-direction:column;gap:6px;flex:1"></div>
+      <div class="row"><h2 class="grow">🎯 Obiective</h2><button id="bAddGoal" title="Un obiectiv al anului, cu un număr de atins">＋</button></div>
+      <div id="goals" style="display:flex;flex-direction:column;gap:6px"></div>
+      <h2 style="margin:8px 0 0" title="Sarcinile făcute, pe luni: cât merge spre oameni și cât spre programe (alegi la fiecare sarcină 👥 sau 📋)">📊 Oameni sau programe?</h2>
+      <div class="fchart" id="fchart"></div><div class="fleg"><span><i style="background:#3ec98a"></i>oameni</span><span><i style="background:#5aa0ff"></i>programe</span><span><i style="background:#8c929a"></i>altele</span></div>
     </aside>
     <section class="panel glass" id="meetEd"></section>
     <section class="panel glass">
@@ -557,7 +565,7 @@
     if (view === 'grid') renderGrid();
     if (view === 'teams') renderTeams();
     if (view === 'songs') renderSongs();
-    if (view === 'leaders') renderLeaders();
+    if (view === 'leaders') { renderLeaders(); renderGoals(); }
     const due = (P.tasks || []).filter(k => !k.done && k.due && k.due <= isoDay(new Date(Date.now() + 2 * 864e5))).length;   // 🔔 due in the next 2 days or late
     $('tkBadge').hidden = !due; $('tkBadge').textContent = due;
   }
@@ -1049,7 +1057,7 @@
     const opts = cur => `<option value="">— cine?</option>` + P.volunteers.slice().sort((a, b) => (b.leader - a.leader) || a.name.localeCompare(b.name, 'ro')).map(v => `<option value="${v.id}" ${v.id === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
     $('tasks').innerHTML = T.map(k => `<div class="tk ${k.done ? 'done' : ''} ${!k.done && k.due && k.due < today ? 'late' : ''}" data-k="${k.id}">
         <input type="checkbox" class="dn" ${k.done ? 'checked' : ''} title="Gata">
-        <input class="tx" value="${esc(k.text)}">
+        <input class="tx" value="${esc(k.text)}"><button class="fc ghost" title="Spre ce merge sarcina: 👥 oameni sau 📋 programe (pentru graficul lunar)">${k.focus === 'oameni' ? '👥 oameni' : k.focus === 'programe' ? '📋 programe' : '· focus?'}</button>
         <select class="who">${opts(k.who)}</select><input type="date" class="due" value="${k.due || ''}" title="Până când">
         <button class="icon ghost cal" title="📅 Reminder în calendar" ${k.due ? '' : 'disabled'}>📅</button><button class="icon ghost del" title="Șterge">✕</button></div>`).join('')
       || `<div class="empty">${f === 'open' ? 'Nimic de făcut. 🙌' : 'Nicio sarcină.'}</div>`;
@@ -1058,12 +1066,32 @@
       row.querySelector('.dn').onchange = e => save({ done: e.target.checked });
       row.querySelector('.tx').onchange = e => save({ text: e.target.value });
       row.querySelector('.who').onchange = e => save({ who: e.target.value });
+      row.querySelector('.fc').onclick = () => save({ focus: k.focus === 'oameni' ? 'programe' : k.focus === 'programe' ? '' : 'oameni' });
       row.querySelector('.due').onchange = e => save({ due: e.target.value });
       row.querySelector('.cal').onclick = () => ics('Betleem: ' + k.text + (k.who ? ' (' + volName(k.who) + ')' : ''), k.due, 0, true);
       row.querySelector('.del').onclick = () => op({ op: 'deleteTask', id: k.id });
     });
   }
   $('tkFilter').onchange = renderLeaders;
+  // 🎯 goals and 📊 the monthly people / programs split
+  function renderGoals() {
+    $('goals').innerHTML = (P.goals || []).map(g => `<div class="goal" data-g="${g.id}"><b>${esc(g.text)}</b><small>${g.done} din ${g.target} ${esc(g.unit || '')} · ${Math.round(g.done / g.target * 100)}%${g.focus ? ' · ' + (g.focus === 'oameni' ? '👥' : '📋') : ''}</small><div class="bar"><i style="width:${Math.min(100, g.done / g.target * 100)}%"></i></div></div>`).join('')
+      || '<p class="hint">Ex.: „Să vorbim cu 52 de oameni despre Isus” (52 · oameni).</p>';
+    document.querySelectorAll('#goals [data-g]').forEach(el => el.onclick = () => editGoal(P.goals.find(g => g.id === el.dataset.g)));
+    const F = P.focus || [], max = Math.max(1, ...F.map(m => m.oameni + m.programe + m.altele));
+    $('fchart').innerHTML = F.map(m => `<div title="${m.month}: ${m.oameni} oameni, ${m.programe} programe, ${m.altele} altele, ${m.deschise} încă deschise">
+      <i style="height:${m.altele / max * 85}%;background:#8c929a"></i><i style="height:${m.programe / max * 85}%;background:#5aa0ff"></i><i style="height:${m.oameni / max * 85}%;background:#3ec98a"></i>
+      <small>${MONTHS[+m.month.slice(5) - 1].slice(0, 3)}</small></div>`).join('');
+  }
+  function editGoal(g = { text: '', target: 10, done: 0, unit: '', focus: 'oameni' }) {
+    dialog(g.id ? 'Obiectiv' : 'Obiectiv nou', `<label>Ce ne propunem<input id="gT" value="${esc(g.text)}" placeholder="Să vorbim cu oameni despre Isus"></label>
+      <div class="row"><label class="grow">Ținta<input id="gN" type="number" value="${g.target}"></label><label class="grow">Am ajuns la<input id="gD" type="number" value="${g.done}"></label><label class="grow">Unitate<input id="gU" value="${esc(g.unit)}" placeholder="oameni"></label></div>
+      <label>Spre ce merge<select id="gF"><option value="oameni" ${g.focus === 'oameni' ? 'selected' : ''}>👥 oameni</option><option value="programe" ${g.focus === 'programe' ? 'selected' : ''}>📋 programe</option><option value="" ${!g.focus ? 'selected' : ''}>—</option></select></label>
+      ${g.id ? '<button class="ghost" id="gDel">🗑 Șterge obiectivul</button>' : ''}`,
+      () => op({ op: 'saveGoal', goal: { ...g, text: $('gT').value, target: +$('gN').value, done: +$('gD').value, unit: $('gU').value, focus: $('gF').value } }));
+    if (g.id) $('gDel').onclick = () => { $('modal').classList.remove('show'); op({ op: 'deleteGoal', id: g.id }); };
+  }
+  $('bAddGoal').onclick = () => editGoal();
   // 📣 the pastor's word to the team (everyone, the people of a service — e.g. thanks after Sunday —, or one department)
   $('bMsg').onclick = () => {
     const past = P.services.filter(s => new Date(s.date) <= Date.now() + 7 * 864e5).slice(-6).reverse();
@@ -1130,10 +1158,11 @@
       <p class="hint" style="margin:4px 0">Unde poate sluji:</p>${checks}
       <label>Zile când lipsește (AAAA-LL-ZZ, separate prin virgulă). Și el le poate pune singur, din linkul lui.<input id="vA" value="${esc((v.away || []).join(', '))}" placeholder="2026-12-24, 2026-12-31"></label>
       <div class="row"><label class="grow">Poate sluji cel mult<select id="vMax">${[0, 1, 2, 3, 4].map(n => `<option value="${n}" ${n === (v.maxPerMonth || 0) ? 'selected' : ''}>${n ? n + (n === 1 ? ' dată' : ' ori') + ' pe lună' : 'oricât e nevoie'}</option>`).join('')}</select></label>
-        <label style="display:flex;gap:8px;align-items:center;margin-top:18px"><input type="checkbox" id="vLead" ${v.leader ? 'checked' : ''} style="width:auto"> Face parte din echipa de lideri</label></div>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:18px"><input type="checkbox" id="vLead" ${v.leader ? 'checked' : ''} style="width:auto"> Face parte din echipa de lideri</label>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:18px"><input type="checkbox" id="vFoto" ${v.photographer ? 'checked' : ''} style="width:auto"> 📷 Fotograf (încarcă pozele)</label></div>
       ${v.token ? `<div class="vlink"><b class="grow">🔗 Linkul lui personal</b><button type="button" class="ghost" id="vlCopy">Copiază</button><button type="button" class="ghost" id="vlWa">💬 WhatsApp</button><button type="button" class="ghost" id="vlNew" title="Linkul vechi nu mai merge (ex. telefon pierdut)">↻ Link nou</button><code id="vlUrl"></code>
         <span class="hint">Acolo își vede programările, confirmă, își blochează zilele și sarcinile. Fără parolă. Merge pe Wi-Fi-ul bisericii.</span></div>` : '<p class="hint">După ce salvezi, primește un link personal.</p>'}`,
-      () => op({ op: 'saveVolunteer', volunteer: { id: v.id, name: $('vN').value, phone: $('vP').value, email: $('vE').value, maxPerMonth: +$('vMax').value, leader: $('vLead').checked,
+      () => op({ op: 'saveVolunteer', volunteer: { id: v.id, name: $('vN').value, phone: $('vP').value, email: $('vE').value, maxPerMonth: +$('vMax').value, leader: $('vLead').checked, photographer: $('vFoto').checked,
         positions: [...$('mBox').querySelectorAll('.checks input:checked')].map(i => i.value), away: $('vA').value.split(/[,\s]+/).filter(Boolean) } }));
     if (v.token) linkOf(v).then(u => {
       $('vlUrl').textContent = u;

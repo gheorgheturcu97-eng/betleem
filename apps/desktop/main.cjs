@@ -91,7 +91,7 @@ function openOutput(kind, base = BASE) {
   if (!w || w.isDestroyed()) {
     w = outputs[kind] = new BrowserWindow({
       x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
-      frame: false, backgroundColor: '#000000', show: false, autoHideMenuBar: true,
+      frame: false, backgroundColor: '#000000', show: false, autoHideMenuBar: true, hasShadow: false, enableLargerThanScreen: true,
       title: kind === 'main' ? 'Ecran principal' : 'Ecran scenă',
       webPreferences: { contextIsolation: true, sandbox: true, backgroundThrottling: false },
     });
@@ -100,9 +100,17 @@ function openOutput(kind, base = BASE) {
     w.on('closed', () => { delete outputs[kind]; buildMenu(); });
   }
   w.setBounds(d.bounds);
-  // full screen only when it is NOT the monitor with the control window
+  // full screen only when it is NOT the monitor with the control window.
+  // On a Mac, NOT the macOS full screen: that one opens a new Space and, when "Displays have separate Spaces" is off,
+  // it blacks out every other monitor (the operator loses his desktop). A borderless window over the whole display,
+  // above the menu bar, does the same job and touches nothing else.
   const controlDisplay = control ? screen.getDisplayMatching(control.getBounds()) : null;
-  w.setFullScreen(!controlDisplay || controlDisplay.id !== d.id);
+  const full = !controlDisplay || controlDisplay.id !== d.id;
+  if (process.platform === 'darwin') {
+    if (w.isFullScreen()) w.setFullScreen(false);
+    w.setAlwaysOnTop(full, 'screen-saver'); w.setVisibleOnAllWorkspaces(full, { visibleOnFullScreen: true });
+    if (full) { w.setBounds(d.bounds); setTimeout(() => !w.isDestroyed() && w.setBounds(d.bounds), 400); }
+  } else w.setFullScreen(full);
   if (controlDisplay && controlDisplay.id === d.id) { w.setBounds({ ...d.workArea, width: Math.round(d.workArea.width / 2), height: Math.round(d.workArea.width / 2 * 9 / 16) }); }
   buildMenu();
 }

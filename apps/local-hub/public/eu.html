@@ -90,6 +90,14 @@
     const msgs = (D.messages || []).map(m => `<div class="card msg"><div class="what">📣 ${esc(m.from || 'Păstorul')} · ${esc(new Date(m.at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }))}</div><div style="white-space:pre-wrap;margin-top:6px">${esc(m.text)}</div></div>`).join('');
     $('app').innerHTML = `<h1>Salut, ${esc(D.name.split(' ')[0])}!</h1><div class="sub">${esc(D.church)} · slujirea ta</div>${msgs}
       <h2>Când slujești</h2>${serve}${tasks}${meets ? '<h2>Întâlnirea liderilor</h2>' + meets : ''}
+      ${D.leader ? `${D.goals.length ? '<h2>Obiectivele noastre</h2>' + D.goals.map(g => `<div class="card"><b>${esc(g.text)}</b><div class="what">${g.done} din ${g.target} ${esc(g.unit || '')} · ${Math.round(g.done / g.target * 100)}%</div><div style="height:6px;border-radius:4px;background:#2b2e35;margin-top:8px;overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100, g.done / g.target * 100)}%;background:var(--acc)"></i></div></div>`).join('') : ''}
+        <h2>📓 Jurnalul meu (doar pentru tine)</h2><div class="card"><div class="what" style="margin-bottom:8px">Cum ți-ai petrecut ziua: pe ore, ce ai făcut, cu cine ai vorbit.</div>
+          <textarea id="jT" rows="5" style="width:100%;background:#23262c;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px;font:15px system-ui">${esc((D.journal.find(x => x.day === today()) || {}).text || '')}</textarea>
+          <div class="btns"><button id="jSave">Salvează ziua</button><button id="jSum">✦ Cum a fost săptămâna?</button></div><div id="jOut" class="what" style="white-space:pre-wrap;margin-top:10px"></div>
+          ${D.journal.filter(x => x.day !== today()).slice(0, 6).map(x => `<details style="margin-top:8px"><summary class="what">${esc(new Date(x.day + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'short' }))}</summary><div style="white-space:pre-wrap">${esc(x.text)}</div></details>`).join('')}</div>` : ''}
+      ${D.photographer ? `<h2>📷 Pozele de la eveniment</h2><div class="card"><div class="what" style="margin-bottom:8px">Se trimit la calitatea originală, direct în folderul bisericii. Dacă se întrerupe, alege-le din nou: le sare pe cele trimise deja.</div>
+        <div class="row" style="margin-top:0"><input id="phEv" style="flex:1;background:#23262c;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:15px system-ui" value="${esc(today() + ' ' + (D.serve.find(x => x.date.slice(0, 10) === today())?.title || 'Eveniment'))}"></div>
+        <label class="upb" style="margin-top:10px">📷 Alege pozele<input type="file" id="phFiles" multiple accept="image/*,video/*,.dng,.cr2,.cr3,.nef,.arw,.raf" hidden></label><div id="phSt" class="what" style="margin-top:8px"></div></div>` : ''}
       <h2>Când nu pot</h2><div class="card"><div class="what" style="margin-bottom:10px">Apasă pe duminicile când lipsești. Liderul nu te va putea pune în acele zile.</div>
         <div class="days">${daysAll.map(x => `<button class="${D.away.includes(x) ? 'off' : ''}" data-d="${x}">${esc(new Date(x + 'T12:00').toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', ...(new Date(x + 'T12:00').getDay() ? { weekday: 'short' } : {}) }))}</button>`).join('')}</div>
         <div class="row"><span class="what">Altă zi:</span><input type="date" id="other" min="${today()}"></div>
@@ -108,6 +116,23 @@
       } catch (e) { toast(e.message || 'Nu s-a trimis'); lab.firstChild.textContent = '📎 Încearcă din nou '; }
     });
     document.querySelectorAll('[data-k]').forEach(c => c.onchange = () => load({ action: 'task', task: D.tasks[+c.dataset.k].id, done: c.checked }));
+    if ($('jSave')) {
+      $('jSave').onclick = async () => { await load({ action: 'journal', day: today(), text: $('jT').value }); toast('Ziua e salvată'); };
+      $('jSum').onclick = async () => { $('jOut').textContent = '✦ Mă uit peste săptămâna ta…';
+        try { const r = await fetch('/api/eu?t=' + encodeURIComponent(t), { method: 'POST', body: JSON.stringify({ action: 'journalSummary' }) }).then(r => r.json()); $('jOut').textContent = r.summary || r.error || ''; } catch { $('jOut').textContent = 'Nu merge acum.'; } };
+    }
+    if ($('phFiles')) $('phFiles').onchange = async () => {
+      const files = [...$('phFiles').files], ev = $('phEv').value.trim(); if (!files.length) return;
+      const say = m => $('phSt').textContent = m;
+      say('Verific ce e trimis deja…');
+      const r = await fetch('/api/eu?t=' + encodeURIComponent(t), { method: 'POST', body: JSON.stringify({ action: 'photoHave', event: ev, files: files.map(f => ({ name: f.name, size: f.size })) }) }).then(r => r.json()).catch(() => ({ have: [] }));
+      const todo = files.filter(f => !(r.have || []).includes(f.name)); let ok = files.length - todo.length, bad = 0;
+      for (const f of todo) {
+        say(`Trimit ${ok + 1} din ${files.length}… (${(f.size / 1e6).toFixed(1)} MB)`);
+        try { const x = await fetch(`/api/eu?t=${encodeURIComponent(t)}&event=${encodeURIComponent(ev)}&photo=${encodeURIComponent(f.name)}`, { method: 'POST', body: f }); if (!x.ok) throw 0; ok++; } catch { bad++; }
+      }
+      say(bad ? `Trimise ${ok} din ${files.length}. ${bad} nu s-au trimis: alege-le din nou (le sare pe cele trimise).` : `✓ Toate ${ok} sunt în folderul bisericii. Mulțumim!`);
+    };
     const saveAway = away => load({ action: 'away', away, maxPerMonth: +$('max').value });
     document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const x = b.dataset.d; saveAway(D.away.includes(x) ? D.away.filter(y => y !== x) : [...D.away, x]); });
     $('other').onchange = () => { if ($('other').value) saveAway([...D.away, $('other').value]); };

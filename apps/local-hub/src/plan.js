@@ -133,6 +133,7 @@ export function applyPlanOp(plan, op) {
         away: [...new Set((v.away || []).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort().slice(0, 120),
         maxPerMonth: Math.min(8, Math.max(0, Math.round(Number(v.maxPerMonth) || 0))),     // 0 = no limit
         leader: !!v.leader,                                                                   // sees the leaders' meetings and tasks on his page
+        photographer: !!v.photographer,                                                       // 📷 may upload event photos from his page
         token: old?.token || newToken() };
       const i = plan.volunteers.findIndex(x => x.id === clean.id);
       if (i >= 0) plan.volunteers[i] = clean; else plan.volunteers.push(clean);
@@ -154,7 +155,7 @@ export function applyPlanOp(plan, op) {
       const t = op.task || {}; if (!str(t.text)) return 'Scrie ce e de făcut';
       const old = plan.tasks.find(x => x.id === t.id);
       const clean = { id: t.id || id(), text: str(t.text, 300), who: str(t.who, 40), due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : '',
-        done: !!t.done, meeting: str(t.meeting, 40), at: old?.at || new Date().toISOString(), doneAt: t.done ? old?.doneAt || new Date().toISOString() : '' };
+        done: !!t.done, meeting: str(t.meeting, 40), focus: ['oameni', 'programe'].includes(t.focus) ? t.focus : '', goal: str(t.goal, 40), at: old?.at || new Date().toISOString(), doneAt: t.done ? old?.doneAt || new Date().toISOString() : '' };
       const i = plan.tasks.findIndex(x => x.id === clean.id);
       if (i >= 0) plan.tasks[i] = clean; else plan.tasks.push(clean);
       break;
@@ -171,6 +172,15 @@ export function applyPlanOp(plan, op) {
       plan.messages = plan.messages.slice(0, 100);
       break;
     }
+    // 🎯 the year's goals: a number to reach (e.g. 52 people told about Jesus), how far we are, and whether it is about people or programs
+    case 'saveGoal': {
+      plan.goals ||= []; const g = op.goal || {}; if (!str(g.text)) return 'Scrie obiectivul';
+      const clean = { id: g.id || id(), text: str(g.text, 200), target: Math.max(1, Math.min(100000, Number(g.target) || 1)), done: Math.max(0, Math.min(100000, Number(g.done) || 0)),
+        unit: str(g.unit, 30), focus: ['oameni', 'programe'].includes(g.focus) ? g.focus : '', year: Number(g.year) || new Date().getFullYear() };
+      const i = plan.goals.findIndex(x => x.id === clean.id); if (i >= 0) plan.goals[i] = clean; else plan.goals.push(clean);
+      break;
+    }
+    case 'deleteGoal': plan.goals = (plan.goals || []).filter(g => g.id !== op.id); break;
     case 'deleteMessage': plan.messages = (plan.messages || []).filter(m => m.id !== op.id); break;
     case 'deleteVolunteer': {
       plan.volunteers = plan.volunteers.filter(v => v.id !== op.id);
@@ -203,6 +213,18 @@ export function autoAssign(plan, s, onlyDept = '') {
     }
   }
   return n;
+}
+
+/** 📊 the last months: tasks done, split into "oameni" (people) and "programe" (programs), plus how many were left open */
+export function focusByMonth(plan, months = 6) {
+  const out = [], now = new Date();
+  for (let k = months - 1; k >= 0; k--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - k, 1), ym = d.toISOString().slice(0, 7);
+    const t = (plan.tasks || []).filter(x => (x.doneAt || x.due || x.at || '').slice(0, 7) === ym);
+    out.push({ month: ym, oameni: t.filter(x => x.done && x.focus === 'oameni').length, programe: t.filter(x => x.done && x.focus === 'programe').length,
+      altele: t.filter(x => x.done && !x.focus).length, deschise: t.filter(x => !x.done).length });
+  }
+  return out;
 }
 
 /** Warnings for a service: same person twice, people marked away, empty positions. */

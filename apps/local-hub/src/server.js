@@ -17,8 +17,8 @@ import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
-import { feedbackProposal, runAssistant } from './ai.js';
-import { defaultPlan, applyPlanOp, serviceWarnings, newToken } from './plan.js';
+import { feedbackProposal, runAssistant, askAI } from './ai.js';
+import { defaultPlan, applyPlanOp, serviceWarnings, newToken, focusByMonth } from './plan.js';
 import * as pco from './pco.js';
 import { createCanva } from './canva.js';
 import { createUpdater, newer } from './updater.js';
@@ -1455,7 +1455,8 @@ async function handle(req, res) {
       const plan = db.plan, lead = checkLeader(req);
       plan.meetings ||= []; plan.tasks ||= [];
       if (plan.volunteers.some(v => !v.token)) { for (const v of plan.volunteers) v.token ||= newToken(); save(); }
-      return json(res, 200, { ...plan, currentPlanId: db.service.planId || null,
+      const { journal, ...shared } = plan;                    // the personal journals are never shown to others, not even leaders
+      return json(res, 200, { ...shared, focus: focusByMonth(plan), currentPlanId: db.service.planId || null,
         volunteers: lead ? plan.volunteers : plan.volunteers.map(({ token, ...v }) => v),       // personal links: leaders only
         services: plan.services.map(s => ({ ...s, warnings: serviceWarnings(plan, s),
           items: s.items.map(it => it.kind === 'song' ? { ...it, title: db.songs.find(x => x.id === it.songId)?.title || it.title || '(cântare ștearsă)' } : it) })) });
@@ -1627,6 +1628,23 @@ async function handle(req, res) {
       if (!me) return json(res, 404, { error: 'Linkul nu mai e valabil. Cere-i liderului unul nou.' });
       plan.meetings ||= []; plan.tasks ||= [];
       const posName = pid => { for (const d of plan.departments) { const p2 = d.positions.find(x => x.id === pid); if (p2) return { pos: p2.name, dept: d.name, color: d.color }; } return { pos: '', dept: '' }; };
+      // 📷 photographers: originals (no compression) into the church's photo folder (the NAS), one folder per event
+      const photoRoot = db.security?.photoDir || path.join(DATA_DIR, 'poze');
+      const eventDir = ev => path.join(photoRoot, String(ev || new Date().toISOString().slice(0, 10)).replace(/[^\w ăâîșțĂÂÎȘȚ.-]/g, '_').trim().slice(0, 80) || 'poze', me.name.replace(/[^\w ăâîșțĂÂÎȘȚ.-]/g, '_'));
+      if (req.method === 'POST' && url.searchParams.get('photo')) {
+        if (!me.photographer) return json(res, 403, { error: 'Cere-i liderului să te treacă la fotografi.' });
+        const dir = eventDir(url.searchParams.get('event')), name = path.basename(String(url.searchParams.get('photo'))).replace(/[^\w ăâîșțĂÂÎȘȚ().-]/g, '_').slice(-120);
+        if (!/\.(jpe?g|png|heic|heif|dng|cr2|cr3|nef|arw|raf|tiff?|webp|mp4|mov)$/i.test(name)) return json(res, 400, { error: 'Doar poze și video' });
+        fs.mkdirSync(dir, { recursive: true });
+        const to = path.join(dir, name), tmp = to + '.part'; let size = 0;
+        try {
+          await new Promise((ok, bad) => { const out = fs.createWriteStream(tmp);
+            req.on('data', c => { size += c.length; if (size > 2 * 1024 ** 3) { req.destroy(); bad(new Error('Prea mare')); } });
+            req.pipe(out); out.on('finish', ok); out.on('error', bad); req.on('error', bad); });
+        } catch (e) { try { fs.rmSync(tmp, { force: true }); } catch {} return json(res, 400, { error: e.message }); }
+        fs.renameSync(tmp, to);
+        return json(res, 200, { ok: true });
+      }
       const preaches = (sv, key) => /predic|pastor|vorbitor|mesaj/i.test(posName(key.split('#')[0]).pos) && sv.assignments[key]?.volunteer === me.id;
       if (req.method === 'POST' && url.searchParams.get('upload')) {   // 📎 the preacher puts his own presentation for the sermon (until the last minute)
         const sv = plan.services.find(x => x.id === url.searchParams.get('service'));
@@ -1654,6 +1672,25 @@ async function handle(req, res) {
         } else if (m.action === 'away') {                     // the days I can't serve, and how often I can
           me.away = [...new Set((m.away || []).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort().slice(0, 120);
           if (m.maxPerMonth !== undefined) me.maxPerMonth = Math.min(8, Math.max(0, Math.round(Number(m.maxPerMonth) || 0)));
+        } else if (m.action === 'photoHave') {                // which photos are already there (an interrupted upload goes on from where it stopped)
+          if (!me.photographer) return json(res, 403, { error: 'Nu ești la fotografi' });
+          const dir = eventDir(m.event), have = [];
+          for (const f of (m.files || []).slice(0, 3000)) { try { if (fs.statSync(path.join(dir, path.basename(String(f.name)))).size === Number(f.size)) have.push(f.name); } catch {} }
+          return json(res, 200, { have });
+        } else if (m.action === 'journal') {                 // 📓 my day, only for me
+          plan.journal ||= {}; const day = /^\d{4}-\d{2}-\d{2}$/.test(m.day) ? m.day : new Date().toISOString().slice(0, 10);
+          const list = plan.journal[me.id] ||= []; const e = list.find(x => x.day === day);
+          const text = String(m.text || '').slice(0, 4000); if (e) e.text = text; else list.unshift({ day, text });
+          plan.journal[me.id] = list.filter(x => x.text.trim()).sort((a, b) => b.day.localeCompare(a.day)).slice(0, 400);
+        } else if (m.action === 'journalSummary') {          // ✦ a short look back: the week against the year's goals (asked only by him)
+          const week = (plan.journal?.[me.id] || []).filter(x => Date.now() - new Date(x.day) < 8 * 864e5);
+          const goals = (plan.goals || []).map(g => `${g.text}: ${g.done}/${g.target} ${g.unit}`).join('\n') || 'fără obiective scrise';
+          if (!week.length) return json(res, 200, { summary: 'Scrie întâi câteva zile în jurnal.' });
+          try {
+            const summary = await askAI({ ...aiSettings, provider: 'ollama' }, 'Ești un mentor creștin cald și scurt. Răspunzi în română, în maxim 8 rânduri: ce a mers bine săptămâna asta, cât s-a apropiat de obiective (estimează un procent), unde s-a abătut, și un pas concret pentru săptămâna viitoare. Fără predici lungi.',
+              `Obiectivele anului:\n${goals}\n\nJurnalul ultimei săptămâni:\n${week.map(x => x.day + ': ' + x.text).join('\n')}`);
+            return json(res, 200, { summary });
+          } catch (e) { return json(res, 200, { summary: 'Asistentul nu e pornit acum (' + e.message + ').' }); }
         } else if (m.action === 'task') {                     // ☐ / ☑ one of my tasks
           const tk = plan.tasks.find(x => x.id === m.task && x.who === me.id); if (!tk) return json(res, 400, { error: 'Sarcina nu e a ta.' });
           tk.done = !!m.done; tk.doneAt = tk.done ? new Date().toISOString() : '';
@@ -1669,7 +1706,8 @@ async function handle(req, res) {
       const messages = (plan.messages || []).filter(m => Date.now() - new Date(m.at) < 30 * 864e5 && (m.to === 'all' || (m.to === 'dept' && myDepts.has(m.ref)) || (m.to === 'service' && myServices.has(m.ref)))).slice(0, 5)
         .map(({ text, from, at }) => ({ text, from, at }));
       for (const x of serve) { const sv = plan.services.find(y => y.id === x.service); x.preach = preaches(sv, x.key); if (x.preach) x.incoming = sv.items.find(i => i.kind === 'sermon')?.incoming?.file || ''; }
-      return json(res, 200, { name: me.name, church: church?.name || '', away: me.away || [], maxPerMonth: me.maxPerMonth || 0, leader: !!me.leader, serve, messages,
+      return json(res, 200, { name: me.name, church: church?.name || '', away: me.away || [], maxPerMonth: me.maxPerMonth || 0, leader: !!me.leader, photographer: !!me.photographer, serve, messages,
+        journal: me.leader ? (plan.journal?.[me.id] || []).slice(0, 14) : [], goals: me.leader ? (plan.goals || []).map(({ text, target, done, unit }) => ({ text, target, done, unit })) : [],
         tasks: plan.tasks.filter(tk => tk.who === me.id).sort((a, b) => (a.done - b.done) || (a.due || '9').localeCompare(b.due || '9')).slice(0, 40),
         meetings: me.leader ? plan.meetings.filter(mt => new Date(mt.date).getTime() >= now).slice(0, 3).map(mt => ({ ...mt,
           tasks: plan.tasks.filter(tk => tk.meeting === mt.id).map(tk => ({ text: tk.text, who: name(tk.who), due: tk.due, done: tk.done })) })) : [] });
@@ -1681,6 +1719,7 @@ async function handle(req, res) {
         if ('door' in m) db.security.door = !!m.door;
         if (typeof m.publicUrl === 'string') { const u = m.publicUrl.trim().replace(/\/+$/, ''); if (u && !/^https:\/\/[\w.-]+$/.test(u)) return json(res, 400, { error: 'Adresa trebuie să fie de forma https://nume.ts.net' }); db.security.publicUrl = u; }
         if (typeof m.backupDir === 'string') db.security.backupDir = m.backupDir.trim().slice(0, 300);
+        if (typeof m.photoDir === 'string') db.security.photoDir = m.photoDir.trim().slice(0, 300);
         if (m.backupNow) backup();
         save();
       }
@@ -1745,6 +1784,12 @@ async function handle(req, res) {
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
     if (p === '/api/ghid' && req.method === 'GET') return json(res, 200, guideVoices());          // 🎧 the voices for the guide
+    if (p === '/api/pads' && req.method === 'GET') return json(res, 200, audioIn(PAD_DIR));            // 🎹 the church's recorded pads
+    if (p.startsWith('/pads/')) return file(res, PAD_DIR, path.basename(decodeURIComponent(p.slice(6))), req);
+    if (p === '/api/tracks/link' && req.method === 'POST') {                                       // 🔗 the one tracks folder → the songs
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const r = linkTrackFolder(); save(); broadcast(); return json(res, 200, r);
+    }
     if (p.startsWith('/ghid/')) return file(res, GHID_DIR, path.basename(decodeURIComponent(p.slice(6))), req);
     if (p.startsWith('/userfonts/')) return file(res, FONTS_DIR, path.basename(decodeURIComponent(p.slice(11))), req);
     if (p === '/api/fonts' && req.method === 'POST') {
@@ -1776,6 +1821,29 @@ function guideVoices() {
     } catch (e) { logError('vocile de ghid', e); }
   }
   try { return fs.readdirSync(GHID_DIR).filter(f => /\.(wav|mp3|m4a|aif|aiff|ogg|flac)$/i.test(f) && !f.startsWith('.')).sort(); } catch { return []; }
+}
+// 🎹 recorded pads (one file per key) and 🔗 the one place for all tracks: Documents/Betleem/trackuri/<song title>/<stem>.wav
+const PAD_DIR = path.join(DATA_DIR, 'pad'), TRACKS_DIR = path.join(DATA_DIR, 'trackuri');
+fs.mkdirSync(PAD_DIR, { recursive: true }); fs.mkdirSync(TRACKS_DIR, { recursive: true });
+const audioIn = dir => { try { return fs.readdirSync(dir).filter(f => /\.(wav|mp3|m4a|aif|aiff|ogg|flac)$/i.test(f) && !f.startsWith('.')).sort(); } catch { return []; } };
+/** every folder in trackuri/ named like a song becomes that song's stems (files are linked, not copied, when possible) */
+function linkTrackFolder() {
+  const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const linked = [], unknown = [];
+  for (const dir of fs.readdirSync(TRACKS_DIR, { withFileTypes: true }).filter(d => d.isDirectory())) {
+    const song = db.songs.find(s => fold(s.title) === fold(dir.name)) || db.songs.find(s => fold(dir.name).startsWith(fold(s.title)) && fold(s.title).length > 5);
+    if (!song) { unknown.push(dir.name); continue; }
+    const files = audioIn(path.join(TRACKS_DIR, dir.name)); if (!files.length) continue;
+    const stems = [];
+    for (const f of files.slice(0, 24)) {
+      const name = ('trk-' + fold(song.title).replace(/ /g, '-').slice(0, 30) + '-' + f).replace(/[^\w.\-]/g, '_'), to = path.join(MEDIA_DIR, name);
+      if (!fs.existsSync(to)) { try { fs.linkSync(path.join(TRACKS_DIR, dir.name, f), to); } catch { fs.copyFileSync(path.join(TRACKS_DIR, dir.name, f), to); } }
+      const old = song.stems?.find(x => x.file === name);
+      stems.push(old || { file: name, name: f.replace(/\.[a-z0-9]+$/i, '').slice(0, 30), vol: 1, muted: false, pan: 0 });
+    }
+    song.stems = stems; linked.push(song.title);
+  }
+  return { linked, unknown };
 }
 const guesses = new Map();                     // address → { n, until }: slows down anyone trying PINs one after another
 const who = req => String((req.viaDoor && req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket?.remoteAddress || '?');

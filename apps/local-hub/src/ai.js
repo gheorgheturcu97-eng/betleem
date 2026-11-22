@@ -51,6 +51,8 @@ export const TOOLS = [
     params: { position: { type: 'number' }, sections: { type: 'array', items: { type: 'string' } } }, required: ['position', 'sections'] },
   { name: 'set_track', description: 'Schimbă un track al unei cântări din program (click, guide, tobe, bas…): volum în procente (0-150) și/sau mut.',
     params: { position: { type: 'number' }, track: { type: 'string' }, volume: { type: 'number' }, muted: { type: 'boolean' } }, required: ['position', 'track'] },
+  { name: 'add_part_of_song', description: 'Îmbinare: pune în program doar o parte dintr-o cântare din bibliotecă (de ex. refrenul din „Domnul miracolelor”), după o anumită poziție, în același ton cu cântarea dinainte (dacă match nu e false). Ex.: „după Tu ești vrednic pune refrenul din Domnul miracolelor”.',
+    params: { title: { type: 'string' }, sections: { type: 'array', items: { type: 'string' }, description: 'ex. ["Refren"] sau ["Bridge", "Refren"]' }, after: { type: 'number', description: 'poziția după care vine (1 = după prima); lipsă = la final' }, match: { type: 'boolean' } }, required: ['title', 'sections'] },
   { name: 'fill_team', description: 'Programează oamenii: pune voluntari pe locurile goale ale echipei (corect: cine poate sluji acolo, n-a blocat ziua, e sub limita lunară; cine a slujit mai puțin are prioritate). Opțional doar un departament.',
     params: { department: { type: 'string', description: 'numele departamentului (opțional)' } } },
   { name: 'leaders_tasks', description: 'Întâlnirile liderilor (agenda) și sarcinile (ce, cine, până când, gata sau nu). Folosește-l înainte să adaugi sau să răspunzi la „ce am de făcut”.', params: {} },
@@ -123,6 +125,21 @@ export function runTool(hub, name, a = {}) {
     case 'set_background': return done(hub.run({ type: 'background', value: a.name || '' }));
     case 'show_slide': return done(hub.run({ type: 'go', item: pos(a.position), slide: Math.max(0, Math.round(Number(a.slide || 1)) - 1) }));
     case 'set_service': return done(hub.run({ type: 'service', value: { ...(a.title ? { title: a.title } : {}), ...(a.starts_at ? { startsAt: new Date(a.starts_at).toISOString() } : {}) } }));
+    case 'add_part_of_song': {
+      const song = hub.findSong?.(a.title || ''); if (!song) return { error: `Nu găsesc „${a.title}” în bibliotecă` };
+      let prog = hub.state().program || [];
+      const after = Number.isInteger(+a.after) && +a.after > 0 ? Math.min(+a.after, prog.length) : prog.length, prev = prog[after - 1];
+      const key = a.match !== false && prev?.kind === 'song' && prev.key ? prev.key : song.key;
+      const err = hub.run({ type: 'addItem', kind: 'song', songId: song.id, key, minutes: 2, at: after }); if (err) return { error: err };
+      prog = hub.state().program || [];
+      let idx = after;
+      if (prog[after]?.title !== song.title) { hub.run({ type: 'moveItem', item: prog.length - 1, to: after }); }   // Live adds at the end: move it into place
+      const st = hub.structure?.(idx), fold = x => String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const syn = w => fold(w).replace(/^(chorus|cor)/, 'refren').replace(/^(verse|vers)/, 'strofa').replace(/^punte/, 'bridge');
+      const want = (a.sections || []).map(w => st?.sections?.find(x => fold(x.label) === syn(w)) || st?.sections?.find(x => fold(x.label).startsWith(syn(w)))).filter(Boolean).map(x => x.label);
+      if (!want.length) return { error: 'Nu găsesc secțiunile ' + (a.sections || []).join(', ') + '. Are: ' + (st?.sections || []).map(x => x.label).join(', ') };
+      return done(hub.run({ type: 'arrangement', item: idx, value: want }), `după poziția ${after}: ${want.join(' → ')} din „${song.title}”, ton ${key || '?'}`);
+    }
     case 'fill_team': {
       if (!hub.fillTeam) return { error: 'Nu e disponibil aici' };
       const P = hub.plan?.(), d = a.department && P ? P.departments.find(x => x.name.toLowerCase().includes(String(a.department).toLowerCase())) : null;

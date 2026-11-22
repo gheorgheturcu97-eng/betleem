@@ -1082,6 +1082,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Le pun eu (apăs la fiecare slide)</button>
         <label class="check"><input type="checkbox" id="tlAuto" checked> Versurile merg singure după track</label>
         <label class="btn pill" title="Unul sau mai multe fișiere audio: click, guide, tobe, bas, clape…">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*" multiple hidden></label>
+        <button id="trkLink" class="pill" title="Pune toate track-urile într-un singur loc: Documente/Betleem/trackuri/<titlul cântării>/. Apasă și fiecare cântare își ia track-urile din folderul ei.">🔗 Track-uri din folderul comun</button>
         <button id="audioOut" class="pill" title="Ce iese pe fiecare ieșire a plăcii de sunet; microfonul MD">🎛 Rutare audio și microfon MD</button>
         <button id="beatHere" class="pill" title="Pune redarea pe primul timp al cântării (prima lovitură) și apasă: click-ul se aliniază cu track-urile">⌖ Primul timp e aici (aliniază click-ul)</button>
         <p class="hint" style="margin:0">Pe rândul cu secțiuni: dublu-clic pune secțiunea următoare acolo, clic dreapta alege ce secțiune începe acolo.</p>
@@ -1256,6 +1257,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <p class="hint">În fiecare zi, o copie a tot (cântări, programe, oameni) în Documente/Betleem/backup, ultimele 30 de zile. Dacă pui și folderul NAS-ului, copia ajunge și acolo.</p>
   <div class="row"><input id="secNas" class="grow" placeholder="ex. /Volumes/Betleem-NAS/Betleem (Mac) sau \\NAS\Betleem (Windows)"><button id="secNasSave">Salvează</button><button id="secNow" class="ghost">Fă o copie acum</button></div>
   <p class="hint" id="secBk"></p>
+  <h4 style="margin:16px 0 6px">📷 Pozele fotografilor</h4>
+  <p class="hint">Fotografii (bifați „📷 Fotograf” în fișa lor) încarcă de pe telefon sau tabletă, la calitatea originală, aici: un folder pe eveniment, cu numele fotografului.
+    Pentru căutare cu AI („copii pe scenă la Crăciun”) se poate instala gratuit Immich pe server, cu acest folder ca bibliotecă.</p>
+  <div class="row"><input id="secPh" class="grow" placeholder="ex. /Volumes/Betleem-NAS/Poze (gol = Documente/Betleem/poze)"><button id="secPhSave">Salvează</button></div>
   <details style="margin-top:12px"><summary class="hint">Ultimele intrări din internet</summary><pre id="secLog" class="hint" style="white-space:pre-wrap;font-size:11px"></pre></details>
 </div></div>
 <div class="modal" id="canvaModal"><div class="glass canva">
@@ -2516,6 +2521,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // ---- MUZICĂ view: key, tempo, multitrack with cues (lyrics follow the tracks), click and pad in the mixer.
   // Sound keeps playing when you switch back to Live.
   const pad = new Pad(), met = new Metronome(), tap = tapper(), mt = new Multitrack();
+  let padFiles = 0; setTimeout(() => pad.loadFiles().then(n => { padFiles = n; if (n) renderMixer?.(); }), 2000);   // 🎹 Documents/Betleem/pad
   const prefs = (() => { try { return JSON.parse(localStorage.getItem('betleem.music') || '{}'); } catch { return {}; } })();
   const savePrefs = () => { try { localStorage.setItem('betleem.music', JSON.stringify(prefs)); } catch {} };
   pad.vol = prefs.padVol ?? 0.6; met.vol = prefs.metVol ?? 0.7; pad.sound = prefs.padSound || 'cald'; met.beats = prefs.beats || 4; mt.vol = prefs.mtVol ?? 1;
@@ -2693,7 +2699,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'N-a mers'); return j;
   }
   function secShow(j) {
-    $('secDoor').checked = !!j.door; $('secUrl').value = j.publicUrl || ''; $('secNas').value = j.backupDir || '';
+    $('secDoor').checked = !!j.door; $('secUrl').value = j.publicUrl || ''; $('secNas').value = j.backupDir || ''; $('secPh').value = j.photoDir || '';
     $('secCmd').textContent = 'tailscale funnel --bg ' + j.doorPort;
     $('secDoorState').textContent = j.door ? (j.doorOpen ? (j.publicUrl ? '· deschisă, la ' + j.publicUrl : '· deschisă; lipsește adresa de mai jos') : '· nu a pornit (vezi portul)') : '· închisă';
     $('secBk').textContent = (j.lastBackup ? 'Ultima copie: ' + new Date(j.lastBackup).toLocaleString('ro-RO') : 'Nicio copie încă.') + (j.backupError ? ' ⚠ ' + j.backupError : '');
@@ -2707,6 +2713,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('secUrlSave').onclick = () => secSet({ publicUrl: $('secUrl').value });
   $('secNasSave').onclick = () => secSet({ backupDir: $('secNas').value });
   $('secNow').onclick = () => secSet({ backupNow: true });
+  $('secPhSave').onclick = () => secSet({ photoDir: $('secPh').value });
   if (location.hash === '#muzica') { history.replaceState(null, '', '/control.html'); setTimeout(() => showView('music'), 400); }
   const liveSong = () => S.live.item >= 0 && S.setlist[S.live.item]?.kind === 'song' ? S.live.item : -1;
   const musicItemIndex = () => {
@@ -3020,6 +3027,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   $('aiCues').onclick = () => { $('mToolsPop').classList.remove('show'); aiCues(); };
   $('aiCues2').onclick = e => { e.stopPropagation(); aiCues(); };
+  $('trkLink').onclick = async () => { $('mToolsPop').classList.remove('show');
+    const r = await fetch('/api/tracks/link', { method: 'POST', headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({}));
+    toast(r.linked?.length ? `🔗 Track-uri legate la: ${r.linked.join(', ')}${r.unknown?.length ? ' · fără cântare: ' + r.unknown.join(', ') : ''}` : 'Pune în Documente/Betleem/trackuri câte un folder cu numele cântării și track-urile ei înăuntru.' + (r.unknown?.length ? ' Foldere fără cântare: ' + r.unknown.join(', ') : '')); };
   $('beatHere').onclick = () => { $('mToolsPop').classList.remove('show'); const i = mtItem; if (!S.setlist[i]) return;
     send({ type: 'setBpm', item: i, offset: mt.time }); toast('Click-ul pornește de la ' + fmt(mt.time)); if (met.synced) met.playWith(mt, mt.time); };
   // ⏮ ⏭ sections, and the section playing now
@@ -3366,7 +3376,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       strip('click', 'Metronom', met.vol, `<button class="bigplay sm ${met.playing ? 'on' : ''}" id="metPlay">${met.playing ? '❚❚' : '▶'}</button>`)
       + strip('pad', 'Pad', pad.vol, `<button class="bigplay sm ${pad.playing ? 'on' : ''}" id="padPlay">${pad.playing ? '❚❚' : '▶'}</button>
           <select id="padKey" title="Tonul pad-ului"><option value="">Ton auto</option>${PAD_KEYS.map(k => `<option ${k === padKeyManual ? 'selected' : ''}>${k}</option>`).join('')}</select>
-          <select id="padSound">${Object.entries(PAD_SOUNDS).map(([k, v]) => `<option value="${k}" ${k === pad.sound ? 'selected' : ''}>${v.name}</option>`).join('')}</select>`)
+          <select id="padSound">${Object.entries(PAD_SOUNDS).map(([k, v]) => `<option value="${k}" ${k === pad.sound ? 'selected' : ''}>${v.name}</option>`).join('')}${padFiles ? `<option value="fisiere" ${pad.sound === 'fisiere' ? 'selected' : ''}>Pad-urile voastre (${padFiles})</option>` : ''}</select>`)
       + stems.map((c, i) => strip(i, c.name || c.file, c.vol,
           `<div class="bt"><button class="m ${c.muted ? 'on' : ''}" data-mute="${i}" title="Mut">M</button><button class="s ${c.solo ? 'on' : ''}" data-solo="${i}" title="Solo">S</button><button class="x" data-rm="${i}" title="Scoate track-ul">✕</button></div>`, '', c.panValue || 0)).join('')
       + `<button class="strip addtrk" id="addTrk" title="Adaugă track-uri (audio): click, guide, tobe, bas…">＋<span>Track nou</span></button>`

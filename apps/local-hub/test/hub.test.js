@@ -531,6 +531,25 @@ test('✦ fair team auto-fill, 📣 pastor messages and 📎 the preacher sends 
   assert.equal((await fetch(`http://localhost:4599/api/eu?t=${other.token}&service=${sv.id}&upload=x.pdf`, { method: 'POST', body: 'x' })).status, 403, 'only the preacher of that service');
 });
 
+test('✦ the assistant merges a part of another song after a position, in the same key', async () => {
+  const { planHub } = await import('../src/server.js');
+  const { runTool } = await import('../src/ai.js');
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' };
+  const P = await fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify({ op: 'addService', title: 'Îmbinare', date: '2027-07-04T07:00:00.000Z' }) }).then(r => r.json());
+  const h = planHub(P.services.find(x => x.title === 'Îmbinare').id);
+  h.run({ type: 'saveSong', song: { title: 'Tu ești vrednic test', key: 'D', body: 'Strofa 1:\nTu ești vrednic\n\nRefren:\nVrednic e Mielul' } });
+  h.run({ type: 'saveSong', song: { title: 'Domnul miracolelor test', key: 'G', body: 'Strofa 1:\nEști Domnul\n\nRefren:\nDomnul miracolelor\n\nBridge:\nNimic nu-i greu' } });
+  const songs = await fetch('http://localhost:4599/api/songs').then(r => r.json());
+  const withChorus = ['Tu ești vrednic test', 'Domnul miracolelor test'].map(t => songs.find(x => x.title === t));
+  runTool(h, 'add_songs', { titles: [withChorus[0].title, songs.find(x => !withChorus.includes(x)).title], keys: ['E'] });
+  const r = runTool(h, 'add_part_of_song', { title: withChorus[1].title, sections: ['chorus'], after: 1 });
+  assert.ok(r.ok, JSON.stringify(r));
+  const st = runTool(h, 'get_state');
+  assert.equal(st.program[1].title, withChorus[1].title);
+  assert.equal(st.program[1].key, 'E', 'same key as the song before');
+  assert.equal(st.program[1].arrangement.length, 1); assert.match(st.program[1].arrangement[0], /^Refren/);
+});
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());
