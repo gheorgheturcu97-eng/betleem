@@ -127,6 +127,14 @@ reîncarcă după câteva ore.
 ### ☐ 11 · **Securitate și server** (Pasul 3), obligatoriu înainte de orice acces din afară:
     > „Pasul 3 din docs/PLAN.md. Întâi planul de securitate pe hârtie, arată-mi-l, abia apoi codul.
     > NAS-ul e <model>, Mac mini-ul are <X> GB.”
+### ☐ 11b · **Aplicația pe telefon, de oriunde** (după 11, cerută de proprietar)
+    > „Fă Betleem utilizabil complet de pe telefon, ca aplicație pusă pe ecranul principal (PWA, cu iconiță și
+    > manifest), prin serverul bisericii din Pasul 11, ca să meargă și fără calculator lângă mine:
+    > Planificare completă pe telefon (servicii, program, echipe, Lideri), Proiectez pe telefon (desfășurătorul de
+    > duminică și schimbarea slide-urilor, cu PIN de operator) și MD&TRACK pe telefon (structura cântării și
+    > secțiunile pe track-uri). Extinde paginile existente (planning.html, live.html), nu face o aplicație nouă.
+    > Respectă regula de aur.”
+
 ### ☐ 12 · **Pastorul își încarcă prezentarea singur** (Pasul 4):
     > „Pasul 4, pastorul își încarcă singur prezentarea din Planificare și o vede în biblioteca duminicii.”
 ### ☐ 13 · **Asistentul programează voluntarii** (Pasul 4):
