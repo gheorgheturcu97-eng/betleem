@@ -322,6 +322,7 @@
 
   .bg-panel{padding:12px 14px;flex:none;height:var(--bgH,auto);display:flex;flex-direction:column;min-height:0}
   .bg-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .screen .mon{position:absolute;right:96px;top:8px;z-index:3;max-width:44%;font-size:11px;padding:3px 6px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.25)}
   .bgtabs button{padding:5px 12px;font-size:13px;font-weight:650}
   .lt-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px} .lt-top select{width:auto;max-width:220px}
   #ltScenes{display:flex;flex-wrap:wrap;gap:8px}
@@ -934,9 +935,9 @@
       <div class="screens glass" id="screens">
         <div class="scr-vis seg mini" id="scrVis" title="Ce ecrane vezi aici (nu schimbă nimic pe ecranele reale)"><button data-v="both">Ambele</button><button data-v="main">Sală</button><button data-v="stage">Scenă</button></div>
         <div class="screen"><iframe src="/main.html" title="Sală" tabindex="-1"></iframe>
-          <span class="cap"><i></i>SALĂ</span><button class="open" id="bMain" title="Deschide pe proiector">Proiector ↗</button></div>
+          <span class="cap"><i></i>SALĂ</span><select class="mon" id="monMain" hidden title="Pe ce monitor apare Sala (numele din setările calculatorului)"></select><button class="open" id="bMain" title="Deschide pe proiector">Proiector ↗</button></div>
         <div class="screen"><iframe src="/stage.html" title="Scenă" tabindex="-1"></iframe>
-          <span class="cap"><i></i>SCENĂ</span><button class="open" id="bStage" title="Deschide pe monitorul de scenă">Scenă ↗</button></div>
+          <span class="cap"><i></i>SCENĂ</span><select class="mon" id="monStage" hidden title="Pe ce monitor apare Scena (numele din setările calculatorului)"></select><button class="open" id="bStage" title="Deschide pe monitorul de scenă">Scenă ↗</button></div>
       </div>
       <div class="gut h" data-g="scrH" title="Trage ca să mărești ecranele · dublu-clic = normal"></div>
 
@@ -2070,6 +2071,23 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else toast('Mută fereastra pe ecranul dorit, apoi apasă F11.');
   };
   $('bMain').onclick = () => openScreen('/main.html', 'bnc-main');
+  // 🖥 the monitors by their own names (BenQ, Beyond TV…): choose where Sala and Scena go
+  async function monitors(post) {
+    try {
+      const r = await fetch('/api/displays', post ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' }, body: JSON.stringify(post) } : { headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json());
+      if (!r.inApp || !r.displays?.length) return;
+      for (const [sel, kind] of [['monMain', 'main'], ['monStage', 'stage']]) {
+        const el = $(sel); el.hidden = false;
+        const cur = r.displays.find(d => d.pick.includes(kind)) || r.displays.find(d => d[kind]);
+        el.innerHTML = `<option value="">${cur ? '' : '— alege monitorul —'}</option>` + r.displays.map(d => `<option value="${d.id}" ${cur?.id === d.id ? 'selected' : ''}>${esc(d.name)}${d.control ? ' (aici e programul)' : ''}</option>`).join('');
+      }
+      if (post) toast('Gata: ' + (r.displays.find(d => d.id === +post.id)?.name || ''));
+    } catch {}
+  }
+  $('monMain').onchange = () => monitors({ kind: 'main', id: $('monMain').value });
+  $('monStage').onchange = () => monitors({ kind: 'stage', id: $('monStage').value });
+  for (const id of ['monMain', 'monStage']) $(id).onmousedown = () => monitors();
+  setTimeout(() => monitors(), 1500);
   $('bStage').onclick = () => openScreen('/stage.html', 'bnc-stage');
   // ---- shortcuts: Ctrl on Windows, ⌘ Cmd on Mac
   const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);

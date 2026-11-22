@@ -1783,6 +1783,11 @@ async function handle(req, res) {
       finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
+    if (p === '/api/displays') {                                 // 🖥 the monitors by name, and which one shows the projector / the stage
+      if (req.viaDoor || !checkPin(req)) return json(res, 403, { error: 'Doar pe calculatorul bisericii' });
+      if (req.method === 'POST') { const m = JSON.parse(await body(req, 2000) || '{}'); if (['main', 'stage'].includes(m.kind)) await pickDisplay(m.kind, m.id); }
+      return json(res, 200, { inApp: !!EL, displays: displaysInfo() });
+    }
     if (p === '/api/brand') {                                    // 🎨 the church's own layer: Documents/Betleem/personalizare.json
       const F = path.join(DATA_DIR, 'personalizare.json'); let b = {}; try { b = JSON.parse(fs.readFileSync(F, 'utf8')); } catch {}
       if (req.method === 'POST') {
@@ -2135,31 +2140,63 @@ if (['darwin', 'win32'].includes(process.platform) && process.env.WATCH_AIRDROP 
 
 export { server, aiHub };
 
-// --- 🖥 Mac: the projector / stage windows must never use the macOS full screen ---------------------------------
-// That one opens a new Space and, when "Displays have separate Spaces" is off, it takes every monitor (the operator
-// loses the program). The desktop shell (main.cjs) only changes when the app is reinstalled, but this hub code runs
-// inside it, so it can correct those two windows itself: as soon as one goes full screen, it comes out of it and
-// becomes a borderless window over its own monitor, above the menu bar.
-if (process.versions.electron && process.platform === 'darwin') {
-  import('electron').then(({ app, BrowserWindow, screen }) => {
+// --- 🖥 The projector and stage windows: on the monitor chosen BY NAME, never the macOS full screen -------------
+// The desktop shell (main.cjs) only changes when the app is reinstalled, but this hub code runs inside it, so it can
+// place those two windows itself. macOS full screen opens a new Space and, when "Displays have separate Spaces" is
+// off, takes every monitor (the operator loses the program): here a window that goes full screen comes out of it
+// and becomes a borderless window over its own monitor, above the menu bar.
+let EL = null;
+const outWins = {};                                    // kind → BrowserWindow
+db.screenPick ||= {};                                  // kind → display id, chosen by name in Proiectez
+const kindOf = w => { const t = w?.getTitle?.() || ''; return /^Ecran principal|– Sală$/.test(t) ? 'main' : /^Ecran scenă|– Scenă$/.test(t) ? 'stage' : null; };
+const controlDisplayId = () => {
+  const { BrowserWindow, screen } = EL;
+  const c = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.isVisible() && !kindOf(w) && w.getBounds().width > 600);
+  return c ? screen.getDisplayMatching(c.getBounds()).id : null;
+};
+function placeOut(kind) {
+  if (!EL) return;
+  const w = outWins[kind]; if (!w || w.isDestroyed()) return;
+  const { screen } = EL, all = screen.getAllDisplays();
+  const d = all.find(x => x.id === db.screenPick[kind]) || screen.getDisplayMatching(w.getBounds());
+  if (w.isFullScreen()) { w.once('leave-full-screen', () => setTimeout(() => placeOut(kind), 60)); w.setFullScreen(false); return; }
+  if (d.id === controlDisplayId()) {                   // the same monitor as the program: a small window, never covering it
+    w.setAlwaysOnTop(false); w.setBounds({ x: d.workArea.x + 40, y: d.workArea.y + 40, width: Math.round(d.workArea.width / 2), height: Math.round(d.workArea.width / 2 * 9 / 16) });
+    return;
+  }
+  w.setBounds(d.bounds);
+  if (process.platform === 'darwin') { w.setAlwaysOnTop(true, 'screen-saver'); w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); }
+  else w.setFullScreen(true);
+  setTimeout(() => !w.isDestroyed() && !w.isFullScreen() && w.setBounds(d.bounds), 400);
+}
+if (process.versions.electron) {
+  import('electron').then(m => {
+    EL = m.default?.screen ? m.default : m;
+    const { app, BrowserWindow } = EL;
     const watch = w => {
-      if (!w || w._betleemFix || !/^Ecran (principal|scenă)/.test(w.getTitle?.() || '')) return;
-      w._betleemFix = true;
-      w.on('enter-full-screen', () => {
-        const d = screen.getDisplayMatching(w.getBounds());
-        setTimeout(() => {
-          if (w.isDestroyed()) return;
-          w.once('leave-full-screen', () => setTimeout(() => {
-            if (w.isDestroyed()) return;
-            w.setBounds(d.bounds); w.setAlwaysOnTop(true, 'screen-saver'); w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-            setTimeout(() => !w.isDestroyed() && w.setBounds(d.bounds), 400);
-          }, 50));
-          w.setFullScreen(false);
-        }, 30);
-      });
-      if (w.isFullScreen()) w.emit('enter-full-screen');
+      const kind = kindOf(w); if (!kind || w._betleem) return;
+      w._betleem = true; outWins[kind] = w;
+      if (process.platform === 'darwin') w.on('enter-full-screen', () => setTimeout(() => placeOut(kind), 30));
+      const settle = () => { if (db.screenPick[kind] || w.isFullScreen()) placeOut(kind); };
+      w.once('ready-to-show', () => { setTimeout(settle, 300); setTimeout(settle, 1200); });
+      setTimeout(settle, 900);
     };
     app.on('browser-window-created', (_e, w) => { watch(w); setTimeout(() => watch(w), 0); });
     BrowserWindow.getAllWindows().forEach(watch);
   }).catch(e => logError('ferestrele de ecran', e));
+}
+/** the monitors with their own names (as in the Mac's / Windows' display settings) */
+function displaysInfo() {
+  if (!EL) return [];
+  const { screen } = EL, cd = controlDisplayId(), on = k => outWins[k] && !outWins[k].isDestroyed() ? screen.getDisplayMatching(outWins[k].getBounds()).id : null;
+  return screen.getAllDisplays().map((d, i) => ({ id: d.id, name: d.label || `Monitor ${i + 1}`, size: `${d.size.width}×${d.size.height}`,
+    primary: d.id === screen.getPrimaryDisplay().id, control: d.id === cd, main: on('main') === d.id, stage: on('stage') === d.id,
+    pick: Object.entries(db.screenPick).filter(([, v]) => v === d.id).map(([k]) => k) }));
+}
+async function pickDisplay(kind, id) {
+  db.screenPick[kind] = Number(id) || null; save();
+  try { const F = path.join(DATA_DIR, 'settings.json'), st = JSON.parse(fs.readFileSync(F, 'utf8')); st[kind + 'Display'] = db.screenPick[kind]; fs.writeFileSync(F, JSON.stringify(st, null, 2)); } catch {}   // for the next start too
+  if (!EL || !id) return;
+  if (!outWins[kind] || outWins[kind].isDestroyed()) { EL.ipcMain.emit('bnc:open-screen', {}, kind, ''); await new Promise(r => setTimeout(r, 900)); }
+  placeOut(kind);
 }
