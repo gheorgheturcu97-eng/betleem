@@ -11,6 +11,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import * as nodeModule from 'node:module';
 import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
@@ -321,6 +322,7 @@ function snapshot() {
       track: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.track || '' : undefined,
       stems: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.stems || [] : undefined,
       cues: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.cues || [] : undefined,
+      guide: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.guide || [] : undefined,     // 🎧 the map in bars, for songs without tracks
       origBpm: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.bpm || 0 : undefined,
       beatOffset: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.beatOffset || 0 : undefined,
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
@@ -630,6 +632,12 @@ function handleMessage(ws, m) {
         }
         save(); reply({ type: 'cleaned', changed, ordered, total: db.songs.length });
         break;
+      }
+      case 'setGuide': {                             // 🎧 track virtual: where each section starts, in bars (no audio is kept)
+        const it = db.setlist[m.item]; const song = it?.kind === 'song' && db.songs.find(x => x.id === it.songId); if (!song) break;
+        song.guide = (Array.isArray(m.marks) ? m.marks : []).slice(0, 80).map(x => ({ bar: Math.max(0, Math.min(999, Math.round(Number(x.bar) || 0))), p: Math.max(0, Math.min(80, Math.round(Number(x.p) || 0))) }))
+          .filter((x, i, a) => a.findIndex(y => y.p === x.p) === i).sort((a, b) => a.bar - b.bar);
+        song.updatedAt = new Date().toISOString(); break;
       }
       case 'setStems': case 'setCues': {             // multitrack: the stems of a song and the moments where each slide starts
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
@@ -1682,6 +1690,8 @@ async function handle(req, res) {
       finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
+    if (p === '/api/ghid' && req.method === 'GET') return json(res, 200, guideVoices());          // 🎧 the voices for the guide
+    if (p.startsWith('/ghid/')) return file(res, GHID_DIR, path.basename(decodeURIComponent(p.slice(6))), req);
     if (p.startsWith('/userfonts/')) return file(res, FONTS_DIR, path.basename(decodeURIComponent(p.slice(11))), req);
     if (p === '/api/fonts' && req.method === 'POST') {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
@@ -1696,6 +1706,23 @@ async function handle(req, res) {
   }
 }
 
+// 🎧 the church's guide voices ("Chorus", "Verse 2", "1"…): Documents/Betleem/ghid. A ghid-voci.zip put in
+// Documents/Betleem is unpacked there once. They stay on this computer (they may be licensed): never in updates.
+const GHID_DIR = path.join(DATA_DIR, 'ghid');
+function guideVoices() {
+  const zip = path.join(DATA_DIR, 'ghid-voci.zip');
+  if (fs.existsSync(zip) && !fs.existsSync(GHID_DIR)) {
+    try {
+      fs.mkdirSync(GHID_DIR, { recursive: true });
+      execFileSync(process.platform === 'win32' ? 'tar' : 'unzip', process.platform === 'win32' ? ['-xf', zip, '-C', GHID_DIR] : ['-q', '-j', '-o', zip, '-d', GHID_DIR], { timeout: 60000 });
+      for (const f of fs.readdirSync(GHID_DIR, { recursive: true })) {      // folders inside the zip: bring the sounds up
+        const full = path.join(GHID_DIR, String(f));
+        if (fs.statSync(full).isFile() && path.dirname(full) !== GHID_DIR) fs.renameSync(full, path.join(GHID_DIR, path.basename(full)));
+      }
+    } catch (e) { logError('vocile de ghid', e); }
+  }
+  try { return fs.readdirSync(GHID_DIR).filter(f => /\.(wav|mp3|m4a|aif|aiff|ogg|flac)$/i.test(f) && !f.startsWith('.')).sort(); } catch { return []; }
+}
 const guesses = new Map();                     // address → { n, until }: slows down anyone trying PINs one after another
 const who = req => String((req.viaDoor && req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket?.remoteAddress || '?');
 function locked(addr) { const g = guesses.get(addr); return !!g && g.until > Date.now(); }

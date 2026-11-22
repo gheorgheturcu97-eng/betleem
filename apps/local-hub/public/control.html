@@ -270,6 +270,15 @@
   .trk canvas{position:absolute;inset:0;width:100%;height:100%}
   .arrange .playhead{left:calc(var(--th) + (100% - var(--th)) * var(--p,0));top:0;bottom:0}
   .arrange .lane-empty{position:absolute;inset:58px 0 0 var(--th)}
+  /* 🎧 track virtual */
+  .vt{display:flex;flex-direction:column;gap:12px;align-items:center;max-width:760px;width:100%;pointer-events:auto}
+  .vt h4{margin:0;font-size:15px;color:var(--text)} .vt .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .vt .keys{display:flex;flex-wrap:wrap;gap:6px;justify-content:center} .vt .keys span{padding:4px 9px;border-radius:9px;background:rgba(255,255,255,.07);font-size:12px}
+  .vt .keys b{color:var(--acc);margin-right:5px}
+  .vt .bars{position:relative;width:100%;height:44px;border-radius:10px;background:rgba(0,0,0,.35);overflow:hidden}
+  .vt .bars .sec{position:absolute;top:0;bottom:0;border-left:2px solid var(--sc);background:color-mix(in srgb,var(--sc) 22%,transparent);padding:4px 6px;font-size:11px;color:#fff;white-space:nowrap;overflow:hidden}
+  .vt .bars .vtph{position:absolute;top:0;bottom:0;width:2px;background:#ff3b30}
+  .vt .on{background:#e5484d!important;color:#fff!important} .vt .big{font:700 22px ui-monospace,Menlo,monospace}
   .mixer{min-height:200px;flex:none} .mixer .strip .fz{height:110px} .mixer .strip input.fader{height:110px}
   .tagbar{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:5px;flex-basis:100%;order:10;align-items:center;mask-image:linear-gradient(90deg,#000 92%,transparent)}
   .tagbar>*{flex:none}
@@ -1055,17 +1064,18 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <button id="tlStart" hidden></button>
       </div>
       <div class="pop glass mtools" id="mToolsPop">
-        <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Învață cue-urile</button>
+        <b class="hint" style="margin:0">Secțiunile cântării</b>
+        <button id="aiCues" class="pill acc" title="AI-ul găsește track-ul cu ghidul vorbit, ascultă „Verse”, „Chorus”, „Bridge” (sau „Strofa”, „Refren”) și pune secțiunile pe track-uri. Rămân salvate la cântare.">✦ Secțiuni automat (AI ascultă ghidul)</button>
+        <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Le pun eu (apăs la fiecare slide)</button>
         <label class="check"><input type="checkbox" id="tlAuto" checked> Versurile merg singure după track</label>
         <label class="btn pill" title="Unul sau mai multe fișiere audio: click, guide, tobe, bas, clape…">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*" multiple hidden></label>
         <button id="audioOut" class="pill" title="Ce iese pe fiecare ieșire a plăcii de sunet; microfonul MD">🎛 Rutare audio și microfon MD</button>
-        <button id="aiCues" class="pill" title="AI-ul ascultă track-ul de cue (Guide: „Verse”, „Chorus”…) și pune singur secțiunile și structura">✦ Secțiunile din track-ul de cue (AI)</button>
         <button id="beatHere" class="pill" title="Pune redarea pe primul timp al cântării (prima lovitură) și apasă: click-ul se aliniază cu track-urile">⌖ Primul timp e aici (aliniază click-ul)</button>
         <p class="hint" style="margin:0">Pe rândul cu secțiuni: dublu-clic pune secțiunea următoare acolo, clic dreapta alege ce secțiune începe acolo.</p>
       </div>
       <div class="voice-say" id="voiceSay" hidden></div>
       <div class="glass arrange" id="lane">
-        <div class="arow head"><div class="th">Secțiuni</div><div class="tc"><div class="ruler" id="ruler"></div><div class="blocks" id="blocks"></div></div></div>
+        <div class="arow head"><div class="th">Secțiuni <button id="aiCues2" class="mini" title="✦ AI-ul ascultă ghidul vorbit și pune secțiunile">✦ auto</button></div><div class="tc"><div class="ruler" id="ruler"></div><div class="blocks" id="blocks"></div></div></div>
         <div class="tracks" id="tracks"></div>
         <div class="marklines" id="markLines"></div>
         <div class="playhead" id="playhead"></div>
@@ -2753,6 +2763,75 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     send({ type: 'setCues', item: mtItem, cues });
   }
   const sectionNames = () => sectionStarts(mtSlides).map((k, p) => ({ p, label: mtSlides[k]?.label || 'Slide ' + (k + 1) }));
+  // ---- 🎧 TRACK VIRTUAL: songs without tracks get click + pad + spoken guide from a map in bars (keys 1–9 build it live)
+  let vt = null, vtRec = false, vtVoices = 0;
+  async function vtGet() {
+    if (vt) return vt;
+    const { VirtualTrack } = await import('/guide.js');
+    met.init?.();
+    vt = new VirtualTrack({ met, out: () => (mt.bus ? mt.bus('guide') : met.ctx.destination),
+      onSection: m => { const st = sectionStarts(mtSlides)[m.p]; if ($('tlAuto')?.checked && st !== undefined) send({ type: 'go', item: mtItem, slide: st }); },
+      onBar: () => vtDraw() });
+    vtVoices = await vt.loadVoices();
+    return vt;
+  }
+  const vtMarks = () => (S.setlist[mtItem]?.guide || []).slice();
+  const vtLabels = () => { const seen = []; for (const n of sectionNames()) if (!seen.includes(n.label)) seen.push(n.label); return seen; };   // key 1 = first kind of section, 2 = the next…
+  function vtPanel() {
+    const it = S?.setlist[mtItem]; if (!it || it.kind !== 'song') return 'Alege o cântare.';
+    const bpm = songBpmNow(), run = vt?.running;
+    return `<div class="vt"><h4>🎧 Cântare fără track-uri: track virtual (click + pad + ghid vorbit)</h4>
+      <div class="hint">${bpm ? `${bpm} BPM · ${met.beats || 4}/4` : 'Pune întâi BPM-ul cântării sus (sau Tap).'} · vocile: ${vtVoices ? vtVoices + ' înregistrări ale voastre' : 'vocea calculatorului (pune ghid-voci.zip în Documente/Betleem)'}</div>
+      <div class="row"><button data-vt="play" class="${run ? 'on' : 'acc'}">${run ? '■ Oprește' : '▶ Pornește track-ul virtual'}</button>
+        <button data-vt="rec" class="${vtRec ? 'on' : ''}" title="În timp ce merge click-ul, apasă 1, 2, 3… când începe fiecare secțiune">${vtRec ? '● Pun secțiunile… (apasă din nou ca să termini)' : '● Pun eu secțiunile (taste 1–9)'}</button>
+        <button data-vt="clear" class="ghost" title="Șterge harta">🗑</button>${run ? `<span class="big" id="vtBar"></span>` : ''}</div>
+      <div class="keys">${vtLabels().slice(0, 9).map((l, k) => `<span><b>${k + 1}</b>${esc(l)}</span>`).join('')}</div>
+      <div class="bars" id="vtBars" title="Clic dreapta: pune o secțiune la măsura aleasă"></div>
+      <div class="hint">Harta rămâne salvată la cântare. Ghidul anunță fiecare secțiune cu o măsură înainte; slide-urile merg singure dacă e bifat „Versurile merg singure”.</div></div>`;
+  }
+  function vtDraw() {
+    const el = $('vtBars'); if (!el) return;
+    const names = sectionNames(), marks = vtMarks(), last = Math.max(16, ...marks.map(m => m.bar + 8), (vt?.bar || 0) + 4), pct = b => b / last * 100;
+    el.innerHTML = marks.map((m, k) => { const end = marks[k + 1]?.bar ?? last; const l = names[m.p]?.label || '?';
+      return `<div class="sec" style="left:${pct(m.bar)}%;width:${pct(end - m.bar)}%;--sc:${sectionColor(l)}">${esc(l)} · m.${m.bar + 1}</div>`; }).join('')
+      + (vt?.running ? `<div class="vtph" style="left:${pct(Math.max(0, vt.bar) + vt.beatNow / (met.beats || 4))}%"></div>` : '');
+    if ($('vtBar')) $('vtBar').textContent = vt.bar < 0 ? 'numărătoare ' + (vt.beatNow + 1) : `m. ${vt.bar + 1} · ${vt.beatNow + 1}`;
+  }
+  function vtSave(marks) { send({ type: 'setGuide', item: mtItem, marks }); }
+  async function vtToggle() {
+    const v = await vtGet();
+    if (v.running) { v.stop(); vtRec = false; $('metTop').classList.remove('on'); $('metTop').textContent = '♩ Click'; renderLane(); return; }
+    const bpm = +$('bpm').value || songBpmNow(); if (!bpm) return toast('Pune întâi BPM-ul cântării (sus, la BPM, sau Tap)');
+    met.setBpm(bpm); if (met.playing) met.pause();
+    const key = songKeyNow().replace(/m$/, ''); if (key && !pad.playing) try { await pad.play(key); } catch {}
+    await v.start({ marks: vtMarks(), names: sectionNames().map(n => n.label) });
+    $('metTop').classList.add('on'); $('metTop').textContent = '♩ Click ❚❚'; renderLane(); vtDraw();
+  }
+  $('laneEmpty').addEventListener('click', async e => {
+    const b = e.target.closest('[data-vt]'); if (!b) return;
+    if (b.dataset.vt === 'play') vtToggle();
+    if (b.dataset.vt === 'rec') { vtRec = !vtRec; if (vtRec && !vt?.running) await vtToggle(); renderLane(); vtDraw(); if (vtRec) toast('Apasă 1–9 când începe fiecare secțiune'); }
+    if (b.dataset.vt === 'clear') { vtSave([]); toast('Harta e ștearsă'); }
+  });
+  $('laneEmpty').addEventListener('contextmenu', e => {
+    const bars = e.target.closest('#vtBars'); if (!bars) return; e.preventDefault(); e.stopPropagation();
+    const r = bars.getBoundingClientRect(), marks = vtMarks(), last = Math.max(16, ...marks.map(m => m.bar + 8), (vt?.bar || 0) + 4);
+    const bar = Math.max(0, Math.round((e.clientX - r.left) / r.width * last));
+    ctxOpen(e.clientX, e.clientY, [...sectionNames().map(({ p, label }) => ({ l: `Pune aici ${label} (măsura ${bar + 1})`, run: () => vtSave([...marks.filter(m => m.p !== p), { bar, p }]) })),
+      '-', { l: 'Șterge harta', run: () => vtSave([]), dis: !marks.length }]);
+  });
+  addEventListener('keydown', e => {                   // 1–9 while the virtual track records: that kind of section starts at this downbeat
+    if (!vtRec || !vt?.running || $('musicView').hidden || e.metaKey || e.ctrlKey || e.altKey || !/^[1-9]$/.test(e.key) || e.target.closest?.('input,textarea,select')) return;
+    e.preventDefault();
+    const label = vtLabels()[+e.key - 1]; if (!label) return;
+    const bar = vt.barForPress(), marks = vtMarks(), names = sectionNames();
+    // the next time this kind of section comes in the order and isn't placed before now
+    const p = names.find(n => n.label === label && !marks.some(m => m.p === n.p && m.bar < bar))?.p;
+    if (p === undefined) return toast(label + ': toate aparițiile sunt deja puse');
+    const next = [...marks.filter(m => m.p !== p), { bar, p }];
+    S.setlist[mtItem].guide = next; vt.marks = next.slice().sort((a, b) => a.bar - b.bar); vtSave(next); vtDraw();
+    toast(`${label} · măsura ${bar + 1}`);
+  });
   const laneTime = e => { const r = $('blocks').getBoundingClientRect(); return Math.max(0, Math.min(mt.duration, (e.clientX - r.left) / r.width * mt.duration)); };
   $('lane').addEventListener('dblclick', e => {
     if (!e.target.closest('#blocks, .arow.head') || !mt.duration) return;
@@ -2769,41 +2848,81 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       '-', near ? { l: 'Mută „' + sectionNames()[near.p]?.label + '” la poziția redării', run: () => saveMarks(marks.map(m => m === near ? { ...m, t: mt.time } : m)) } : null,
       near ? { l: 'Șterge secțiunea de aici', run: () => saveMarks(marks.filter(m => m !== near)) } : null,
       { l: 'Șterge toate secțiunile', run: () => send({ type: 'setCues', item: mtItem, cues: [] }), dis: !marks.length },
-      { l: '✦ Pune secțiunile din track-ul de cue (AI)', run: () => aiCues() },
+      { l: '✦ Secțiuni automat (AI ascultă ghidul)', run: () => aiCues() },
     ]);
   });
+  // ⇔ drag the start of a section (grab its left edge) to move it; the map is saved on the song
+  let dragMk = null;
+  $('blocks').addEventListener('pointerdown', e => {
+    const b = e.target.closest('.blk'); if (!b || !mt.duration) return;
+    const r = b.getBoundingClientRect(); if (e.clientX - r.left > 10) return;        // only the left edge moves; a click elsewhere jumps
+    const t0 = +b.dataset.t, marks = marksNow(), mk = marks.find(m => Math.abs(m.t - t0) < 0.05); if (!mk) return;
+    e.preventDefault(); e.stopPropagation(); b.setPointerCapture(e.pointerId);
+    dragMk = { b, mk, marks, t: mk.t };
+  });
+  $('blocks').addEventListener('pointermove', e => {
+    const b = e.target.closest('.blk'); if (!dragMk) { if (b) b.style.cursor = e.clientX - b.getBoundingClientRect().left <= 10 ? 'ew-resize' : ''; return; }
+    dragMk.t = laneTime(e); dragMk.b.style.left = (dragMk.t / mt.duration * 100) + '%';
+  });
+  $('blocks').addEventListener('pointerup', e => {
+    if (!dragMk) return; const d = dragMk; dragMk = null; e.stopPropagation();
+    saveMarks(d.marks.map(m => m === d.mk ? { ...m, t: d.t } : m)); toast(sectionNames()[d.mk.p]?.label + ' începe acum la ' + fmt(d.t));
+  });
+  $('blocks').addEventListener('click', e => { if (e.target.closest('.blk') && e.clientX - e.target.closest('.blk').getBoundingClientRect().left <= 10) e.stopImmediatePropagation(); }, true);
   // ✦ the AI listens to the cue / guide track ("Verse 2", "Chorus") and places the sections, then sets the order of the song
+  // ✦ Secțiuni automat: find the spoken guide track, listen to it (Whisper) and put the sections on the tracks.
+  // If the voice model can't be used (no internet the first time), the pauses in the guide still give the places,
+  // and the names come from the song's order. Either way the map is saved on the song, for every next program.
   async function aiCues() {
     const i = mtItem, it = S.setlist[i]; if (!it || !mt.ch.length) return toast('Alege o cântare cu track-uri');
-    const cueTrack = mt.ch.find(c => /cue|guide|ghid/i.test(c.name || c.file));
-    if (!cueTrack) return toast('Nu găsesc un track „Cue” sau „Guide”. Redenumește track-ul cu indicațiile vorbite.');
     const V = await import('/voice.js');
     const say = t => { $('voiceSay').hidden = !t; $('voiceSay').textContent = t || ''; };
+    const url = c => '/media/' + encodeURIComponent(c.file);
+    let cueTrack = mt.ch.find(c => /cue|guide|ghid|voice ?cues|vocal ?guide/i.test(c.name || c.file)), bursts = null;
     try {
-      say('✦ Ascult „' + (cueTrack.name || cueTrack.file) + '”… (poate dura un minut)');
-      const words = await V.transcribeTimed('/media/' + encodeURIComponent(cueTrack.file), st => st.note && say('✦ ' + st.note));
-      const heard = V.cuesFromWords(words); say('');
-      if (!heard.length) return toast('Nu am auzit nume de secțiuni în track-ul de cue');
-      // the order of the song from what was heard
-      const core = await import('/core/song.js'), song = await getSong(it), parsed = core.parseSong(song.body);
-      const counts = {}, order = [], times = [];
-      for (const h of heard) {
-        counts[h.kind] = (counts[h.kind] || 0) + 1;
-        const n = h.n || (h.kind === 'strofa' ? counts[h.kind] : null);
-        const sec = parsed.find(x => x.label && V.sectionMatches(x.label, h.kind, n)) || parsed.find(x => x.label && V.sectionMatches(x.label, h.kind, null));
-        if (!sec) continue;                           // an intro or an instrumental without words: no slide
-        const bar = (60 / (it.bpm || it.origBpm || 0)) * (met.beats || 4);
-        order.push(sec.label); times.push(Number.isFinite(bar) && bar > 0 && bar < 8 ? h.t + bar : h.t + 1.5);   // the cue is spoken a bar before the section
+      if (!cueTrack) {                                // no name to go by: the guide is the track that is almost always quiet
+        say('✦ Caut track-ul cu ghidul vorbit…');
+        let best = null;
+        for (const c of mt.ch.filter(c => !/click|metro|clic/i.test(c.name || c.file)).slice(0, 16)) {
+          const b = await V.speechBursts(url(c)).catch(() => null);
+          if (b && b.active > 0.005 && b.active < 0.25 && b.times.length >= 2 && (!best || b.active < best.b.active)) best = { c, b };
+        }
+        if (!best) { say(''); return toast('Nu găsesc un track cu ghid vorbit. Pune în numele lui „Guide” sau „Cue”.'); }
+        cueTrack = best.c; bursts = best.b;
       }
-      if (!order.length) return toast('Am auzit ' + heard.map(h => h.kind).join(', ') + ', dar cântarea nu are secțiuni cu aceste nume');
+      const core = await import('/core/song.js'), song = await getSong(it), parsed = core.parseSong(song.body);
+      const bar = (60 / (it.bpm || it.origBpm || song.bpm || 0)) * (met.beats || 4), lead = Number.isFinite(bar) && bar > 0 && bar < 8 ? bar : 1.5;  // the cue is spoken a bar before
+      let order = [], times = [], how = '';
+      try {
+        say('✦ Ascult „' + (cueTrack.name || cueTrack.file) + '”… (poate dura un minut)');
+        const words = await V.transcribeTimed(url(cueTrack), st => (st.note || st.error) && say('✦ ' + (st.note || st.error)));
+        const counts = {};
+        for (const h of V.cuesFromWords(words)) {
+          counts[h.kind] = (counts[h.kind] || 0) + 1;
+          const n = h.n || (h.kind === 'strofa' ? counts[h.kind] : null);
+          const sec = parsed.find(x => x.label && V.sectionMatches(x.label, h.kind, n)) || parsed.find(x => x.label && V.sectionMatches(x.label, h.kind, null));
+          if (!sec) continue;                         // an intro or an instrumental without words: no slide
+          order.push(sec.label); times.push(h.t + lead);
+        }
+        how = 'am auzit ghidul';
+      } catch (e) { say('✦ ' + e.message + ' Folosesc pauzele din ghid.'); }
+      if (!order.length) {                            // no words: the places from the pauses, the names from the song's order
+        bursts ||= await V.speechBursts(url(cueTrack));
+        const names = (it.arrangement?.length ? it.arrangement : song.arrangement?.length ? song.arrangement : parsed.filter(x => x.label).map(x => x.label));
+        const t = bursts.times.filter(x => x < mt.duration - 2);
+        if (!t.length || !names.length) { say(''); return toast('Nu am găsit anunțurile în ghid'); }
+        order = names.slice(0, t.length); times = t.slice(0, order.length).map(x => x + lead);
+        how = 'după pauzele din ghid; verifică numele (clic dreapta pe secțiune ca s-o schimbi)';
+      }
+      say('');
       send({ type: 'arrangement', item: i, value: order });
-      const slides = core.toSlides(core.arrange(parsed, order), it.maxLines || 4);
-      mtSlides = slides;
+      mtSlides = core.toSlides(core.arrange(parsed, order), it.maxLines || 4);
       saveMarks(order.map((_, p) => ({ t: Math.min(times[p], mt.duration), p })));
-      toast(`✦ Am pus ${order.length} secțiuni: ${order.map(l => abbr(l)).join(' ')}`);
-    } catch (e) { say(''); toast('AI-ul nu a putut asculta track-ul: ' + e.message); }
+      toast(`✦ ${order.length} secțiuni (${how}): ${order.map(l => abbr(l)).join(' ')}`);
+    } catch (e) { say(''); toast('Nu am putut asculta track-ul: ' + e.message); }
   }
   $('aiCues').onclick = () => { $('mToolsPop').classList.remove('show'); aiCues(); };
+  $('aiCues2').onclick = e => { e.stopPropagation(); aiCues(); };
   $('beatHere').onclick = () => { $('mToolsPop').classList.remove('show'); const i = mtItem; if (!S.setlist[i]) return;
     send({ type: 'setBpm', item: i, offset: mt.time }); toast('Click-ul pornește de la ' + fmt(mt.time)); if (met.synced) met.playWith(mt, mt.time); };
   // ⏮ ⏭ sections, and the section playing now
@@ -2946,7 +3065,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const dur = mt.duration, cues = cuesNow(), has = mt.ch.length > 0;
     $('laneEmpty').style.display = has && (cues.length || learning) ? 'none' : 'grid';
     $('laneEmpty').classList.toggle('inhead', has);            // with tracks: the hint sits in the sections row, not on the waveforms
-    $('laneEmpty').innerHTML = !has ? 'Adaugă track-urile cântării (＋ Track-uri): click, guide, tobe, bas, clape…<br>Fiecare apare aici ca o pistă și primește un fader jos.'
+    $('laneEmpty').innerHTML = !has ? vtPanel()
       : 'Dublu-clic aici unde începe fiecare secțiune (sau clic dreapta ca s-o alegi) · ✦ în ⋯ le pune AI-ul din track-ul de cue.';
     const blocks = sectionBlocks(), pct = t => dur ? (t / dur * 100) : 0;
     $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" data-l="${esc(b.label)}" title="Apasă ca să sari aici (la următoarea măsură, dacă merge)" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
@@ -3041,7 +3160,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (n + 1 >= mtSlides.length) toast('Ultimul slide. Apasă ⏹ Gata când vrei.');
   }
   function finishLearning() {
-    learning = false; $('tlLearn').classList.remove('rec'); $('tlLearn').textContent = '⏺ Învață cue-urile';
+    learning = false; $('tlLearn').classList.remove('rec'); $('tlLearn').textContent = '⏺ Le pun eu (apăs la fiecare slide)';
     if (learnCues.length) {
       const starts = sectionStarts(mtSlides);
       const cues = learnCues.map(c => starts.includes(c.slide) ? { ...c, mark: true } : c);     // the start of each section: a marker
@@ -3072,7 +3191,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   function renderRouteGrid() {
     const n = mt.outCount; $('rtN').textContent = n + ' ieșiri';
-    const rows = [['__master', 'Master (restul)', '#ffbf2f', mt.masterOut || 'main'], ['__click', 'Metronom (click-ul aplicației)', '#9aa3ad', mt.routes.__click || 'main'], ['__pad', 'Pad', '#b38cff', mt.routes.__pad || 'main'], ...mt.ch.map((c, k) => [String(c.name || c.file).toLowerCase(), c.name || c.file, trackColor(k, c.name), c.out || 'main'])];
+    const rows = [['__master', 'Master (restul)', '#ffbf2f', mt.masterOut || 'main'], ['__click', 'Metronom (click-ul aplicației)', '#9aa3ad', mt.routes.__click || 'main'], ['__pad', 'Pad', '#b38cff', mt.routes.__pad || 'main'], ['__guide', 'Ghid vorbit (track virtual)', '#5ad1c8', mt.routes.__guide || 'main'], ...mt.ch.map((c, k) => [String(c.name || c.file).toLowerCase(), c.name || c.file, trackColor(k, c.name), c.out || 'main'])];
     $('rtGrid').innerHTML = rows.map(([key, label, color, cur]) => `<label style="--tc:${color}"><i></i><b>${esc(label)}</b><select data-r="${esc(key)}">${outOptions(n, cur)}</select></label>`).join('')
       + (mt.ch.length ? '' : '<p class="hint">Alege o cântare cu track-uri ca să le rutezi. Rutarea se ține minte după numele track-ului (Click, Guide, Tobe…), pentru toate cântările.</p>');
     $('rtGrid').querySelectorAll('[data-r]').forEach(sel => sel.onchange = () => {

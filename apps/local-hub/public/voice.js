@@ -27,16 +27,53 @@ function nativeListen(lang, onState) {
 }
 
 // ---- Whisper on this computer (transformers.js): a small model that understands Romanian
-let asr = null;
+let asr = null, asrP = null;
+/** Whisper is downloaded once (~80 MB, kept in the browser cache). Progress is for all files together, and a
+ *  download that stops for 60 s ends with a clear message (instead of staying at 0% forever). */
 async function whisper(onState) {
   if (asr) return asr;
-  onState({ loading: true, note: 'Pregătesc recunoașterea vocii (prima dată se descarcă ~80 MB)…' });
-  const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
-  env.allowLocalModels = false;
-  asr = await pipeline('automatic-speech-recognition', 'onnx-community/whisper-base', {
-    dtype: 'q8', progress_callback: p => { if (p.status === 'progress' && p.total) onState({ loading: true, note: `Descarc vocea: ${Math.round(p.loaded / p.total * 100)}%` }); },
-  });
-  return asr;
+  if (asrP) return asrP;
+  asrP = (async () => {
+    onState({ loading: true, note: 'Pregătesc recunoașterea vocii (prima dată se descarcă ~80 MB)…' });
+    let lib;
+    try { lib = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2'); }
+    catch { throw new Error('Nu pot descărca recunoașterea vocii. Ai internet? (prima dată e nevoie, apoi merge și fără)'); }
+    const { pipeline, env } = lib;
+    env.allowLocalModels = false;
+    const files = {}; let last = Date.now(), stalled;
+    const watch = new Promise((_, bad) => { stalled = setInterval(() => { if (Date.now() - last > 60_000) bad(new Error('Descărcarea vocii s-a oprit (internet slab?). Încearcă din nou; continuă de unde a rămas.')); }, 5000); });
+    try {
+      return asr = await Promise.race([watch, pipeline('automatic-speech-recognition', 'onnx-community/whisper-base', {
+        dtype: 'q8', progress_callback: p => {
+          last = Date.now();
+          if (p.file && p.total) files[p.file] = [p.loaded || 0, p.total];
+          const all = Object.values(files), got = all.reduce((x, f) => x + f[0], 0), tot = all.reduce((x, f) => x + f[1], 0);
+          if (tot) onState({ loading: true, note: `Descarc vocea: ${Math.round(got / tot * 100)}% (${(got / 1e6).toFixed(0)} din ${(tot / 1e6).toFixed(0)} MB)` });
+        } })]);
+    } finally { clearInterval(stalled); }
+  })();
+  try { return await asrP; } catch (e) { asrP = null; onState({ loading: false, error: e.message }); throw e; }
+}
+
+/** Without any AI: where someone speaks in a guide track. The guide is quiet except the spoken cues (and maybe a
+ *  count-in), so loud stretches of 0.25–4 s separated by silence are the announcements. Returns start times (s). */
+export async function speechBursts(url) {
+  const buf = await fetch(url).then(r => r.arrayBuffer());
+  const audio = await new OfflineAudioContext(1, 1, 8000).decodeAudioData(buf);
+  const d = audio.getChannelData(0), sr = audio.sampleRate, win = Math.round(sr * 0.05), rms = [];
+  for (let i = 0; i + win <= d.length; i += win) { let e = 0; for (let j = i; j < i + win; j++) e += d[j] * d[j]; rms.push(Math.sqrt(e / win)); }
+  const sorted = [...rms].sort((a, b) => a - b), floor = sorted[Math.floor(sorted.length * 0.5)] || 0, peak = sorted[Math.floor(sorted.length * 0.995)] || 0;
+  const th = Math.max(floor * 4, peak * 0.12, 0.004);
+  const out = []; let start = -1, quiet = 0;
+  for (let k = 0; k < rms.length; k++) {
+    if (rms[k] > th) { if (start < 0) start = k; quiet = 0; }
+    else if (start >= 0 && ++quiet > 30) {                 // 1.5 s of silence ends a phrase (a count-in "1 2 3 4" stays one phrase)
+      const len = (k - quiet - start) * 0.05; if (len >= 0.25 && len <= 6) out.push(start * 0.05);
+      start = -1; quiet = 0;
+    }
+  }
+  const active = rms.filter(x => x > th).length / Math.max(1, rms.length);
+  return { times: out.filter((t, i) => !i || t - out[i - 1] > 4), active };
 }
 
 async function whisperListen(onState) {
