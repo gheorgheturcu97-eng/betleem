@@ -484,3 +484,27 @@ test('🙋 volunteers: personal link, confirm, blocked days and monthly limit; �
   assert.ok(lt.tasks.some(t => t.text === 'Sună la tipografie' && t.who === 'Ana Pop'));
   assert.ok(lt.meetings.some(m => m.agenda.includes('Bugetul pentru Crăciun')));
 });
+
+test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' };
+  const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());
+  assert.equal(sec.doorOpen, true); assert.equal(sec.doorPort, 4600);
+  await new Promise(r => setTimeout(r, 200));
+  const D = 'http://127.0.0.1:4600';
+  for (const pth of ['/control.html', '/planning.html', '/api/plan', '/api/this', '/api/songs', '/api/security', '/main.html', '/live.html', '/media/x.png', '/api/backup', '/api/eu-x', '/planning.html?x'])
+    assert.equal((await fetch(D + pth, { headers: { 'x-pin': '2222' } })).status, 404, pth + ' must not exist behind the door');
+  assert.equal((await fetch(D + '/eu.html')).status, 200);
+  assert.equal((await fetch(D + '/live.html?v=next')).status, 200);
+  assert.equal((await fetch(D + '/api/next')).status, 200);
+  const r = await fetch(D + '/eu.html'); assert.equal(r.headers.get('referrer-policy'), 'no-referrer');
+  // the door is "the internet", never "this computer", even though the tunnel connects from 127.0.0.1
+  assert.equal((await fetch(D + '/api/security', { method: 'POST', body: '{"door":false}' })).status, 404);
+  // guessing personal links from outside
+  let last;
+  for (let i = 0; i < 6; i++) last = await fetch(D + '/api/eu?t=' + 'x'.repeat(24), { headers: { 'x-forwarded-for': '203.0.113.9' } });
+  assert.equal(last.status, 429);
+  assert.equal((await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: false }) }).then(r => r.json())).doorOpen, false);
+  // guessing PINs on the network: after 5 wrong tries even the right PIN waits
+  for (let i = 0; i < 5; i++) await fetch('http://localhost:4599/api/plan', { headers: { 'x-pin': '000' + i } });
+  assert.equal((await fetch('http://localhost:4599/api/plan', { headers: { 'x-pin': '2222' } })).status, 401);
+});

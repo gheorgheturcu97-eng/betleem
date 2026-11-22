@@ -37,6 +37,9 @@ const LEADER_PIN = String(process.env.LEADER_PIN || PIN);
 // Desktop app: windows on this same computer are trusted as leader (phones still need a PIN)
 const TRUST_LOCALHOST = process.env.TRUST_LOCALHOST === '1';
 const isLocal = addr => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(String(addr));
+/** This computer itself (trusted as leader with TRUST_LOCALHOST). Never true for the 🌐 public door: the tunnel also
+ *  connects from 127.0.0.1, so without this check anyone on the internet would count as "this computer". */
+const localReq = req => !req.viaDoor && isLocal(req.socket.remoteAddress);
 
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
@@ -374,7 +377,7 @@ function sermonIndex() {
 const need = (ws, role) => ROLE_RANK[sessions.get(ws)?.role ?? 'viewer'] >= ROLE_RANK[role];
 
 wss.on('connection', (ws, req) => {
-  sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) ? 'leader' : 'viewer' });
+  sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && localReq(req)) ? 'leader' : 'viewer', addr: String(req.socket.remoteAddress) });
   ws.send(JSON.stringify({ type: 'hello', role: sessions.get(ws).role, state: snapshot() }));
   ws.on('close', () => { const was = sessions.get(ws)?.role; sessions.delete(ws); if (was === 'preacher') broadcast(); });
   ws.on('message', raw => {
@@ -433,8 +436,11 @@ function handleMessage(ws, m) {
     }
 
     if (m.type === 'login') {
+      const addr = sessions.get(ws)?.addr || '?';
+      if (locked(addr)) return reply({ type: 'login', ok: false, role: sessions.get(ws).role, error: 'Prea multe încercări greșite. Așteaptă puțin.' });
       const role = safeEq(m.pin, LEADER_PIN) && LEADER_PIN ? 'leader' : safeEq(m.pin, PIN) && PIN ? 'operator'
         : safeEq(m.pin, db.preacherPin) ? 'preacher' : null;
+      if (!role) wrongPin(addr); else guesses.delete(addr);
       if (role) sessions.get(ws).role = role;
       reply({ type: 'login', ok: !!role, role: sessions.get(ws).role });
       if (role === 'preacher') broadcast();            // the operator sees that the preacher is connected
@@ -1417,7 +1423,7 @@ async function handle(req, res) {
     }
     if (p.startsWith('/api/canva/')) {                   // Canva: the leader connects once, then operators bring designs in
       if (p === '/api/canva/callback') {                 // Canva sends the browser back here after "Allow"
-        if (!isLocal(req.socket.remoteAddress)) return send(res, 403, 'Doar pe acest calculator');
+        if (!localReq(req)) return send(res, 403, 'Doar pe acest calculator');
         let msg = 'Canva e conectat. Poți închide această pagină și te întorci în Echipa Betleem.';
         try { if (url.searchParams.get('error')) throw new Error('Ai refuzat accesul în Canva.'); await canva.callback(url.searchParams.get('state'), url.searchParams.get('code')); }
         catch (e) { msg = e.message; }
@@ -1565,8 +1571,8 @@ async function handle(req, res) {
       return res.end(JSON.stringify({ app: 'betleem', name: os.hostname().replace(/\.local$/, ''), church: activeChurch()?.name || '' }));
     }
     if (p === '/api/this' && req.method === 'GET') {         // only on this computer: its addresses and PINs, to join from another one
-      if (!(TRUST_LOCALHOST && isLocal(req.socket.remoteAddress))) return json(res, 403, { error: 'Doar pe acest calculator' });
-      return json(res, 200, { name: os.hostname().replace(/\.local$/, ''), urls: lanIPs().map(i => `http://${i.address}:${PORT}`), pin: PIN, leaderPin: LEADER_PIN, preacherPin: db.preacherPin });
+      if (!(TRUST_LOCALHOST && localReq(req))) return json(res, 403, { error: 'Doar pe acest calculator' });
+      return json(res, 200, { name: os.hostname().replace(/\.local$/, ''), urls: lanIPs().map(i => `http://${i.address}:${PORT}`), pin: PIN, leaderPin: LEADER_PIN, preacherPin: db.preacherPin, publicUrl: db.security?.door && db.security.publicUrl || '' });
     }
     if (p === '/api/preacher/pin' && req.method === 'POST') {   // ↻ a new preacher PIN: the old QR stops working
       if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul (PIN de lider).' });
@@ -1605,6 +1611,20 @@ async function handle(req, res) {
         tasks: plan.tasks.filter(tk => tk.who === me.id).sort((a, b) => (a.done - b.done) || (a.due || '9').localeCompare(b.due || '9')).slice(0, 40),
         meetings: me.leader ? plan.meetings.filter(mt => new Date(mt.date).getTime() >= now).slice(0, 3).map(mt => ({ ...mt,
           tasks: plan.tasks.filter(tk => tk.meeting === mt.id).map(tk => ({ text: tk.text, who: name(tk.who), due: tk.due, done: tk.done })) })) : [] });
+    }
+    if (p === '/api/security') {                            // 🔒 the leader, on this computer only
+      if (req.viaDoor || !(localReq(req) || checkLeader(req))) return json(res, 403, { error: 'Doar liderul, pe calculatorul bisericii.' });
+      if (req.method === 'POST') {
+        const m = JSON.parse(await body(req, 5000) || '{}');
+        if ('door' in m) db.security.door = !!m.door;
+        if (typeof m.publicUrl === 'string') { const u = m.publicUrl.trim().replace(/\/+$/, ''); if (u && !/^https:\/\/[\w.-]+$/.test(u)) return json(res, 400, { error: 'Adresa trebuie să fie de forma https://nume.ts.net' }); db.security.publicUrl = u; }
+        if (typeof m.backupDir === 'string') db.security.backupDir = m.backupDir.trim().slice(0, 300);
+        if (m.backupNow) backup();
+        save();
+      }
+      let log = [];
+      try { log = fs.readFileSync(ACCESS_LOG, 'utf8').trim().split('\n').slice(-12).reverse(); } catch {}
+      return json(res, 200, { ...db.security, doorPort: DOOR_PORT, doorOpen: !!db.security.door && sendServer.listening, log });
     }
     if (p === '/api/next' && req.method === 'GET') {          // the QR at the office: the next program, read only, no PIN, no personal data
       const now = Date.now() - 3 * 3600_000, list = (db.plan?.services || []).filter(x => new Date(x.date).getTime() >= now).sort((a, b) => a.date.localeCompare(b.date));
@@ -1676,15 +1696,31 @@ async function handle(req, res) {
   }
 }
 
-function checkLeader(req) { return !LEADER_PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) || safeEq(req.headers['x-pin'], LEADER_PIN); }
-function checkPin(req) { return !PIN || (TRUST_LOCALHOST && isLocal(req.socket.remoteAddress)) || safeEq(req.headers['x-pin'], PIN) || safeEq(req.headers['x-pin'], LEADER_PIN); }
+const guesses = new Map();                     // address → { n, until }: slows down anyone trying PINs one after another
+const who = req => String((req.viaDoor && req.headers['x-forwarded-for']?.split(',')[0].trim()) || req.socket?.remoteAddress || '?');
+function locked(addr) { const g = guesses.get(addr); return !!g && g.until > Date.now(); }
+function wrongPin(addr) {
+  const g = guesses.get(addr) || { n: 0, until: 0 }; g.n++;
+  if (g.n >= 5) g.until = Date.now() + Math.min(3600_000, 60_000 * 2 ** (g.n - 5));   // 1 min, 2, 4… max 1 h
+  guesses.set(addr, g); if (guesses.size > 5000) guesses.clear();
+}
+function pinCheck(req, ok) {
+  const addr = who(req), given = req.headers['x-pin'];
+  if (given && locked(addr)) return false;
+  if (ok(given)) { guesses.delete(addr); return true; }
+  if (given) wrongPin(addr);
+  return false;
+}
+function checkLeader(req) { return !LEADER_PIN || (TRUST_LOCALHOST && localReq(req)) || (!req.viaDoor && pinCheck(req, x => safeEq(x, LEADER_PIN))); }
+function checkPin(req) { return !PIN || (TRUST_LOCALHOST && localReq(req)) || (!req.viaDoor && pinCheck(req, x => safeEq(x, PIN) || safeEq(x, LEADER_PIN))); }
 function safeEq(a, b) {
   const x = Buffer.from(String(a ?? '')), y = Buffer.from(String(b ?? ''));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 function clamp(n, lo, hi) { return Math.min(hi, Math.max(lo, Number.isFinite(n) ? n : lo)); }
 function pick(o, keys) { const r = {}; for (const k of keys) if (o && k in o) r[k] = o[k]; return r; }
-function send(res, code, data, type) { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-cache' }); res.end(data); }
+const SAFE = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'x-frame-options': 'SAMEORIGIN' };   // links carry personal tokens: never leak them
+function send(res, code, data, type) { res.writeHead(code, { 'content-type': type, 'cache-control': 'no-cache', ...SAFE }); res.end(data); }
 function json(res, code, o) { send(res, code, JSON.stringify(o), 'application/json; charset=utf-8'); }
 function redirect(res, to) { res.writeHead(302, { location: to }); res.end(); }
 function body(req, limit, raw = false) {
@@ -1703,16 +1739,55 @@ function file(res, dir, rel, req) {
   const range = req.headers.range?.match(/bytes=(\d*)-(\d*)/);   // video backgrounds need range requests
   if (range) {
     const start = Number(range[1] || 0), end = range[2] ? Number(range[2]) : size - 1;
-    res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes', 'content-length': end - start + 1 });
+    res.writeHead(206, { ...SAFE, 'content-type': type, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes', 'content-length': end - start + 1 });
     return fs.createReadStream(full, { start, end }).pipe(res);
   }
-  res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes', ...(/\.(html|js|css)$/.test(full) ? { 'cache-control': 'no-cache' } : {}) });
+  res.writeHead(200, { ...SAFE, 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes', ...(/\.(html|js|css)$/.test(full) ? { 'cache-control': 'no-cache' } : {}) });
   fs.createReadStream(full).pipe(res);
 }
 
 // Resolves when listening, rejects (e.g. EADDRINUSE) instead of crashing the desktop app.
 export const ready = new Promise((ok, bad) => { server.once('listening', ok); server.once('error', bad); });
 ready.catch(() => {});
+// ---- 🔒 Security: the public door, daily backups, access log -------------------------------------------------
+// The app itself stays on the church network. From the internet there is only the tiny server on 127.0.0.1 that
+// already receives files from phones (sendServer, below). When the leader opens "the door", that same server also
+// answers the volunteers' pages listed here, and NOTHING else (control, planning, PINs, screens, media, WebSocket).
+// A tunnel (Tailscale Funnel: a fixed https address) brings internet requests to it. No router ports are opened.
+db.security ||= { door: false, publicUrl: '', backupDir: '' };
+const DOOR_PORT = PORT + 1;                          // = SEND_PORT
+const DOOR_PAGES = new Set(['/eu.html', '/live.html', '/client.js', '/core/song.js', '/glass.js', '/glass.css']);
+const DOOR_API = new Set(['/api/eu', '/api/next']);
+const ACCESS_LOG = path.join(DATA_DIR, 'acces-internet.log');
+/** Called by the internet server for anything that isn't the file sending. Returns false if not one of the door's pages. */
+function doorHandle(req, res) {
+  req.viaDoor = true;
+  const u = new URL(req.url, 'http://x'), p = u.pathname, ip = who(req);
+  const okPath = db.security.door && ((req.method === 'GET' && DOOR_PAGES.has(p)) || DOOR_API.has(p))
+    && !(p === '/live.html' && u.searchParams.get('v') !== 'next');          // from outside: only the program, not the live screens
+  try { fs.appendFileSync(ACCESS_LOG, `${new Date().toISOString()} ${crypto.createHash('sha256').update(ip).digest('hex').slice(0, 8)} ${req.method} ${p}${okPath ? '' : ' BLOCAT'}\n`); } catch {}
+  if (!okPath) return false;
+  if (p === '/api/eu' && locked(ip)) return json(res, 429, { error: 'Prea multe încercări. Mai încearcă peste câteva minute.' });
+  res.on('finish', () => { if (p === '/api/eu' && res.statusCode === 404) wrongPin(ip); });     // someone guessing personal links
+  handle(req, res); return true;
+}
+/** Every day: a copy of everything (songs, plans, people) in Documents/Betleem/backup (30 days) and, if set, on the NAS. */
+function backup() {
+  const day = new Date().toISOString().slice(0, 10), src = path.join(DATA_DIR, 'library.json');
+  db.security.backupError = '';
+  for (const dir of [path.join(DATA_DIR, 'backup'), db.security.backupDir].filter(Boolean)) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const to = path.join(dir, `betleem-${day}.json`);
+      if (fs.existsSync(src)) fs.copyFileSync(src, to);
+      const old = fs.readdirSync(dir).filter(f => /^betleem-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().slice(0, -30);
+      for (const f of old) fs.rmSync(path.join(dir, f));
+      db.security.lastBackup = new Date().toISOString();
+    } catch (e) { db.security.backupError = (dir === db.security.backupDir ? 'NAS: ' : '') + e.message; }
+  }
+}
+setTimeout(backup, 20_000).unref?.(); setInterval(backup, 6 * 3600_000).unref?.();
+
 server.listen(PORT, '0.0.0.0', () => {
   const ips = Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal).map(i => i.address);
   console.log('\n  Bethlehem Network Churches — Local Hub\n');
@@ -1803,6 +1878,7 @@ const sendServer = http.createServer(async (req, res) => {
     if (p === '/api/send' && req.method === 'POST') return await handleSend(req, res, url);
     if (p === '/' || p === '/send.html') return file(res, PUBLIC, 'send.html', req);
     if (p.startsWith('/fonts/') && req.method === 'GET') return file(res, PUBLIC, p.slice(1), req);
+    if (doorHandle(req, res)) return;                 // 🔒 the volunteers' pages, only when the leader opened the door
     return send(res, 404, 'Not found', 'text/plain');
   } catch (e) { try { json(res, 400, { error: e.message }); } catch {} }
 });

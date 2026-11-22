@@ -1,6 +1,15 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-22 · 2026.11.22.2
+- **Serverul care primește fișiere din internet.** Înainte: putea doar primi fișiere. Acum: dacă liderul deschide
+  „ușa” (⚙ Setări → 🔒), răspunde și la paginile voluntarilor (linkul personal și programul următor), nimic altceva.
+- **PIN greșit de mai multe ori.** Înainte: se putea încerca la nesfârșit. Acum: după 5 greșeli, aștepți 1 minut
+  (apoi tot mai mult).
+- **Copii de siguranță.** Înainte: nu existau automat. Acum: o copie pe zi în Documente/Betleem/backup și pe NAS.
+- **Linkurile voluntarilor și QR-ul de la birou.** Acum: folosesc adresa publică (https://….ts.net) când e setată,
+  deci merg și de acasă.
+
 ## 2026-11-22 · 2026.11.22.1
 - **Programarea oamenilor.** Înainte: puteai pune pe cineva și într-o zi în care spusese că lipsește (apărea doar un
   avertisment). Acum: ziua blocată și limita lunară nu-l mai lasă (apare gri, cu motivul). Dacă își blochează ziua

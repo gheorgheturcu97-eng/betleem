@@ -1,4 +1,4 @@
-# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.22.1)
+# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.22.2)
 
 Totul de mai jos e în cod și publicat. Unde scrie **„neverificat”**, merge în teste, dar n-a fost încercat pe
 aparatura reală. Asta e primul lucru de verificat (vezi PLAN.md, Pasul 0).
@@ -83,9 +83,19 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   Betleem ▾ → Caută actualizări o forțează.
 - Publicare: `node scripts/publish-update.mjs <cheia privată>`.
 
-## Securitate (cum e acum)
-- Funcționează doar pe Wi-Fi-ul bisericii, cu PIN-uri pe roluri (vizualizare, operator, lider). Nimic deschis spre internet.
-- Cheile (PCO, Canva, Claude, semnătura) stau doar pe calculator. Numerele de telefon nu se transmit niciodată.
+## Securitate (vezi docs/SECURITATE.md)
+- Pe rețeaua bisericii, cu PIN-uri pe roluri (vizualizare, operator, lider, predicator). Ce intră pe calculatorul
+  însuși e de încredere; cererile din internet nu sunt niciodată tratate așa (`localReq`, `req.viaDoor`).
+- **Ușa pentru voluntari** (⚙ Setări → 🔒): același server mic de pe 127.0.0.1 care primește fișiere de pe telefon
+  (`sendServer`, port PORT+1 = 4546) răspunde, când liderul o deschide, DOAR la /eu.html, /api/eu, /api/next,
+  /live.html?v=next și fișierele lor. Restul: 404. Tunel: Tailscale Funnel (adresă https fixă). Linkurile
+  voluntarilor și QR-ul de la birou folosesc adresa publică atunci când e setată.
+- Încercările de PIN sunt limitate (5 greșeli → blocare 1 min, apoi tot mai mult). La fel linkurile ghicite din
+  internet (429). Antete de siguranță pe toate răspunsurile (no-referrer, nosniff, sameorigin).
+- Copie zilnică în Documents/Betleem/backup (30 de zile) și pe NAS, dacă e setat.
+- Jurnal de intrări din internet în `acces-internet.log` (doar o amprentă a adresei).
+- Cheile (PCO, Canva, Claude, semnătura) stau doar pe calculator. Numerele de telefon nu se transmit.
+- **Neverificat:** Tailscale Funnel și NAS-ul real.
 
 ## Încă deschise din urmă
 - Iconița aplicației din logo (trebuie un PNG de minim 512 px).

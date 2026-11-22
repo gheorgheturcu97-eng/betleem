@@ -124,7 +124,7 @@ reîncarcă după câteva ore.
 ## După prezentare
 ### ☐ 10 · **Lumini pentru colinde** (Pasul 2):
    > „Pasul 2 din docs/PLAN.md. Dimmer-ul e Eurolite <model>; în manual scrie că primește MIDI <...>.”
-### ☐ 11 · **Securitate și server** (Pasul 3), obligatoriu înainte de orice acces din afară:
+### ☑ 11 · (FĂCUT în 2026.11.22.2, partea de cod; rămân pașii tăi din docs/SECURITATE.md: Tailscale + NAS) **Securitate și server** (Pasul 3), obligatoriu înainte de orice acces din afară:
     > „Pasul 3 din docs/PLAN.md. Întâi planul de securitate pe hârtie, arată-mi-l, abia apoi codul.
     > NAS-ul e <model>, Mac mini-ul are <X> GB.”
 ### ☐ 11b · **Aplicația pe telefon, de oriunde** (după 11, cerută de proprietar)

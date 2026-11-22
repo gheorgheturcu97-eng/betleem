@@ -633,6 +633,7 @@
   .ph small{color:var(--mute);font-size:12px;line-height:1.4}
   .modal .glass.canva{width:min(860px,95vw);max-height:88vh;display:flex;flex-direction:column;gap:10px;overflow:auto}
   .cv-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45} .cv-steps code{font-size:12px;padding:1px 6px;border-radius:5px;background:rgba(0,0,0,.35)}
+  #secModal .sec-row{display:flex!important;flex-direction:row!important;justify-content:flex-start;text-align:left;gap:8px;align-items:center;margin:14px 0;font-size:14px} #secModal .sec-row input{width:18px;height:18px;margin:0;flex:none}
   .cv-steps a{color:var(--acc)}
   .cv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
   .cv-d{display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke);cursor:pointer;text-align:left}
@@ -1163,6 +1164,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="lite"><i>⚡</i><b>Mod rapid</b><span id="liteState">Mai puține efecte (fără sticlă și animații) pentru calculatoare mai slabe</span></button>
     <button data-s="ideas"><i>💡</i><b>Propuneri</b><span>Păreri și propuneri de îmbunătățire, pentru dezvoltarea aplicației</span></button>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
+    <button data-s="sec"><i>🔒</i><b>Acces de acasă și backup</b><span>Voluntarii își văd programarea de acasă; copii zilnice pe NAS</span></button>
   </div>
 </div></div>
 <div class="pop glass pco-pop" id="pcoPop">
@@ -1200,6 +1202,24 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   </div>
   <p class="hint" id="phUrl"></p>
   <p class="hint">Pe iPhone: în Safari → Partajează → <b>Adaugă pe ecranul principal</b> și arată ca o aplicație. Cine are PIN-ul de operator poate schimba și slide-urile din telefon.</p>
+</div></div>
+<div class="modal" id="secModal"><div class="glass canva">
+  <div class="look-head"><b>🔒 Acces de acasă și backup</b><span class="grow"></span><button id="secClose" class="icon" title="Închide">✕</button></div>
+  <p class="hint">Aplicația rămâne pe rețeaua bisericii. De acasă se poate intra <b>doar</b> pe două pagini: linkul personal al voluntarului
+    (programările lui, confirmări, zile blocate, sarcini) și programul următor. Proiecția, Planificarea, PIN-urile, fișierele și ecranele
+    <b>nu</b> se văd din internet. Nu se deschide nimic în router.</p>
+  <label class="sec-row"><input type="checkbox" id="secDoor"> <b>Deschide ușa pentru voluntari</b> <span class="hint" id="secDoorState"></span></label>
+  <ol class="cv-steps" id="secSteps">
+    <li>Pe calculatorul care stă pornit la biserică, instalează <b>Tailscale</b> (gratuit) de pe <b>tailscale.com/download</b> și intră cu contul bisericii.</li>
+    <li>În Terminal (o singură dată): <code id="secCmd">tailscale funnel --bg 4546</code> și copiază adresa <b>https://…ts.net</b> pe care o scrie.</li>
+    <li>Lipește adresa aici. Din acel moment, linkurile trimise voluntarilor și QR-ul de la birou merg și de acasă.</li>
+  </ol>
+  <div class="row"><input id="secUrl" class="grow" placeholder="https://betleem-mac.tail1234.ts.net"><button id="secUrlSave" class="acc">Salvează</button></div>
+  <h4 style="margin:16px 0 6px">💾 Copii de siguranță</h4>
+  <p class="hint">În fiecare zi, o copie a tot (cântări, programe, oameni) în Documente/Betleem/backup, ultimele 30 de zile. Dacă pui și folderul NAS-ului, copia ajunge și acolo.</p>
+  <div class="row"><input id="secNas" class="grow" placeholder="ex. /Volumes/Betleem-NAS/Betleem (Mac) sau \\NAS\Betleem (Windows)"><button id="secNasSave">Salvează</button><button id="secNow" class="ghost">Fă o copie acum</button></div>
+  <p class="hint" id="secBk"></p>
+  <details style="margin-top:12px"><summary class="hint">Ultimele intrări din internet</summary><pre id="secLog" class="hint" style="white-space:pre-wrap;font-size:11px"></pre></details>
 </div></div>
 <div class="modal" id="canvaModal"><div class="glass canva">
   <div class="look-head"><b>🎨 Canva</b><span class="hint" id="cvUser"></span><span class="grow"></span><button id="cvClose" class="icon" title="Închide">✕</button></div>
@@ -2559,8 +2579,27 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'phones') $('bPhones').click(); else if (x === 'audio') { showView('music'); $('audioOut').click(); }
     else if (x === 'lite') setLite(!document.documentElement.classList.contains('lite'));
     else if (x === 'theme') setTheme(!document.documentElement.classList.contains('light'));
-    else if (x === 'ideas') openIdeas();
+    else if (x === 'ideas') openIdeas(); else if (x === 'sec') openSec();
   });
+  // 🔒 access from home (only the volunteers' pages) and daily backups
+  async function secApi(body) {
+    const r = await fetch('/api/security', body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' }, body: JSON.stringify(body) } : { headers: { 'x-pin': hub.pin?.() || '' } });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'N-a mers'); return j;
+  }
+  function secShow(j) {
+    $('secDoor').checked = !!j.door; $('secUrl').value = j.publicUrl || ''; $('secNas').value = j.backupDir || '';
+    $('secCmd').textContent = 'tailscale funnel --bg ' + j.doorPort;
+    $('secDoorState').textContent = j.door ? (j.doorOpen ? (j.publicUrl ? '· deschisă, la ' + j.publicUrl : '· deschisă; lipsește adresa de mai jos') : '· nu a pornit (vezi portul)') : '· închisă';
+    $('secBk').textContent = (j.lastBackup ? 'Ultima copie: ' + new Date(j.lastBackup).toLocaleString('ro-RO') : 'Nicio copie încă.') + (j.backupError ? ' ⚠ ' + j.backupError : '');
+    $('secLog').textContent = (j.log || []).join('\n') || 'Nimic încă.';
+  }
+  async function openSec() { $('secModal').classList.add('show'); try { secShow(await secApi()); } catch (e) { toast(e.message); } }
+  const secSet = async b => { try { secShow(await secApi(b)); toast('Salvat'); } catch (e) { toast(e.message); } };
+  $('secClose').onclick = () => $('secModal').classList.remove('show');
+  $('secDoor').onchange = () => secSet({ door: $('secDoor').checked });
+  $('secUrlSave').onclick = () => secSet({ publicUrl: $('secUrl').value });
+  $('secNasSave').onclick = () => secSet({ backupDir: $('secNas').value });
+  $('secNow').onclick = () => secSet({ backupNow: true });
   if (location.hash === '#muzica') { history.replaceState(null, '', '/control.html'); setTimeout(() => showView('music'), 400); }
   const liveSong = () => S.live.item >= 0 && S.setlist[S.live.item]?.kind === 'song' ? S.live.item : -1;
   const musicItemIndex = () => {

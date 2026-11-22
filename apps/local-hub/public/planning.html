@@ -1120,7 +1120,7 @@
   let baseUrl = null;
   async function base() {
     if (baseUrl) return baseUrl;
-    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) return baseUrl = t.urls[0]; } catch {}
+    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.publicUrl) return baseUrl = t.publicUrl; if (t?.urls?.length) return baseUrl = t.urls[0]; } catch {}   // 🌐 the public address works from home too
     return baseUrl = location.origin;
   }
   const linkOf = async v => (await base()) + '/eu.html?t=' + v.token;

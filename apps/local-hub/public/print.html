@@ -59,7 +59,7 @@
   if (q.get('qr')) {                               // ▦ the poster with a QR for the pastor's office: always the next program
     $('opts').hidden = true;
     let base = location.origin;
-    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
+    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); base = t?.publicUrl || t?.urls?.[0] || base; } catch {}
     const link = base + '/live.html?v=next';
     const { default: qrcode } = await import('/vendor/qrcode.js');
     const c = qrcode(0, 'M'); c.addData(link); c.make();
@@ -67,7 +67,7 @@
     $('page').innerHTML = `<div class="poster" style="min-height:265mm">${info.logo ? `<img class="logo" src="${esc(info.logo)}" alt="">` : ''}
       <h1>${esc(info.church || 'Biserica')}</h1><p>Scanează cu camera telefonului și vezi <b>programul următor</b>, mereu la zi.</p>
       <div class="qr">${c.createSvgTag({ cellSize: 8, margin: 1, scalable: true })}</div>
-      <div class="u">${esc(link)}</div><p style="font-size:13px">Merge când telefonul e conectat la Wi-Fi-ul bisericii.</p></div>`;
+      <div class="u">${esc(link)}</div>${link.startsWith('https://') ? '' : '<p style="font-size:13px">Merge când telefonul e conectat la Wi-Fi-ul bisericii.</p>'}</div>`;
   } else {
     const P = await fetch('/api/plan', { headers: { 'x-pin': pin } }).then(r => r.ok ? r.json() : Promise.reject(r)).catch(() => null);
     const s = P?.services.find(x => x.id === q.get('id'));

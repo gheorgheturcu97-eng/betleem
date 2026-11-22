@@ -103,7 +103,7 @@
   // musicians open this with ?v=chords (from the QR code in Live): chords, the program, and any song of it
   let view = new URLSearchParams(location.search).get('v') || 'lyrics', S = null, browse = -1, browseSlides = null;
   if (!['lyrics', 'chords', 'order', 'pred', 'next'].includes(view)) view = 'lyrics';
-  if (view === 'next') document.body.classList.add('nextv');
+  if (view === 'next') { document.body.classList.add('nextv'); setTimeout(() => renderNext(), 0); }   // from home (no live connection) it still shows
   if (view === 'pred') {                             // 🎤 the preacher's QR carries its PIN after # (never sent to the network as part of the address)
     document.body.classList.add('pred');
     const hp = new URLSearchParams(location.hash.slice(1)).get('p');
