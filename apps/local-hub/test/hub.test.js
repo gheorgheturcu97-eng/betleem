@@ -485,6 +485,28 @@ test('🙋 volunteers: personal link, confirm, blocked days and monthly limit; �
   assert.ok(lt.meetings.some(m => m.agenda.includes('Bugetul pentru Crăciun')));
 });
 
+test('💡 light scenes and 🎧 the guide map are kept, and linked to the program and the song', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'saveLightScene', scene: { name: 'Închinare', color: '#7c5cff', fade: 3, msgs: [{ type: 'cc', ch: 1, n: 7, v: 300 }, { type: 'bad', ch: 40, n: -2, v: 1 }] } });
+  let st = (await a.next(m => m.type === 'state' && m.state.lights?.scenes?.length)).state;
+  const z = st.lights.scenes[0];
+  assert.deepEqual(z.msgs, [{ type: 'cc', ch: 1, n: 7, v: 127 }, { type: 'cc', ch: 16, n: 0, v: 1 }], 'values are kept inside MIDI limits');
+  a.send({ type: 'saveSong', song: { title: 'Ghid test', key: 'D', body: 'Strofa 1:\nUnu\n\nRefren:\nDoi' } });
+  await a.next(m => m.type === 'state');
+  const songs = await fetch('http://localhost:4599/api/songs?q=Ghid test').then(r => r.json());
+  a.send({ type: 'addItem', kind: 'song', songId: songs[0].id });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist.some(x => x.songId === songs[0].id))).state;
+  const i = st.setlist.findIndex(x => x.songId === songs[0].id);
+  a.send({ type: 'linkLight', item: i, section: 'Refren', id: z.id });
+  a.send({ type: 'setGuide', item: i, marks: [{ bar: 8, p: 1 }, { bar: 0, p: 0 }, { bar: 12, p: 1 }] });
+  a.send({ type: 'lightScene', id: z.id });
+  st = (await a.next(m => m.type === 'state' && m.state.live.light?.id === z.id && m.state.setlist[i]?.guide?.length)).state;
+  assert.equal(st.setlist[i].lights.Refren, z.id);
+  assert.deepEqual(st.setlist[i].guide, [{ bar: 0, p: 0 }, { bar: 8, p: 1 }], 'one start per section, in bar order');
+  a.ws.close();
+});
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

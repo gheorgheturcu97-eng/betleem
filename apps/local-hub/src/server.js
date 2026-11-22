@@ -313,6 +313,7 @@ function snapshot() {
   return {
     service: db.service,
     display: db.display,
+    lights: db.lights || { scenes: [] },
     church: (({ id, name, city, logo, vision }) => ({ id, name, city, logo: logo || '', vision: vision || '' }))(activeChurch()),
     churches: db.churches.map(c => ({ id: c.id, name: c.name, city: c.city, locked: !!c.code })),
     setlist: db.setlist.map((it, i) => ({
@@ -322,7 +323,8 @@ function snapshot() {
       track: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.track || '' : undefined,
       stems: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.stems || [] : undefined,
       cues: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.cues || [] : undefined,
-      guide: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.guide || [] : undefined,     // 🎧 the map in bars, for songs without tracks
+      guide: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.guide || [] : undefined,
+      lights: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.lights || undefined : undefined,     // 🎧 the map in bars, for songs without tracks
       origBpm: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.bpm || 0 : undefined,
       beatOffset: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.beatOffset || 0 : undefined,
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
@@ -497,6 +499,25 @@ function handleMessage(ws, m) {
       case 'resetTimer': live.since = live.item >= 0 ? Date.now() : 0; break;
       case 'logo': live.logo = !live.logo; break;
       case 'background': live.background = String(m.value || ''); break;
+      // 💡 light scenes (MIDI): the list, a scene now, and which scene goes with a program moment / a song section
+      case 'saveLightScene': {
+        db.lights ||= { scenes: [] }; const x = m.scene || {};
+        const clean = { id: String(x.id || crypto.randomUUID()).slice(0, 40), name: String(x.name || 'Scenă').slice(0, 40), color: /^#[0-9a-f]{6}$/i.test(x.color) ? x.color : '#f5b301',
+          fade: Math.max(0, Math.min(20, Number(x.fade) || 0)),
+          msgs: (Array.isArray(x.msgs) ? x.msgs : []).slice(0, 64).map(q => ({ type: ['cc', 'note', 'pc'].includes(q.type) ? q.type : 'cc', ch: clamp(Math.round(+q.ch), 1, 16), n: clamp(Math.round(+q.n), 0, 127), v: clamp(Math.round(+q.v), 0, 127) })) };
+        const i = db.lights.scenes.findIndex(z => z.id === clean.id); if (i >= 0) db.lights.scenes[i] = clean; else db.lights.scenes.push(clean);
+        break;
+      }
+      case 'deleteLightScene': db.lights ||= { scenes: [] }; db.lights.scenes = db.lights.scenes.filter(z => z.id !== m.id); break;
+      case 'lightPort': db.lights ||= { scenes: [] }; db.lights.port = String(m.port || '').slice(0, 120); break;
+      case 'lightScene': live.light = { id: String(m.id || ''), at: Date.now() }; break;      // pressed by hand: the computer with the cable sends it
+      case 'linkLight': {                            // a scene for a moment of the program, or for a section of a song (kept on the song)
+        const it = db.setlist[m.item]; if (!it) break;
+        if (m.section) { const song = it.kind === 'song' && db.songs.find(x => x.id === it.songId); if (!song) break; song.lights ||= {};
+          if (m.id) song.lights[String(m.section).slice(0, 40)] = String(m.id); else delete song.lights[String(m.section)]; }
+        else if (m.id) it.light = String(m.id); else delete it.light;
+        break;
+      }
       case 'message':
         live.message = String(m.value || '').slice(0, 200);
         if (['both', 'main', 'stage'].includes(m.to)) live.messageTo = m.to;

@@ -322,6 +322,12 @@
 
   .bg-panel{padding:12px 14px;flex:none;height:var(--bgH,auto);display:flex;flex-direction:column;min-height:0}
   .bg-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .bgtabs button{padding:5px 12px;font-size:13px;font-weight:650}
+  .lt-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px} .lt-top select{width:auto;max-width:220px}
+  #ltScenes{display:flex;flex-wrap:wrap;gap:8px}
+  #ltScenes button{min-width:120px;height:64px;border-radius:14px;border:1px solid color-mix(in srgb,var(--lc) 60%,transparent);background:color-mix(in srgb,var(--lc) 18%,transparent);font-weight:650;display:flex;flex-direction:column;justify-content:center;gap:2px}
+  #ltScenes button small{font-weight:400;color:var(--mute);font-size:11px} #ltScenes button.on{box-shadow:0 0 0 3px var(--lc);background:color-mix(in srgb,var(--lc) 35%,transparent)}
+  .lt-msg{display:grid;grid-template-columns:110px 70px 80px 80px 30px;gap:6px;margin-bottom:6px;align-items:center}
   .bg-head .btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:6px 12px}
   #gallery{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;min-height:0}
   .bg-panel.tall #gallery{flex-wrap:wrap;overflow-x:hidden;overflow-y:auto;align-content:flex-start}
@@ -961,11 +967,18 @@
 
       <div class="bg-panel glass" id="bgPanel">
         <div class="bg-head">
-          <h2>Fundaluri</h2><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
+          <div class="seg bgtabs"><button data-bt="bg" class="sel">Fundaluri</button><button data-bt="light" title="💡 Scenele de lumini (MIDI), legate de program și de secțiuni">💡 Lumini</button></div><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
           <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează pe cântare</button>
           <label class="btn">＋ Imagine / video<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
         </div>
         <div id="gallery"></div>
+        <div id="lightPanel" hidden>
+          <div class="lt-top"><label class="check" title="Bifează doar pe calculatorul la care e conectat cablul USB–MIDI"><input type="checkbox" id="ltHere"> Lumini de pe acest calculator</label>
+            <select id="ltPort" title="Ieșirea MIDI (cablul spre dimmer)"></select><span class="grow"></span><span class="hint" id="ltNow"></span>
+            <button id="ltAdd" class="btn">＋ Scenă</button></div>
+          <div id="ltScenes"></div>
+          <p class="hint" style="margin:6px 0 0">Apasă o scenă ca s-o pornești. Clic dreapta: pune-o pe momentul ales din program sau pe secțiunea de pe ecran (refrenul, de exemplu), și se schimbă singură.</p>
+        </div>
       </div>
     </section>
     <div class="gut v" data-g="colR" title="Trage ca să lărgești · dublu-clic = normal"></div>
@@ -1213,6 +1226,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <p class="hint" id="phUrl"></p>
   <p class="hint">Pe iPhone: în Safari → Partajează → <b>Adaugă pe ecranul principal</b> și arată ca o aplicație. Cine are PIN-ul de operator poate schimba și slide-urile din telefon.</p>
 </div></div>
+<div class="modal" id="lightModal"><div class="glass canva">
+  <div class="look-head"><b>💡 Scenă de lumini</b><span class="grow"></span><button id="ltClose" class="icon" title="Închide">✕</button></div>
+  <div class="row"><input id="ltName" class="grow" placeholder="Numele scenei (ex. Închinare)"><input id="ltColor" type="color" style="width:48px;height:36px;padding:2px">
+    <label class="hint">Trecere <input id="ltFade" type="number" min="0" max="20" step="0.5" style="width:64px"> s</label></div>
+  <p class="hint">Fiecare rând e un mesaj MIDI trimis dimmer-ului. „CC” = un fader (valoare 0–127, trece lin), „Notă” = un buton, „Program” = o memorie a pupitrului.
+    Nu știi numerele? Apasă „🎓 Învață” și mișcă faderul sau butonul pe pupitru (dacă trimite MIDI înapoi), sau caută în manualul dimmer-ului.</p>
+  <div id="ltMsgs"></div>
+  <div class="row"><button id="ltAddMsg" class="ghost">＋ mesaj</button><button id="ltLearn" class="ghost">🎓 Învață</button><span class="grow"></span>
+    <button id="ltTry">▶ Încearcă</button><button id="ltDel" class="ghost">🗑</button><button id="ltSave" class="acc">Salvează</button></div>
+</div></div>
 <div class="modal" id="secModal"><div class="glass canva">
   <div class="look-head"><b>🔒 Acces de acasă și backup</b><span class="grow"></span><button id="secClose" class="icon" title="Închide">✕</button></div>
   <p class="hint">Aplicația rămâne pe rețeaua bisericii. De acasă se poate intra <b>doar</b> pe două pagini: linkul personal al voluntarului
@@ -1373,7 +1396,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         .catch(() => setTimeout(() => toast('Calculatorul principal nu răspunde: lucrezi pe acesta. (🖥 în meniul bisericii)'), 1200));
     }
   }
-  const hub = connect(s => { S = s; if (sel < 0 && s.live.item >= 0) sel = s.live.item; render(); }, e => {
+  const hub = connect(s => { S = s; if (sel < 0 && s.live.item >= 0) sel = s.live.item; render(); try { ltFollow(); } catch {} }, e => {
     if (e.type === 'online' || e.type === 'offline') $('dot').classList.toggle('on', e.type === 'online');
     if (e.role) {
       $('role').textContent = { viewer: 'doar vizualizare', operator: 'operator', leader: 'lider' }[e.role];
@@ -2591,6 +2614,75 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'theme') setTheme(!document.documentElement.classList.contains('light'));
     else if (x === 'ideas') openIdeas(); else if (x === 'sec') openSec();
   });
+
+  // ================= 💡 LUMINI: scenes over MIDI, by hand or by themselves with the program / the song's sections
+  const LT = { here: (() => { try { return localStorage.getItem('betleem.lightsHere') === '1'; } catch { return false; } })(), lastManual: 0, lastKey: '', active: '' };
+  let ltMod = null;
+  document.querySelectorAll('.bgtabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.bgtabs button').forEach(x => x.classList.toggle('sel', x === b));
+    const light = b.dataset.bt === 'light'; $('gallery').style.display = light ? 'none' : ''; $('lightPanel').hidden = !light;
+    for (const id of ['bgZoom', 'bPin', 'upload']) { const el = $(id)?.closest('label,button'); if (el) el.style.display = light ? 'none' : ''; }
+    if (light) ltRender();
+  });
+  async function ltPorts() {
+    try { const L = await import('/lights.js'), list = await L.midiOutputs(), cur = S?.lights?.port || '';
+      $('ltPort').innerHTML = list.map(o => `<option ${o.name === cur ? 'selected' : ''}>${esc(o.name)}</option>`).join('') || '<option value="">nicio ieșire MIDI</option>';
+      if (!cur && list[0]) send({ type: 'lightPort', port: list[0].name });
+    } catch (e) { $('ltPort').innerHTML = `<option value="">${esc(e.message)}</option>`; }
+  }
+  $('ltHere').checked = LT.here; $('ltPort').hidden = !LT.here;
+  $('ltHere').onchange = () => { LT.here = $('ltHere').checked; try { localStorage.setItem('betleem.lightsHere', LT.here ? '1' : '0'); } catch {} $('ltPort').hidden = !LT.here; if (LT.here) ltPorts(); };
+  $('ltPort').onchange = () => send({ type: 'lightPort', port: $('ltPort').value });
+  if (LT.here) setTimeout(ltPorts, 1500);
+  function ltRender() {
+    const sc = S?.lights?.scenes || [];
+    $('ltScenes').innerHTML = sc.map(z => `<button data-lt="${z.id}" style="--lc:${z.color}" class="${LT.active === z.id ? 'on' : ''}">${esc(z.name)}<small>${z.msgs.length} mesaje${z.fade ? ' · ' + z.fade + ' s' : ''}</small></button>`).join('')
+      || '<p class="hint">Nicio scenă încă. Apasă „＋ Scenă” (de ex. Închinare, Predică, Toate aprinse, Stins).</p>';
+    $('ltNow').textContent = LT.active ? '● ' + (sc.find(z => z.id === LT.active)?.name || '') : '';
+  }
+  $('ltScenes').addEventListener('click', e => { const b = e.target.closest('[data-lt]'); if (b) send({ type: 'lightScene', id: b.dataset.lt }); });
+  $('ltScenes').addEventListener('contextmenu', e => {
+    const b = e.target.closest('[data-lt]'); if (!b) return; e.preventDefault(); e.stopPropagation();
+    const z = S.lights.scenes.find(x => x.id === b.dataset.lt), it = S.setlist[sel], L = S.live;
+    const label = L.item >= 0 && S.setlist[L.item]?.kind === 'song' ? L.slides?.[L.slide]?.label : '';
+    ctxOpen(e.clientX, e.clientY, [
+      { l: '✎ Editează', run: () => ltEdit(z) },
+      it ? { l: `Pornește la „${it.title || it.kind}” (momentul ales din program)`, run: () => send({ type: 'linkLight', item: sel, id: z.id }) } : null,
+      label ? { l: `Pornește la fiecare „${label}” din „${S.setlist[L.item].title}”`, run: () => send({ type: 'linkLight', item: L.item, section: label, id: z.id }) } : null,
+      it?.light === z.id ? { l: 'Scoate de la momentul ales', run: () => send({ type: 'linkLight', item: sel, id: '' }) } : null,
+      '-', { l: '🗑 Șterge scena', run: () => send({ type: 'deleteLightScene', id: z.id }) },
+    ]);
+  });
+  function ltRow(q = { type: 'cc', ch: 1, n: 1, v: 127 }) {
+    return `<div class="lt-msg"><select class="t"><option value="cc" ${q.type === 'cc' ? 'selected' : ''}>CC (fader)</option><option value="note" ${q.type === 'note' ? 'selected' : ''}>Notă</option><option value="pc" ${q.type === 'pc' ? 'selected' : ''}>Program</option></select>
+      <input class="c" type="number" min="1" max="16" value="${q.ch}" title="Canal MIDI"><input class="n" type="number" min="0" max="127" value="${q.n}" title="Numărul (CC / notă / program)">
+      <input class="v" type="number" min="0" max="127" value="${q.v}" title="Valoarea (0 = stins, 127 = plin)"><button class="icon ghost" onclick="this.parentElement.remove()">✕</button></div>`;
+  }
+  const ltRead = () => ({ ...ltMod, name: $('ltName').value || 'Scenă', color: $('ltColor').value, fade: +$('ltFade').value || 0,
+    msgs: [...$('ltMsgs').querySelectorAll('.lt-msg')].map(r => ({ type: r.querySelector('.t').value, ch: +r.querySelector('.c').value, n: +r.querySelector('.n').value, v: +r.querySelector('.v').value })) });
+  function ltEdit(z) {
+    ltMod = z || { name: '', color: '#f5b301', fade: 2, msgs: [{ type: 'cc', ch: 1, n: 1, v: 127 }] };
+    $('ltName').value = ltMod.name; $('ltColor').value = ltMod.color; $('ltFade').value = ltMod.fade; $('ltMsgs').innerHTML = ltMod.msgs.map(ltRow).join('');
+    $('ltDel').hidden = !z; $('lightModal').classList.add('show');
+  }
+  $('ltAdd').onclick = () => ltEdit(null);
+  $('ltClose').onclick = () => $('lightModal').classList.remove('show');
+  $('ltAddMsg').onclick = () => $('ltMsgs').insertAdjacentHTML('beforeend', ltRow());
+  $('ltLearn').onclick = async () => { toast('Mișcă acum un fader sau apasă un buton pe pupitru…'); try { const L = await import('/lights.js'); $('ltMsgs').insertAdjacentHTML('beforeend', ltRow(await L.learnOne())); toast('Am învățat mesajul'); } catch (e) { toast(e.message); } };
+  $('ltTry').onclick = async () => { const z = ltRead(); try { const L = await import('/lights.js'); await L.sendScene(S.lights?.port, z.msgs, z.fade); toast('Trimis'); } catch (e) { toast(e.message); } };
+  $('ltSave').onclick = () => { send({ type: 'saveLightScene', scene: ltRead() }); $('lightModal').classList.remove('show'); };
+  $('ltDel').onclick = () => { if (ltMod?.id) send({ type: 'deleteLightScene', id: ltMod.id }); $('lightModal').classList.remove('show'); };
+  /** on the computer with the cable: a scene pressed by hand, or the one linked to the moment / section now on screen */
+  async function ltFollow() {
+    if (!$('lightPanel').hidden) ltRender();
+    if (!LT.here || !S?.lights?.scenes?.length) return;
+    const L = S.live, it = S.setlist[L.item], label = L.slides?.[L.slide]?.label || '';
+    let id = '';
+    if (L.light?.at && L.light.at !== LT.lastManual) { LT.lastManual = L.light.at; id = L.light.id; LT.lastKey = L.item + ':' + label; }
+    else { const key = L.item + ':' + label; if (key === LT.lastKey) return; LT.lastKey = key; id = (label && it?.lights?.[label]) || (L.slide === 0 || !LT.active ? it?.light : '') || ''; }
+    const z = S.lights.scenes.find(x => x.id === id); if (!z || z.id === LT.active) return;
+    try { const M = await import('/lights.js'); await M.sendScene(S.lights.port, z.msgs, z.fade); LT.active = z.id; ltRender(); } catch (e) { toast('Lumini: ' + e.message); }
+  }
   // 🔒 access from home (only the volunteers' pages) and daily backups
   async function secApi(body) {
     const r = await fetch('/api/security', body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' }, body: JSON.stringify(body) } : { headers: { 'x-pin': hub.pin?.() || '' } });
