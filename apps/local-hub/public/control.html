@@ -322,6 +322,11 @@
 
   .bg-panel{padding:12px 14px;flex:none;height:var(--bgH,auto);display:flex;flex-direction:column;min-height:0}
   .bg-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .qlook{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .qlook .ql{display:inline-flex;align-items:center;gap:3px;padding:2px 4px 2px 8px;border-radius:999px;background:rgba(255,255,255,.06)}
+  .qlook small{font-size:10.5px;color:var(--mute);margin-right:2px} .qlook b{min-width:14px;text-align:center;font-size:13px}
+  .qlook button{height:28px;min-width:28px;padding:0 8px;border-radius:999px;font-size:12.5px;font-weight:650}
+  .qlook select{width:auto;max-width:130px;height:28px;padding:0 8px;border-radius:999px;font-size:12.5px} .qlook button.on{background:var(--acc);color:var(--acc-ink)}
   .screen .mon{position:absolute;right:96px;top:8px;z-index:3;max-width:44%;font-size:11px;padding:3px 6px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.25)}
   .bgtabs button{padding:5px 12px;font-size:13px;font-weight:650}
   .lt-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px} .lt-top select{width:auto;max-width:220px}
@@ -960,7 +965,15 @@
             <span class="tool" title="Slide-urile se schimbă singure (anunțuri înainte de serviciu)"><small>Singur la</small><input id="autoSec" type="number" min="0" max="600" placeholder="—"><small>s</small>
               <label class="check"><input type="checkbox" id="autoLoop"> buclă</label></span>
           </div>
-          <label class="zoom" title="Mărimea slide-urilor">🔍<input type="range" id="slideZoom" min="150" max="420" step="10"></label>
+          <div class="qlook" id="qLook" title="Aspectul versurilor pe ecranul din sală (se vede imediat)">
+            <span class="ql" title="Câte rânduri pe un slide, la cântarea aleasă"><small>Rânduri</small><button data-q="rows-">−</button><b id="qRows">4</b><button data-q="rows+">＋</button></span>
+            <span class="ql" title="Mărimea textului pe ecranul din sală"><small>Text</small><button data-q="size-">A−</button><button data-q="size+">A＋</button></span>
+            <select id="qFont" title="Fontul versurilor"></select>
+            <button data-q="pos" id="qPos" title="Unde stau versurile: sus / mijloc / jos">⇕</button>
+            <button data-q="upper" id="qUpper" title="MAJUSCULE">AA</button>
+            <button data-q="more" title="Toate setările ecranelor (culori, umbră, scenă…)">⚙</button>
+          </div>
+          <label class="zoom" title="Mărimea slide-urilor aici, în listă (nu pe ecran)">🔍<input type="range" id="slideZoom" min="150" max="420" step="10"></label>
         </div>
         <div id="slides"></div>
       </div>
@@ -1408,7 +1421,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         .catch(() => setTimeout(() => toast('Calculatorul principal nu răspunde: lucrezi pe acesta. (🖥 în meniul bisericii)'), 1200));
     }
   }
-  const hub = connect(s => { S = s; if (sel < 0 && s.live.item >= 0) sel = s.live.item; render(); try { ltFollow(); } catch {} }, e => {
+  const hub = connect(s => { S = s; if (sel < 0 && s.live.item >= 0) sel = s.live.item; render(); try { ltFollow(); } catch {} try { qLookFill(); } catch {} }, e => {
     if (e.type === 'online' || e.type === 'offline') $('dot').classList.toggle('on', e.type === 'online');
     if (e.role) {
       $('role').textContent = { viewer: 'doar vizualizare', operator: 'operator', leader: 'lider' }[e.role];
@@ -1823,6 +1836,29 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else send({ type: 'display', screen: lookScreen, patch });
   }
   $('lFont').onchange = e => setLook({ font: e.target.value });
+  // ⚡ quick look in the slides header: rows on a slide (this song), text size, font, position, capitals (the hall screen)
+  function qLookFill() {
+    if (!S?.display) return;
+    const d = S.display.main, it = S.setlist[sel];
+    $('qRows').textContent = it?.kind === 'song' ? (it.maxLines || 4) : '–';
+    if (!$('qFont').options.length) $('qFont').innerHTML = $('lFont').innerHTML;
+    $('qFont').value = d.font; $('qUpper').classList.toggle('on', !!d.upper);
+    $('qPos').textContent = { top: '⇕ sus', middle: '⇕ mijloc', bottom: '⇕ jos' }[d.valign || 'middle'];
+  }
+  $('qLook').addEventListener('click', e => {
+    const q = e.target.closest('[data-q]')?.dataset.q; if (!q || !S?.display) return;
+    const d = S.display.main, it = S.setlist[sel];
+    if (q === 'rows-' || q === 'rows+') {
+      if (it?.kind !== 'song') return toast('Alege întâi o cântare din program');
+      const n = Math.min(8, Math.max(1, (it.maxLines || 4) + (q === 'rows+' ? 1 : -1)));
+      send({ type: 'arrangement', item: sel, value: it.arrangement || null, maxLines: n }); $('maxLines').value = String(n); toast(n + ' rânduri pe slide');
+    }
+    if (q === 'size-' || q === 'size+') send({ type: 'display', screen: 'main', patch: { size: Math.round(((+d.size || 6) + (q === 'size+' ? 0.4 : -0.4)) * 10) / 10 } });
+    if (q === 'pos') send({ type: 'display', screen: 'main', patch: { valign: { top: 'middle', middle: 'bottom', bottom: 'top' }[d.valign || 'middle'] } });
+    if (q === 'upper') send({ type: 'display', screen: 'main', patch: { upper: !d.upper } });
+    if (q === 'more') { lookScreen = 'main'; openLook(); }
+  });
+  $('qFont').onchange = e => send({ type: 'display', screen: 'main', patch: { font: e.target.value } });
   $('lSize').oninput = e => { $('lSizeV').textContent = (+e.target.value).toFixed(1); setLook({ size: +e.target.value }); };
   $('lColor').oninput = e => setLook({ color: e.target.value });
   $('lChord').oninput = e => setLook({ chordColor: e.target.value });
@@ -2333,6 +2369,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   let dragFrom = -1;
   async function render() {
+    try { qLookFill(); } catch {}
     if (!S) return;
     churchChanged(); renderChurches(); fillLook(); renderPrograms(); syncMusic();
     if (document.activeElement !== $('svcTitle')) $('svcTitle').value = S.service.title || '';
