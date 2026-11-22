@@ -2134,3 +2134,32 @@ if (['darwin', 'win32'].includes(process.platform) && process.env.WATCH_AIRDROP 
 }
 
 export { server, aiHub };
+
+// --- 🖥 Mac: the projector / stage windows must never use the macOS full screen ---------------------------------
+// That one opens a new Space and, when "Displays have separate Spaces" is off, it takes every monitor (the operator
+// loses the program). The desktop shell (main.cjs) only changes when the app is reinstalled, but this hub code runs
+// inside it, so it can correct those two windows itself: as soon as one goes full screen, it comes out of it and
+// becomes a borderless window over its own monitor, above the menu bar.
+if (process.versions.electron && process.platform === 'darwin') {
+  import('electron').then(({ app, BrowserWindow, screen }) => {
+    const watch = w => {
+      if (!w || w._betleemFix || !/^Ecran (principal|scenă)/.test(w.getTitle?.() || '')) return;
+      w._betleemFix = true;
+      w.on('enter-full-screen', () => {
+        const d = screen.getDisplayMatching(w.getBounds());
+        setTimeout(() => {
+          if (w.isDestroyed()) return;
+          w.once('leave-full-screen', () => setTimeout(() => {
+            if (w.isDestroyed()) return;
+            w.setBounds(d.bounds); w.setAlwaysOnTop(true, 'screen-saver'); w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+            setTimeout(() => !w.isDestroyed() && w.setBounds(d.bounds), 400);
+          }, 50));
+          w.setFullScreen(false);
+        }, 30);
+      });
+      if (w.isFullScreen()) w.emit('enter-full-screen');
+    };
+    app.on('browser-window-created', (_e, w) => { watch(w); setTimeout(() => watch(w), 0); });
+    BrowserWindow.getAllWindows().forEach(watch);
+  }).catch(e => logError('ferestrele de ecran', e));
+}
