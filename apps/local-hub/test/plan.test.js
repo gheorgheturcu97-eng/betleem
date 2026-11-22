@@ -19,8 +19,11 @@ test('plan: services, program, volunteers, assignments, warnings', () => {
   const vocal = p.departments[0].positions.find(x => x.name === 'Vocal');
   applyPlanOp(p, { op: 'saveVolunteer', volunteer: { name: 'Ana', phone: '0722', positions: [vocal.id], away: [s.date.slice(0, 10)] } });
   const ana = p.volunteers[0];
+  assert.match(applyPlanOp(p, { op: 'assign', id: s.id, position: vocal.id, slot: 0, volunteer: ana.id }), /a blocat ziua/, 'a blocked day cannot be scheduled');
+  applyPlanOp(p, { op: 'saveVolunteer', volunteer: { ...ana, away: [] } });
   applyPlanOp(p, { op: 'assign', id: s.id, position: vocal.id, slot: 0, volunteer: ana.id });
   applyPlanOp(p, { op: 'assign', id: s.id, position: vocal.id, slot: 1, volunteer: ana.id, status: 'confirmed' });
+  applyPlanOp(p, { op: 'saveVolunteer', volunteer: { ...ana, away: [s.date.slice(0, 10)] } });   // blocked after being put: a warning
   const w = serviceWarnings(p, s);
   assert.ok(w.includes('Ana e pus de două ori'));
   assert.ok(w.includes('Ana a spus că lipsește în ziua asta'));

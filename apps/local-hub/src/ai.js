@@ -51,6 +51,10 @@ export const TOOLS = [
     params: { position: { type: 'number' }, sections: { type: 'array', items: { type: 'string' } } }, required: ['position', 'sections'] },
   { name: 'set_track', description: 'Schimbă un track al unei cântări din program (click, guide, tobe, bas…): volum în procente (0-150) și/sau mut.',
     params: { position: { type: 'number' }, track: { type: 'string' }, volume: { type: 'number' }, muted: { type: 'boolean' } }, required: ['position', 'track'] },
+  { name: 'leaders_tasks', description: 'Întâlnirile liderilor (agenda) și sarcinile (ce, cine, până când, gata sau nu). Folosește-l înainte să adaugi sau să răspunzi la „ce am de făcut”.', params: {} },
+  { name: 'add_task', description: 'Adaugă o sarcină pentru echipa de lideri: ce, cui (numele persoanei) și până când (AAAA-LL-ZZ). Dacă spune „la întâlnirea de marți”, o leagă de următoarea întâlnire.',
+    params: { text: { type: 'string' }, who: { type: 'string', description: 'numele persoanei (opțional)' }, due: { type: 'string', description: 'AAAA-LL-ZZ (opțional)' }, meeting: { type: 'boolean', description: 'legată de următoarea întâlnire' } }, required: ['text'] },
+  { name: 'add_agenda', description: 'Pune un punct pe agenda următoarei întâlniri a liderilor (o creează marțea viitoare la 19:00 dacă nu există).', params: { text: { type: 'string' } }, required: ['text'] },
   { name: 'song_usage', description: 'Cât s-a cântat fiecare cântare în ultimele zile (din programele trecute): count, last (data), tags. Folosește-l ca să alegi cântări necântate de mult sau cele mai cântate, opțional dintr-o categorie.',
     params: { days: { type: 'number' }, tag: { type: 'string' } } },
   { name: 'set_item', description: 'Schimbă un element din program: titlu (nu la cântări), minute, cine îl conduce.',
@@ -117,6 +121,26 @@ export function runTool(hub, name, a = {}) {
     case 'set_background': return done(hub.run({ type: 'background', value: a.name || '' }));
     case 'show_slide': return done(hub.run({ type: 'go', item: pos(a.position), slide: Math.max(0, Math.round(Number(a.slide || 1)) - 1) }));
     case 'set_service': return done(hub.run({ type: 'service', value: { ...(a.title ? { title: a.title } : {}), ...(a.starts_at ? { startsAt: new Date(a.starts_at).toISOString() } : {}) } }));
+    case 'leaders_tasks': {
+      if (!hub.plan) return { error: 'Nu e disponibil aici' };
+      const P = hub.plan(), nm = id => P.volunteers.find(v => v.id === id)?.name || '';
+      return { today: new Date().toISOString().slice(0, 10), meetings: P.meetings.filter(m => new Date(m.date) >= Date.now() - 864e5).slice(0, 3).map(m => ({ title: m.title, date: m.date, agenda: m.agenda.map(x => x.text) })),
+        tasks: P.tasks.map(t => ({ text: t.text, who: nm(t.who), due: t.due, done: t.done })).slice(0, 60) };
+    }
+    case 'add_task': case 'add_agenda': {
+      if (!hub.plan) return { error: 'Nu e disponibil aici' };
+      const P = hub.plan(), fold = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      let mt = P.meetings.find(m => new Date(m.date) >= Date.now() - 3 * 3600_000);
+      if (!mt && (name === 'add_agenda' || a.meeting)) {
+        const d = new Date(); d.setDate(d.getDate() + ((9 - d.getDay()) % 7 || 7)); d.setHours(19, 0, 0, 0);
+        const err = hub.planOp({ op: 'saveMeeting', meeting: { title: 'Întâlnirea liderilor', date: d.toISOString(), agenda: [] } }); if (err) return { error: err };
+        mt = hub.plan().meetings.find(m => m.date === d.toISOString());
+      }
+      if (name === 'add_agenda') return done(hub.planOp({ op: 'saveMeeting', meeting: { ...mt, agenda: [...mt.agenda, { text: a.text }] } }), `pus pe agenda din ${mt.date.slice(0, 10)}: ${a.text}`);
+      const who = a.who ? P.volunteers.find(v => fold(v.name) === fold(a.who)) || P.volunteers.find(v => fold(v.name).includes(fold(a.who))) : null;
+      if (a.who && !who) return { error: `Nu găsesc pe „${a.who}” printre voluntari. Oameni: ${P.volunteers.map(v => v.name).join(', ')}` };
+      return done(hub.planOp({ op: 'saveTask', task: { text: a.text, who: who?.id || '', due: a.due || '', meeting: a.meeting && mt ? mt.id : '' } }), `sarcină: ${a.text}${who ? ' · ' + who.name : ''}${a.due ? ' · până ' + a.due : ''}`);
+    }
     case 'song_usage': {
       const list = hub.usage ? hub.usage(a.days, a.tag) : [];
       return list.sort((x, y) => x.count - y.count || x.last - y.last).slice(0, 80)

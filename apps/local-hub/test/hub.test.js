@@ -433,3 +433,54 @@ test('🎤 the preacher moves only the sermon slides, and the operator can take 
   assert.equal(plan.services.find(x => x.id === s.id).items[1].notes, 'Ioan 3:16 la slide 2', 'plan notes survive the live program');
   pr.ws.close(); op.ws.close();
 });
+
+test('🙋 volunteers: personal link, confirm, blocked days and monthly limit; 🗓 leaders: meetings and tasks', async () => {
+  const L = { 'x-pin': '2222', 'content-type': 'application/json' }, O = { 'x-pin': '1111' };
+  const api = o => fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify(o) }).then(async r => ({ ok: r.ok, ...(await r.json()) }));
+  let P = await api({ op: 'saveVolunteer', volunteer: { name: 'Ana Pop', phone: '0722 111 222', positions: [], maxPerMonth: 1, leader: true } });
+  const ana = P.volunteers.find(v => v.name === 'Ana Pop');
+  assert.ok(ana.token.length >= 20, 'every volunteer gets a personal link');
+  const asOp = await fetch('http://localhost:4599/api/plan', { headers: O }).then(r => r.json());
+  assert.ok(!asOp.volunteers.some(v => v.token), 'only leaders see the links');
+  const pos = P.departments[0].positions[0].id;
+  P = await api({ op: 'addService', title: 'Lim A', date: '2027-05-02T07:00:00.000Z' });
+  P = await api({ op: 'addService', title: 'Lim B', date: '2027-05-09T07:00:00.000Z' });
+  const A = P.services.find(s => s.title === 'Lim A'), B = P.services.find(s => s.title === 'Lim B');
+  assert.ok((await api({ op: 'assign', id: A.id, position: pos, slot: 0, volunteer: ana.id })).services);
+  const lim = await api({ op: 'assign', id: B.id, position: pos, slot: 0, volunteer: ana.id });
+  assert.match(lim.error, /maxim 1 dată pe lună/, 'the monthly limit is kept');
+
+  // her own page
+  const eu = (body) => fetch('http://localhost:4599/api/eu?t=' + ana.token, body ? { method: 'POST', body: JSON.stringify(body) } : {}).then(r => r.json());
+  let me = await eu();
+  assert.equal(me.name, 'Ana Pop'); assert.equal(me.serve[0].title, 'Lim A'); assert.ok(!('phone' in me));
+  me = await eu({ action: 'answer', service: A.id, key: me.serve[0].key, status: 'confirmed' });
+  assert.equal(me.serve[0].status, 'confirmed');
+  me = await eu({ action: 'away', away: ['2027-05-16'], maxPerMonth: 2 });
+  P = await api({ op: 'addService', title: 'Lim C', date: '2027-05-16T07:00:00.000Z' });
+  const C = P.services.find(s => s.title === 'Lim C');
+  assert.match((await api({ op: 'assign', id: C.id, position: pos, slot: 0, volunteer: ana.id })).error, /a blocat ziua/);
+  assert.ok((await api({ op: 'assign', id: B.id, position: pos, slot: 0, volunteer: ana.id })).services, 'limit 2 now allows the second Sunday');
+  assert.equal((await fetch('http://localhost:4599/api/eu?t=wrongwrongwrongwrongwrong')).status, 404);
+
+  // the leaders' meeting and a task she sees and ticks on her page
+  P = await api({ op: 'saveMeeting', meeting: { title: 'Marți', date: new Date(Date.now() + 2 * 864e5).toISOString(), agenda: [{ text: 'Colinde' }] } });
+  const mt = P.meetings.find(m => m.title === 'Marți');
+  P = await api({ op: 'saveTask', task: { text: 'Afișe pentru colinde', who: ana.id, due: '2027-01-05', meeting: mt.id } });
+  me = await eu();
+  assert.equal(me.meetings[0].agenda[0].text, 'Colinde'); assert.equal(me.tasks[0].text, 'Afișe pentru colinde');
+  me = await eu({ action: 'task', task: me.tasks[0].id, done: true });
+  assert.equal(me.tasks[0].done, true);
+  const old = ana.token;
+  P = await api({ op: 'newLink', volunteer: ana.id });
+  assert.equal((await fetch('http://localhost:4599/api/eu?t=' + old)).status, 404, 'a new link cancels the old one');
+
+  // the assistant puts things on the agenda and gives tasks by name
+  const { runTool } = await import('../src/ai.js');
+  const { aiHub } = await import('../src/server.js');
+  assert.ok(runTool(aiHub, 'add_agenda', { text: 'Bugetul pentru Crăciun' }).ok);
+  assert.ok(runTool(aiHub, 'add_task', { text: 'Sună la tipografie', who: 'ana', due: '2027-01-02' }).ok);
+  const lt = runTool(aiHub, 'leaders_tasks', {});
+  assert.ok(lt.tasks.some(t => t.text === 'Sună la tipografie' && t.who === 'Ana Pop'));
+  assert.ok(lt.meetings.some(m => m.agenda.includes('Bugetul pentru Crăciun')));
+});

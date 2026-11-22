@@ -7,6 +7,21 @@ import crypto from 'node:crypto';
 const id = () => crypto.randomUUID();
 const KINDS = ['song', 'sermon', 'prayer', 'announcement', 'reading', 'other', 'media', 'bible'];
 const STATUS = ['pending', 'confirmed', 'declined'];
+/** A personal link for each volunteer (no password): long, random, can be replaced to cancel the old one. */
+export const newToken = () => crypto.randomBytes(18).toString('base64url');
+const ym = iso => String(iso).slice(0, 7);
+/** Why this person cannot serve in this service (blocked day, monthly limit), or '' if they can. */
+export function cannotServe(plan, s, volunteerId, exceptKey) {
+  const v = plan.volunteers.find(x => x.id === volunteerId); if (!v) return '';
+  if ((v.away || []).includes(s.date.slice(0, 10))) return `${v.name} a blocat ziua asta`;
+  if (v.maxPerMonth > 0) {
+    const days = new Set();
+    for (const x of plan.services) if (ym(x.date) === ym(s.date) && x.id !== s.id && Object.values(x.assignments).some(a => a.volunteer === v.id && a.status !== 'declined')) days.add(x.id);
+    if (Object.entries(s.assignments).some(([k, a]) => k !== exceptKey && a.volunteer === v.id)) return '';   // already serves in this service: same day
+    if (days.size >= v.maxPerMonth) return `${v.name} slujește maxim ${v.maxPerMonth} ${v.maxPerMonth === 1 ? 'dată' : 'ori'} pe lună (limita lui)`;
+  }
+  return '';
+}
 
 export function defaultPlan() {
   const dept = (name, color, positions) => ({ id: id(), name, color, positions: positions.map(([n, needed = 1]) => ({ id: id(), name: n, needed })) });
@@ -62,6 +77,7 @@ function cleanItems(items) {
  */
 export function applyPlanOp(plan, op) {
   const svc = () => plan.services.find(s => s.id === op.id);
+  plan.meetings ||= []; plan.tasks ||= [];
   switch (op.op) {
     case 'addSundays': {
       const have = new Set(plan.services.map(s => s.date.slice(0, 10)));
@@ -94,6 +110,7 @@ export function applyPlanOp(plan, op) {
     case 'assign': {
       const s = svc(); if (!s) return 'Serviciul nu există';
       const key = `${str(op.position, 40)}#${Number(op.slot) || 0}`;
+      if (op.volunteer && s.assignments[key]?.volunteer !== op.volunteer) { const why = cannotServe(plan, s, op.volunteer, key); if (why) return why; }
       if (!op.volunteer) delete s.assignments[key];
       else s.assignments[key] = { volunteer: str(op.volunteer, 40), status: STATUS.includes(op.status) ? op.status : 'pending' };
       break;
@@ -110,13 +127,39 @@ export function applyPlanOp(plan, op) {
     case 'saveVolunteer': {
       const v = op.volunteer || {};
       if (!str(v.name)) return 'Scrie numele';
+      const old = plan.volunteers.find(x => x.id === v.id);
       const clean = { id: v.id || id(), name: str(v.name, 80), phone: str(v.phone, 30), email: str(v.email, 120),
         positions: (v.positions || []).map(p => str(p, 40)).slice(0, 40),
-        away: (v.away || []).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)).slice(0, 60) };
+        away: [...new Set((v.away || []).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort().slice(0, 120),
+        maxPerMonth: Math.min(8, Math.max(0, Math.round(Number(v.maxPerMonth) || 0))),     // 0 = no limit
+        leader: !!v.leader,                                                                   // sees the leaders' meetings and tasks on his page
+        token: old?.token || newToken() };
       const i = plan.volunteers.findIndex(x => x.id === clean.id);
       if (i >= 0) plan.volunteers[i] = clean; else plan.volunteers.push(clean);
       break;
     }
+    case 'newLink': { const v = plan.volunteers.find(x => x.id === op.volunteer); if (!v) return 'Voluntarul nu există'; v.token = newToken(); break; }
+    // 🗓 the leaders' meeting (e.g. Tuesday): an agenda everyone sees before, notes, and tasks with who / until when
+    case 'saveMeeting': {
+      const m = op.meeting || {}, d = new Date(m.date); if (isNaN(d)) return 'Dată invalidă';
+      const clean = { id: m.id || id(), title: str(m.title) || 'Întâlnirea liderilor', date: d.toISOString(), notes: str(m.notes, 5000),
+        agenda: (m.agenda || []).slice(0, 60).map(a => ({ id: a.id || id(), text: str(a.text, 300), done: !!a.done })).filter(a => a.text) };
+      const i = plan.meetings.findIndex(x => x.id === clean.id);
+      if (i >= 0) plan.meetings[i] = clean; else plan.meetings.push(clean);
+      plan.meetings.sort((a, b) => a.date.localeCompare(b.date));
+      break;
+    }
+    case 'deleteMeeting': plan.meetings = plan.meetings.filter(m => m.id !== op.id); break;
+    case 'saveTask': {
+      const t = op.task || {}; if (!str(t.text)) return 'Scrie ce e de făcut';
+      const old = plan.tasks.find(x => x.id === t.id);
+      const clean = { id: t.id || id(), text: str(t.text, 300), who: str(t.who, 40), due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : '',
+        done: !!t.done, meeting: str(t.meeting, 40), at: old?.at || new Date().toISOString(), doneAt: t.done ? old?.doneAt || new Date().toISOString() : '' };
+      const i = plan.tasks.findIndex(x => x.id === clean.id);
+      if (i >= 0) plan.tasks[i] = clean; else plan.tasks.push(clean);
+      break;
+    }
+    case 'deleteTask': plan.tasks = plan.tasks.filter(t => t.id !== op.id); break;
     case 'deleteVolunteer': {
       plan.volunteers = plan.volunteers.filter(v => v.id !== op.id);
       for (const s of plan.services) for (const k of Object.keys(s.assignments)) if (s.assignments[k].volunteer === op.id) delete s.assignments[k];
@@ -138,6 +181,8 @@ export function serviceWarnings(plan, s) {
     if (seen.has(v.id)) out.push(`${v.name} e pus de două ori`);
     seen.set(v.id, key);
     if ((v.away || []).includes(day)) out.push(`${v.name} a spus că lipsește în ziua asta`);
+    else { const why = cannotServe(plan, s, v.id, key); if (why) out.push(why); }
+    if (a.status === 'declined') out.push(`${v.name} a spus că nu poate`);
   }
   let empty = 0;
   for (const d of plan.departments) for (const p of d.positions) for (let i = 0; i < p.needed; i++) if (!s.assignments[`${p.id}#${i}`]) empty++;

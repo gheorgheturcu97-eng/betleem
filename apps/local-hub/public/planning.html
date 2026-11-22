@@ -120,6 +120,20 @@
 
   /* teams */
   #v-teams{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px}
+  /* 🗓 Lideri: meetings, agenda, tasks */
+  #v-leaders{grid-template-columns:260px minmax(0,1.3fr) minmax(0,1fr);gap:14px}
+  .mt{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.045);cursor:pointer;border:1px solid transparent} .mt.sel{border-color:var(--acc);background:rgba(245,179,1,.08)}
+  .mt b{display:block} .mt small{color:var(--mute)}
+  .ag{display:grid;grid-template-columns:22px 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.04);margin-bottom:6px}
+  .ag.done span{text-decoration:line-through;color:var(--mute)} .ag input[type=checkbox]{width:18px;height:18px}
+  .tk{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) 30px 30px;gap:6px 8px;align-items:center;padding:7px 8px;border-radius:10px;background:rgba(255,255,255,.04);margin-bottom:6px}
+  .tk .tx{grid-column:2/-1;font-weight:600} .tk .who{grid-column:2}
+  .tk.done .tx{text-decoration:line-through;color:var(--mute)} .tk.late .due{border-color:#ff5a5a;color:#ff9a9a} .tk input,.tk select{min-width:0}
+  .tk .tx{border:0;background:transparent;padding:4px 2px}
+  .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:999px;background:#ff5a5a;color:#fff;font-size:11px;line-height:18px;text-align:center}
+  .vlink{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:10px;border-radius:12px;background:rgba(255,255,255,.05)} .vlink code{font-size:11px;word-break:break-all;flex:1 1 100%;color:var(--mute)}
+  .slot .wa{width:30px;height:30px;padding:0;border-radius:9px} .slot{grid-template-columns:110px 1fr 44px 30px}
+  @media (max-width:1100px){#v-leaders{grid-template-columns:minmax(0,1fr)}}
   .ctx{position:fixed;z-index:200;display:none;flex-direction:column;min-width:230px;padding:5px;background:rgba(30,32,40,.92);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.5)}
   .ctx button{display:flex;align-items:center;gap:18px;justify-content:space-between;text-align:left;background:transparent;border:0;box-shadow:none;padding:6px 10px;border-radius:7px;font-size:13px;color:var(--fg);white-space:nowrap}
   .ctx button:hover:not(:disabled){background:var(--acc);color:#1a1200} .ctx button:disabled{opacity:.35} .ctx kbd{font:500 11.5px ui-monospace,Menlo,monospace;color:var(--mute)} .ctx hr{border:0;border-top:1px solid var(--stroke);margin:4px 6px}
@@ -185,7 +199,7 @@
   /* ---------- phone */
   @media (max-width: 900px){
     body{overflow:auto} .app{height:auto;min-height:100vh;padding:10px;gap:10px}
-    .top{flex-wrap:wrap;border-radius:22px;gap:8px} .nav{margin-left:auto} .views{order:3;width:100%;margin:0} .views button{flex:1}
+    .top{flex-wrap:wrap;border-radius:22px;gap:8px} .nav{margin-left:auto} .views{order:3;width:100%;margin:0;overflow-x:auto;max-width:100%} .views button{flex:1 0 auto}
     #v-services,#v-teams{grid-template-columns:minmax(0,1fr)} .panel{min-height:auto;min-width:0} .app{grid-template-columns:minmax(0,1fr)}
     .view.sel{display:grid;min-width:0} .top{min-width:0} body{overflow-x:hidden}
     #svcList{flex-direction:row !important;overflow-x:auto;max-height:none} .svc{flex:none;min-width:220px}
@@ -239,7 +253,7 @@
     <button class="mode-chip" id="modeChip" title="Schimbă ce faci: Planificare / Proiectez / MD&amp;TRACK">🗓 Planificare ▾</button>
     <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP">MD&amp;TRACK</button><button class="sel">Planificare</button></div>
     <div class="seg views" id="views">
-      <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button><button data-v="songs">Cântări</button>
+      <button data-v="services" class="sel">Servicii</button><button data-v="grid">Grilă lunară</button><button data-v="teams">Echipe</button><button data-v="songs">Cântări</button><button data-v="leaders" title="Întâlnirea liderilor: agendă, sarcini, remindere">Lideri<span class="badge" id="tkBadge" hidden></span></button>
     </div>
     <button id="bPco" title="Ia cântările și programele din Planning Center">⇄ Planning Center</button>
     <span id="role" class="hint"></span>
@@ -319,6 +333,20 @@
       <datalist id="tagList"></datalist>
       <div class="sg-head"><span></span><span>Cântarea</span><span>Ton</span><span>Categorii</span><span id="sgCol">Cântată (3 luni)</span><span>Ultima dată</span></div>
       <div class="sg-list" id="sgList"></div>
+    </section>
+  </section>
+
+  <!-- 🗓 LIDERI: the leaders' meeting (e.g. Tuesday): agenda seen before, notes, tasks with who and until when -->
+  <section class="view" id="v-leaders">
+    <aside class="panel glass">
+      <div class="row"><h2 class="grow">Întâlniri</h2><button id="bAddMeet" title="O întâlnire nouă (de obicei marțea)">＋</button></div>
+      <div id="meetList" class="scroll" style="display:flex;flex-direction:column;gap:6px;flex:1"></div>
+    </aside>
+    <section class="panel glass" id="meetEd"></section>
+    <section class="panel glass">
+      <div class="row"><h2 class="grow">Sarcini</h2><select id="tkFilter" style="width:auto"><option value="open">de făcut</option><option value="meeting">din întâlnirea aleasă</option><option value="all">toate</option></select></div>
+      <form class="row" id="tkForm"><input id="tkText" class="grow" placeholder="＋ Ce e de făcut… (Enter)"><input id="tkDue" type="date" style="width:140px" title="Până când"></form>
+      <div id="tasks" class="scroll" style="flex:1"></div>
     </section>
   </section>
 
@@ -528,7 +556,11 @@
     if (view === 'grid') renderGrid();
     if (view === 'teams') renderTeams();
     if (view === 'songs') renderSongs();
+    if (view === 'leaders') renderLeaders();
+    const due = (P.tasks || []).filter(k => !k.done && k.due && k.due <= isoDay(new Date(Date.now() + 2 * 864e5))).length;   // 🔔 due in the next 2 days or late
+    $('tkBadge').hidden = !due; $('tkBadge').textContent = due;
   }
+  const isoDay = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
   // ================= SONGS: how often each one was sung, and categories (tags)
   const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -916,9 +948,19 @@
   };
 
   // team of one service
-  function volunteerOptions(posId, current) {
+  /** Why someone can't be put in this service: the day he blocked, or his monthly limit (the hub checks it too). */
+  function cantServe(v, s) {
+    if (!s) return '';
+    if ((v.away || []).includes(s.date.slice(0, 10))) return 'a blocat ziua';
+    if (v.maxPerMonth > 0 && !Object.values(s.assignments).some(a => a.volunteer === v.id)) {
+      const n = P.services.filter(x => x.id !== s.id && x.date.slice(0, 7) === s.date.slice(0, 7) && Object.values(x.assignments).some(a => a.volunteer === v.id && a.status !== 'declined')).length;
+      if (n >= v.maxPerMonth) return `limita: ${v.maxPerMonth}/lună`;
+    }
+    return '';
+  }
+  function volunteerOptions(posId, current, s) {
     const can = P.volunteers.filter(v => v.positions.includes(posId)), others = P.volunteers.filter(v => !v.positions.includes(posId));
-    const o = v => `<option value="${v.id}" ${v.id === current ? 'selected' : ''}>${esc(v.name)}</option>`;
+    const o = v => { const why = v.id === current ? '' : cantServe(v, s); return `<option value="${v.id}" ${v.id === current ? 'selected' : ''} ${why ? 'disabled' : ''}>${esc(v.name)}${why ? ' · ' + why : ''}</option>`; };
     return `<option value="">—</option>${can.map(o).join('')}${others.length ? `<optgroup label="Alții">${others.map(o).join('')}</optgroup>` : ''}`;
   }
   function renderTeamFor(s) {
@@ -927,10 +969,13 @@
       d.positions.flatMap(p => Array.from({ length: p.needed }, (_, slot) => {
         const a = s.assignments[`${p.id}#${slot}`];
         return `<div class="slot"><span title="${esc(p.name)}">${esc(p.name)}${p.needed > 1 ? ' ' + (slot + 1) : ''}</span>
-          <select data-p="${p.id}" data-s="${slot}">${volunteerOptions(p.id, a?.volunteer)}</select>
+          <select data-p="${p.id}" data-s="${slot}">${volunteerOptions(p.id, a?.volunteer, s)}</select>
           <select class="st" data-p="${p.id}" data-s="${slot}" ${a ? '' : 'disabled'} title="Confirmare">
-            <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option></select></div>`;
-      })).join('')}</div>`).join('') + (P.volunteers.length ? '' : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
+            <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option></select>
+          <button class="icon ghost wa" data-wa="${a ? p.id + '#' + slot : ''}" ${a ? '' : 'disabled'} title="💬 Trimite-i pe WhatsApp: când slujește și linkul lui de confirmare">💬</button></div>`;
+      })).join('')}</div>`).join('') + (P.volunteers.length ? `<button id="waAll" class="ghost" title="Câte un mesaj pe WhatsApp pentru fiecare om programat">💬 Anunță echipa</button>` : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
+    document.querySelectorAll('#team [data-wa]').forEach(b => b.onclick = () => b.dataset.wa && sendWa(s, b.dataset.wa));
+    if ($('waAll')) $('waAll').onclick = () => announceTeam(s);
     document.querySelectorAll('#team select').forEach(sel => sel.onchange = () => {
       const p = sel.dataset.p, slot = +sel.dataset.s, row = sel.parentElement.querySelectorAll('select');
       op({ op: 'assign', id: s.id, position: p, slot, volunteer: row[0].value, status: row[1].value || 'pending' });
@@ -953,12 +998,83 @@
         html += `<tr><td class="pos">${esc(p.name)}${p.needed > 1 ? ' ' + (slot + 1) : ''}</td>` + svcs.map((s, si) => {
           const a = s.assignments[`${p.id}#${slot}`];
           const bad = a && (dups[si][a.volunteer] > 1 || (P.volunteers.find(v => v.id === a.volunteer)?.away || []).includes(s.date.slice(0, 10)));
-          return `<td><select class="${bad ? 'conflict' : ''}" data-id="${s.id}" data-p="${p.id}" data-s="${slot}">${volunteerOptions(p.id, a?.volunteer)}</select></td>`;
+          return `<td><select class="${bad ? 'conflict' : ''}" data-id="${s.id}" data-p="${p.id}" data-s="${slot}" title="${a ? { pending: 'aștept răspuns', confirmed: 'confirmat', declined: 'a spus că nu poate' }[a.status] : ''}">${volunteerOptions(p.id, a?.volunteer, s)}</select>${a ? ({ confirmed: ' ✓', declined: ' ✕' }[a.status] || '') : ''}</td>`;
         }).join('') + '</tr>';
       }
     }
     $('grid').innerHTML = html;
     document.querySelectorAll('#grid select').forEach(sel => sel.onchange = () => op({ op: 'assign', id: sel.dataset.id, position: sel.dataset.p, slot: +sel.dataset.s, volunteer: sel.value }));
+  }
+
+  // ================= 🗓 LIDERI: the meeting (agenda before, notes during) and tasks (who, until when, reminders)
+  let meetId = null;
+  const nextTuesday = () => { const d = new Date(); d.setDate(d.getDate() + ((9 - d.getDay()) % 7 || 7)); d.setHours(19, 0, 0, 0); return d; };
+  function renderLeaders() {
+    const M = P.meetings || [], now = Date.now() - 3 * 3600_000;
+    if (!M.find(m => m.id === meetId)) meetId = (M.find(m => new Date(m.date).getTime() >= now) || M[M.length - 1])?.id || null;
+    $('meetList').innerHTML = M.slice().reverse().map(m => { const d = new Date(m.date), open = (P.tasks || []).filter(k => k.meeting === m.id && !k.done).length;
+      return `<div class="mt ${m.id === meetId ? 'sel' : ''}" data-m="${m.id}"><b>${esc(m.title)}</b><small>${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} · ${hhmm(d)}${new Date(m.date).getTime() < now ? ' · trecută' : ''}${open ? ` · ${open} sarcini deschise` : ''}</small></div>`; }).join('')
+      || '<div class="empty">Nicio întâlnire.<br>Apasă ＋ și o pregătesc pentru marțea viitoare.</div>';
+    document.querySelectorAll('#meetList [data-m]').forEach(el => el.onclick = () => { meetId = el.dataset.m; renderLeaders(); });
+    const m = M.find(x => x.id === meetId);
+    if (!m) $('meetEd').innerHTML = '<div class="empty">Alege sau adaugă o întâlnire.</div>';
+    else {
+      $('meetEd').innerHTML = `<div class="ed-head"><input id="mtT" value="${esc(m.title)}"><input id="mtD" type="datetime-local" value="${localDT(m.date)}">
+          <button id="mtCal" title="📅 Pune întâlnirea în calendar">📅</button><button id="mtDel" class="ghost" title="Șterge întâlnirea">🗑</button></div>
+        <p class="hint" style="margin:0">Agenda o văd liderii din timp, pe linkul lor personal. Bifează punctele discutate; „→ sarcină” face din punct o sarcină.</p>
+        <h2 style="margin:6px 0 0">Agenda</h2>
+        <div id="agenda">${m.agenda.map((a, i) => `<div class="ag ${a.done ? 'done' : ''}"><input type="checkbox" data-ai="${i}" ${a.done ? 'checked' : ''}><span>${i + 1}. ${esc(a.text)}</span>
+          <button class="ghost" data-at="${i}" title="Fă din acest punct o sarcină">→ sarcină</button><button class="icon ghost" data-ad="${i}" title="Scoate">✕</button></div>`).join('') || '<p class="hint">Agenda e goală.</p>'}</div>
+        <form class="row" id="agForm"><input id="agText" class="grow" placeholder="＋ Punct pe agendă… (Enter)"></form>
+        <h2 style="margin:10px 0 0">Notițe</h2>
+        <textarea id="mtNotes" rows="7" placeholder="Ce s-a hotărât…" style="flex:1;min-height:120px">${esc(m.notes || '')}</textarea>`;
+      const saveM = patch => op({ op: 'saveMeeting', meeting: { ...m, ...patch } });
+      $('mtT').onchange = () => saveM({ title: $('mtT').value });
+      $('mtD').onchange = () => { const d = new Date($('mtD').value); if (!isNaN(d)) saveM({ date: d.toISOString() }); };
+      $('mtNotes').onchange = () => saveM({ notes: $('mtNotes').value });
+      $('mtCal').onclick = () => ics(m.title, m.date, 90);
+      $('mtDel').onclick = () => dialog('Ștergi întâlnirea?', '<p class="hint">Sarcinile rămân.</p>', () => op({ op: 'deleteMeeting', id: m.id }), 'Șterge');
+      $('agForm').onsubmit = e => { e.preventDefault(); const t = $('agText').value.trim(); if (t) saveM({ agenda: [...m.agenda, { text: t }] }); };
+      document.querySelectorAll('#agenda [data-ai]').forEach(c => c.onchange = () => saveM({ agenda: m.agenda.map((a, i) => i === +c.dataset.ai ? { ...a, done: c.checked } : a) }));
+      document.querySelectorAll('#agenda [data-ad]').forEach(b => b.onclick = () => saveM({ agenda: m.agenda.filter((a, i) => i !== +b.dataset.ad) }));
+      document.querySelectorAll('#agenda [data-at]').forEach(b => b.onclick = () => { op({ op: 'saveTask', task: { text: m.agenda[+b.dataset.at].text, meeting: m.id } }); toast('E acum sarcină. Alege cine și până când.'); });
+    }
+    // tasks
+    const f = $('tkFilter').value, today = isoDay(new Date());
+    const T = (P.tasks || []).filter(k => f === 'all' || (f === 'meeting' ? k.meeting === meetId : !k.done))
+      .sort((a, b) => (a.done - b.done) || (a.due || '9').localeCompare(b.due || '9'));
+    const opts = cur => `<option value="">— cine?</option>` + P.volunteers.slice().sort((a, b) => (b.leader - a.leader) || a.name.localeCompare(b.name, 'ro')).map(v => `<option value="${v.id}" ${v.id === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
+    $('tasks').innerHTML = T.map(k => `<div class="tk ${k.done ? 'done' : ''} ${!k.done && k.due && k.due < today ? 'late' : ''}" data-k="${k.id}">
+        <input type="checkbox" class="dn" ${k.done ? 'checked' : ''} title="Gata">
+        <input class="tx" value="${esc(k.text)}">
+        <select class="who">${opts(k.who)}</select><input type="date" class="due" value="${k.due || ''}" title="Până când">
+        <button class="icon ghost cal" title="📅 Reminder în calendar" ${k.due ? '' : 'disabled'}>📅</button><button class="icon ghost del" title="Șterge">✕</button></div>`).join('')
+      || `<div class="empty">${f === 'open' ? 'Nimic de făcut. 🙌' : 'Nicio sarcină.'}</div>`;
+    document.querySelectorAll('#tasks .tk').forEach(row => {
+      const k = P.tasks.find(x => x.id === row.dataset.k), save = patch => op({ op: 'saveTask', task: { ...k, ...patch } });
+      row.querySelector('.dn').onchange = e => save({ done: e.target.checked });
+      row.querySelector('.tx').onchange = e => save({ text: e.target.value });
+      row.querySelector('.who').onchange = e => save({ who: e.target.value });
+      row.querySelector('.due').onchange = e => save({ due: e.target.value });
+      row.querySelector('.cal').onclick = () => ics('Betleem: ' + k.text + (k.who ? ' (' + volName(k.who) + ')' : ''), k.due, 0, true);
+      row.querySelector('.del').onclick = () => op({ op: 'deleteTask', id: k.id });
+    });
+  }
+  $('tkFilter').onchange = renderLeaders;
+  $('tkForm').onsubmit = e => { e.preventDefault(); const t = $('tkText').value.trim(); if (!t) return;
+    op({ op: 'saveTask', task: { text: t, due: $('tkDue').value, meeting: $('tkFilter').value === 'meeting' ? meetId || '' : '' } }); $('tkText').value = ''; };
+  $('bAddMeet').onclick = () => { const d = nextTuesday();
+    op({ op: 'saveMeeting', meeting: { title: 'Întâlnirea liderilor', date: d.toISOString(), agenda: [{ text: 'Rugăciune și cuvânt' }, { text: 'Cum a fost duminica' }, { text: 'Programul duminicii viitoare' }, { text: 'Sarcini și anunțuri' }] } })
+      .then(() => { meetId = P.meetings.find(m => m.date === d.toISOString())?.id || meetId; renderLeaders(); }); };
+  // 📅 a calendar file (Apple, Google, Outlook), with a reminder
+  function ics(title, start, mins, allDay) {
+    const z = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+    const s = new Date(start), e = new Date(s.getTime() + (mins || 60) * 60000);
+    const when = allDay ? `DTSTART;VALUE=DATE:${String(start).replace(/-/g, '')}` : `DTSTART:${z(s)}\r\nDTEND:${z(e)}`;
+    const clean = t => String(t).replace(/[,;\n]/g, ' ');
+    const txt = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Betleem//RO', 'BEGIN:VEVENT', 'UID:' + Math.random().toString(36).slice(2) + '@betleem', 'DTSTAMP:' + z(new Date()), when,
+      'SUMMARY:' + clean(title), 'BEGIN:VALARM', 'TRIGGER:' + (allDay ? '-PT15H' : '-PT2H'), 'ACTION:DISPLAY', 'DESCRIPTION:' + clean(title), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/calendar' })); a.download = 'betleem.ics'; a.click();
   }
 
   // ================= TEAMS
@@ -986,9 +1102,50 @@
     dialog(v.id ? 'Editează voluntar' : 'Voluntar nou', `<label>Nume<input id="vN" value="${esc(v.name)}"></label>
       <div class="row"><label class="grow">Telefon<input id="vP" value="${esc(v.phone || '')}"></label><label class="grow">Email<input id="vE" value="${esc(v.email || '')}"></label></div>
       <p class="hint" style="margin:4px 0">Unde poate sluji:</p>${checks}
-      <label>Zile când lipsește (AAAA-LL-ZZ, separate prin virgulă)<input id="vA" value="${esc((v.away || []).join(', '))}" placeholder="2026-12-24, 2026-12-31"></label>`,
-      () => op({ op: 'saveVolunteer', volunteer: { id: v.id, name: $('vN').value, phone: $('vP').value, email: $('vE').value,
+      <label>Zile când lipsește (AAAA-LL-ZZ, separate prin virgulă). Și el le poate pune singur, din linkul lui.<input id="vA" value="${esc((v.away || []).join(', '))}" placeholder="2026-12-24, 2026-12-31"></label>
+      <div class="row"><label class="grow">Poate sluji cel mult<select id="vMax">${[0, 1, 2, 3, 4].map(n => `<option value="${n}" ${n === (v.maxPerMonth || 0) ? 'selected' : ''}>${n ? n + (n === 1 ? ' dată' : ' ori') + ' pe lună' : 'oricât e nevoie'}</option>`).join('')}</select></label>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:18px"><input type="checkbox" id="vLead" ${v.leader ? 'checked' : ''} style="width:auto"> Face parte din echipa de lideri</label></div>
+      ${v.token ? `<div class="vlink"><b class="grow">🔗 Linkul lui personal</b><button type="button" class="ghost" id="vlCopy">Copiază</button><button type="button" class="ghost" id="vlWa">💬 WhatsApp</button><button type="button" class="ghost" id="vlNew" title="Linkul vechi nu mai merge (ex. telefon pierdut)">↻ Link nou</button><code id="vlUrl"></code>
+        <span class="hint">Acolo își vede programările, confirmă, își blochează zilele și sarcinile. Fără parolă. Merge pe Wi-Fi-ul bisericii.</span></div>` : '<p class="hint">După ce salvezi, primește un link personal.</p>'}`,
+      () => op({ op: 'saveVolunteer', volunteer: { id: v.id, name: $('vN').value, phone: $('vP').value, email: $('vE').value, maxPerMonth: +$('vMax').value, leader: $('vLead').checked,
         positions: [...$('mBox').querySelectorAll('.checks input:checked')].map(i => i.value), away: $('vA').value.split(/[,\s]+/).filter(Boolean) } }));
+    if (v.token) linkOf(v).then(u => {
+      $('vlUrl').textContent = u;
+      $('vlCopy').onclick = () => { navigator.clipboard?.writeText(u); toast('Linkul e copiat'); };
+      $('vlWa').onclick = () => wa(v.phone, `Salut, ${v.name.split(' ')[0]}! Acesta e linkul tău pentru slujirea la ${churchName()}: îți vezi programările, confirmi și îți pui zilele când lipsești.\n${u}\n(Pune-l pe ecranul principal al telefonului.)`);
+      $('vlNew').onclick = () => { $('modal').classList.remove('show'); op({ op: 'newLink', volunteer: v.id }).then(() => { toast('Link nou. Cel vechi nu mai merge.'); editVol(P.volunteers.find(x => x.id === v.id)); }); };
+    });
+  }
+  // 🔗 personal links and 💬 WhatsApp (the leader presses send: free, no business account)
+  let baseUrl = null;
+  async function base() {
+    if (baseUrl) return baseUrl;
+    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) return baseUrl = t.urls[0]; } catch {}
+    return baseUrl = location.origin;
+  }
+  const linkOf = async v => (await base()) + '/eu.html?t=' + v.token;
+  const churchName = () => $('tChurch').textContent || 'biserică';
+  function wa(phone, text) {
+    let n = String(phone || '').replace(/[^\d+]/g, '');
+    if (n.startsWith('+')) n = n.slice(1); else if (n.startsWith('00')) n = n.slice(2); else if (n.startsWith('0')) n = '40' + n.slice(1);   // Romanian numbers written 07…
+    if (!n) { navigator.clipboard?.writeText(text); toast('Nu are telefon. Am copiat mesajul, îl poți lipi unde vrei.'); return; }
+    window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(text), '_blank');
+  }
+  async function serveText(s, key) {
+    const a = s.assignments[key], v = P.volunteers.find(x => x.id === a.volunteer), pid = key.split('#')[0];
+    const dp = P.departments.find(d => d.positions.some(p => p.id === pid)), pos = dp?.positions.find(p => p.id === pid);
+    const d = new Date(s.date);
+    return { v, text: `Salut, ${v.name.split(' ')[0]}! ${d.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })}, ora ${hhmm(d)}, ești programat la ${dp?.name || ''} · ${pos?.name || ''} (${s.title}).\nTe rog confirmă aici: ${await linkOf(v)}\nMulțumim pentru slujire! 🙏` };
+  }
+  async function sendWa(s, key) { const { v, text } = await serveText(s, key); wa(v.phone, text); }
+  async function announceTeam(s) {
+    const keys = Object.keys(s.assignments);
+    if (!keys.length) return toast('Nu e nimeni programat încă');
+    const rows = await Promise.all(keys.map(async k => ({ k, ...(await serveText(s, k)) })));
+    dialog('💬 Anunță echipa', `<p class="hint">Apasă pe fiecare om: se deschide WhatsApp cu mesajul gata scris, tu apeși Trimite.</p>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto">${rows.map((r, i) => `<div class="vol" style="grid-template-columns:1fr auto"><span><b>${esc(r.v.name)}</b><small>${{ pending: '⏳ aștept răspuns', confirmed: '✓ a confirmat', declined: '✕ nu poate' }[s.assignments[r.k].status]}</small></span><button class="ghost" data-w="${i}">💬 Trimite</button></div>`).join('')}</div>`,
+      () => true, 'Gata');
+    $('mBox').querySelectorAll('[data-w]').forEach(b => b.onclick = () => { const r = rows[+b.dataset.w]; wa(r.v.phone, r.text); b.textContent = '✓ Deschis'; });
   }
   function editDept(d) {
     const rows = () => [...$('mBox').querySelectorAll('.posrow')].map(r => ({ id: r.dataset.id || undefined, name: r.querySelector('.pn').value, needed: +r.querySelector('.pq').value })).filter(p => p.name.trim());

@@ -82,7 +82,7 @@ reîncarcă după câteva ore.
 >   poate fi extinsă.
 > Spune-mi Înainte / Acum.”
 
-## ☐ 6 · Întâlnirea de marți: agendă, sarcini, remindere
+## ☑ 6 · Întâlnirea de marți: agendă, sarcini, remindere (FĂCUT în 2026.11.22.1)
 > „Pasul 5 din docs/PLAN.md, prima parte. În Planificare, o zonă nouă «Lideri», separată de duminică:
 > - Întâlniri (ex. «Marți, echipa de lideri»): agendă pe puncte, văzută de toți din timp; notițe în timpul întâlnirii.
 > - Sarcini: ce, cine, până când, stare (de făcut / făcut). Din agendă transformi un punct în sarcină dintr-un clic.
@@ -91,7 +91,7 @@ reîncarcă după câteva ore.
 > - Drepturi: doar liderii văd zona. Folosește PIN-ul de lider până la conturile din Pasul 3 și scrie asta în STARE.md.
 > Refolosește lista de oameni din Echipe; nu face o a doua listă de oameni. Spune-mi Înainte / Acum.”
 
-## ☐ 7 · Departamente, roluri și voluntari
+## ☑ 7 · Departamente, roluri și voluntari (FĂCUT în 2026.11.22.1)
 > „Pasul 4 din docs/PLAN.md, partea cu oamenii, pe rețeaua bisericii (din afară abia după Pasul 3):
 > - Departamente (închinare, ospitalitate, media, copii… fiecare biserică își face lista ei) și roluri în fiecare.
 > - Programarea pe duminici: în grila lunară existentă alegi omul pentru fiecare rol. Extinde grila, nu face alta.

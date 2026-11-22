@@ -1,4 +1,4 @@
-# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.21.11)
+# Starea aplicației: ce e făcut (21 noiembrie 2026, versiunea 2026.11.22.1)
 
 Totul de mai jos e în cod și publicat. Unde scrie **„neverificat”**, merge în teste, dar n-a fost încercat pe
 aparatura reală. Asta e primul lucru de verificat (vezi PLAN.md, Pasul 0).
@@ -21,6 +21,18 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - Clic dreapta și scurtături (copiază, taie, lipește, șterge, duplică). Lipești sau tragi orice fișier în program.
 - **📄 PDF** la fiecare serviciu (`public/print.html`): programul cu ore, moment, cine, ton și minute, opțional cu
   echipa (doar nume) și cu acordurile cântărilor. Se salvează ca PDF din fereastra de tipărire.
+- **Voluntari** (`src/plan.js` cannotServe, `public/eu.html`, ruta `/api/eu`):
+  - Fiecare om are un **link personal**, fără parolă. Îl văd doar liderii, iar „↻ Link nou” îl anulează pe cel vechi.
+  - Pe link își vede programările, confirmă (✓ Vin / ✕ Nu pot), își blochează duminicile și își pune limita
+    „maxim N pe lună”, plus sarcinile lui și agenda liderilor (dacă e bifat „lider”).
+  - Pe server, nu poate fi pus în ziua blocată sau peste limită; în listă apare gri, cu motivul.
+  - 💬 WhatsApp pe fiecare loc din echipă și „💬 Anunță echipa”: mesaj gata scris, liderul apasă Trimite (gratuit).
+  - Merge pe Wi-Fi-ul bisericii până la Pasul 11.
+- **🗓 Lideri** (tab nou în Planificare):
+  - întâlniri, cu agenda văzută din timp pe linkul personal, bife pe puncte, notițe și „→ sarcină”;
+  - sarcini: ce, cine, până când, gata; insignă roșie cu cele care expiră în 2 zile sau au trecut;
+  - 📅 fișier de calendar (.ics) cu reminder.
+  - Asistentul: `add_agenda`, `add_task` (după nume), `leaders_tasks`.
 - **▦ QR pentru birou** (`print.html?qr=1`): un afiș cu cod QR care deschide mereu programul următor
   (`live.html?v=next`, ruta publică `/api/next`, fără PIN și fără date personale). Merge doar pe Wi-Fi-ul bisericii
   până la Pasul 3.

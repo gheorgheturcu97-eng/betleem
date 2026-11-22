@@ -17,7 +17,7 @@ import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
 import { feedbackProposal, runAssistant } from './ai.js';
-import { defaultPlan, applyPlanOp, serviceWarnings } from './plan.js';
+import { defaultPlan, applyPlanOp, serviceWarnings, newToken } from './plan.js';
 import * as pco from './pco.js';
 import { createCanva } from './canva.js';
 import { createUpdater, newer } from './updater.js';
@@ -929,6 +929,13 @@ const aiPublic = () => ({ ...aiSettings, claudeKey: undefined, hasKey: !!aiSetti
 const aiSocket = { send(t) { try { const o = JSON.parse(t); if (o.type === 'error' || (o.type === 'church' && !o.ok)) this.last = o.error; } catch {} } };
 sessions.set(aiSocket, { role: 'leader' });
 const aiHub = {
+  /** 🗓 leaders' meetings and tasks, for the assistant ("pune pe agenda de marți…", "dă-i lui Andrei sarcina…") */
+  plan: () => { db.plan.meetings ||= []; db.plan.tasks ||= []; return db.plan; },
+  planOp(op) {
+    const err = applyPlanOp(db.plan, op); if (err) return err;
+    save(); broadcast(); const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
+    return null;
+  },
   state: () => ({
     church: activeChurch().name, service: db.service,
     program: db.setlist.map((it, i) => ({ position: i + 1, kind: it.kind,
@@ -1400,8 +1407,11 @@ async function handle(req, res) {
         const msg = JSON.stringify({ type: 'planChanged' });
         for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role === 'leader') ws.send(msg);
       }
-      const plan = db.plan;
+      const plan = db.plan, lead = checkLeader(req);
+      plan.meetings ||= []; plan.tasks ||= [];
+      if (plan.volunteers.some(v => !v.token)) { for (const v of plan.volunteers) v.token ||= newToken(); save(); }
       return json(res, 200, { ...plan, currentPlanId: db.service.planId || null,
+        volunteers: lead ? plan.volunteers : plan.volunteers.map(({ token, ...v }) => v),       // personal links: leaders only
         services: plan.services.map(s => ({ ...s, warnings: serviceWarnings(plan, s),
           items: s.items.map(it => it.kind === 'song' ? { ...it, title: db.songs.find(x => x.id === it.songId)?.title || it.title || '(cântare ștearsă)' } : it) })) });
     }
@@ -1563,6 +1573,38 @@ async function handle(req, res) {
       db.preacherPin = newPreacherPin(); save();
       for (const [w, x] of sessions) if (x.role === 'preacher') x.role = 'viewer';
       broadcast(); return json(res, 200, { preacherPin: db.preacherPin });
+    }
+    if (p === '/api/eu') {                                    // 🙋 a volunteer's own page, by his personal link (no password)
+      const t = String(url.searchParams.get('t') || ''); let me = null, plan = null, church = null;
+      if (t.length >= 20) for (const [cid, pl] of [[activeChurch()?.id, db.plan], ...Object.entries(db.churchData || {}).map(([k, d]) => [k, d?.plan])]) {
+        const v = pl?.volunteers?.find(x => x.token && safeEq(x.token, t)); if (v) { me = v; plan = pl; church = (db.churches || []).find(c => c.id === cid) || activeChurch(); break; }
+      }
+      if (!me) return json(res, 404, { error: 'Linkul nu mai e valabil. Cere-i liderului unul nou.' });
+      plan.meetings ||= []; plan.tasks ||= [];
+      const posName = pid => { for (const d of plan.departments) { const p2 = d.positions.find(x => x.id === pid); if (p2) return { pos: p2.name, dept: d.name, color: d.color }; } return { pos: '', dept: '' }; };
+      if (req.method === 'POST') {
+        const m = JSON.parse(await body(req, 20_000) || '{}');
+        if (m.action === 'answer') {                          // ✓ I'll be there / ✕ I can't
+          const sv = plan.services.find(x => x.id === m.service), a = sv?.assignments[m.key];
+          if (!a || a.volunteer !== me.id) return json(res, 400, { error: 'Nu mai ești pus aici.' });
+          a.status = m.status === 'declined' ? 'declined' : 'confirmed'; a.answeredAt = new Date().toISOString();
+        } else if (m.action === 'away') {                     // the days I can't serve, and how often I can
+          me.away = [...new Set((m.away || []).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort().slice(0, 120);
+          if (m.maxPerMonth !== undefined) me.maxPerMonth = Math.min(8, Math.max(0, Math.round(Number(m.maxPerMonth) || 0)));
+        } else if (m.action === 'task') {                     // ☐ / ☑ one of my tasks
+          const tk = plan.tasks.find(x => x.id === m.task && x.who === me.id); if (!tk) return json(res, 400, { error: 'Sarcina nu e a ta.' });
+          tk.done = !!m.done; tk.doneAt = tk.done ? new Date().toISOString() : '';
+        } else return json(res, 400, { error: 'Nu înțeleg' });
+        save(); broadcast();
+        const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1 && sessions.get(ws)?.role === 'leader') ws.send(msg);
+      }
+      const now = Date.now() - 6 * 3600_000, name = id => plan.volunteers.find(v => v.id === id)?.name || '';
+      const serve = plan.services.filter(x => new Date(x.date).getTime() >= now).flatMap(sv => Object.entries(sv.assignments).filter(([, a]) => a.volunteer === me.id)
+        .map(([key, a]) => ({ service: sv.id, key, date: sv.date, title: sv.title, status: a.status, ...posName(key.split('#')[0]) }))).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 20);
+      return json(res, 200, { name: me.name, church: church?.name || '', away: me.away || [], maxPerMonth: me.maxPerMonth || 0, leader: !!me.leader, serve,
+        tasks: plan.tasks.filter(tk => tk.who === me.id).sort((a, b) => (a.done - b.done) || (a.due || '9').localeCompare(b.due || '9')).slice(0, 40),
+        meetings: me.leader ? plan.meetings.filter(mt => new Date(mt.date).getTime() >= now).slice(0, 3).map(mt => ({ ...mt,
+          tasks: plan.tasks.filter(tk => tk.meeting === mt.id).map(tk => ({ text: tk.text, who: name(tk.who), due: tk.due, done: tk.done })) })) : [] });
     }
     if (p === '/api/next' && req.method === 'GET') {          // the QR at the office: the next program, read only, no PIN, no personal data
       const now = Date.now() - 3 * 3600_000, list = (db.plan?.services || []).filter(x => new Date(x.date).getTime() >= now).sort((a, b) => a.date.localeCompare(b.date));
@@ -1856,4 +1898,4 @@ if (['darwin', 'win32'].includes(process.platform) && process.env.WATCH_AIRDROP 
   } catch (e) { logError('AirDrop (Downloads)', e); }
 }
 
-export { server };
+export { server, aiHub };

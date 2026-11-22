@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-22 · 2026.11.22.1
+- **Programarea oamenilor.** Înainte: puteai pune pe cineva și într-o zi în care spusese că lipsește (apărea doar un
+  avertisment). Acum: ziua blocată și limita lunară nu-l mai lasă (apare gri, cu motivul). Dacă își blochează ziua
+  după ce a fost pus, rămâne avertismentul.
+- **Confirmările.** Înainte: le puneai tu de mână (⏳ ✓ ✕). Acum: le pune omul singur, din linkul lui; tu le poți
+  schimba ca înainte.
+- **Planificare.** Acum: tabul **Lideri**, 💬 lângă fiecare om din echipă, „💬 Anunță echipa”, și în fișa
+  voluntarului: limita pe lună, „face parte din echipa de lideri” și linkul personal.
+- **Telefon.** Acum: tab-urile Planificării se derulează pe lățime, nu mai lățesc pagina.
+
 ## 2026-11-21 · 2026.11.21.11
 - **Notițele din Planificare.** Înainte: se pierdeau când programul era pus pe Live. Acum: rămân în plan și le vede
   predicatorul.
