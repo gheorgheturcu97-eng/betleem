@@ -737,7 +737,8 @@ function handleMessage(ws, m) {
           })).filter(x => x.file && fs.existsSync(path.join(MEDIA_DIR, x.file)));
         } else {
           song.cues = (Array.isArray(m.cues) ? m.cues : []).slice(0, 300)
-            .map(c => ({ t: Math.max(0, Math.round(Number(c.t) * 100) / 100), slide: Math.max(0, Math.floor(Number(c.slide) || 0)), ...(c.mark ? { mark: true } : {}) }))
+            .map(c => ({ t: Math.max(0, Math.round(Number(c.t) * 100) / 100), slide: Math.max(0, Math.floor(Number(c.slide) || 0)), ...(c.mark ? { mark: true } : {}),
+              ...(c.song ? { song: String(c.song).slice(0, 60), label: String(c.label || '').slice(0, 40) } : {}) }))   // a part of another song sung on these tracks
             .filter(c => Number.isFinite(c.t)).sort((a, b) => a.t - b.t);
           song.cueOrder = it.arrangement || song.arrangement || null;   // the order the cues were made with
         }
@@ -1586,6 +1587,24 @@ async function handle(req, res) {
         changed++;
       });
       return json(res, 200, { body: out.join('\n'), changed });
+    }
+    // 🎤 sung words that are not from this song: which song (and which sections) of the library are they?
+    if (p === '/api/songs/match' && req.method === 'POST') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const m = JSON.parse((await body(req, 100_000)) || '{}');
+      const W = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\[[^\]]*\]/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 2);
+      const said = W(m.text); if (said.length < 4) return json(res, 200, []);
+      const out = [];
+      for (const song of db.songs) {
+        if (song.id === m.except) continue;
+        const secs = core.parseSong(song.body).filter(x => x.label);
+        const hits = secs.map(sec => { const w = new Set(W(sec.lines.join(' '))); return { label: sec.label, score: said.filter(x => w.has(x)).length / said.length }; });
+        const all = new Set(W(song.body)), score = said.filter(x => all.has(x)).length / said.length;
+        if (score < 0.55) continue;
+        const best = Math.max(...hits.map(h => h.score));
+        out.push({ songId: song.id, title: song.title, score: Math.round(score * 100) / 100, sections: [...new Set(hits.filter(h => h.score >= Math.max(0.3, best * 0.6)).map(h => h.label))] });
+      }
+      return json(res, 200, out.sort((a, b) => b.score - a.score).slice(0, 3));
     }
     // 🔎 a new song that may already be in the library (same name, or the same first lines)
     if (p === '/api/songs/same' && req.method === 'POST') {

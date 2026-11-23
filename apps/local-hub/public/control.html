@@ -1121,7 +1121,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <button id="aiBuild" class="pill" title="Ai pus o înregistrare a cântării (ex. de pe YouTube sau de la repetiție)? Aplicația îi află tempo-ul și unde începe fiecare secțiune (ascultă versurile) și face în jurul ei track-urile Click și Guide.">🎚 Click + Guide pe o înregistrare</button>
         <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Le pun eu (apăs la fiecare slide)</button>
         <label class="check"><input type="checkbox" id="tlAuto" checked> Versurile merg singure după track</label>
-        <label class="btn pill" title="Unul sau mai multe fișiere audio: click, guide, tobe, bas, clape…">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*" multiple hidden></label>
+        <label class="btn pill" title="Unul sau mai multe fișiere audio (click, guide, tobe, bas, clape…) sau direct arhiva .zip a pachetului de multitrack, fără s-o dezarhivezi">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*,.zip,application/zip" multiple hidden></label>
         <label class="btn pill" title="🎛 Un proiect Ableton Live (.als) al cântării: ia markerele (Verse, Chorus…), tempo-ul și măsura și pune secțiunile pe track-uri">⇪ Ableton<input type="file" id="alsFile" accept=".als" hidden></label>
         <button id="trkLink" class="pill" title="Pune toate track-urile într-un singur loc: Documente/Betleem/trackuri/<titlul cântării>/. Apasă și fiecare cântare își ia track-urile din folderul ei.">🔗 Track-uri din folderul comun</button>
         <button id="audioOut" class="pill" title="Ce iese pe fiecare ieșire a plăcii de sunet; microfonul MD">🎛 Rutare audio și microfon MD</button>
@@ -3050,16 +3050,18 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const sectionStarts = slides => { const st = []; let last = null; slides.forEach((sl, k) => { if (k === 0 || sl.label !== last || sl.first) st.push(k); last = sl.label; }); return st; };
   function marksNow() {                               // [{ t, p }] p = which section of the order (0, 1, 2…)
     const cues = S.setlist[mtItem]?.cues || [], starts = sectionStarts(mtSlides);
-    const marked = cues.filter(c => c.mark);
-    const src = marked.length ? marked : cues.filter(c => starts.includes(c.slide));
+    const marked = cues.filter(c => c.mark && !c.song);
+    const src = marked.length ? marked : cues.filter(c => !c.song && starts.includes(c.slide));
     return src.map(c => ({ t: c.t, p: starts.indexOf(c.slide) })).filter(m => m.p >= 0).sort((a, b) => a.t - b.t);
   }
   function saveMarks(marks) {
-    const starts = sectionStarts(mtSlides), dur = mt.duration || 0, cues = [];
+    const starts = sectionStarts(mtSlides), dur = mt.duration || 0;
+    const other = (S.setlist[mtItem]?.cues || []).filter(c => c.song), cues = other.slice();   // parts of another song on these tracks stay
     marks = marks.filter(m => m.p >= 0 && m.p < starts.length).sort((a, b) => a.t - b.t);
     marks.forEach((m, k) => {
       const from = starts[m.p], to = (starts[m.p + 1] ?? mtSlides.length), n = Math.max(1, to - from);
-      const end = marks[k + 1]?.t ?? dur, span = Math.max(0.5, end - m.t);
+      const nextOther = other.filter(c => c.t > m.t + 0.05).map(c => c.t)[0] ?? Infinity;
+      const end = Math.min(marks[k + 1]?.t ?? dur, nextOther), span = Math.max(0.5, end - m.t);
       for (let j = 0; j < n; j++) cues.push({ t: Math.round((m.t + span * j / n) * 100) / 100, slide: from + j, ...(j === 0 ? { mark: true } : {}) });
     });
     send({ type: 'setCues', item: mtItem, cues });
@@ -3357,6 +3359,28 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
           if (hit >= 0.5) { const b = Math.max(0, Math.round((chunks[c].start - det.offset) / bar)); if (!marks.length || b > marks.at(-1).bar) marks.push({ bar: b, p }); from = c + 1; break; }
         }
       });
+      // 🎤 words sung on the recording that are not from this song (a medley: the bridge of another song): find that song,
+      // put that part in the program right after this one, and let the tracks switch the lyrics to it and back
+      const own = new Set(words(song.body)), groups = [];
+      chunks.forEach(c => { const w = words(c.text); if (w.length < 3) return; const mine = w.filter(x => own.has(x)).length / w.length;
+        if (mine < 0.35) { const g = groups.at(-1); if (g && c.start - g.end < 12) { g.text += ' ' + c.text; g.end = c.end ?? c.start + 4; } else groups.push({ start: c.start, end: c.end ?? c.start + 4, text: c.text }); } });
+      const foreign = [];
+      for (const g of groups) {
+        const hit = (await api('/api/songs/match', { method: 'POST', body: JSON.stringify({ text: g.text, except: it.songId }) }))[0]; if (!hit) continue;
+        const b = Math.max(0, Math.round((g.start - det.offset) / bar)); foreign.push({ ...hit, t: det.offset + b * bar });
+      }
+      for (const f of foreign) {
+        if (!S.setlist.some((x, n) => n > i && x.songId === f.songId)) {
+          send({ type: 'addItem', kind: 'song', songId: f.songId, key: it.key || it.origKey || '', minutes: 2, at: i + 1 });
+          await new Promise(r => setTimeout(r, 400));
+          const j = S.setlist.findIndex((x, n) => n > i && x.songId === f.songId); if (j >= 0 && f.sections.length) send({ type: 'arrangement', item: j, value: f.sections });
+        }
+      }
+      if (foreign.length) {
+        const keep = (S.setlist[i]?.cues || []).filter(c => !c.song);
+        send({ type: 'setCues', item: i, cues: [...keep, ...foreign.map(f => ({ t: Math.round(f.t * 100) / 100, slide: 0, mark: true, song: f.songId, label: f.title }))] });
+        await new Promise(r => setTimeout(r, 300));
+      }
       say('🎚 3/3 Fac track-urile Click și Guide…');
       const v = await vtGet(), { renderGuide } = await import('/guide.js');
       const r = await renderGuide({ marks, names: names.map(n => n.label), bpm: det.bpm, beats, voices: v.voices, offset: det.offset, duration: audio.duration });
@@ -3368,7 +3392,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       send({ type: 'trackBase', item: i, bpm: det.bpm, offset: det.offset });
       if (marks.length) setTimeout(() => saveMarks(marks.map(m => ({ t: det.offset + m.bar * bar, p: m.p }))), 1500);
       say('');
-      toast(`🎚 Gata: ${det.bpm} BPM, măsura 1 la ${fmt(det.offset)}, ${marks.length} din ${names.length} secțiuni găsite în versuri. Click și Guide sunt lângă înregistrare; mută secțiunile dacă trebuie, apoi 🎚 din nou.`);
+      toast(`🎚 Gata: ${det.bpm} BPM, măsura 1 la ${fmt(det.offset)}, ${marks.length} din ${names.length} secțiuni găsite în versuri${foreign.length ? '; în plus: ' + foreign.map(f => f.sections.join('+') + ' din „' + f.title + '”').join(', ') + ' (pus în program după cântare)' : ''}. Click și Guide sunt lângă înregistrare; mută secțiunile dacă trebuie, apoi 🎚 din nou.`);
     } catch (e) { say(''); toast('Nu am reușit: ' + e.message); }
   }
   $('aiBuild').onclick = () => { $('mToolsPop').classList.remove('show'); buildAroundRecording(); };
@@ -3509,7 +3533,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function sectionBlocks() {
     const dur = mt.duration, cues = cuesNow(), blocks = [];
     cues.forEach((c, k) => {
-      const end = cues[k + 1]?.t ?? dur, label = mtSlides[c.slide]?.label || 'Slide ' + (c.slide + 1);
+      const end = cues[k + 1]?.t ?? dur, label = c.song ? '↪ ' + (c.label || 'altă cântare') : mtSlides[c.slide]?.label || 'Slide ' + (c.slide + 1);
       const last = blocks[blocks.length - 1];
       if (last && last.label === label && last.end === c.t) { last.end = end; last.ticks.push(c.t); }
       else blocks.push({ start: c.t, end, label, ticks: [] });
@@ -3670,7 +3694,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     lastCue = k;
     document.querySelectorAll('#blocks .blk').forEach(b => b.classList.toggle('now', +b.dataset.t <= t && t < (+b.nextElementSibling?.dataset.t || 1e9)));
     if (learning || !$('tlAuto').checked || k < 0) return;
-    send({ type: 'go', item: mtItem, slide: cues[k].slide });
+    const c = cues[k];
+    if (c.song) {                                      // a part of another song on these tracks: its own place in the program
+      const j = S.setlist.findIndex((x, n) => n > mtItem && x.songId === c.song); const at = j >= 0 ? j : S.setlist.findIndex(x => x.songId === c.song);
+      if (at >= 0) send({ type: 'go', item: at, slide: c.slide || 0 });
+      return;
+    }
+    send({ type: 'go', item: mtItem, slide: c.slide });
   }
   let uiAt = 0;
   mt.onTime = t => {
@@ -3911,6 +3941,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('stemFiles').onchange = e => { const f = [...e.target.files]; e.target.value = ''; addStems(f); };
   async function addStems(files) {
     if (!files.length) return;
+    // 📦 a multitrack pack as .zip: the audio files inside are taken out here, the .zip itself is not kept
+    const out = [];
+    for (const f of files) {
+      if (!/\.zip$/i.test(f.name)) { out.push(f); continue; }
+      toast('Deschid arhiva ' + f.name + '…');
+      try {
+        const { unzip } = await import('/importer.js'), z = await unzip(f);
+        for (const n of z.names()) {
+          const base = n.split('/').pop();
+          if (!base || n.startsWith('__MACOSX') || base.startsWith('.') || !/\.(wav|mp3|m4a|aac|ogg)$/i.test(base)) continue;
+          const data = await z.raw(n); if (data?.length) out.push(new File([data], base, { type: /\.wav$/i.test(base) ? 'audio/wav' : 'audio/mpeg' }));
+        }
+      } catch (err) { toast(err.message); }
+    }
+    files = out; if (!files.length) return toast('N-am găsit fișiere audio (wav, mp3, m4a) în arhivă');
     const i = musicItemIndex(), it = S.setlist[i]; if (!it || it.kind !== 'song') return toast('Alege întâi o cântare');
     if (mt.playing) return toast('Oprește întâi track-urile');
     const added = [];
@@ -4627,7 +4672,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   async function routeFiles(files, area) {
     files = [...files]; if (!files.length) return;
-    const docs = files.filter(f => DOC_RE.test(f.name)), audio = files.filter(f => AUD_RE.test(f.name));
+    const docs = files.filter(f => DOC_RE.test(f.name)), audio = files.filter(f => AUD_RE.test(f.name) || (/\.zip$/i.test(f.name) && (area === 'music' || !$('musicView').hidden)));   // a .zip on MD&TRACK = a multitrack pack
     const pics = files.filter(f => IMG_RE.test(f.name) || VID_RE.test(f.name) || /^(image|video)\//.test(f.type)), shows = files.filter(f => SHOW_RE.test(f.name));
     const other = files.filter(f => !docs.includes(f) && !audio.includes(f) && !pics.includes(f) && !shows.includes(f));
     if (area === 'ai') { $('ai').classList.contains('show') || $('aiBtn').click(); return aiAddFiles(files); }

@@ -120,7 +120,7 @@ async function pdfPages(file, progress) {
 export async function unzip(file) {
   const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer);
   let e = buf.length - 22; while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
-  if (e < 0) throw new Error('Fișierul PowerPoint e deteriorat.');
+  if (e < 0) throw new Error('Arhiva e deteriorată (sau nu e un .zip).');
   const count = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true);
   const entries = new Map();
   for (let i = 0; i < count; i++) {
@@ -137,7 +137,7 @@ export async function unzip(file) {
     if (x.method === 0) return data;
     return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
   };
-  return { raw, text: async n => { const b = await raw(n); return b ? new TextDecoder().decode(b) : null; }, has: n => entries.has(n) };
+  return { raw, text: async n => { const b = await raw(n); return b ? new TextDecoder().decode(b) : null; }, has: n => entries.has(n), names: () => [...entries.keys()] };
 }
 
 // ---------------------------------------------------------------- PowerPoint, drawn by us (text, pictures, colours, backgrounds)

@@ -552,6 +552,22 @@ test('🧱 slide layers follow their slide, 🏷 Props switch on and off, both c
   a.ws.close();
 });
 
+test('🎤 sung words from another song are found in the library (a medley on the tracks)', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'saveSong', song: { title: 'Tu ești vrednic Domnul meu', body: 'Strofa 1:\nÎngerii și sfinții se închină\n\nBridge:\nTu meriți toată gloria\nTu meriți toată cinstea și lauda' } });
+  await a.next(m => m.type === 'state');
+  const r = await fetch('http://localhost:4599/api/songs/match', { method: 'POST', headers: { 'x-pin': '2222' }, body: JSON.stringify({ text: 'tu meriti toata gloria tu meriti toata cinstea si lauda' }) }).then(x => x.json());
+  assert.equal(r[0]?.title, 'Tu ești vrednic Domnul meu'); assert.deepEqual(r[0].sections, ['Bridge']);
+  const cues = [{ t: 10, slide: 0, mark: true }, { t: 60, slide: 0, mark: true, song: 'x123', label: 'Tu ești vrednic' }];
+  a.send({ type: 'addItem', kind: 'song', songId: (await fetch('http://localhost:4599/api/songs?q=vrednic').then(x => x.json()))[0].id });
+  const st = (await a.next(m => m.type === 'state' && m.state.setlist.length)).state;
+  a.send({ type: 'setCues', item: st.setlist.length - 1, cues });
+  const st2 = (await a.next(m => m.type === 'state' && m.state.setlist.at(-1).cues?.length === 2)).state;
+  assert.equal(st2.setlist.at(-1).cues[1].song, 'x123', 'a cue can point to another song');
+  a.ws.close();
+});
+
 test('✦ fair team auto-fill, 📣 pastor messages and 📎 the preacher sends his own presentation', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const api = o => fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify(o) }).then(r => r.json());

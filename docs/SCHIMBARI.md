@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.8 · medley pe track-uri, pachete .zip
+- **🎚 pe o înregistrare cu o altă cântare înăuntru** (ex. „Liber” cu bridge-ul din „Tu ești vrednic Domnul meu”). Acum:
+  versurile care nu sunt din cântare sunt căutate în bibliotecă; partea găsită e pusă în program după cântare (în același
+  ton) și, pe track-uri, versurile trec singure la ea și apoi înapoi („↪ Tu ești vrednic…” pe bandă).
+- **＋ Track-uri.** Înainte: doar fișiere audio. Acum: și arhiva .zip a pachetului de multitrack (sau trasă pe MD&TRACK);
+  fișierele audio dinăuntru devin track-uri, fără dezarhivare.
+
 ## 2026-11-24 · 2026.11.24.7 · Click + Guide în jurul unei înregistrări
 - **MD&TRACK → ⋯ → 🎚 Click + Guide pe o înregistrare.** Acum: pui înregistrarea cântării ca track (YouTube, repetiție),
   iar aplicația îi află tempo-ul exact și măsura 1 (din bătăi), ascultă versurile ca să găsească unde începe fiecare
