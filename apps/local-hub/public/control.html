@@ -254,7 +254,9 @@
   .arow .tc{flex:1;position:relative;min-width:0}
   .arow.head{height:58px;border-bottom:1px solid var(--stroke);background:rgba(0,0,0,.18)} .arow.head .th{color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
   .arrange .ruler{position:absolute;left:0;right:0;top:2px;height:14px;font-size:10px;color:var(--faint)} .arrange .ruler span{position:absolute;transform:translateX(-50%)}
-  .arrange .blocks{position:absolute;left:0;right:0;top:18px;bottom:4px}
+  .arrange .blocks{position:absolute;left:0;right:0;top:18px;bottom:4px;overflow:hidden}
+  .arrange .tc{overflow:hidden} .arrange .ruler{overflow:hidden} .arrange .marklines{overflow:hidden}
+  .arrange .playhead.out{display:none} .vzoom{position:absolute;right:6px;top:2px;z-index:3;height:18px;padding:0 7px;border-radius:6px;font-size:10.5px;background:rgba(255,255,255,.08)}
   .arrange .blk{top:0;bottom:0;border-radius:7px;padding:3px 7px}
   .tracks{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column}
   .trk{height:clamp(56px,calc((100% - 0px) / var(--n,3)),92px);border-bottom:1px solid rgba(255,255,255,.06)}
@@ -3131,7 +3133,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const onBar = g.off + barK * g.bar, onBeat = g.off + k * beat;
     return Math.max(0, Math.round((Math.abs(t - onBar) <= beat * 0.75 ? onBar : onBeat) * 1000) / 1000);
   }
-  const laneTime = e => { const r = $('blocks').getBoundingClientRect(); return snapT(Math.max(0, Math.min(mt.duration, (e.clientX - r.left) / r.width * mt.duration)), e); };
+  const laneTimeRaw = e => { const r = $('blocks').getBoundingClientRect(), v = view(); return Math.max(0, Math.min(mt.duration, v.a + (e.clientX - r.left) / r.width * (v.b - v.a))); };
+  const laneTime = e => snapT(laneTimeRaw(e), e);
   // ⇪ Ableton (.als): markers → the song's sections on the tracks, plus tempo and time signature
   $('alsFile').onchange = async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -3164,6 +3167,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       near ? { l: 'Șterge secțiunea de aici', run: () => saveMarks(marks.filter(m => m !== near)) } : null,
       { l: 'Șterge toate secțiunile', run: () => send({ type: 'setCues', item: mtItem, cues: [] }), dis: !marks.length },
       { l: '✦ Secțiuni automat (AI ascultă ghidul)', run: () => aiCues() },
+      grid() ? { l: `Măsura 1 începe aici (${fmt(laneTimeRaw(e))}) — grila se mută`, run: () => send({ type: 'setBpm', item: mtItem, offset: laneTimeRaw(e) }) } : null,
+      grid()?.off ? { l: 'Măsura 1 la începutul track-urilor', run: () => send({ type: 'setBpm', item: mtItem, offset: 0 }) } : null,
     ]);
   });
   // ⇔ drag the start of a section (grab its left edge) to move it; the map is saved on the song
@@ -3177,7 +3182,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   });
   $('blocks').addEventListener('pointermove', e => {
     const b = e.target.closest('.blk'); if (!dragMk) { if (b) b.style.cursor = e.clientX - b.getBoundingClientRect().left <= 10 ? 'ew-resize' : ''; return; }
-    dragMk.t = laneTime(e); dragMk.b.style.left = (dragMk.t / mt.duration * 100) + '%';
+    dragMk.t = laneTime(e); const v = view(); dragMk.b.style.left = ((dragMk.t - v.a) / (v.b - v.a) * 100) + '%';
   });
   $('blocks').addEventListener('pointerup', e => {
     if (!dragMk) return; const d = dragMk; dragMk = null; e.stopPropagation();
@@ -3334,7 +3339,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       try {
         const buf = await fetch('/media/' + encodeURIComponent(file)).then(r => r.arrayBuffer());
         const audio = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(buf);
-        const ch = audio.getChannelData(0), n = 900, step = Math.max(1, Math.floor(ch.length / n)), out = new Float32Array(n);
+        // one point every 20 ms (enough to zoom in on a few bars), at most 40 000; the decoded audio is not kept
+        const ch = audio.getChannelData(0), n = Math.min(40000, Math.max(900, Math.ceil(audio.duration * 50))), step = Math.max(1, Math.floor(ch.length / n)), out = new Float32Array(n);
         for (let i = 0; i < n; i++) { let m = 0; for (let j = i * step, e = Math.min(ch.length, j + step); j < e; j += 4) m = Math.max(m, Math.abs(ch[j])); out[i] = m; }
         return out;
       } catch { return null; }
@@ -3363,20 +3369,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const dpr = devicePixelRatio || 1; canvas.width = w * dpr; canvas.height = h * dpr;
     const g = canvas.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
     const d0 = mt.ch.find(c => c.file === file)?.el.duration, total = Number.isFinite(d0) && d0 > 0 ? d0 : dur;
-    const frac = dur && total ? Math.min(1, total / dur) : 1;
-    const cols = Math.floor(w * frac);
+    const v = view(), X = t => (t - v.a) / (v.b - v.a) * w;      // only the part of the song in view (zoom)
+    const x0 = Math.max(0, X(0)), x1 = Math.min(w, X(total));
     // the clip: the track's colour, rounded, with a thin lighter top edge
-    g.globalAlpha = .62; g.fillStyle = color; g.beginPath(); g.roundRect?.(1, 3, Math.max(4, cols - 2), h - 6, 6) ?? g.rect(1, 3, cols - 2, h - 6); g.fill();
-    g.globalAlpha = .9; g.fillRect(1, 3, Math.max(4, cols - 2), 2);
+    g.globalAlpha = .62; g.fillStyle = color; g.beginPath(); g.roundRect?.(x0 + 1, 3, Math.max(4, x1 - x0 - 2), h - 6, 6) ?? g.rect(x0 + 1, 3, x1 - x0 - 2, h - 6); g.fill();
+    g.globalAlpha = .9; g.fillRect(x0 + 1, 3, Math.max(4, x1 - x0 - 2), 2);
     g.globalAlpha = .22; g.fillStyle = '#000';
-    for (const b of blocks.slice(1)) g.fillRect(Math.round(b.start / dur * w), 3, 1, h - 6);        // where each section starts
+    for (const b of blocks.slice(1)) { const x = Math.round(X(b.start)); if (x >= 0 && x <= w) g.fillRect(x, 3, 1, h - 6); }   // where each section starts
     g.globalAlpha = 1;
     if (!peaks) { g.fillStyle = 'rgba(255,255,255,.8)'; g.font = '11px Inter'; g.fillText('se încarcă…', 10, h / 2 + 4); return; }
     g.fillStyle = '#fff'; g.globalAlpha = .92;
-    const n = peaks.length;
-    for (let x = 0; x < cols; x++) {
-      const v = peaks[Math.floor(x / cols * n)] || 0, bh = Math.max(1, v * (h - 14));
-      g.fillRect(x, (h - bh) / 2, 1, bh);
+    const n = peaks.length, per = (v.b - v.a) / w;
+    for (let x = Math.floor(x0); x < x1; x++) {
+      const a = Math.floor((v.a + x * per) / total * n), b = Math.max(a + 1, Math.floor((v.a + (x + 1) * per) / total * n));
+      let p = 0; for (let k = a; k < b && k < n; k++) if (peaks[k] > p) p = peaks[k];   // zoomed out: the loudest of the column
+      const bh = Math.max(1, p * (h - 14)); g.fillRect(x, (h - bh) / 2, 1, bh);
     }
   }
   const clock = t => { t = Math.max(0, Math.floor(t || 0)); return `${Math.floor(t / 3600)}:${String(Math.floor(t % 3600 / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
@@ -3386,18 +3393,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('laneEmpty').classList.toggle('inhead', has);            // with tracks: the hint sits in the sections row, not on the waveforms
     $('laneEmpty').innerHTML = !has ? vtPanel()
       : 'Dublu-clic aici unde începe fiecare secțiune (sau clic dreapta ca s-o alegi) · ✦ în ⋯ le pune AI-ul din track-ul de cue.';
-    const blocks = sectionBlocks(), pct = t => dur ? (t / dur * 100) : 0;
-    $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" data-l="${esc(b.label)}" title="Clic = cursorul sare aici · Shift+clic în timp ce cântă = la următoarea măsură" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
+    const blocks = sectionBlocks(), v = view(), pct = t => dur ? ((t - v.a) / (v.b - v.a) * 100) : 0, inView = (a, b) => b >= v.a && a <= v.b;
+    $('blocks').innerHTML = dur ? blocks.filter(b => inView(b.start, b.end)).map(b => `<div class="blk" data-t="${b.start}" data-l="${esc(b.label)}" title="Clic = cursorul sare aici · Shift+clic în timp ce cântă = la următoarea măsură" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
       ${esc(b.label)}<small>${fmt(b.start)}</small>${b.ticks.map(t => `<i class="tick" style="left:${(t - b.start) / Math.max(0.01, b.end - b.start) * 100}%"></i>`).join('')}</div>`).join('') : '';
     // 🎛 like Ableton's arrangement: with a tempo the ruler counts bars (1, 5, 9…) and a light grid marks every bar
     const g = grid();
     if (g && dur) {
-      const w = $('blocks').clientWidth || 800, pxBar = w * g.bar / dur, step = [1, 2, 4, 8, 16, 32, 64].find(x => x * pxBar >= 34) || 64, n = Math.floor((dur - g.off) / g.bar) + 1;
-      $('ruler').innerHTML = Array.from({ length: Math.ceil(n / step) }, (_, k) => `<span style="left:${pct(g.off + k * step * g.bar)}%">${k * step + 1}</span>`).join('');
+      const w = $('blocks').clientWidth || 800, pxBar = w * g.bar / (v.b - v.a), step = [1, 2, 4, 8, 16, 32, 64].find(x => x * pxBar >= 34) || 64;
+      const k0 = Math.max(0, Math.floor((v.a - g.off) / g.bar / step)), k1 = Math.ceil((v.b - g.off) / g.bar / step);
+      const beatLbl = pxBar >= 160;                   // zoomed in: the beats get numbers too (5.2, 5.3…)
+      $('ruler').innerHTML = Array.from({ length: Math.max(0, k1 - k0 + 1) }, (_, j) => (k0 + j) * step).map(k => `<span style="left:${pct(g.off + k * g.bar)}%">${k + 1}</span>`
+        + (beatLbl ? Array.from({ length: g.beats - 1 }, (_, j) => `<span style="left:${pct(g.off + k * g.bar + (j + 1) * g.bar / g.beats)}%;opacity:.55">${k + 1}.${j + 2}</span>`).join('') : '')).join('');
       $('ruler').title = `Măsuri: ${g.bpm} BPM · ${g.beats}/${g.beats === 6 ? 8 : 4}. Secțiunile se lipesc de timpi (Alt = fără lipire).`;
     } else {
       const stepS = dur > 600 ? 60 : dur > 240 ? 30 : 15;
-      $('ruler').innerHTML = dur ? Array.from({ length: Math.floor(dur / stepS) + 1 }, (_, k) => `<span style="left:${pct(k * stepS)}%">${fmt(k * stepS)}</span>`).join('') : '';
+      $('ruler').innerHTML = dur ? Array.from({ length: Math.floor(dur / stepS) + 1 }, (_, k) => k * stepS).filter(t => inView(t, t)).map(t => `<span style="left:${pct(t)}%">${fmt(t)}</span>`).join('') : '';
       $('ruler').title = '';
     }
     const key = mt.ch.map(c => c.file + (c.muted ? 'm' : '') + (c.solo ? 's' : '')).join('|') + '#' + blocks.map(b => b.label + b.start).join(',') + '#' + dur;
@@ -3415,25 +3425,69 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       $('tracks').querySelectorAll('[data-solo]').forEach(b => b.onclick = e => { e.stopPropagation(); const c = mt.ch[+b.dataset.solo]; c.solo = !c.solo; mt.apply(); renderMixer(); });
       requestAnimationFrame(() => $('tracks').querySelectorAll('canvas').forEach(cv => drawWave(cv, mt.ch[+cv.dataset.w].file, blocks, trackColor(+cv.dataset.w, mt.ch[+cv.dataset.w].name))));
     }
-    const bars = g && dur && ($('blocks').clientWidth || 800) * g.bar / dur >= 5
-      ? Array.from({ length: Math.floor((dur - g.off) / g.bar) + 1 }, (_, k) => `<b class="bar ${k % 4 ? '' : 'big'}" style="--x:${(g.off + k * g.bar) / dur}"></b>`).join('') : '';
-    $('markLines').innerHTML = bars + (dur ? blocks.map(b => `<i style="--x:${b.start / dur};--sc:${sectionColor(b.label)}"></i>`).join('') : '');
+    // the grid goes from the very start of the tracks: bars before „1” (a count-in, an intro) are drawn too
+    let bars = '';
+    if (g && dur && ($('blocks').clientWidth || 800) * g.bar / (v.b - v.a) >= 5) {
+      const k0 = Math.floor((v.a - g.off) / g.bar), k1 = Math.ceil((v.b - g.off) / g.bar), beat = g.bar / g.beats, showBeats = ($('blocks').clientWidth || 800) * beat / (v.b - v.a) >= 9;
+      for (let k = k0; k <= k1; k++) {
+        const t = g.off + k * g.bar; if (t < 0 || t > dur) continue;
+        bars += `<b class="bar ${k % 4 ? '' : 'big'}" style="--x:${(t - v.a) / (v.b - v.a)}"></b>`;
+        if (showBeats) for (let j = 1; j < g.beats; j++) { const tb = t + j * beat; if (tb <= dur) bars += `<b class="bar" style="--x:${(tb - v.a) / (v.b - v.a)};opacity:.45"></b>`; }
+      }
+    }
+    $('markLines').innerHTML = bars + (dur ? blocks.filter(b => inView(b.start, b.start)).map(b => `<i style="--x:${(b.start - v.a) / (v.b - v.a)};--sc:${sectionColor(b.label)}"></i>`).join('') : '');
     $('tlTime').innerHTML = timeHtml(mt.time, dur);
-    $('lane').style.setProperty('--p', dur ? mt.time / dur : 0);
+    setHead(mt.time);
+    if ($('vzoom')) $('vzoom').hidden = !(V?.b && V.b - V.a < dur - 0.5);
   }
   addEventListener('resize', () => { if (!$('musicView').hidden) { $('tracks').dataset.key = ''; renderLane(); } });
+  // 🔍 zoom like Ableton: pinch on the trackpad (or Ctrl + wheel) zooms around the pointer; two fingers sideways move along
+  var V = { a: 0, b: 0 };                             // (var: renderLane may run before this line) the part of the song in view, in seconds (b = 0: the whole song)
+  function view() { const d = mt.duration || 0; if (!V?.b || V.b > d + 0.01) return { a: 0, b: d || 1 }; return { a: V.a, b: V.b }; }
+  function setHead(t) {                               // the play head, inside the view
+    const v = view(), f = (t - v.a) / (v.b - v.a);
+    $('lane').style.setProperty('--p', Math.min(1, Math.max(0, f))); $('lane').querySelector('.playhead')?.classList.toggle('out', f < 0 || f > 1);
+  }
+  let zoomRaf = 0;
+  function redrawView() {                             // one redraw per frame, however fast the fingers move
+    if (zoomRaf) return;
+    zoomRaf = requestAnimationFrame(() => {
+      zoomRaf = 0; renderLane();
+      const blocks = sectionBlocks();
+      $('tracks').querySelectorAll('canvas').forEach(cv => drawWave(cv, mt.ch[+cv.dataset.w].file, blocks, trackColor(+cv.dataset.w, mt.ch[+cv.dataset.w].name)));
+    });
+  }
+  function setView(a, b) {
+    const d = mt.duration || 0; if (!d) return;
+    const len = Math.min(d, Math.max(4, b - a)); a = Math.max(0, Math.min(d - len, a));
+    if (len >= d - 0.01) { V.a = 0; V.b = 0; } else { V.a = a; V.b = a + len; }
+    redrawView();
+  }
+  $('lane').addEventListener('wheel', e => {
+    if (!mt.duration || e.target.closest('.th')) return;
+    const v = view(), r = $('blocks').getBoundingClientRect(), f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), at = v.a + f * (v.b - v.a);
+    if (e.ctrlKey || e.metaKey) {                     // pinch (macOS sends it as Ctrl + wheel)
+      e.preventDefault(); const k = Math.exp(e.deltaY * 0.012), len = (v.b - v.a) * k;
+      setView(at - f * len, at - f * len + len);
+    } else if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
+      e.preventDefault(); const dx = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / r.width * (v.b - v.a);
+      if (V.b) setView(v.a + dx, v.b + dx);
+    }
+  }, { passive: false });
+  $('lane').querySelector('.arow.head .tc').insertAdjacentHTML('beforeend', '<button class="vzoom" id="vzoom" hidden title="Arată toată cântarea (sau ciupește cu două degete pe trackpad)">⤢ toată</button>');
+  $('vzoom').onclick = e => { e.stopPropagation(); setView(0, mt.duration); };
   $('lane').onclick = e => {
     if (!mt.duration || e.target.closest('button')) return;
     const blk = e.target.closest('.blk'), th = 150, r = $('lane').getBoundingClientRect();
     if (!blk && e.clientX - r.left < th) return;
     // the cursor goes where you click, right away (like Ableton); on a section it goes to its start.
     // Shift+click on a section while playing = at the next bar, without breaking the time
-    const t = blk ? +blk.dataset.t : snapT((e.clientX - r.left - th) / (r.width - th) * mt.duration, e);
+    const t = blk ? +blk.dataset.t : snapT(laneTimeRaw(e), e);
     if (blk && e.shiftKey && mt.playing) return jumpTo(t, blk.dataset.l);
     clearTimeout(pendingJump?.timer);
     if (mt.playing) mt.seekSmooth(t).then(() => { lastCue = -2; followCues(t, true); markSection(); });
     else { mt.seek(t); lastCue = -2; followCues(t, true); markSection(); }
-    $('lane').style.setProperty('--p', mt.duration ? t / mt.duration : 0); $('tlTime').innerHTML = timeHtml(t, mt.duration);
+    setHead(t); $('tlTime').innerHTML = timeHtml(t, mt.duration);
   };
   // into a section "fluently": while playing, the jump waits for the next bar and fades, so the band stays on time
   let pendingJump = null;
@@ -3463,7 +3517,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   mt.onTime = t => {
     if (mt.playing) followCues(t);                    // lyrics on time, every frame
     const now = performance.now(); if (mt.playing && now - uiAt < 50) return; uiAt = now;   // the rest ~20 times a second: lighter for the computer
-    $('lane').style.setProperty('--p', mt.duration ? t / mt.duration : 0); $('tlTime').innerHTML = timeHtml(t, mt.duration);
+    setHead(t); $('tlTime').innerHTML = timeHtml(t, mt.duration);
+    if (mt.playing && V?.b && (t > V.b || t < V.a)) setView(t - (V.b - V.a) * 0.05, t + (V.b - V.a) * 0.95);   // zoomed in: the view follows the song
     const g = grid();                                  // the beat dots follow the tracks, even with the click off
     if (g && mt.playing && !met.playing) { const b = Math.floor(Math.max(0, t - g.off) / (g.bar / g.beats)) % g.beats; if (b !== dotAt) { dotAt = b; renderDots(b); } }
     if (mt.playing) markSection(); if (!$('musicView').hidden) meters();

@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.23.10 · MD&TRACK: zoom cu trackpad-ul, grila de la început
+- **Grila.** Înainte: începea abia de la „măsura 1” (unde era pus primul timp), înainte era gol. Acum: merge de la
+  începutul track-urilor; clic dreapta pe riglă → „Măsura 1 începe aici” (sau „la începutul track-urilor”).
+- **Zoom.** Înainte: se vedea mereu toată cântarea. Acum: ciupești cu două degete pe trackpad (sau Ctrl + rotița) ca
+  să mărești în jurul cursorului, două degete stânga-dreapta te mută; „⤢ toată” revine. Mărit, rigla arată și timpii
+  (5.2, 5.3…), iar în timp ce cântă vederea merge după cursor. Desenul se face o dată pe cadru (ușor pentru calculator).
+
 ## 2026-11-24 · 2026.11.23.9 · MD&TRACK: ▶ pentru tot, clic = cursor, „ascultă ghidul”
 - **▶ / ❚❚ din MD&TRACK.** Înainte: doar track-urile. Acum: track-urile și pad-ul pornesc și se opresc împreună (⏹ oprește
   tot). Pad-ul singur are încă ▶ în mixer; fără track-uri, ▶ pornește doar pad-ul.
