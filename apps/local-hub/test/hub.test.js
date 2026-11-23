@@ -560,7 +560,10 @@ test('🎨 the church layer (colour, modules switched off) is kept apart and onl
 
 test('📅 the year plan imports goals, activities and the coming Sundays, twice without doubling', async () => {
   const data = JSON.parse(fs.readFileSync(new URL('./fixtures-plan-anual.json', import.meta.url), 'utf8'));
-  const go = () => fetch('http://localhost:4599/api/plan/year', { method: 'POST', headers: { 'x-pin': '2222', 'content-type': 'application/json' }, body: JSON.stringify({ data, vision: true, logo: 'raul-vietii', tz: 'Europe/Bucharest' }) }).then(r => r.json());
+  const ch = await fetch('http://localhost:4599/api/plan/year/churches?name=Biserica Râul Vieții', { headers: { 'x-pin': '2222' } }).then(r => r.json());
+  assert.equal(ch.churches.find(c => c.id === ch.suggested)?.name, 'Râul Vieții', 'the church is found by its name');
+  const active = ch.churches.find(c => c.active).id;
+  const go = () => fetch('http://localhost:4599/api/plan/year', { method: 'POST', headers: { 'x-pin': '2222', 'content-type': 'application/json' }, body: JSON.stringify({ data, churchId: active, vision: true, logo: 'raul-vietii', tz: 'Europe/Bucharest' }) }).then(r => r.json());
   const r1 = await go(); assert.equal(r1.ok, true); assert.equal(r1.goals, 10); assert.equal(r1.tasks, 15);
   const r2 = await go(); assert.equal(r2.goals, 10); assert.equal(r2.tasks, 15); assert.equal(r2.created, 0, 'a second import updates, it does not double');
   const P = await fetch('http://localhost:4599/api/plan', { headers: { 'x-pin': '2222' } }).then(r => r.json());
@@ -576,6 +579,20 @@ test('📅 the year plan imports goals, activities and the coming Sundays, twice
   const w = client(); await w.open; const st = (await w.next(m => m.type === 'hello')).state; w.ws.close();
   assert.equal(st.church.logo, 'logo-echipa-raul-vietii.png');
   assert.equal(P.year.church, 'Biserica Râul Vieții');
+});
+
+test('📅 the year plan of another church goes to that church, not to the one open now', async () => {
+  const data = JSON.parse(fs.readFileSync(new URL('./fixtures-plan-anual.json', import.meta.url), 'utf8'));
+  const before = await fetch('http://localhost:4599/api/plan', { headers: { 'x-pin': '2222' } }).then(r => r.json());
+  const r = await fetch('http://localhost:4599/api/plan/year', { method: 'POST', headers: { 'x-pin': '2222', 'content-type': 'application/json' },
+    body: JSON.stringify({ data, churchId: (await fetch('http://localhost:4599/api/plan/year/churches?name=Biserica Râul Vieții', { headers: { 'x-pin': '2222' } }).then(r => r.json())).suggested, vision: true, logo: 'raul-vietii', tz: 'Europe/Bucharest' }) }).then(r => r.json());
+  assert.equal(r.other, true); assert.equal(r.church, 'Râul Vieții');
+  const n = await fetch('http://localhost:4599/api/plan/year', { method: 'POST', headers: { 'x-pin': '2222', 'content-type': 'application/json' }, body: JSON.stringify({ data, newChurch: 'Biserică nouă de test' }) }).then(r => r.json());
+  assert.equal(n.church, 'Biserică nouă de test'); assert.equal(n.other, true);
+  const after = await fetch('http://localhost:4599/api/plan', { headers: { 'x-pin': '2222' } }).then(r => r.json());
+  assert.equal(after.services.length, before.services.length, 'the open church did not get the other church\'s Sundays');
+  const ch = await fetch('http://localhost:4599/api/plan/year/churches?name=Biserica Râul Vieții Peștera', { headers: { 'x-pin': '2222' } }).then(r => r.json());
+  assert.equal(ch.churches.find(c => c.id === ch.suggested)?.name, 'Râul Vieții', 'next time it is found by name');
 });
 
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {

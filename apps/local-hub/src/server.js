@@ -1783,16 +1783,31 @@ async function handle(req, res) {
       finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
-    if (p === '/api/plan/year' && req.method === 'POST') {    // 📅 the pastor's year plan document → the plan (and, if wanted, the church's vision and logo)
+    if (p === '/api/plan/year/churches' && req.method === 'GET') {   // which church the plan belongs to: the one whose name matches, else a new one
+      if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul (PIN de lider).' });
+      const fold = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const want = fold(url.searchParams.get('name')).replace(/^biserica\s+/, '').replace(/\s+pestera$/, '');
+      const match = want && db.churches.find(c => (fold(c.name).length > 3 && fold(c.name).includes(want)) || (/pestera/.test(fold(c.name) + fold(c.city)) && /raul vietii/.test(want)));
+      return json(res, 200, { churches: db.churches.map(c => ({ id: c.id, name: c.name, active: c.id === db.activeChurch })), suggested: match?.id || '' });
+    }
+    if (p === '/api/plan/year' && req.method === 'POST') {    // 📅 the pastor's year plan document → that church's plan (and, if wanted, its vision and logo)
       if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul (PIN de lider).' });
       const m = JSON.parse(await body(req, 400_000) || '{}');
-      const op = { op: 'importYear', data: m.data, tz: m.tz }; const err = applyPlanOp(db.plan, op); if (err) return json(res, 400, { error: err });
-      const c = activeChurch();
-      if (m.vision && db.plan.year?.vision && !c.vision) c.vision = db.plan.year.vision;
+      let c = db.churches.find(x => x.id === m.churchId);
+      if (!c && m.newChurch) {                               // a new church for it (no code yet: it can be set from the churches menu)
+        c = { id: crypto.randomUUID(), name: String(m.newChurch).trim().slice(0, 60) || 'Biserică nouă', city: '', code: null }; db.churches.push(c);
+      }
+      c ||= activeChurch();
+      const isActive = c.id === db.activeChurch;
+      const box = isActive ? null : (db.churchData[c.id] ||= { setlist: [], service: { title: 'Serviciu duminică', startsAt: null }, plan: defaultPlan() });
+      if (box) box.plan ||= defaultPlan();
+      const plan = isActive ? db.plan : box.plan;
+      const op = { op: 'importYear', data: m.data, tz: m.tz }; const err = applyPlanOp(plan, op); if (err) return json(res, 400, { error: err });
+      if (m.vision && plan.year?.vision && !c.vision) c.vision = plan.year.vision;
       const ext = m.logo && /^[a-z0-9-]+$/.test(m.logo) && ['.png', '.svg'].find(e => fs.existsSync(path.join(PUBLIC, 'logos', m.logo + e)));
       if (ext) { const f = 'logo-echipa-' + m.logo + ext; fs.copyFileSync(path.join(PUBLIC, 'logos', m.logo + ext), path.join(MEDIA_DIR, f)); c.logo = f; }   // the church's own logo
       save(); broadcast(); const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
-      return json(res, 200, { ok: true, created: op.created, goals: db.plan.goals.filter(g => g.code).length, tasks: db.plan.tasks.filter(t => t.code).length, church: c.name });
+      return json(res, 200, { ok: true, created: op.created, goals: plan.goals.filter(g => g.code).length, tasks: plan.tasks.filter(t => t.code).length, church: c.name, other: !isActive });
     }
     if (p === '/api/displays') {                                 // 🖥 the monitors by name, and which one shows the projector / the stage
       if (req.viaDoor || !checkPin(req)) return json(res, 403, { error: 'Doar pe calculatorul bisericii' });

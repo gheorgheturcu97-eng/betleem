@@ -1101,16 +1101,22 @@
     if (!file) return;
     const txt = await file.text(); let data = null;
     try { data = JSON.parse((txt.match(/```json\s*([\s\S]*?)```/) || [, txt])[1]); } catch { return toast('Nu găsesc partea JSON a planului în fișier'); }
-    const church = $('tChurch').textContent || 'biserica activă', mine = /r[âa]ul vie[țt]ii/i.test(data.biserica || '');
-    dialog('📥 Planul anului', `<p>Import <b>${esc((data.biserica || 'planul').replace(/\s+Pe[șs]tera$/i, ''))}</b> (${esc(data.an || '')}) în biserica <b>${esc(church)}</b>.</p>
-      <p class="hint">Obiectivele și activitățile își păstrează codurile (OBJ-1.2, ACT-1.07): dacă îl imporți din nou, se actualizează, nu se dublează. Duminicile care urmează din serie devin servicii cu predica pregătită.</p>
+    const name = (data.biserica || 'Biserica').replace(/\s+Pe[șs]tera$/i, ''), mine = /r[âa]ul vie[țt]ii/i.test(data.biserica || '');
+    const ch = await fetch('/api/plan/year/churches?name=' + encodeURIComponent(name), { headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({ churches: [] }));
+    const shortName = name.replace(/^Biserica\s+/i, '');
+    dialog('📥 Planul anului', `<p>Planul <b>${esc(name)}</b> (${esc(data.an || '')}) intră la biserica:</p>
+      <select id="yCh">${(ch.churches || []).map(c => `<option value="${c.id}" ${c.id === ch.suggested ? 'selected' : ''}>${esc(c.name)}${c.active ? ' (deschisă acum)' : ''}</option>`).join('')}
+        <option value="new" ${ch.suggested ? '' : 'selected'}>➕ Biserică nouă: ${esc(shortName)}</option></select>
+      <p class="hint">Fiecare biserică are planificarea ei. Obiectivele și activitățile își păstrează codurile (OBJ-1.2, ACT-1.07): dacă imporți din nou, se actualizează, nu se dublează. Duminicile care urmează din serie devin servicii cu predica pregătită.</p>
       <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="yVis" checked style="width:auto"> Pune viziunea în bara echipei (dacă e goală)</label>
       ${mine ? `<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="yLogo" checked style="width:auto"> Pune logo-ul Bisericii Râul Vieții <img src="/logos/raul-vietii.png" style="height:34px;border-radius:8px;margin-left:6px"></label>` : ''}`,
       async () => {
+        const pick = $('yCh').value;
         const r = await fetch('/api/plan/year', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' },
-          body: JSON.stringify({ data, vision: $('yVis').checked, logo: $('yLogo')?.checked ? 'raul-vietii' : '', tz: Intl.DateTimeFormat().resolvedOptions().timeZone }) }).then(r => r.json()).catch(() => ({ error: 'N-a mers' }));
+          body: JSON.stringify({ data, churchId: pick === 'new' ? '' : pick, newChurch: pick === 'new' ? shortName : '', vision: $('yVis').checked, logo: $('yLogo')?.checked ? 'raul-vietii' : '', tz: Intl.DateTimeFormat().resolvedOptions().timeZone }) }).then(r => r.json()).catch(() => ({ error: 'N-a mers' }));
         if (r.error) { toast(r.error); return false; }
-        await load(); toast(`📅 Planul e în ${r.church}: ${r.goals} obiective, ${r.tasks} activități, ${r.created} duminici noi în program`);
+        await load();
+        toast(`📅 Planul e la ${r.church}: ${r.goals} obiective, ${r.tasks} activități, ${r.created} duminici noi.` + (r.other ? ` Ca să-l vezi, deschide biserica ${r.church} (Betleem ▾ sus, stânga).` : ''));
       }, 'Importă');
   }
   function showYear() {
