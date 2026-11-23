@@ -1828,7 +1828,14 @@ async function handle(req, res) {
     }
     if (p === '/api/displays') {                                 // 🖥 the monitors by name, and which one shows the projector / the stage
       if (req.viaDoor || !checkPin(req)) return json(res, 403, { error: 'Doar pe calculatorul bisericii' });
-      if (req.method === 'POST') { const m = JSON.parse(await body(req, 2000) || '{}'); if (['main', 'stage'].includes(m.kind)) await pickDisplay(m.kind, m.id); }
+      if (req.method === 'POST') {
+        const m = JSON.parse(await body(req, 2000) || '{}');
+        if (m.wireless && EL) {                                // 📡 AirPlay / Miracast: the computer's own "add a display" settings
+          const u = process.platform === 'darwin' ? 'x-apple.systempreferences:com.apple.Displays-Settings.extension' : process.platform === 'win32' ? 'ms-settings:display' : '';
+          if (u) EL.shell.openExternal(u).catch(() => {});
+        }
+        if (['main', 'stage'].includes(m.kind)) await pickDisplay(m.kind, m.id);
+      }
       return json(res, 200, { inApp: !!EL, displays: displaysInfo() });
     }
     if (p === '/api/brand') {                                    // 🎨 the church's own layer: Documents/Betleem/personalizare.json
@@ -2234,7 +2241,8 @@ function placeOut(kind) {
   if (!EL) return;
   let w = outWins[kind]; if (!w || w.isDestroyed()) return;
   const { screen } = EL, all = screen.getAllDisplays();
-  const d = all.find(x => x.id === db.screenPick[kind]) || screen.getDisplayMatching((w._old && !w._old.isDestroyed() ? w._old : w).getBounds());
+  const named = db.screenPickName?.[kind] && all.find(x => x.label === db.screenPickName[kind]);   // a wireless TV comes back with a new id
+  const d = all.find(x => x.id === db.screenPick[kind]) || named || screen.getDisplayMatching((w._old && !w._old.isDestroyed() ? w._old : w).getBounds());
   if (w.isFullScreen()) { w.once('leave-full-screen', () => setTimeout(() => placeOut(kind), 60)); w.setFullScreen(false); return; }
   if (d.id === controlDisplayId()) {                   // the same monitor as the program: a small window, never covering it
     w.setAlwaysOnTop(false); w.setBounds({ x: d.workArea.x + 40, y: d.workArea.y + 40, width: Math.round(d.workArea.width / 2), height: Math.round(d.workArea.width / 2 * 9 / 16) });
@@ -2266,6 +2274,17 @@ if (process.versions.electron) {
       setTimeout(settle, 900);
     };
     app.on('browser-window-created', (_e, w) => { watch(w); setTimeout(() => watch(w), 0); });
+    // a monitor came or went (an AirPlay / Miracast TV connects): tell the control pages; the chosen one gets its screen back
+    const changed = (d, added) => setTimeout(() => {
+      const msg = JSON.stringify({ type: 'displays', added: added ? (d.label || 'Monitor nou') : '', removed: added ? '' : (d.label || '') });
+      for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
+      if (added) for (const k of ['main', 'stage']) if (db.screenPick[k] === d.id || (db.screenPickName?.[k] && db.screenPickName[k] === d.label)) {
+        db.screenPick[k] = d.id; save();
+        if (outWins[k] && !outWins[k].isDestroyed()) placeOut(k); else EL.ipcMain.emit('bnc:open-screen', {}, k, '');
+      }
+    }, 800);
+    EL.screen.on('display-added', (_e, d) => changed(d, true));
+    EL.screen.on('display-removed', (_e, d) => changed(d, false));
     BrowserWindow.getAllWindows().forEach(watch);
   }).catch(e => logError('ferestrele de ecran', e));
 }
@@ -2278,7 +2297,9 @@ function displaysInfo() {
     pick: Object.entries(db.screenPick).filter(([, v]) => v === d.id).map(([k]) => k) }));
 }
 async function pickDisplay(kind, id) {
-  db.screenPick[kind] = Number(id) || null; save();
+  db.screenPick[kind] = Number(id) || null;
+  db.screenPickName ||= {}; db.screenPickName[kind] = EL?.screen.getAllDisplays().find(x => x.id === db.screenPick[kind])?.label || '';
+  save();
   try { const F = path.join(DATA_DIR, 'settings.json'), st = JSON.parse(fs.readFileSync(F, 'utf8')); st[kind + 'Display'] = db.screenPick[kind]; fs.writeFileSync(F, JSON.stringify(st, null, 2)); } catch {}   // for the next start too
   if (!EL || !id) return;
   if (!outWins[kind] || outWins[kind].isDestroyed()) { EL.ipcMain.emit('bnc:open-screen', {}, kind, ''); await new Promise(r => setTimeout(r, 900)); }

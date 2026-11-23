@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-23 · 2026.11.23.4 · ecrane fără fir
+- **Lista de monitoare (Sală / Scenă).** Înainte: doar monitoarele legate cu cablu. Acum: la final are „📡 Ecran fără fir
+  (AirPlay / Miracast)…” (deschide setările de monitoare ale calculatorului, cu pașii) și „🌐 Televizor cu browser…”
+  (adresa de deschis pe televizor). Când se conectează un ecran, lista se reîmprospătează singură, iar ecranul ales
+  ține minte și numele, deci Sala/Scena revine singură pe televizor când acesta se reconectează.
+
 ## 2026-11-23 · tranziții, acorduri pe toate strofele, bara macOS pe proiector
 - **Schimbarea versurilor pe ecran.** Înainte: imediat (tăiere). Acum: tot așa implicit, dar poți alege în bara de
   aspect (lângă slide-uri) **Tranziție**: Tăiere / Stingere / Trecere lină / Dizolvare, cu durata. Pe un slide sau pe

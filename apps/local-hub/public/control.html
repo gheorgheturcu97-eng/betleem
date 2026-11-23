@@ -1433,6 +1433,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'login') toast(e.ok ? 'Conectat ca ' + e.role : 'PIN greșit');
     if (e.type === 'church' && !e.ok) toast(e.error);
     if (e.type === 'chords') chordsProgress(e);
+    if (e.type === 'displays') { monitors(); if (e.added) toast('🖥 A apărut „' + e.added + '”. Îl alegi la Sală sau Scenă din listă.'); else if (e.removed) toast('🖥 S-a deconectat „' + e.removed + '”.'); }
     if (e.type === 'cleaned') { songCache.clear(); search(); render(); toast(`Am curățat ${e.changed} din ${e.total} cântări; la ${e.ordered} am pus refrenul după fiecare strofă.`); }
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
     if (e.type === 'inbox') onInbox(e);
@@ -2120,13 +2121,35 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       for (const [sel, kind] of [['monMain', 'main'], ['monStage', 'stage']]) {
         const el = $(sel); el.hidden = false;
         const cur = r.displays.find(d => d.pick.includes(kind)) || r.displays.find(d => d[kind]);
-        el.innerHTML = `<option value="">${cur ? '' : '— alege monitorul —'}</option>` + r.displays.map(d => `<option value="${d.id}" ${cur?.id === d.id ? 'selected' : ''}>${esc(d.name)}${d.control ? ' (aici e programul)' : ''}</option>`).join('');
+        el.innerHTML = `<option value="">${cur ? '' : '— alege monitorul —'}</option>` + r.displays.map(d => `<option value="${d.id}" ${cur?.id === d.id ? 'selected' : ''}>${esc(d.name)}${d.control ? ' (aici e programul)' : ''}</option>`).join('')
+          + '<option value="wireless">📡 Ecran fără fir (AirPlay / Miracast)…</option><option value="tv">🌐 Televizor cu browser…</option>';
       }
       if (post) toast('Gata: ' + (r.displays.find(d => d.id === +post.id)?.name || ''));
     } catch {}
   }
-  $('monMain').onchange = () => monitors({ kind: 'main', id: $('monMain').value });
-  $('monStage').onchange = () => monitors({ kind: 'stage', id: $('monStage').value });
+  // 📡 a TV that accepts screen sharing: the computer connects it as an extra monitor, then it is chosen here by name
+  async function wireless(kind) {
+    const mac = /Mac/.test(navigator.platform);
+    fetch('/api/displays', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' }, body: JSON.stringify({ wireless: true }) }).catch(() => {});
+    await ask(mac
+      ? 'Am deschis Setări → Monitoare. Apasă ＋ (sau meniul de lângă „Monitoare”) și alege televizorul (AirPlay). Important: alege „Folosește ca monitor separat”, nu „Oglindește”, altfel se vede și programul tău. Când apare, îl găsești în lista de aici cu numele lui și Sala/Scena merge singură pe el.'
+      : 'Am deschis Setări → Afișaj. La „Mai multe afișaje” apasă „Conectează” (sau Windows + K) și alege televizorul (Miracast). Apoi alege „Extindere”, nu „Duplicare”. Când apare, îl găsești în lista de aici cu numele lui.', [], 'Am înțeles');
+    monitors();
+  }
+  async function tvBrowser(kind) {
+    let base = location.origin;
+    try { const t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
+    const page = kind === 'stage' ? '/stage.html' : '/main.html';
+    await ask('Pe televizorul cu browser (Smart TV, Fire TV, tabletă), în aceeași rețea Wi-Fi, deschide adresa de mai jos. Dublu-clic (sau OK pe telecomandă) = ecran complet. Merge singur după ce proiectezi.',
+      [{ label: kind === 'stage' ? 'Adresa pentru Scenă' : 'Adresa pentru Sală', value: base + page }], 'Gata');
+    monitors();
+  }
+  for (const [id, kind] of [['monMain', 'main'], ['monStage', 'stage']]) $(id).onchange = () => {
+    const v = $(id).value;
+    if (v === 'wireless') return wireless(kind);
+    if (v === 'tv') return tvBrowser(kind);
+    monitors({ kind, id: v });
+  };
   for (const id of ['monMain', 'monStage']) $(id).onmousedown = () => monitors();
   setTimeout(() => monitors(), 1500);
   $('bStage').onclick = () => openScreen('/stage.html', 'bnc-stage');
