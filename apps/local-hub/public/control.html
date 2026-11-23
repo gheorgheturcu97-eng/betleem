@@ -3082,9 +3082,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const it = S?.setlist[mtItem]; if (!it || it.kind !== 'song') return 'Alege o cântare.';
     const bpm = songBpmNow(), run = vt?.running;
     return `<div class="vt"><h4>🎧 Cântare fără track-uri: track virtual (click + pad + ghid vorbit)</h4>
-      <div class="hint">${bpm ? `${bpm} BPM · ${met.beats || 4}/4` : 'Pune întâi BPM-ul cântării sus (sau Tap).'} · vocile: ${vtVoices ? vtVoices + ' înregistrări ale voastre' : 'vocea calculatorului (pune ghid-voci.zip în Documente/Betleem)'}</div>
+      <div class="hint">${bpm ? `${bpm} BPM · ${met.beats || 4}/4` : 'Pune întâi BPM-ul cântării sus (sau Tap).'} · vocile: ${vtVoices ? vtVoices + ' înregistrări ale voastre' : 'vocea calculatorului (pune înregistrările în Documente/Betleem/ghid)'}</div>
       <div class="row"><button data-vt="play" class="${run ? 'on' : 'acc'}">${run ? '■ Oprește' : '▶ Pornește track-ul virtual'}</button>
         <button data-vt="rec" class="${vtRec ? 'on' : ''}" title="În timp ce merge click-ul, apasă 1, 2, 3… când începe fiecare secțiune">${vtRec ? '● Pun secțiunile… (apasă din nou ca să termini)' : '● Pun eu secțiunile (taste 1–9)'}</button>
+        <button data-vt="make" title="Face două track-uri adevărate din hartă: Click și Guide (numărătoare + secțiunile anunțate). Apoi cântarea are track-uri: secțiuni pe ele, telefonul, săriturile">🎚 Fă track-uri Click + Guide</button>
         <button data-vt="clear" class="ghost" title="Șterge harta">🗑</button>${run ? `<span class="big" id="vtBar"></span>` : ''}</div>
       <div class="keys">${vtLabels().slice(0, 9).map((l, k) => `<span><b>${k + 1}</b>${esc(l)}</span>`).join('')}</div>
       <div class="bars" id="vtBars" title="Clic dreapta: pune o secțiune la măsura aleasă"></div>
@@ -3097,6 +3098,38 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       return `<div class="sec" style="left:${pct(m.bar)}%;width:${pct(end - m.bar)}%;--sc:${sectionColor(l)}">${esc(l)} · m.${m.bar + 1}</div>`; }).join('')
       + (vt?.running ? `<div class="vtph" style="left:${pct(Math.max(0, vt.bar) + vt.beatNow / (met.beats || 4))}%"></div>` : '');
     if ($('vtBar')) $('vtBar').textContent = vt.bar < 0 ? 'numărătoare ' + (vt.beatNow + 1) : `m. ${vt.bar + 1} · ${vt.beatNow + 1}`;
+  }
+  // 🎚 from the map (or, without one, from the song's order: about 2 bars a line) to two real tracks, Click and Guide
+  async function makeGuideTracks() {
+    const i = mtItem, it = S.setlist[i]; if (!it || it.kind !== 'song') return;
+    const bpm = +$('bpm').value || songBpmNow(); if (!bpm) return toast('Pune întâi BPM-ul cântării (sus, sau apasă ♩ în ritm)');
+    const names = sectionNames(), beats = met.beats || 4;
+    let marks = vtMarks();
+    if (!marks.length) {                                // no map yet: each section ≈ 2 bars for every line of it
+      const starts = sectionStarts(mtSlides); let bar = 0;
+      marks = starts.map((st, p) => { const end = starts[p + 1] ?? mtSlides.length, lines = mtSlides.slice(st, end).reduce((a, x) => a + (x.lines?.length || 0), 0);
+        const m = { bar, p }; bar += Math.max(4, lines * 2); return m; });
+      marks.total = bar;
+    }
+    const bars = marks.total || Math.max(...marks.map(m => m.bar)) + 8;
+    toast('🎚 Fac track-urile Click și Guide…');
+    try {
+      const v = await vtGet(), { renderGuide } = await import('/guide.js');
+      const r = await renderGuide({ marks, names: names.map(n => n.label), bpm, beats, voices: v.voices, bars });
+      const base = (it.title || 'cantare').normalize('NFD').replace(/[^\w ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 40) || 'cantare';
+      const up = async (blob, name) => { const res = await api('/api/media?name=' + encodeURIComponent(name), { method: 'POST', body: blob }); return res.name || name; };
+      const fc = await up(r.click, base + ' - Click.wav'), fg = await up(r.guide, base + ' - Guide.wav');
+      const old = (it.stems || []).filter(x => x.file !== fc && x.file !== fg);
+      send({ type: 'setStems', item: i, stems: [...old, { file: fc, name: 'Click', vol: 1 }, { file: fg, name: 'Guide', vol: 1 }] });
+      send({ type: 'trackBase', item: i, bpm, offset: r.offset });
+      if (!marks.length || !vtMarks().length) vtSave(marks.map(({ bar, p }) => ({ bar, p })));
+      // the sections on the new tracks, once they are loaded
+      const t0 = Date.now(); const wait = setInterval(() => {
+        if (mtItem !== i) return clearInterval(wait);
+        if (mt.duration > 0 || Date.now() - t0 > 8000) { clearInterval(wait); if (mt.duration > 0) saveMarks(marks.map(m => ({ t: r.offset + m.bar * r.bar, p: m.p }))); renderLane(); }
+      }, 300);
+      toast(`🎚 Gata: „Click” și „Guide” (${Math.round(r.duration / 60)}:${String(Math.round(r.duration % 60)).padStart(2, '0')}), cu secțiunile puse. Le poți muta pe track-uri.`);
+    } catch (e) { toast('Nu am putut face track-urile: ' + e.message); }
   }
   function vtSave(marks) { send({ type: 'setGuide', item: mtItem, marks }); }
   async function vtToggle() {
@@ -3113,6 +3146,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (b.dataset.vt === 'play') vtToggle();
     if (b.dataset.vt === 'rec') { vtRec = !vtRec; if (vtRec && !vt?.running) await vtToggle(); renderLane(); vtDraw(); if (vtRec) toast('Apasă 1–9 când începe fiecare secțiune'); }
     if (b.dataset.vt === 'clear') { vtSave([]); toast('Harta e ștearsă'); }
+    if (b.dataset.vt === 'make') makeGuideTracks();
   });
   $('laneEmpty').addEventListener('contextmenu', e => {
     const bars = e.target.closest('#vtBars'); if (!bars) return; e.preventDefault(); e.stopPropagation();

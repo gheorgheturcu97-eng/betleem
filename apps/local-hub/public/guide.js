@@ -20,6 +20,44 @@ export function voiceKey(file) {
   const n = NUM[t] || (/^\d$/.test(t) ? +t : 0);
   return n ? 'n' + n : guideKey(base);
 }
+/** the recordings that say a key: its own, or the word plus the number ("strofa2" → strofa1 + n2) */
+export function voiceParts(key, voices) {
+  if (voices[key]) return [key];
+  const m = /^([a-z]+)(\d+)$/.exec(key || ''); if (!m || m[1] === 'n') return [];
+  const word = voices[m[1] + '1'] ? m[1] + '1' : voices[m[1]] ? m[1] : '';
+  return word ? [word, ...(voices['n' + m[2]] ? ['n' + m[2]] : [])] : [];
+}
+
+/**
+ * 🎚 Make real tracks from the map: a Click and a spoken Guide (count-in, then each section announced a bar before),
+ * as WAV files, so a song without bought tracks gets them in a minute and everything in MD&TRACK works for it
+ * (sections on the tracks, the phone, the jumps). Bar 1 starts after one count-in bar.
+ */
+export async function renderGuide({ marks, names, bpm, beats = 4, voices, bars, rate = 44100 }) {
+  const beat = 60 / bpm, bar = beat * beats, total = (bars + 1) * bar + 1.5, len = Math.ceil(total * rate);
+  const click = new OfflineAudioContext(1, len, rate), guide = new OfflineAudioContext(1, len, rate);
+  for (let k = 0; k < (bars + 1) * beats; k++) {                 // the click, the first beat of every bar higher
+    const t = k * beat, acc = k % beats === 0 && beats > 1, o = click.createOscillator(), g = click.createGain();
+    o.type = 'square'; o.frequency.value = acc ? 1760 : 1180;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(acc ? 0.5 : 0.32, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    o.connect(g); g.connect(click.destination); o.start(t); o.stop(t + 0.06);
+  }
+  const buf = {};
+  for (const [k, u] of Object.entries(voices)) { try { buf[k] = await guide.decodeAudioData(await (await fetch(u)).arrayBuffer()); } catch {} }
+  const say = (key, t) => { for (const k of voiceParts(key, buf)) { const b = buf[k]; if (!b) continue; const s = guide.createBufferSource(); s.buffer = b; s.connect(guide.destination); s.start(t); t += b.duration * 0.92; } };
+  for (let j = 0; j < beats; j++) say('n' + (j + 1), j * beat);        // count-in: one, two, three, four
+  for (const m of marks) if (m.bar > 0) say(guideKey(names[m.p]), m.bar * bar);   // a bar before the section (its bar starts at (bar+1)·bar)
+  const [c, g] = await Promise.all([click.startRendering(), guide.startRendering()]);
+  return { click: wav(c), guide: wav(g), offset: bar, bar, duration: total };
+}
+function wav(audio) {                                  // 16-bit mono WAV
+  const d = audio.getChannelData(0), n = d.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), r = audio.sampleRate;
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, r, true); v.setUint32(28, r * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
+  return new Blob([b], { type: 'audio/wav' });
+}
 const english = key => { const m = /^([a-z]+)(\d*)$/.exec(key) || []; return m[1] === 'n' ? NUM_WORD[+m[2]] : (EN[m[1]] || m[1] || '') + (m[2] && m[1] !== 'refren' ? ' ' + NUM_WORD[+m[2]] : ''); };
 
 export class VirtualTrack {
@@ -38,8 +76,12 @@ export class VirtualTrack {
   /** say one word now: the church's recording if there is one, else the computer's voice */
   async say(key) {
     if (!key) return;
-    const buf = await this.buffer(key);
-    if (buf) { const s = this.met.ctx.createBufferSource(); s.buffer = buf; s.connect(this.out()); s.start(); return; }
+    const keys = voiceParts(key, this.voices);
+    if (keys.length) {                                 // "Verse" + "2" when there is no "Verse 2" recording: one after the other
+      let at = this.met.ctx.currentTime + 0.01;
+      for (const k of keys) { const buf = await this.buffer(k); if (!buf) continue; const s = this.met.ctx.createBufferSource(); s.buffer = buf; s.connect(this.out()); s.start(at); at += buf.duration * 0.92; }
+      return;
+    }
     try { const u = new SpeechSynthesisUtterance(english(key)); u.lang = 'en-US'; u.rate = 1.15; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch {}
   }
   /** marks: [{ bar, p }] (p = which section of the order), names[p] = its label */
