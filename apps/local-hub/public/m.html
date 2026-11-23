@@ -133,7 +133,8 @@
 <div class="sheet" id="keySheet"><div class="box"><h3>Tonul tău <button id="kClose">✕</button></h3><div class="keys" id="keys"></div></div></div>
 <div class="sheet" id="pinSheet"><div class="box"><h3>PIN-ul echipei <button id="pClose">✕</button></h3>
   <div class="login"><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"><button id="pOk">Intră</button>
-  <p class="hint" style="padding:0">PIN-ul echipei (îl știe liderul). Fără el poți vedea acordurile și Planificarea, dar nu schimbi ecranul sau track-urile.</p></div></div></div>
+  <p class="hint" style="padding:0">PIN-ul echipei (îl știe liderul). Fără el poți vedea acordurile și Planificarea, dar nu schimbi ecranul sau track-urile.</p>
+  <button id="pChange" hidden style="background:#262c34">Alt calculator (altă biserică)</button></div></div></div>
 
 <script type="module">
   import { connect, esc, stayAwake } from '/client.js';
@@ -163,6 +164,7 @@
   $('pOk').onclick = () => hub.login($('pin').value.trim());
   $('pin').onkeydown = e => { if (e.key === 'Enter') $('pOk').click(); };
   $('pClose').onclick = () => $('pinSheet').classList.remove('on');
+  if (window.Capacitor) { $('pChange').hidden = false; $('pChange').onclick = () => { location.href = 'capacitor://localhost/index.html?change=1'; }; }   // in the iPhone app
   $('lPin').onclick = $('mPin').onclick = () => $('pinSheet').classList.add('on');
   const go = m => { if (!can()) return $('pinSheet').classList.add('on'); hub.send(m); navigator.vibrate?.(8); };
 

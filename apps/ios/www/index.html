@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Betleem</title>
+<!-- The iPhone app is only this small door: it remembers the church computer's address and opens Betleem from it
+     (/m.html). All the app itself comes from that computer, so every update of Betleem is in the phone at once. -->
+<style>
+  :root{--bg:#0d1117;--card:#1c2128;--ink:#eef1f5;--mute:#8b95a3;--acc:#ffc21a;--blue:#3b8cff}
+  *{box-sizing:border-box} html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,system-ui,sans-serif}
+  main{min-height:100%;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:calc(env(safe-area-inset-top) + 30px) 24px calc(env(safe-area-inset-bottom) + 30px)}
+  .logo{width:72px;height:72px;border-radius:20px;background:linear-gradient(180deg,#ffd54a,#f5a400);display:grid;place-items:center;font-size:36px;color:#3a2a00;margin:0 auto}
+  h1{margin:0;text-align:center;font-size:26px} p{margin:0;text-align:center;color:var(--mute);font-size:15px;line-height:1.45}
+  input{height:54px;border-radius:14px;border:1px solid #2f3640;background:#0f141b;color:var(--ink);font-size:18px;padding:0 14px;width:100%}
+  button{height:54px;border-radius:14px;border:0;background:var(--blue);color:#fff;font-size:18px;font-weight:700;width:100%}
+  .list{display:flex;flex-direction:column;gap:8px} .list button{background:var(--card);font-weight:600;font-size:16px;text-align:left;padding:0 16px;display:flex;justify-content:space-between;align-items:center}
+  .list small{color:var(--mute);font-weight:400}
+  #msg{min-height:22px;color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">✦</div>
+  <h1>Echipa Betleem</h1>
+  <p>Telefonul se leagă de calculatorul bisericii (aceeași rețea Wi-Fi, sau adresa de acasă dacă liderul a deschis-o).
+     Adresa o vezi pe laptop: 📱 Telefoane → „Aplicația Betleem”.</p>
+  <div class="list" id="saved"></div>
+  <input id="addr" inputmode="url" autocapitalize="off" autocorrect="off" placeholder="ex. 192.168.1.20:4545">
+  <button id="go">Conectează</button>
+  <p id="msg"></p>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const get = () => { try { return JSON.parse(localStorage.getItem('hubs') || '[]'); } catch { return []; } };
+  const put = l => { try { localStorage.setItem('hubs', JSON.stringify(l.slice(0, 5))); } catch {} };
+  const norm = a => { a = String(a || '').trim().replace(/\/+$/, ''); if (!a) return ''; if (!/^https?:\/\//i.test(a)) a = 'http://' + a; if (!/:\d+$/.test(a.replace(/^https?:\/\//, '')) && !/^https:/.test(a)) a += ':4545'; return a; };
+  // is Betleem there? (a picture loads across addresses without any special permission)
+  const probe = url => new Promise(ok => { const i = new Image(), t = setTimeout(() => ok(false), 4000); i.onload = () => { clearTimeout(t); ok(true); }; i.onerror = () => { clearTimeout(t); ok(false); }; i.src = url + '/icon.svg?' + Date.now(); });
+  async function open(url, auto) {
+    $('msg').textContent = 'Caut Betleem la ' + url + '…';
+    if (await probe(url)) { put([url, ...get().filter(x => x !== url)]); location.href = url + '/m.html'; return; }
+    $('msg').textContent = auto ? 'Nu găsesc calculatorul bisericii. E pornit Betleem și ești pe același Wi-Fi?' : 'Nu răspunde ' + url + '. Verifică adresa și Wi-Fi-ul.';
+  }
+  function list() {
+    $('saved').innerHTML = get().map(u => `<button data-u="${u}">${u.replace(/^https?:\/\//, '')}<small>deschide ›</small></button>`).join('');
+    $('saved').querySelectorAll('button').forEach(b => b.onclick = () => open(b.dataset.u));
+  }
+  $('go').onclick = () => { const u = norm($('addr').value); if (u) open(u); };
+  $('addr').onkeydown = e => { if (e.key === 'Enter') $('go').click(); };
+  list();
+  const change = new URLSearchParams(location.search).has('change');
+  if (!change && get()[0]) open(get()[0], true);
+</script>
+</body>
+</html>

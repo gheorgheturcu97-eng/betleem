@@ -80,6 +80,10 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - **✍ Corectare text** (24 nov): `/api/songs/fix` (AI local/Claude; păstrează acordurile, respinge rândurile schimbate prea
   mult), automat la cântare nouă, butonul ✍ în Editor. Verificat cu un AI de probă.
 
+- **📱 Aplicația de telefon** (24 nov): `public/m.html` (Planificare în iframe, Proiectez slide-uri/acorduri, MD&TRACK prin
+  mesajele `md` / `mdState` / `mdAsk`, doar transmise de hub, fără salvare). Aplicația iPhone: `apps/ios` (Capacitor 7, SPM,
+  `www/index.html` = ușa care ține minte adresa și deschide `/m.html`; ATS permite rețeaua locală). Neverificată pe iPhone.
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

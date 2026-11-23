@@ -1,0 +1,7 @@
+{
+  "appId": "ro.betleem.echipa",
+  "appName": "Betleem",
+  "webDir": "www",
+  "server": { "allowNavigation": ["*"] },
+  "ios": { "contentInset": "never", "backgroundColor": "#0d1117" }
+}
