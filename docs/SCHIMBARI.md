@@ -1,6 +1,14 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.3 · aplicația de telefon (web), MD&TRACK din telefon
+- **📱 Aplicația Betleem pe telefon** (`/m.html`, al patrulea cod în 📱 Telefoane): trei părți. 🗓 Planificare (aceeași
+  pagină ca pe laptop). ▶ Proiectez: ▦ slide-urile (atingi = pe ecran) sau ♫ toată cântarea cu acorduri, care urmează
+  ecranul (rândurile de pe ecran sunt luminate), ton propriu / numere / cifre romane, ciupit = mărime. 🎛 MD&TRACK:
+  secțiunile cântării ca butoane mari; atingi „Refren” și track-urile de pe calculator merg acolo la măsura următoare
+  (sau imediat), plus ▶ ❚❚ ⏹ ⏮ ⏭ și click. Proiectez și MD&TRACK cer PIN-ul echipei.
+- **Asistentul.** Acum: „analizează ghidul / pune secțiunile” pornește ✦ Secțiuni automat în MD&TRACK.
+
 ## 2026-11-24 · 2026.11.24.2 · un singur buton pentru tempo și click
 - **Bara de sus din MD&TRACK.** Înainte: BPM − / + , Tap, 4/4 cu punctele și „♩ Click” separat. Acum: un singur buton
   ♩ cu punctele de timp: o apăsare = click pornit/oprit; apăsat în ritm de 3–4 ori = tempo (click-ul rămâne pornit).

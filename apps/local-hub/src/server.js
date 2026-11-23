@@ -429,6 +429,7 @@ wss.on('connection', (ws, req) => {
 
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
+let lastMd = null;                                     // the last MD&TRACK state, for a phone that just opened
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
   'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
@@ -497,6 +498,17 @@ function handleMessage(ws, m) {
       broadcast(); return;
     }
     if (!need(ws, 'operator')) return reply({ type: 'error', error: 'Nu ai drept de control. Introdu PIN-ul.' });
+    // 🎛 MD&TRACK from the phone: the phone sends a command, the computer with the tracks does it and tells where it is.
+    // Only passed along (nothing saved, no full state sent), so it stays light even every second.
+    if (m.type === 'md' || m.type === 'mdState') {
+      const out = m.type === 'md'
+        ? JSON.stringify({ type: 'md', cmd: String(m.cmd || '').slice(0, 20), k: Number.isInteger(m.k) ? m.k : undefined, now: !!m.now })
+        : JSON.stringify({ type: 'mdState', md: m.md && typeof m.md === 'object' && JSON.stringify(m.md).length < 8000 ? m.md : null });
+      for (const c of wss.clients) if (c !== ws && c.readyState === 1 && ROLE_RANK[sessions.get(c)?.role] >= 1) c.send(out);
+      if (m.type === 'mdState') lastMd = out;
+      return;
+    }
+    if (m.type === 'mdAsk') { if (lastMd) ws.send(lastMd); return; }
 
     switch (m.type) {
       case 'go': {                                   // go to item + slide
@@ -1025,6 +1037,13 @@ sessions.set(aiSocket, { role: 'leader' });
 const aiHub = {
   /** 🗓 leaders' meetings and tasks, for the assistant ("pune pe agenda de marți…", "dă-i lui Andrei sarcina…") */
   plan: () => { db.plan.meetings ||= []; db.plan.tasks ||= []; return db.plan; },
+  /** 🎛 ✦ Secțiuni automat: the computer with the tracks listens to the guide (Whisper runs there, in the page) */
+  autoSections() {
+    const msg = JSON.stringify({ type: 'md', cmd: 'aiCues' }); let n = 0;
+    for (const c of wss.clients) if (c.readyState === 1 && ROLE_RANK[sessions.get(c)?.role] >= 1) { c.send(msg); n++; }
+    return n ? { ok: true, note: 'Calculatorul cu track-urile ascultă acum ghidul (durează cam un minut). Secțiunile apar pe track-uri și rămân salvate la cântare.' }
+      : { error: 'Deschide MD&TRACK cu o cântare care are track-uri, apoi cere din nou.' };
+  },
   /** ♪ chords on every section: one song (by title) or the whole library; runs in the background */
   chords(title = '') {
     if (chordsJob.running) return { error: 'Căutarea acordurilor rulează deja' };

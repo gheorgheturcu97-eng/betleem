@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest-m.webmanifest">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="stylesheet" href="/fonts/inter.css">
+<title>Betleem</title>
+<!-- 📱 The phone app: three tabs. 🗓 Planificare = the same page as on the laptop. ▶ Proiectez = the program and its slides,
+     tap one to put it on the screens. 🎼 Pupitru = the music stand: the service list with keys, chord charts, your own key,
+     numbers, next song, the beat. Everything comes from the church computer on the same Wi-Fi (or the door, from home). -->
+<style>
+  :root{--bg:#0d1117;--bar:#10233a;--card:#1c2128;--card2:#262c34;--line:#2f3640;--ink:#eef1f5;--mute:#8b95a3;--acc:#ffc21a;--blue:#3b8cff;--red:#e5484d;--paper:#d0d0d0;--paperInk:#111;--chord:#d4161b;--fz:1;
+    --top:env(safe-area-inset-top,0px);--bot:env(safe-area-inset-bottom,0px)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,system-ui,sans-serif;overscroll-behavior:none}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  .tab{position:fixed;inset:0 0 calc(62px + var(--bot)) 0;display:none;flex-direction:column}
+  .tab.on{display:flex}
+  header{padding:calc(var(--top) + 10px) 14px 10px;background:var(--bar);display:flex;align-items:center;gap:10px;min-height:56px}
+  header h1{margin:0;font-size:19px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  header .ib{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:19px}
+  header .ib.on{color:var(--acc)}
+  .scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;height:calc(62px + var(--bot));padding-bottom:var(--bot);display:flex;background:#0a0d12;border-top:1px solid var(--line);z-index:5}
+  nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;color:var(--mute)}
+  nav.tabs button b{font-size:21px;font-weight:400} nav.tabs button.on{color:var(--blue)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--red)} .dot.on{background:#3ccf6e}
+  iframe{border:0;flex:1;width:100%;background:var(--bg)}
+  /* ▶ Proiectez */
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:#0f141b;border-bottom:1px solid var(--line);scrollbar-width:none}
+  .chips button{flex:none;padding:8px 12px;border-radius:999px;background:var(--card);font-size:14px;max-width:62vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chips button.sel{background:var(--blue)} .chips button.onair{box-shadow:inset 0 0 0 2px var(--red)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:12px}
+  .sl{position:relative;aspect-ratio:16/9;border-radius:10px;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;padding:14px 8px 8px;font-size:11px;font-weight:650;line-height:1.3;border:2px solid transparent}
+  .sl img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+  .sl.now{border-color:var(--red);box-shadow:0 0 0 2px rgba(229,72,77,.35)}
+  .sl .lb{position:absolute;top:4px;left:6px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+  .sl .n{position:absolute;top:4px;right:6px;font-size:9px;color:var(--mute)}
+  .live{padding:10px 12px;display:flex;gap:10px;align-items:center;background:#0f141b;border-bottom:1px solid var(--line);font-size:13px;color:var(--mute)}
+  .live b{color:var(--ink)}
+  .ctl{display:flex;gap:8px;padding:10px 12px;background:#0a0d12;border-top:1px solid var(--line)}
+  .ctl button{flex:1;height:52px;border-radius:14px;background:var(--card2);font-size:17px;font-weight:700}
+  .ctl button.blank.on{background:var(--red)}
+  /* 🎼 Pupitru */
+  .date{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#171b21;color:var(--mute);font-size:16px}
+  .sec{padding:12px 14px 8px;color:#7f97b8;font-size:13px;letter-spacing:.04em;text-transform:uppercase;background:#1a1f26}
+  .row{display:flex;gap:14px;padding:16px 14px;border-bottom:1px solid #20262e;background:var(--card);align-items:flex-start}
+  .row time{color:var(--mute);font-size:15px;width:44px;flex:none;padding-top:2px}
+  .row .t{flex:1;font-size:19px;font-weight:600} .row.song .t{color:var(--blue)}
+  .row .t small{display:block;color:var(--mute);font-size:13px;font-weight:500;margin-top:6px}
+  .row.now{box-shadow:inset 4px 0 0 var(--red)}
+  .key{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:999px;background:#1d4f9e;color:#fff;font-size:14px;font-weight:800;vertical-align:2px}
+  .bpm{display:inline-block;margin-left:6px;padding:1px 9px;border-radius:999px;background:#3a3f47;color:#ddd;font-size:13px;vertical-align:2px}
+  .chart{flex:1;overflow:auto;background:var(--paper);color:var(--paperInk);padding:16px 16px 30px;font-family:ui-monospace,Menlo,monospace;font-size:calc(17px * var(--fz));line-height:1.15}
+  body.dark .chart{--paper:#121418;--paperInk:#e9ecf1;--chord:#ff6b6b}
+  .chart h2{font-family:Inter,system-ui;font-size:1.5em;margin:0 0 2px;background:rgba(0,0,0,.08);padding:10px 12px;border-radius:4px}
+  .chart .by{font-family:Inter,system-ui;font-size:.8em;opacity:.7;margin:0 0 14px 12px}
+  .chart .lbl{font-weight:800;margin:20px 0 4px;text-transform:uppercase}
+  .chart .ln{display:flex;flex-wrap:wrap;margin:0 0 4px}
+  .chart .seg{display:inline-flex;flex-direction:column;white-space:pre}
+  .chart .seg b{color:var(--chord);font-weight:700;min-height:1.1em} .chart .seg i{font-style:normal}
+  .chart .only{color:var(--chord);font-weight:700}
+  .foot{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1b1f25;color:var(--mute);font-size:15px}
+  .foot .nx{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .beat{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:18px;transition:background .06s}
+  .beat.hit{background:var(--acc);color:#000} .beat.hit1{background:var(--red);color:#fff}
+  .round{position:absolute;width:56px;height:56px;border-radius:50%;background:rgba(80,90,105,.85);color:#fff;font-size:20px;font-weight:700;display:grid;place-items:center}
+  .mseg{display:flex;background:rgba(255,255,255,.08);border-radius:10px;padding:2px} .mseg button{padding:6px 9px;border-radius:8px;font-size:13px;font-weight:600;color:var(--mute)} .mseg button.on{background:var(--blue);color:#fff}
+  .cbar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#0f141b;border-bottom:1px solid var(--line);font-size:14px}
+  .cbar .grow{flex:1} .cbar button{padding:6px 10px;border-radius:8px;background:var(--card2);font-weight:700}
+  .tog{display:flex;align-items:center;gap:8px} .tog input{width:20px;height:20px;accent-color:var(--blue)}
+  .chart .ln.cur,.chart .only.cur{background:rgba(255,194,26,.35);border-radius:4px}
+  .mk{padding:2px 10px;border-radius:999px;background:#1d4f9e;font-weight:800}
+  .mtime{padding:12px 14px;background:#0f141b;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .mtime b{font:800 30px ui-monospace,Menlo,monospace;color:#7dffb0} .mtime span{color:var(--mute)}
+  .mprog{flex-basis:100%;height:5px;border-radius:3px;background:var(--card2);overflow:hidden} .mprog i{display:block;height:100%;width:0;background:var(--red)}
+  .secs{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+  .secs button{min-height:78px;border-radius:14px;background:color-mix(in srgb,var(--sc) 22%,#1c2128);border:2px solid color-mix(in srgb,var(--sc) 60%,transparent);font-size:19px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  .secs button small{font-size:12px;font-weight:500;color:var(--mute)}
+  .secs button.cur{background:var(--sc);color:#000;box-shadow:0 0 0 3px #fff} .secs button.cur small{color:#222}
+  .secs button.armed{animation:pulse .5s infinite alternate} @keyframes pulse{to{opacity:.5}}
+  .ctl .play.on{background:#2fb85f;color:#05200f}
+  /* sheets */
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+  .sheet.on{display:flex}
+  .box{width:min(420px,100%);background:#1f242b;border-radius:18px;overflow:hidden}
+  .box h3{margin:0;padding:16px;text-align:center;background:#000;font-size:19px;position:relative}
+  .box h3 button{position:absolute;right:14px;top:12px;font-size:22px}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr)}
+  .keys button{height:58px;border:1px solid #2c323a;font-size:20px} .keys button.sel{background:var(--blue)}
+  .keys .wide{grid-column:span 3} .keys .half{grid-column:span 1}
+  .login{padding:18px;display:flex;flex-direction:column;gap:12px}
+  .login input{height:52px;border-radius:12px;border:1px solid var(--line);background:#0f141b;color:var(--ink);font-size:22px;text-align:center;letter-spacing:.3em}
+  .login button{height:50px;border-radius:12px;background:var(--blue);font-weight:700;font-size:17px}
+  .hint{color:var(--mute);font-size:14px;text-align:center;padding:20px}
+</style>
+</head>
+<body>
+<!-- 🗓 Planificare: the same page as on the laptop -->
+<section class="tab" id="tPlan"><iframe id="planFrame" title="Planificare"></iframe></section>
+
+<!-- ▶ Proiectez: the slides (tap = on the screens) or the whole song with chords (following the screens, or free) -->
+<section class="tab" id="tLive">
+  <header><span class="dot" id="dot"></span><h1 id="lTitle">Proiectez</h1>
+    <div class="mseg" id="lMode"><button data-m="slides">▦ Slide-uri</button><button data-m="chords">♫ Acorduri</button></div>
+    <button class="ib" id="lPin" title="PIN">🔑</button></header>
+  <div class="live" id="lNow">—</div>
+  <div class="chips" id="lItems"></div>
+  <div class="scroll" id="lSlides"><div class="grid" id="lGrid"></div></div>
+  <div class="cbar" id="cBar" hidden><label class="tog"><input type="checkbox" id="cFollow"> Urmează ecranul</label><span class="grow"></span><button id="sKeyBtn">Ton ▾</button><button id="sTheme" title="Zi / noapte">☀</button></div>
+  <div class="chart" id="sChart" hidden></div>
+  <div class="ctl"><button id="lPrev">◀</button><button class="blank" id="lBlank">⏻ Ecran gol</button><button id="lNext">▶</button></div>
+</section>
+
+<!-- 🎛 MD&TRACK: the song's sections as big buttons; tap one and the tracks go there (on the next bar) -->
+<section class="tab" id="tMd">
+  <header><span class="dot" id="dot2"></span><h1 id="mTitle">MD&amp;TRACK</h1><span class="mk" id="mKey"></span><button class="ib" id="mPin" title="PIN">🔑</button></header>
+  <div class="mtime"><b id="mBar">—</b><span id="mTime"></span><div class="mprog"><i id="mProg"></i></div></div>
+  <div class="scroll"><div class="secs" id="mSecs"></div><p class="hint" id="mHint"></p></div>
+  <div class="cbar"><label class="tog"><input type="checkbox" id="mNow"> Imediat (fără să aștepte măsura)</label></div>
+  <div class="ctl"><button id="mPrev">⏮</button><button id="mPlay" class="play">▶</button><button id="mStop">⏹</button><button id="mClick">♩</button><button id="mNext">⏭</button></div>
+</section>
+
+<nav class="tabs">
+  <button data-t="tPlan"><b>🗓</b>Planificare</button>
+  <button data-t="tLive"><b>▶</b>Proiectez</button>
+  <button data-t="tMd"><b>🎛</b>MD&amp;TRACK</button>
+</nav>
+
+<div class="sheet" id="keySheet"><div class="box"><h3>Tonul tău <button id="kClose">✕</button></h3><div class="keys" id="keys"></div></div></div>
+<div class="sheet" id="pinSheet"><div class="box"><h3>PIN-ul echipei <button id="pClose">✕</button></h3>
+  <div class="login"><input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"><button id="pOk">Intră</button>
+  <p class="hint" style="padding:0">PIN-ul echipei (îl știe liderul). Fără el poți vedea acordurile și Planificarea, dar nu schimbi ecranul sau track-urile.</p></div></div></div>
+
+<script type="module">
+  import { connect, esc, stayAwake } from '/client.js';
+  import { chordLineToHtml, sectionColor, originalKey, keyDistance, toSlides, arrange, parseSong, transpose, prefersFlats, stripChords } from '/core/song.js';
+  const $ = id => document.getElementById(id);
+  const store = { get: (k, d) => { try { const v = localStorage.getItem('m.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set: (k, v) => { try { localStorage.setItem('m.' + k, JSON.stringify(v)); } catch {} } };
+  let S = null, tab = store.get('tab', 'tLive'); if (!['tPlan', 'tLive', 'tMd'].includes(tab)) tab = 'tLive';
+  stayAwake();
+
+  // ---------------- tabs
+  function show(t) {
+    tab = t; store.set('tab', t);
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.id === t));
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+    if (t === 'tPlan' && !$('planFrame').src) $('planFrame').src = '/planning.html';
+    if (t === 'tMd') { if (!can()) $('pinSheet').classList.add('on'); else hub.send({ type: 'mdAsk' }); }
+    render();
+  }
+  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.t));
+  const can = () => hub.role === 'operator' || hub.role === 'leader';
+  const hub = connect(s => { S = s; render(); }, e => {
+    if (e.type === 'online' || e.type === 'offline') for (const d of ['dot', 'dot2']) $(d).classList.toggle('on', e.type === 'online');
+    if (e.type === 'login') { if (e.ok) { $('pinSheet').classList.remove('on'); hub.send({ type: 'mdAsk' }); } else $('pin').value = ''; }
+    if (e.type === 'mdState') { MD = e.md; renderMd(); }
+    if (e.role) render();
+  });
+  $('pOk').onclick = () => hub.login($('pin').value.trim());
+  $('pin').onkeydown = e => { if (e.key === 'Enter') $('pOk').click(); };
+  $('pClose').onclick = () => $('pinSheet').classList.remove('on');
+  $('lPin').onclick = $('mPin').onclick = () => $('pinSheet').classList.add('on');
+  const go = m => { if (!can()) return $('pinSheet').classList.add('on'); hub.send(m); navigator.vibrate?.(8); };
+
+  // songs of the program: their slides (the same as on the screen) and their chord chart
+  const songs = new Map();
+  async function songOf(it) {
+    let s = songs.get(it.songId);
+    if (!s || s.updatedAt !== it.rev) { s = await fetch('/api/songs/' + it.songId).then(r => r.json()); songs.set(it.songId, s); }
+    return s;
+  }
+  async function slidesOf(i) {
+    const it = S.setlist[i]; if (!it) return [];
+    if (i === S.live.item) return S.live.slides;
+    if (it.kind !== 'song') return (it.slides || []).map(src => ({ label: '', lines: [], image: src }));
+    const s = await songOf(it), orig = originalKey(s.key, s.body), steps = it.key && orig ? keyDistance(orig, it.key) : 0;
+    return toSlides(arrange(parseSong(transpose(s.body, steps, prefersFlats(it.key || orig || 'C'))), it.arrangement || s.arrangement), it.maxLines || 4);
+  }
+
+  // ---------------- ▶ Proiectez: chips = the program; ▦ the slides (tap = on the screens) or ♫ the whole song with chords
+  let lSel = -1, lSlides = [], lKey = '', mode = store.get('lmode', 'slides'), follow = store.get('follow', true), lastLive = -2;
+  let myKey = store.get('keys', {}), nmode = store.get('nmode', 'chords');
+  document.body.classList.toggle('dark', store.get('dark', true));
+  $('sTheme').onclick = () => { document.body.classList.toggle('dark'); store.set('dark', document.body.classList.contains('dark')); };
+  $('cFollow').checked = follow;
+  $('cFollow').onchange = () => { follow = $('cFollow').checked; store.set('follow', follow); if (follow && S.live.item >= 0) lSel = S.live.item; renderLive(); };
+  document.querySelectorAll('#lMode button').forEach(b => b.onclick = () => { mode = b.dataset.m; store.set('lmode', mode); renderLive(); });
+  async function renderLive() {
+    const L = S.live;
+    if (follow && L.item >= 0 && L.item !== lastLive) lSel = L.item;
+    lastLive = L.item;
+    if (lSel < 0 || !S.setlist[lSel]) lSel = L.item >= 0 ? L.item : 0;
+    document.querySelectorAll('#lMode button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
+    $('lTitle').textContent = S.service?.title || 'Proiectez';
+    const cur = S.setlist[L.item];
+    $('lNow').innerHTML = L.blank ? '<b style="color:var(--red)">⏻ Ecranele sunt goale</b>' : cur ? `Pe ecran: <b>${esc(cur.title || '')}</b> · slide ${L.slide + 1}${L.slides?.length ? ' din ' + L.slides.length : ''}` : 'Nimic pe ecran';
+    $('lBlank').classList.toggle('on', !!L.blank);
+    $('lItems').innerHTML = S.setlist.map((it, i) => `<button data-i="${i}" class="${i === lSel ? 'sel' : ''} ${i === L.item ? 'onair' : ''}">${esc(it.title || it.kind)}${it.kind === 'song' && (it.key || it.origKey) ? ' · ' + esc(myKey[it.songId] || it.key || it.origKey) : ''}</button>`).join('');
+    $('lItems').querySelectorAll('button').forEach(b => b.onclick = () => { lSel = +b.dataset.i; if (lSel !== L.item && follow) { follow = false; $('cFollow').checked = false; store.set('follow', false); } lKey = ''; renderLive(); });
+    document.querySelector('#lItems .sel')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+    const chords = mode === 'chords';
+    $('lSlides').hidden = chords; $('sChart').hidden = $('cBar').hidden = !chords;
+    if (chords) return renderChart();
+    const key = lSel + '|' + (S.setlist[lSel]?.rev || '') + '|' + (lSel === L.item ? JSON.stringify(L.slides?.map(x => x.lines)) : '');
+    if (key !== lKey) { lKey = key; lSlides = await slidesOf(lSel); }
+    $('lGrid').innerHTML = lSlides.length ? lSlides.map((sl, i) => `<button class="sl ${lSel === L.item && i === L.slide ? 'now' : ''}" data-s="${i}">
+        ${sl.label ? `<span class="lb" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</span>` : ''}<span class="n">${i + 1}</span>
+        ${sl.image ? (/\.(mp4|webm|mov)$/i.test(sl.image) ? '▶ video' : `<img src="${esc(sl.image)}" alt="" loading="lazy">`) : esc(sl.lines.map(stripChords).join('\n')).replace(/\n/g, '<br>')}</button>`).join('')
+      : '<p class="hint">Alege ceva din program.</p>';
+    $('lGrid').querySelectorAll('.sl').forEach(b => b.onclick = () => go({ type: 'go', item: lSel, slide: +b.dataset.s }));
+    document.querySelector('.sl.now')?.scrollIntoView({ block: 'nearest' });
+  }
+  $('lPrev').onclick = () => go({ type: 'prev' }); $('lNext').onclick = () => go({ type: 'next' }); $('lBlank').onclick = () => go({ type: 'blank' });
+
+  // ♫ the whole song with chords (like a PDF chord chart): in the program's key or your own, as numbers if you like;
+  // following the screens, the lines on the screen now are lit
+  const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], FL = { Db: 'C#', Eb: 'D#', Gb: 'F#', Ab: 'G#', Bb: 'A#', Cb: 'B', Fb: 'E' };
+  const idx = n => NOTES.indexOf(FL[n] || n);
+  const DEG = ['1', 'b2', '2', 'b3', '3', '4', '#4', '5', 'b6', '6', 'b7', '7'], ROM = ['I', 'bII', 'II', 'bIII', 'III', 'IV', '#IV', 'V', 'bVI', 'VI', 'bVII', 'VII'];
+  function asNumber(ch, key, roman) {
+    const m = ch.match(/^([A-G][b#]?)(.*?)(?:\/([A-G][b#]?))?$/), k = key.match(/^([A-G][b#]?)/); if (!m || !k) return ch;
+    const d = (idx(m[1]) - idx(k[1]) + 12) % 12, minor = /^m(?!aj)/.test(m[2]), rest = m[2].replace(/^m(?!aj)/, '');
+    const bass = m[3] ? '/' + (roman ? ROM : DEG)[(idx(m[3]) - idx(k[1]) + 12) % 12] : '';
+    return roman ? (minor ? ROM[d].toLowerCase() : ROM[d]) + rest + bass : DEG[d] + (minor ? 'm' : '') + rest + bass;
+  }
+  const keyOf = it => it.key || it.origKey || '';
+  let chartKey = '';
+  async function renderChart() {
+    const it = S.setlist[lSel];
+    if (!it || it.kind !== 'song') { $('sChart').innerHTML = `<p class="hint" style="font-family:Inter">${it ? esc(it.title || '') + ': nu e o cântare.' : 'Alege o cântare.'}</p>`; chartKey = ''; return; }
+    const s = await songOf(it), orig = originalKey(s.key, s.body), want = myKey[it.songId] || keyOf(it) || orig;
+    const k = [lSel, it.rev, want, nmode, it.arrangement, it.maxLines].join('|');
+    if (k !== chartKey) {
+      chartKey = k;
+      const steps = want && orig ? keyDistance(orig, want) : 0, body = transpose(s.body, steps, prefersFlats(want || 'C'));
+      const chord = c => nmode === 'chords' ? c : asNumber(c, want, nmode === 'numeral');
+      // the same order and the same slide cuts as the screen, so the lit lines are the ones on the screen
+      const slides = toSlides(arrange(parseSong(body), it.arrangement || s.arrangement), it.maxLines || 4);
+      let n = 0, last = null;
+      const line = l => { const i = n++; return /\[/.test(l) && !stripChords(l).trim()
+        ? `<div class="only" data-n="${i}">${esc(l.match(/\[([^\]]*)\]/g).map(x => chord(x.slice(1, -1))).join('  '))}</div>`
+        : `<div class="ln" data-n="${i}">${chordLineToHtml(l.replace(/\[([^\]]*)\]/g, (_, c) => '[' + chord(c) + ']'), esc)}</div>`; };
+      $('sKeyBtn').textContent = (nmode === 'chords' ? want || 'Ton' : nmode === 'number' ? '1 2 3' : 'I IV V') + ' ▾';
+      $('sChart').innerHTML = `<h2>${esc(s.title)}${want ? ` [${esc(want)}]` : ''}</h2>${s.author ? `<div class="by">[${esc(s.author)}]</div>` : ''}`
+        + slides.map(sl => { const head = sl.label !== last ? `${sl.label ? `<div class="lbl" style="color:${sectionColor(sl.label)}">${esc(sl.label)}:</div>` : '<div style="height:14px"></div>'}` : ''; last = sl.label; return head + sl.lines.map(line).join(''); }).join('');
+      $('sChart').dataset.counts = JSON.stringify(slides.map(x => x.lines.length));
+      $('sChart').scrollTop = 0;
+    }
+    // light the lines on the screen now
+    document.querySelectorAll('#sChart .cur').forEach(x => x.classList.remove('cur'));
+    if (lSel === S.live.item && !S.live.blank) {
+      const c = JSON.parse($('sChart').dataset.counts || '[]'), from = c.slice(0, S.live.slide).reduce((a, b) => a + b, 0), len = c[S.live.slide] || 0;
+      for (let j = from; j < from + len; j++) document.querySelector(`#sChart [data-n="${j}"]`)?.classList.add('cur');
+      if (follow) document.querySelector('#sChart .cur')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+  // tap a line of the chart = that slide on the screens (with the PIN)
+  $('sChart').addEventListener('click', e => {
+    const n = +e.target.closest('[data-n]')?.dataset.n; if (!Number.isFinite(n)) return;
+    const c = JSON.parse($('sChart').dataset.counts || '[]'); let acc = 0, k = 0; for (; k < c.length; k++) { if (n < acc + c[k]) break; acc += c[k]; }
+    if (can()) go({ type: 'go', item: lSel, slide: k });
+  });
+  // pinch = bigger / smaller chords (kept on this phone); swipe = previous / next song
+  let fz = store.get('fz', 1), pd = 0, sx = 0; document.documentElement.style.setProperty('--fz', fz);
+  $('sChart').addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+  $('sChart').addEventListener('touchmove', e => { if (e.touches.length !== 2) return; const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    if (pd) { fz = Math.min(2.4, Math.max(0.6, fz * d / pd)); document.documentElement.style.setProperty('--fz', fz); store.set('fz', fz); } pd = d; }, { passive: true });
+  $('sChart').addEventListener('touchend', e => { if (pd) { pd = 0; return; } const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) < 90) return;
+    const list = S.setlist.map((x, i) => x.kind === 'song' ? i : -1).filter(i => i >= 0), p = list.indexOf(lSel), nx = list[p + (dx < 0 ? 1 : -1)];
+    if (nx !== undefined) { lSel = nx; follow = false; $('cFollow').checked = false; store.set('follow', false); renderLive(); } }, { passive: true });
+  // your own key (only on this phone, like a capo), or numbers / numerals
+  $('sKeyBtn').onclick = () => {
+    const it = S.setlist[lSel]; if (!it?.songId) return; const cur = myKey[it.songId] || keyOf(it), minor = /m$/.test(cur);
+    const K = minor ? ['Abm', 'Am', 'A#m', 'Bbm', 'Bm', '', '', 'Cm', 'C#m', 'Dbm', 'Dm', 'D#m', 'Ebm', 'Em', '', '', 'Fm', 'F#m', 'Gbm', 'Gm', 'G#m']
+      : ['Ab', 'A', 'A#', 'Bb', 'B', '', '', 'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', '', '', 'F', 'F#', 'Gb', 'G', 'G#'];
+    $('keys').innerHTML = K.map(k => k ? `<button data-k="${k}" class="${k === cur && nmode === 'chords' ? 'sel' : ''}">${k}</button>` : '<button disabled></button>').join('')
+      + `<button data-m="number" class="${nmode === 'number' ? 'sel' : ''}">Numere</button><button data-m="numeral" class="${nmode === 'numeral' ? 'sel' : ''}">Romane</button><button data-k="">Tonul programului</button>`;
+    $('keys').querySelectorAll('button[data-k],button[data-m]').forEach(b => b.onclick = () => {
+      if (b.dataset.m) nmode = nmode === b.dataset.m ? 'chords' : b.dataset.m;
+      else { nmode = 'chords'; if (b.dataset.k) myKey[it.songId] = b.dataset.k; else delete myKey[it.songId]; store.set('keys', myKey); }
+      store.set('nmode', nmode); $('keySheet').classList.remove('on'); chartKey = ''; renderLive();
+    });
+    $('keySheet').classList.add('on');
+  };
+  $('kClose').onclick = () => $('keySheet').classList.remove('on');
+
+  // ---------------- 🎛 MD&TRACK: the sections trigger the tracks on the computer
+  let MD = null;
+  const clock = t => { t = Math.max(0, Math.floor(t || 0)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+  function renderMd() {
+    if (tab !== 'tMd') return;
+    if (!can()) { $('mSecs').innerHTML = ''; $('mHint').textContent = 'Introdu PIN-ul echipei (🔑) ca să comanzi track-urile.'; return; }
+    if (!MD) { $('mSecs').innerHTML = ''; $('mHint').textContent = 'Deschide MD&TRACK pe calculatorul cu track-urile (cu o cântare care are track-uri). Telefonul îl urmează.'; return; }
+    $('mTitle').textContent = MD.title || 'MD&TRACK'; $('mKey').textContent = [MD.key, MD.bpm ? MD.bpm + ' BPM' : ''].filter(Boolean).join(' · ');
+    $('mBar').textContent = MD.bar ? 'măs. ' + MD.bar : clock(MD.t); $('mTime').textContent = clock(MD.t) + ' / ' + clock(MD.dur);
+    $('mProg').style.width = MD.dur ? (MD.t / MD.dur * 100) + '%' : '0';
+    $('mPlay').textContent = MD.playing ? '❚❚' : '▶'; $('mPlay').classList.toggle('on', !!MD.playing); $('mClick').classList.toggle('on', !!MD.click);
+    $('mHint').textContent = MD.sections.length ? 'Apasă o secțiune: track-urile merg acolo la măsura următoare (sau imediat, dacă bifezi jos).' : 'Cântarea nu are secțiunile puse pe track-uri. Pune-le pe calculator (dublu-clic sau ✦ auto).';
+    const sig = MD.title + MD.sections.map(x => x.label + x.t).join();
+    if ($('mSecs').dataset.sig !== sig) {
+      $('mSecs').dataset.sig = sig;
+      $('mSecs').innerHTML = MD.sections.map((x, k) => `<button data-k="${k}" style="--sc:${sectionColor(x.label)}">${esc(x.label)}<small>${clock(x.t)}</small></button>`).join('');
+      $('mSecs').querySelectorAll('button').forEach(b => b.onclick = () => { b.classList.add('armed'); setTimeout(() => b.classList.remove('armed'), 4000); go({ type: 'md', cmd: 'section', k: +b.dataset.k, now: $('mNow').checked }); });
+    }
+    $('mSecs').querySelectorAll('button').forEach(b => { const on = +b.dataset.k === MD.cur; b.classList.toggle('cur', on); if (on) b.classList.remove('armed'); });
+  }
+  $('mPlay').onclick = () => go({ type: 'md', cmd: MD?.playing ? 'pause' : 'play' });
+  $('mStop').onclick = () => go({ type: 'md', cmd: 'stop' });
+  $('mPrev').onclick = () => go({ type: 'md', cmd: 'prev' }); $('mNext').onclick = () => go({ type: 'md', cmd: 'next' });
+  $('mClick').onclick = () => go({ type: 'md', cmd: 'click' });
+  $('mNow').checked = store.get('mnow', false); $('mNow').onchange = () => store.set('mnow', $('mNow').checked);
+
+  // ---------------- one render
+  function render() {
+    if (!S) return;
+    if (tab === 'tLive') renderLive();
+    if (tab === 'tMd') renderMd();
+  }
+  show(tab);
+</script>
+</body>
+</html>

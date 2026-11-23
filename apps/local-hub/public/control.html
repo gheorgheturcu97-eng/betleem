@@ -1261,6 +1261,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <p class="hint">Telefonul trebuie să fie în aceeași rețea Wi-Fi ca acest calculator. Scanezi cu camera și se deschide imediat, fără nicio aplicație.</p>
   <div class="ph-row">
     <div class="ph"><div class="qr" id="phQr1"></div><b>Muzicieni</b><small>Programul și fiecare cântare cu acorduri, în tonul ales. Merge singur după ecran.</small></div>
+    <div class="ph"><div class="qr" id="phQr4"></div><b>📱 Aplicația Betleem</b><small>Planificare, Proiectez (cu PIN) și Pupitru cu acorduri. Pe iPhone: Distribuie → Adaugă pe ecranul principal. <span id="phAddr"></span></small></div>
     <div class="ph"><div class="qr" id="phQr2"></div><b>Echipă și oricine</b><small>Versurile de pe ecran și programul.</small></div>
     <div class="ph" id="phPred"><div class="qr" id="phQr3"></div><b>🎤 Predicator</b><small>Schimbă singur slide-urile predicii (doar ale predicii). Tu le poți prelua oricând din bara de sus.</small>
       <span class="pin" id="phPin"></span><button id="phNewPin" class="mini ghost" title="Codul vechi nu mai merge">↻ PIN nou</button></div>
@@ -1471,6 +1472,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'login') toast(e.ok ? 'Conectat ca ' + e.role : 'PIN greșit');
     if (e.type === 'church' && !e.ok) toast(e.error);
     if (e.type === 'chords') chordsProgress(e);
+    if (e.type === 'md') mdRemote(e);
     if (e.type === 'displays') { monitors(); if (e.added) toast('🖥 A apărut „' + e.added + '”. Îl alegi la Sală sau Scenă din listă.'); else if (e.removed) toast('🖥 S-a deconectat „' + e.removed + '”.'); }
     if (e.type === 'cleaned') { songCache.clear(); search(); render(); toast(`Am curățat ${e.changed} din ${e.total} cântări; la ${e.ordered} am pus refrenul după fiecare strofă.`); }
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
@@ -2281,7 +2283,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     try { t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
     const { default: qrcode } = await import('/vendor/qrcode.js');
     const draw = (el, link) => { const q = qrcode(0, 'M'); q.addData(link); q.make(); $(el).innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); };
-    draw('phQr1', base + '/live.html?v=chords'); draw('phQr2', base + '/live.html');
+    draw('phQr1', base + '/live.html?v=chords'); draw('phQr2', base + '/live.html'); draw('phQr4', base + '/m.html'); $('phAddr').textContent = 'Adresa: ' + base;
     $('phPred').hidden = !t?.preacherPin;
     if (t?.preacherPin) { draw('phQr3', base + '/live.html?v=pred#p=' + t.preacherPin); $('phPin').textContent = 'PIN ' + t.preacherPin; }
     $('phNewPin').onclick = async () => { const r = await fetch('/api/preacher/pin', { method: 'POST', headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({}));
@@ -3306,6 +3308,33 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else { while (k2 > 0 && sl[k2 - 1].label === sl[L.slide].label) k2--; if (k2 === L.slide && k2 > 0) { k2--; while (k2 > 0 && sl[k2 - 1].label === sl[k2].label) k2--; } }
     send({ type: 'go', item: L.item, slide: k2 });
   }
+  // 📱 the phone's MD&TRACK: it sends play / stop / a section, this computer (the one with the tracks) does it
+  // and tells the phone the song, its sections and where the music is. Only the computer with tracks loaded answers.
+  const mdHere = () => mt.ch.length > 0 && (mt.playing || !$('musicView').hidden);
+  function mdRemote(e) {
+    if (!mdHere()) return;
+    const { b, k } = curSection();
+    if (e.cmd === 'play') { if (!mt.playing) $('tlPlay').click(); }
+    else if (e.cmd === 'pause') { if (mt.playing || pad.playing) $('tlPlay').click(); }
+    else if (e.cmd === 'stop') $('tlStop').click();
+    else if (e.cmd === 'next') stepSection(1); else if (e.cmd === 'prev') stepSection(-1);
+    else if (e.cmd === 'section' && b[e.k]) { if (e.now && mt.playing) { mt.seekSmooth(b[e.k].start); lastCue = -2; followCues(b[e.k].start, true); } else jumpTo(b[e.k].start, b[e.k].label); }
+    else if (e.cmd === 'click') toggleMet();
+    else if (e.cmd === 'aiCues') aiCues();
+    else if (e.cmd === 'ask') mdTell(true);
+    setTimeout(() => mdTell(true), 150);
+  }
+  let mdLast = '', mdAt = 0;
+  function mdTell(force) {
+    if (!mt.ch.length || !S) return;
+    const it = S.setlist[mtItem], { b, k } = curSection(), g = grid();
+    const md = { title: it?.title || '', key: it?.key || it?.origKey || '', bpm: songBpmNow(), playing: mt.playing, click: !!met.playing, t: Math.round(mt.time * 10) / 10, dur: Math.round(mt.duration),
+      cur: k, sections: b.map(x => ({ label: x.label, t: Math.round(x.start * 10) / 10 })), bar: g ? Math.floor(Math.max(0, mt.time - g.off) / g.bar) + 1 : 0 };
+    const sig = JSON.stringify({ ...md, t: 0, bar: 0 });
+    if (!force && sig === mdLast && (!mt.playing || Date.now() - mdAt < 1000)) return;
+    mdLast = sig; mdAt = Date.now(); send({ type: 'mdState', md });
+  }
+  setInterval(() => mdTell(false), 500);
   function markSection() {
     let label = '';
     if (mt.duration && mtItem === musicItemIndex()) { const { b, k } = curSection(); label = b[k]?.label || ''; }
