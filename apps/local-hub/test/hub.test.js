@@ -514,6 +514,38 @@ test('💡 light scenes and 🎧 the guide map are kept, and linked to the progr
   a.ws.close();
 });
 
+test('🧱 slide layers follow their slide, 🏷 Props switch on and off, both cleaned and undoable', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'saveSong', song: { title: 'Straturi test', body: 'Strofa 1:\nUnu\n\nStrofa 2:\nDoi\n\nStrofa 3:\nTrei' } });
+  await a.next(m => m.type === 'state');
+  const songs = await fetch('http://localhost:4599/api/songs?q=Straturi test').then(r => r.json());
+  a.send({ type: 'addItem', kind: 'song', songId: songs[0].id });
+  let st = (await a.next(m => m.type === 'state' && m.state.setlist.some(x => x.songId === songs[0].id))).state;
+  const i = st.setlist.findIndex(x => x.songId === songs[0].id);
+  a.send({ type: 'slideLayers', item: i, slide: 2, layers: [{ type: 'text', text: 'Trei', x: 5, y: 500, size: 99, color: 'red', evil: '<script>' }, { type: 'iframe' }, { type: 'image', src: '../../etc/passwd' }] });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist[i].slideLayers?.[2])).state;
+  const L = st.setlist[i].slideLayers[2];
+  assert.equal(L.length, 2, 'only text, image, video and shape');
+  assert.equal(L[0].y, 100); assert.equal(L[0].size, 40); assert.equal(L[0].color, '#ffffff'); assert.equal(L[0].evil, undefined);
+  assert.equal(L[1].src, 'passwd', 'media only by file name');
+  a.send({ type: 'removeSlide', item: i, slide: 0 });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist[i].slideLayers?.[1])).state;
+  assert.equal(st.setlist[i].slideLayers[1][0].text, 'Trei', 'the layers move with their slide');
+  a.send({ type: 'saveProp', prop: { name: 'Logo', layers: [{ type: 'shape', bg: '#112233' }] } });
+  st = (await a.next(m => m.type === 'state' && m.state.props?.length === 1)).state;
+  const pr = st.props[0]; assert.equal(pr.on, false); assert.equal(pr.layers[0].shape, 'rect');
+  a.send({ type: 'toggleProp', id: pr.id });
+  await a.next(m => m.type === 'state' && m.state.props[0]?.on);
+  a.send({ type: 'propsOff' });
+  await a.next(m => m.type === 'state' && m.state.props[0]?.on === false);
+  a.send({ type: 'deleteProp', id: pr.id });
+  await a.next(m => m.type === 'state' && !m.state.props.length);
+  a.send({ type: 'undo' });
+  await a.next(m => m.type === 'state' && m.state.props.length === 1);
+  a.ws.close();
+});
+
 test('✦ fair team auto-fill, 📣 pastor messages and 📎 the preacher sends his own presentation', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const api = o => fetch('http://localhost:4599/api/plan', { method: 'POST', headers: L, body: JSON.stringify(o) }).then(r => r.json());

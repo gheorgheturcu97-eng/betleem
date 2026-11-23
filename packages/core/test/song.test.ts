@@ -260,3 +260,17 @@ test('chords on every verse and chorus: the same syllables as the first one', ()
   assert.equal(fillChords(r.body).body, r.body, 'running it again changes nothing');
   assert.match(normalizeImported(body), /Strofa 2:\n\[G\]Eu sunt/, 'imports get it too');
 });
+
+import { chordName, splitInlineLabels } from '../src/song.ts';
+
+test('lower-case minor chords and section names written on the same line', () => {
+  assert.equal(chordName('f'), 'Fm'); assert.equal(chordName('c#7'), 'C#m7'); assert.equal(chordName('h'), 'Bm'); assert.equal(chordName('Ab'), 'Ab');
+  assert.ok(isChordLine('Eb f Db Ab')); assert.ok(isChordLine('f')); assert.ok(!isChordLine('Este Isus, Mesia!'));
+  assert.equal(splitInlineLabels('Intro: Ab Db'), 'Intro:\nAb Db');
+  assert.equal(splitInlineLabels('Ab   f\nR: Cel născut'), 'Refren:\nAb f\nCel născut');
+  const out = normalizeImported('Intro: Ab Db Ab Db\n\nAb\nCine-i pruncul\nf\nMagi, păstori\n\nEb f\nPre: Isus S-a născut');
+  assert.match(out, /^Intro:\n\[Ab\] \[Db\] \[Ab\] \[Db\]/);
+  assert.match(out, /\[Fm\]Magi, păstori/);
+  assert.match(out, /Pre-refren:\n\[Eb\]/);
+  assert.ok(!/^f$/m.test(out), 'no chord letter left as a line of words');
+});

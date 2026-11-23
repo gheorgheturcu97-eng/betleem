@@ -65,6 +65,12 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - **Fereastra de proiecție pe Mac**: dacă macOS o ține sub bara de meniu (aplicație instalată înainte de 22.10), hub-ul
   deschide propria fereastră cu `enableLargerThanScreen` și o parchează pe cea veche (`coverFor` în server.js). Neverificat pe Mac.
 
+- **🧱 Straturi și 🏷 Props** (23 nov): `public/layers.js` (renderLayers + LayerEditor, aceleași pe proiector și în editoare);
+  `cleanLayers`, `slideLayers`, `saveProp/deleteProp/toggleProp/propsOff` în server.js (cu ↶); `it.layers` (toată cântarea),
+  `it.slideLayers[n]` (un slide), `db.props`. main.html: #lyUnder, #lyOver, #props. Verificat în browser.
+- **Acorduri cu literă mică și secțiuni pe același rând** (23 nov): `chordName`, `splitInlineLabels`, `needsChordCleanup`
+  în song.ts (test); curățare o dată la pornire (`db.migrated.chordLines`).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

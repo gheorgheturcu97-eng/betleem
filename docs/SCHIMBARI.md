@@ -1,6 +1,17 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-23 · 2026.11.23.5 · straturi, Props, acordurile care apăreau pe Sală
+- **Acorduri scrise cu literă mică („f”, „Eb f Db Ab”) și „Intro: Ab Db”, „Pre: …”, „R: …”.** Înainte: apăreau ca
+  versuri pe ecranul din sală. Acum: sunt recunoscute ca acorduri („f” = Fm) și puse pe silabe, iar „Pre:”/„R:” devin
+  secțiuni (Pre-refren, Refren). Cântările deja salvate așa se curăță singure o dată, la pornire (copie de siguranță
+  înainte: library.backup-….json). La ele, ordinea personalizată a secțiunilor revine la cea automată.
+- **Editorul de slide (dublu-clic / Cmd+E).** Înainte: un singur text. Acum: are „🧱 Straturi”: texte, imagini, video,
+  forme, fiecare mutat și mărit pe previzualizare, cu ochi (ascunde), lacăt, ordine, sub/peste versuri, apariție
+  animată, clic dreapta = comenzi rapide, ↶ ↷ (Ctrl+Z / Ctrl+Shift+Z), Ctrl+D, săgeți. Și 📋 Copiază / 📥 Lipește
+  aspectul între slide-uri. Un slide cu straturi are 🧱 în listă.
+- **Fundaluri / 💡 Lumini.** Acum: și tabul **🏷 Props** (logo, bandă, text fix peste orice slide; clic = pornește/oprește).
+
 ## 2026-11-23 · 2026.11.23.4 · ecrane fără fir
 - **Lista de monitoare (Sală / Scenă).** Înainte: doar monitoarele legate cu cablu. Acum: la final are „📡 Ecran fără fir
   (AirPlay / Miracast)…” (deschide setările de monitoare ale calculatorului, cu pașii) și „🌐 Televizor cu browser…”

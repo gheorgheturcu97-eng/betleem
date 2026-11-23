@@ -181,6 +181,31 @@ function cleanDisplay(screen, patch) {
   return d;
 }
 
+/** 🧱 Layers of a slide or a Prop (public/layers.js draws them): only known keys, numbers in range, media by file name. */
+function cleanLayers(list) {
+  const hex = v => /^#[0-9a-f]{6}$/i.test(v || '') ? v : '', num = (v, a, b, d) => Number.isFinite(+v) ? Math.min(b, Math.max(a, Math.round(+v * 100) / 100)) : d;
+  return (Array.isArray(list) ? list : []).slice(0, 40).filter(l => ['text', 'image', 'video', 'shape'].includes(l?.type)).map(l => {
+    const o = { id: String(l.id || crypto.randomUUID()).replace(/[^\w-]/g, '').slice(0, 40) || crypto.randomUUID().slice(0, 8), type: l.type, name: String(l.name || '').slice(0, 40),
+      x: num(l.x, -100, 100, 0), y: num(l.y, -100, 100, 0), w: num(l.w, 1, 200, 30), h: num(l.h, 1, 200, 20), opacity: num(l.opacity, 0, 1, 1),
+      hidden: !!l.hidden, locked: !!l.locked, under: !!l.under, anim: ['none', 'fade', 'rise', 'zoom', 'left'].includes(l.anim) ? l.anim : 'none',
+      bg: hex(l.bg), bgAlpha: num(l.bgAlpha, 0, 1, 1), radius: num(l.radius, 0, 50, 0), border: hex(l.border), borderW: num(l.borderW, 0, 5, 0) };
+    if (l.type === 'text') Object.assign(o, { text: String(l.text || '').slice(0, 2000), font: String(l.font || 'Inter').slice(0, 60).replace(/[^\w\s-]/g, ''),
+      size: num(l.size, 0.5, 40, 6), color: hex(l.color) || '#ffffff', weight: [400, 500, 600, 700, 800].includes(+l.weight) ? +l.weight : 700,
+      align: ['left', 'center', 'right'].includes(l.align) ? l.align : 'center', valign: ['top', 'middle', 'bottom'].includes(l.valign) ? l.valign : 'middle',
+      italic: !!l.italic, upper: !!l.upper, shadow: !!l.shadow });
+    if (l.type === 'image' || l.type === 'video') Object.assign(o, { src: path.basename(String(l.src || '')).slice(0, 200), fit: l.fit === 'cover' ? 'cover' : 'contain' });
+    if (l.type === 'shape') o.shape = l.shape === 'ellipse' ? 'ellipse' : 'rect';
+    return o;
+  });
+}
+/** slide numbers after one slide is removed (d = -1) or copied (d = +1): per-slide looks and layers follow their slide */
+function shiftSlides(obj, slide, d) {
+  if (!obj) return obj; const out = {};
+  for (const [i, v] of Object.entries(obj)) { if (d < 0 && +i === slide) continue; out[+i > slide ? +i + d : i] = v; }
+  if (d > 0 && obj[slide]) out[slide + 1] = structuredClone(obj[slide]);
+  return out;
+}
+
 // --- Live state (what is on the screens right now) ---------------------------
 const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0, bible: null,
   noText: false,             // "Fără text": the words go away, the background stays
@@ -316,6 +341,7 @@ function snapshot() {
     service: db.service,
     display: db.display,
     lights: db.lights || { scenes: [] },
+    props: db.props || [],                           // 🏷 things on screen independent of the slide (logo, banner, text)
     church: (({ id, name, city, logo, vision }) => ({ id, name, city, logo: logo || '', vision: vision || '' }))(activeChurch()),
     churches: db.churches.map(c => ({ id: c.id, name: c.name, city: c.city, locked: !!c.code })),
     setlist: db.setlist.map((it, i) => ({
@@ -399,25 +425,25 @@ wss.on('connection', (ws, req) => {
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'slideLayers', 'saveProp', 'deleteProp', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
-    setlist: structuredClone(db.setlist), service: structuredClone(db.service), display: structuredClone(db.display),
+    setlist: structuredClone(db.setlist), service: structuredClone(db.service), display: structuredClone(db.display), props: structuredClone(db.props || []),
     plan: structuredClone(db.plan?.services || []),
     songs: db.songs.map(x => ({ ...x, ...(x.arrangement ? { arrangement: [...x.arrangement] } : {}), ...(x.tags ? { tags: [...x.tags] } : {}) })),
     liveItemId: db.setlist[live.item]?.id || null, slide: live.slide,
   };
 }
 function restoreSnapshot(sn) {
-  db.setlist = sn.setlist; db.service = sn.service; db.display = sn.display; db.songs = sn.songs;
+  db.setlist = sn.setlist; db.service = sn.service; db.display = sn.display; db.songs = sn.songs; if (sn.props) db.props = sn.props;
   if (db.plan) db.plan.services = sn.plan;
   live.item = sn.liveItemId ? db.setlist.findIndex(x => x.id === sn.liveItemId) : -1;
   live.slide = live.item >= 0 ? clamp(sn.slide, 0, Math.max(0, slidesFor(live.item).length - 1)) : 0;
 }
 const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', saveProp: 'prop-ul', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -585,6 +611,28 @@ function handleMessage(ws, m) {
         if (m.item === live.item) live.background = it.background;
         save(); break;
       }
+      case 'slideLayers': {                          // 🧱 layers of one slide, the whole song, or every item of the program
+        const it = db.setlist[m.item]; if (!it) break;
+        const L = m.layers == null ? null : cleanLayers(m.layers);
+        if (m.scope === 'all') for (const x of db.setlist) { if (L?.length) x.layers = structuredClone(L); else delete x.layers; delete x.slideLayers; }
+        else if (m.scope === 'song') { if (L?.length) it.layers = L; else delete it.layers; delete it.slideLayers; }
+        else {
+          const n = Number(m.slide); if (!Number.isInteger(n) || n < 0 || n > 500) break;
+          it.slideLayers ||= {};
+          if (L) it.slideLayers[n] = L; else delete it.slideLayers[n];          // [] = nothing on this slide, even if the song has layers
+          if (!Object.keys(it.slideLayers).length) delete it.slideLayers;
+        }
+        save(); break;
+      }
+      case 'saveProp': {                             // 🏷 a Prop: layers shown over everything, switched on and off by hand
+        db.props ||= []; const x = m.prop || {};
+        const clean = { id: String(x.id || crypto.randomUUID()).replace(/[^\w-]/g, '').slice(0, 40), name: String(x.name || 'Prop').slice(0, 40), on: !!x.on, layers: cleanLayers(x.layers) };
+        const i = db.props.findIndex(z => z.id === clean.id); if (i >= 0) db.props[i] = clean; else db.props.push(clean);
+        save(); break;
+      }
+      case 'deleteProp': db.props = (db.props || []).filter(z => z.id !== m.id); save(); break;
+      case 'toggleProp': { const pr = (db.props || []).find(z => z.id === m.id); if (pr) pr.on = typeof m.on === 'boolean' ? m.on : !pr.on; save(); break; }
+      case 'propsOff': for (const pr of db.props || []) pr.on = false; save(); break;
       case 'slideStyle': {                           // look of one slide, the whole song, or every song
         const it = db.setlist[m.item]; if (!it) break;
         if (m.scope === 'all') { Object.assign(db.display.main, cleanDisplay('main', m.patch)); for (const x of db.setlist) { delete x.display; delete x.slideStyles; } }
@@ -716,11 +764,8 @@ function handleMessage(ws, m) {
         const order = core.arrangementIndexes(core.parseSong(song.body), it.arrangement || song.arrangement);
         order.splice(hit.pos, 1);
         it.arrangement = order;
-        if (it.slideStyles) {
-          const st = {};
-          for (const [i, v] of Object.entries(it.slideStyles)) if (+i !== m.slide) st[+i > m.slide ? +i - 1 : i] = v;
-          it.slideStyles = st;
-        }
+        if (it.slideStyles) it.slideStyles = shiftSlides(it.slideStyles, m.slide, -1);
+        if (it.slideLayers) it.slideLayers = shiftSlides(it.slideLayers, m.slide, -1);
         if (live.item === m.item && live.slide >= slidesFor(m.item).length) live.slide = Math.max(0, slidesFor(m.item).length - 1);
         save(); break;
       }
@@ -738,12 +783,9 @@ function handleMessage(ws, m) {
         const order = core.arrangementIndexes(core.parseSong(song.body), it.arrangement || song.arrangement);
         order.splice(hit.pos + 1, 0, '#' + k);
         it.arrangement = order;
-        if (it.slideStyles) {                        // looks set on later slides move one place down; the copy gets the same look
-          const st = {};
-          for (const [i, v] of Object.entries(it.slideStyles)) st[+i > m.slide ? +i + 1 : i] = v;
-          if (it.slideStyles[m.slide]) st[m.slide + 1] = it.slideStyles[m.slide];
-          it.slideStyles = st;
-        }
+        // looks and layers set on later slides move one place down; the copy gets the same ones
+        if (it.slideStyles) it.slideStyles = shiftSlides(it.slideStyles, m.slide, 1);
+        if (it.slideLayers) it.slideLayers = shiftSlides(it.slideLayers, m.slide, 1);
         save(); break;
       }
       case 'editSlide': {                            // fix the words of one slide; chords stay on their words
@@ -847,7 +889,7 @@ function handleMessage(ws, m) {
         if (m.type === 'addItem') {
           const kind = ['song', 'sermon', 'prayer', 'announcement', 'other', 'media', 'bible'].includes(m.kind) ? m.kind : 'other';
           const item = m.item && typeof m.item === 'object'                                 // undo of a removal
-            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'notes', 'slides', 'ref', 'versions', 'autoAdvance', 'loop']), id: m.item.id || crypto.randomUUID() }
+            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'layers', 'slideLayers', 'notes', 'slides', 'ref', 'versions', 'autoAdvance', 'loop']), id: m.item.id || crypto.randomUUID() }
             : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [],
                 ...(kind === 'media' ? { slides: mediaSlides(m.slides), ...cleanFx(m) } : {}),
                 ...(kind === 'bible' ? { ref: cleanRef(m.ref), versions: cleanVersions(m.versions) } : {}) };
@@ -1221,6 +1263,29 @@ async function runChordsJob(list) {
   } catch (e) {
     chordsEvent({ running: false, finished: true, error: e.message });
   } finally { chordsJob.running = false; }
+}
+
+// Once (2026.11.23.5): songs saved with chord letters as lines of words ("f", "Eb f Db Ab", "Intro: Ab Db") or with
+// "Pre: …" / "R: …" in front of the words are cleaned like a new import, so the hall shows only the words.
+// A copy of the library is kept first; a song whose sections changed loses its custom order (it gets the automatic one).
+if (!db.migrated?.chordLines) {
+  try {
+    const bad = db.songs.filter(x => core.needsChordCleanup?.(x.body || ''));
+    if (bad.length) {
+      libraryBackup();
+      for (const song of bad) {
+        const before = core.parseSong(song.body).length;
+        song.body = core.normalizeImported(song.body); song.updatedAt = new Date().toISOString();
+        if (core.parseSong(song.body).length !== before) {
+          if (song.arrangement) song.arrangement = core.autoArrangement(song.body) || undefined;
+          const lists = [db.setlist, db.plan?.services?.flatMap(s => s.items) || [], ...Object.values(db.churchData || {}).flatMap(c => [c.setlist || [], c.plan?.services?.flatMap(s => s.items) || []])];
+          for (const it of lists.flat()) if (it?.songId === song.id) { delete it.arrangement; delete it.slideStyles; delete it.slideLayers; }
+        }
+      }
+      console.log(`Cântări curățate (acorduri pe rânduri de versuri): ${bad.length}`);
+    }
+    db.migrated = { ...(db.migrated || {}), chordLines: true }; save();
+  } catch (e) { logError('curățarea acordurilor', e); }
 }
 
 // --- HTTP ----------------------------------------------------------------------

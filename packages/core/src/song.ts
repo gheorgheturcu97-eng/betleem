@@ -167,10 +167,57 @@ export function expandArrangement(order: string[], k: number, n: number): string
 const CHORD_TOKEN = /^[A-G][b#]?(?:m|maj|min|dim|aug|sus|add|M)?\d*(?:[b#]\d+)*(?:sus\d*)?(?:add\d+)?(?:\/[A-G][b#]?)?$/;
 
 /** Is this line made only of chord symbols (the "chords above lyrics" format)? */
+// Romanian / German sheets write minor chords in lower case: "f" = Fm, "c#7" = C#m7, "h" = Bm
+const LOWER_CHORD = /^[a-h][b#]?(?:maj|dim|aug|sus|add)?\d*(?:sus\d*)?(?:add\d+)?(?:\/[A-Ha-h][b#]?)?$/;
 export function isChordLine(line: string): boolean {
   const tokens = line.trim().split(/\s+/).filter(Boolean);
   if (!tokens.length) return false;
-  return tokens.every(t => CHORD_TOKEN.test(t.replace(/[()|]/g, '')) || /^[|/\-x\d]+$/.test(t));
+  if (!tokens.some(t => /[A-Ha-h]/.test(t))) return false;
+  return tokens.every(t => { const c = t.replace(/[()|,]/g, ''); return CHORD_TOKEN.test(c) || LOWER_CHORD.test(c) || /^[|/\-x\d.]+$/.test(t); });
+}
+/** "f" -> "Fm", "c#7" -> "C#m7", "h" -> "Bm", "b" -> "Bbm"; anything else unchanged. */
+export function chordName(t: string): string {
+  if (!LOWER_CHORD.test(t)) return t;
+  const m = t.match(/^([a-h])([b#]?)(.*)$/)!;
+  const root = m[1] === 'h' ? 'B' : m[1] === 'b' && !m[2] ? 'Bb' : m[1].toUpperCase() + m[2];
+  const rest = m[3].replace(/\/([a-h])/, (_, x) => '/' + (x === 'h' ? 'B' : x.toUpperCase()));
+  return root + (/^(maj|dim|aug)/.test(rest) ? '' : 'm') + rest;
+}
+
+// "Pre: Isus…", "R: Cel născut…", "Intro: Ab Db": the name of the section written on the same line as the words
+// (or the chords). The name goes on its own line; a chord line above the words moves with them.
+const INLINE_LABEL = /^(\s*)(r|ref|refren|refrain|cor|chorus|pre|pr|pre-?\s?refren|pre-?\s?chorus|bridge|punte|pod|intro|final|outro|coda|tag|str(?:ofa|ofă)?\.?\s*\d{1,2}|v\s*\d{1,2}|vers(?:ul)?\s*\d{1,2})\s*(\d*)\s*:\s*(\S.*)$/i;
+function inlineLabelName(w: string, n: string): string {
+  const t = w.toLowerCase().replace(/\s+/g, '');
+  const num = (t.match(/\d+/) || [n])[0] || '';
+  if (/^(pre|pr)/.test(t)) return 'Pre-refren' + (num ? ' ' + num : '');
+  if (/^(r|ref|refren|refrain|cor|chorus)$/.test(t.replace(/\d+/, ''))) return 'Refren' + (num ? ' ' + num : '');
+  if (/^(bridge|punte|pod)/.test(t)) return 'Bridge' + (num ? ' ' + num : '');
+  if (/^intro/.test(t)) return 'Intro';
+  if (/^(final|outro|coda)/.test(t)) return 'Final';
+  if (/^tag/.test(t)) return 'Tag';
+  return 'Strofa ' + (num || '1');
+}
+/** A song saved before lower-case chords and "Pre: words" were understood: chord letters still sit on lines of words. */
+export function needsChordCleanup(body: string): boolean {
+  return body.split('\n').some(l => { const t = l.trim(); return !!t && !t.includes('[') && !t.startsWith('{') && (isChordLine(t) || (INLINE_LABEL.test(t) && !isLabelLine(t))); });
+}
+export function splitInlineLabels(text: string): string {
+  const out: string[] = [];
+  for (const line of text.split('\n')) {
+    const m = line.match(INLINE_LABEL);
+    if (!m || /^\s*\{/.test(line)) { out.push(line); continue; }
+    const cut = line.length - m[4].length;                         // where the words (or chords) start
+    const label = inlineLabelName(m[2], m[3]) + ':';
+    const prev = out.at(-1);
+    if (prev !== undefined && prev.trim() && isChordLine(prev) && !isChordLine(m[4])) {   // the chords above move left with the words
+      out.pop();
+      const head = prev.slice(0, cut).trim(), rest = prev.slice(cut), lead = rest.length - rest.trimStart().length;   // chords over the name go first
+      const shifted = !rest.trim() ? head : head ? head + ' '.repeat(Math.max(1, lead - head.length)) + rest.trimStart() : rest;
+      out.push(label, shifted.trimEnd(), m[4]);
+    } else out.push(label, m[4]);
+  }
+  return out.join('\n');
 }
 
 /**
@@ -188,7 +235,7 @@ export function chordsOverToChordPro(text: string): string {
     if (isChordLine(line)) {
       const next = lines[i + 1];
       const chords: { col: number; chord: string }[] = [];
-      for (const m of line.matchAll(/\S+/g)) chords.push({ col: m.index ?? 0, chord: m[0] });
+      for (const m of line.matchAll(/\S+/g)) if (!/^[|/\-x\d.]+$/.test(m[0])) chords.push({ col: m.index ?? 0, chord: chordName(m[0].replace(/[()|,]/g, '')) });
       if (next !== undefined && next.trim() !== '' && !isChordLine(next) && !SECTION_LABEL.test(next.trim())) {
         let merged = next.padEnd(Math.max(next.length, (chords.at(-1)?.col ?? 0)), ' ');
         for (const { col, chord } of [...chords].reverse()) {
@@ -295,6 +342,7 @@ export function normalizeImported(text: string): string {
     .replace(/ş/g, 'ș').replace(/Ş/g, 'Ș').replace(/ţ/g, 'ț').replace(/Ţ/g, 'Ț')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+  t = splitInlineLabels(t);                                     // "Pre: words", "Intro: Ab Db" -> the name on its own line
   if (t.split("\n").some(isChordLine)) t = chordsOverToChordPro(t); // also fixes mixed pastes
   t = labelStanzas(t);
   // blocks without a name get one (the "/: :/" marks help find the chorus), then the marks are dropped
@@ -530,13 +578,17 @@ export function fillChords(body: string): { body: string; filled: number } {
   if (!tmpl.size) return { body, filled: 0 };
   let filled = 0;
   for (const b of blocks) {
-    if (!b.rows.length || b.rows.some(r => hasCh(lines[r]))) continue;
+    if (!b.rows.length || b.rows.every(r => hasCh(lines[r]))) continue;
+    const some = b.rows.some(r => hasCh(lines[r]));
     let src = tmpl.get(b.kind);
-    if (!src && !b.kind) src = [...tmpl.values()].find(x => x.rows.length === b.rows.length) || tmpl.get('verse');   // no name: same shape
-    if (!src) continue;
-    const from = src.rows.filter(r => hasCh(lines[r])).length === src.rows.length ? src.rows : src.rows.filter(r => hasCh(lines[r]));
-    b.rows.forEach((r, j) => { lines[r] = chordsOnSameSyllables(lines[from[j % from.length]], lines[r]); });
-    filled++;
+    if (!src && !b.kind && !some) src = [...tmpl.values()].find(x => x.rows.length === b.rows.length) || tmpl.get('verse');   // no name: same shape
+    if (!src || src === b) continue;
+    // a block with chords on some lines only (the sheet wrote a chord just where it changes): the missing lines
+    // take the chords of the same line in the model; a block without any chords takes them all
+    const from = src.rows.filter(r => hasCh(lines[r])).length === src.rows.length || some ? src.rows : src.rows.filter(r => hasCh(lines[r]));
+    let did = false;
+    b.rows.forEach((r, j) => { if (hasCh(lines[r])) return; const t = lines[from[j % from.length]]; if (!hasCh(t)) return; lines[r] = chordsOnSameSyllables(t, lines[r]); did = true; });
+    if (did) filled++;
   }
   return { body: lines.join('\n'), filled };
 }
