@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.5 · pagina muzicienilor
+- **Pagina de telefon a muzicienilor (codul „Muzicieni”).** Înainte: tabul „Versuri”, iar sub acorduri unele bucăți de
+  rând coborau mai jos. Acum: în locul lui e „Planificare” (versurile sunt deja în Acorduri), iar rândurile stau drept,
+  cu sau fără acord deasupra (la fel în aplicația 📱).
+
 ## 2026-11-24 · 2026.11.24.3 · aplicația de telefon (web), MD&TRACK din telefon
 - **📱 Aplicația Betleem pe telefon** (`/m.html`, al patrulea cod în 📱 Telefoane): trei părți. 🗓 Planificare (aceeași
   pagină ca pe laptop). ▶ Proiectez: ▦ slide-urile (atingi = pe ecran) sau ♫ toată cântarea cu acorduri, care urmează

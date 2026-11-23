@@ -44,7 +44,8 @@
   .slide.now{opacity:1;background:var(--card)}
   .line{display:flex;flex-wrap:wrap}
   .seg{display:inline-flex;flex-direction:column;white-space:pre}
-  .seg b{color:var(--acc);font-size:.65em;min-height:1em}
+  .seg b{color:var(--acc);font-size:.65em;height:1.5em;line-height:1.5em}   /* the same height with or without a chord: the words stay on one line */
+  .seg i{line-height:1.35}
   .seg i{font-style:normal}
   .ly{white-space:pre-wrap}
   #pad{position:fixed;left:0;right:0;bottom:0;display:none;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
@@ -76,7 +77,7 @@
 <body>
 <header><h1><span id="dot"></span><span id="title">Betleem</span></h1><span id="now" style="color:var(--mute);font-size:14px"></span></header>
 <nav>
-  <button data-v="lyrics" class="sel">Versuri</button>
+  <button data-v="plan">Planificare</button>
   <button data-v="chords">Acorduri</button>
   <button data-v="order">Program</button>
 </nav>
@@ -139,6 +140,7 @@
   });
   function alertBox(t) { $('now').textContent = t; setTimeout(render, 2500); }
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+    if (b.dataset.v === 'plan') { location.href = '/planning.html'; return; }   // the lyrics are in Acorduri too: this place is for the plan
     view = b.dataset.v; document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x === b)); render();
   });
   $('ok').onclick = () => hub.login($('pin').value);
