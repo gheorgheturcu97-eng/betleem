@@ -773,6 +773,13 @@
   .arrange .blk.armed{background:color-mix(in srgb,var(--sc) 40%,transparent)!important;animation:armed .5s ease-in-out infinite alternate}
   @keyframes armed{to{background:color-mix(in srgb,var(--sc) 15%,transparent)}}
   .arrange .blk.now{background:color-mix(in srgb,var(--sc) 28%,transparent)!important;box-shadow:inset 0 -2px 0 var(--sc)}
+  .tempo-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--stroke)}
+  .tempo-pill .met-btn{display:inline-flex;align-items:center;gap:8px;padding:6px 12px!important}
+  .tempo-pill .met-btn .dots{margin:0} .tempo-pill .met-btn .dots i{width:9px;height:9px}
+  .tempo-pill input{width:46px;text-align:center;font:700 17px Inter,system-ui;background:transparent;border:0;padding:2px 0;color:inherit;-moz-appearance:textfield}
+  .tempo-pill input::-webkit-inner-spin-button{display:none} .tempo-pill small{font-size:10px;color:var(--mute);margin-left:-4px}
+  .tempo-pill select{width:auto;padding:2px 4px;font-size:12px;background:transparent;border:0}
+  .tempo-pill.tapping .met-btn{box-shadow:0 0 0 3px var(--acc)}
   .met-btn{padding:7px 14px!important;border-radius:999px!important;font-weight:750;white-space:nowrap}
   .met-btn.on{background:linear-gradient(180deg,#7dffb0,#2fb85f)!important;color:#05200f!important;box-shadow:0 0 14px rgba(95,224,138,.5)}
   .prog-add{flex:none;width:32px;height:32px;font-size:18px;font-weight:700;background:var(--acc)!important;color:#1a1200!important;border-radius:10px!important}
@@ -1097,10 +1104,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
           <span class="time" id="tlTime">0:00 / 0:00</span>
           <span class="secnow" id="secNow"></span>
         </span>
-        <span class="tool" title="Tempo pentru acest program"><small>BPM</small><button id="bpmDown" class="icon">−</button><input id="bpm" type="number" min="30" max="300" placeholder="—"><button id="bpmUp" class="icon">＋</button>
-          <button id="tap" class="mini">Tap</button></span>
-        <span class="tool" title="Măsura"><select id="beats" title="Timpi pe măsură"><option value="4">4/4</option><option value="3">3/4</option><option value="6">6/8</option><option value="2">2/4</option></select><span class="dots" id="dots"></span></span>
-        <button id="metTop" class="met-btn" title="Pornește / oprește click-ul (metronomul). Dacă merg track-urile, se aliniază cu ele.">♩ Click</button>
+        <!-- ♩ one control for the tempo: press = click on/off · press 3–4 times in time = tap tempo · number = BPM · 4/4 -->
+        <span class="tempo-pill" id="tempoPill" title="♩ Apasă = pornește / oprește click-ul · apasă în ritm de 3–4 ori = tempo (track-urile îl urmează) · pe număr: rotița sau ↑ ↓ = ±1">
+          <button id="metTop" class="met-btn" title="Apasă = click pornit/oprit · apasă în ritm = tempo"><span class="dots" id="dots"></span><b>♩</b></button>
+          <input id="bpm" type="number" min="30" max="300" placeholder="—" title="Tempo (BPM): scrie, rotița sau ↑ ↓"><small>BPM</small>
+          <select id="beats" title="Timpi pe măsură"><option value="4">4/4</option><option value="3">3/4</option><option value="6">6/8</option><option value="2">2/4</option></select>
+        </span>
         <button id="mVoice" class="voice-btn" title="🎙 Comandă vocală: „refrenul”, „strofa doi”, „următoarea”, „tobele mai încet”, „tempo 72”…">🎙</button>
         <button id="mTools" class="icon" title="Cue-uri, track-uri, sunet">⋯</button>
         <small class="hint" id="mOrig" hidden></small>
@@ -3090,12 +3099,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function vtSave(marks) { send({ type: 'setGuide', item: mtItem, marks }); }
   async function vtToggle() {
     const v = await vtGet();
-    if (v.running) { v.stop(); vtRec = false; $('metTop').classList.remove('on'); $('metTop').textContent = '♩ Click'; renderLane(); return; }
+    if (v.running) { v.stop(); vtRec = false; $('metTop').classList.remove('on'); renderLane(); return; }
     const bpm = +$('bpm').value || songBpmNow(); if (!bpm) return toast('Pune întâi BPM-ul cântării (sus, la BPM, sau Tap)');
     met.setBpm(bpm); if (met.playing) met.pause();
     const key = songKeyNow().replace(/m$/, ''); if (key && !pad.playing) try { await pad.play(key); } catch {}
     await v.start({ marks: vtMarks(), names: sectionNames().map(n => n.label) });
-    $('metTop').classList.add('on'); $('metTop').textContent = '♩ Click ❚❚'; renderLane(); vtDraw();
+    $('metTop').classList.add('on'); renderLane(); vtDraw();
   }
   $('laneEmpty').addEventListener('click', async e => {
     const b = e.target.closest('[data-vt]'); if (!b) return;
@@ -3666,10 +3675,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   async function toggleMet() {
     if (met.playing) { met.pause(); } else { met.setBpm(+$('bpm').value || songBpmNow() || 120); if (!$('bpm').value) $('bpm').value = met.bpm;
       if (mt.duration && mt.playing) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0, trackTempo()); else await met.play(); }   // with the tracks when they play, on its own otherwise
-    $('metTop').classList.toggle('on', met.playing); $('metTop').textContent = met.playing ? '♩ Click ❚❚' : '♩ Click';
+    $('metTop').classList.toggle('on', met.playing);
     renderMixer(); $('toMusic').classList.toggle('playing', anyPlaying());
   }
-  $('metTop').onclick = toggleMet;
+  // one press = click on / off; pressing again within ~2 s = tapping the tempo (the click stays on, the tracks follow)
+  let tapLast = 0, tapGlow = 0;
+  $('metTop').onclick = async () => {
+    const now = performance.now(), tapping = now - tapLast < 2000; tapLast = now;
+    const b = tap();
+    if (tapping && b) {
+      if (!met.playing) await toggleMet();
+      setBpm(b); $('tempoPill').classList.add('tapping'); clearTimeout(tapGlow); tapGlow = setTimeout(() => $('tempoPill').classList.remove('tapping'), 2000);
+      return;
+    }
+    toggleMet();
+  };
   // ---- mixer: Click, Pad, every stem, Master
   const dB = v => v <= 0.001 ? '−∞' : ((v >= 1 ? '+' : '') + (20 * Math.log10(v)).toFixed(1)).replace('+0.0', '0.0');
   // a console fader: the travel is in dB, like on a real desk (0 dB high up, −∞ at the bottom)
@@ -3796,12 +3816,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     b = Math.min(300, Math.max(30, Math.round(b))); if (!b) return;
     $('bpm').value = b; met.setBpm(b);
     const i = musicItemIndex(); if (S.setlist[i]) send({ type: 'setBpm', item: i, bpm: b });
-    const it = S.setlist[i]; if (i === mtItem && it?.origBpm) mt.setRate(b / it.origBpm);       // the tracks follow at once
+    const it = S.setlist[i], base = it?.trackBpm || it?.bpm || it?.origBpm;
+    if (i === mtItem && base && mt.ch.length) { mt.setRate(b / base); $('bpm').style.color = Math.abs(b / base - 1) > 0.001 ? '#7dffb0' : ''; }   // the tracks follow the click at once
   };
   $('bpm').onchange = e => setBpm(+e.target.value);
-  $('bpmUp').onclick = () => setBpm((+$('bpm').value || met.bpm) + 1);
-  $('bpmDown').onclick = () => setBpm((+$('bpm').value || met.bpm) - 1);
-  $('tap').onclick = () => { const b = tap(); if (b) setBpm(b); };
+  $('bpm').addEventListener('wheel', e => { e.preventDefault(); setBpm((+$('bpm').value || met.bpm) + (e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+  $('bpm').onkeydown = e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setBpm((+$('bpm').value || met.bpm) + (e.key === 'ArrowUp' ? 1 : -1)); } };
   // where each sound goes (e.g. click to in-ear headphones, tracks and pad to the mixer)
   $('audioOutOld') && ($('audioOutOld').onclick = async () => {
     const list = await outputs();

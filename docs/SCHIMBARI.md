@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.2 · un singur buton pentru tempo și click
+- **Bara de sus din MD&TRACK.** Înainte: BPM − / + , Tap, 4/4 cu punctele și „♩ Click” separat. Acum: un singur buton
+  ♩ cu punctele de timp: o apăsare = click pornit/oprit; apăsat în ritm de 3–4 ori = tempo (click-ul rămâne pornit).
+  Lângă el numărul BPM (scrii, rotița sau ↑ ↓) și 4/4. Track-urile urmează imediat tempo-ul click-ului (numărul
+  devine verde când track-urile merg mai repede/încet decât înregistrarea) și click-ul rămâne pe timpii lor.
+
 ## 2026-11-24 · 2026.11.24.1 · track-urile nu se mai schimbă singure, click-ul ține pasul
 - **Ton și tempo la track-uri.** Înainte: track-urile se transpuneau/întindeau după tonul și BPM-ul din bibliotecă (de
   ex. ton F# din Planning Center față de G în bibliotecă → track-urile coborau singure). Acum: fiecare cântare ține
