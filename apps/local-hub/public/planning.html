@@ -128,6 +128,12 @@
   .ag.done span{text-decoration:line-through;color:var(--mute)} .ag input[type=checkbox]{width:18px;height:18px}
   .tk{display:grid;grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) 30px 30px;gap:6px 8px;align-items:center;padding:7px 8px;border-radius:10px;background:rgba(255,255,255,.04);margin-bottom:6px}
   .tk .tx{grid-column:2/4;font-weight:600} .tk .who{grid-column:2} .tk .fc{grid-column:4/6;font-size:11px;padding:4px 6px;border-radius:8px}
+  .ycard{border-radius:14px;padding:10px 12px;background:linear-gradient(135deg,rgba(46,134,222,.18),rgba(201,162,39,.14));border:1px solid rgba(255,255,255,.1);cursor:pointer}
+  .ycard small{color:var(--mute);display:block} .ycard b{font-size:15px} .ytrack{display:flex;gap:3px;margin-top:8px} .ytrack i{flex:1;height:7px;border-radius:4px;opacity:.45} .ytrack i.now{opacity:1;box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+  .st-badge{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:middle;background:rgba(255,255,255,.1)}
+  .st-realizat{background:rgba(46,204,113,.2);color:#6be3a0} .st-in_curs{background:rgba(46,134,222,.25);color:#8fc4ff} .st-planificat{background:rgba(255,255,255,.12)} .st-propunere{background:rgba(201,162,39,.22);color:#f0d27a} .st-de_confirmat{background:rgba(255,90,90,.18);color:#ff9a9a}
+  .stg{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;vertical-align:middle}
+  .ytab{width:100%;border-collapse:collapse;font-size:13px} .ytab td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
   .goal{padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045);cursor:pointer} .goal b{display:block;font-size:13px} .goal small{color:var(--mute)}
   .goal .bar{height:6px;border-radius:4px;background:rgba(255,255,255,.1);margin-top:6px;overflow:hidden} .goal .bar i{display:block;height:100%;background:var(--acc)}
   .fchart{display:flex;gap:6px;align-items:flex-end;height:110px;padding:6px 0} .fchart div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;height:100%}
@@ -343,6 +349,7 @@
   <!-- 🗓 LIDERI: the leaders' meeting (e.g. Tuesday): agenda seen before, notes, tasks with who and until when -->
   <section class="view" id="v-leaders">
     <aside class="panel glass">
+      <div id="yearCard"></div>
       <button id="bMsg" class="acc" title="📣 Un cuvânt de la păstor pentru echipă: verset, încurajare, mulțumiri. Apare pe pagina fiecăruia și se trimite pe WhatsApp.">📣 Mesaj pentru echipă</button>
       <div class="row"><h2 class="grow">Întâlniri</h2><button id="bAddMeet" title="O întâlnire nouă (de obicei marțea)">＋</button></div>
       <div id="meetList" class="scroll" style="display:flex;flex-direction:column;gap:6px;flex:1"></div>
@@ -1057,14 +1064,14 @@
     const opts = cur => `<option value="">— cine?</option>` + P.volunteers.slice().sort((a, b) => (b.leader - a.leader) || a.name.localeCompare(b.name, 'ro')).map(v => `<option value="${v.id}" ${v.id === cur ? 'selected' : ''}>${esc(v.name)}</option>`).join('');
     $('tasks').innerHTML = T.map(k => `<div class="tk ${k.done ? 'done' : ''} ${!k.done && k.due && k.due < today ? 'late' : ''}" data-k="${k.id}">
         <input type="checkbox" class="dn" ${k.done ? 'checked' : ''} title="Gata">
-        <input class="tx" value="${esc(k.text)}"><button class="fc ghost" title="Spre ce merge sarcina: 👥 oameni sau 📋 programe (pentru graficul lunar)">${k.focus === 'oameni' ? '👥 oameni' : k.focus === 'programe' ? '📋 programe' : '· focus?'}</button>
+        <input class="tx" value="${esc((k.code ? k.code + ' · ' : '') + k.text)}" data-code="${esc(k.code || '')}" title="${esc(k.status ? 'stare: ' + (ST[k.status] || k.status) : '')}${k.when && !k.due ? ' · termen: ' + esc(k.when) : ''}"><button class="fc ghost" title="Spre ce merge sarcina: 👥 oameni sau 📋 programe (pentru graficul lunar)">${k.focus === 'oameni' ? '👥 oameni' : k.focus === 'programe' ? '📋 programe' : '· focus?'}</button>
         <select class="who">${opts(k.who)}</select><input type="date" class="due" value="${k.due || ''}" title="Până când">
         <button class="icon ghost cal" title="📅 Reminder în calendar" ${k.due ? '' : 'disabled'}>📅</button><button class="icon ghost del" title="Șterge">✕</button></div>`).join('')
       || `<div class="empty">${f === 'open' ? 'Nimic de făcut. 🙌' : 'Nicio sarcină.'}</div>`;
     document.querySelectorAll('#tasks .tk').forEach(row => {
       const k = P.tasks.find(x => x.id === row.dataset.k), save = patch => op({ op: 'saveTask', task: { ...k, ...patch } });
-      row.querySelector('.dn').onchange = e => save({ done: e.target.checked });
-      row.querySelector('.tx').onchange = e => save({ text: e.target.value });
+      row.querySelector('.dn').onchange = e => save({ done: e.target.checked, ...(k.code ? { status: e.target.checked ? 'realizat' : 'in_curs' } : {}) });
+      row.querySelector('.tx').onchange = e => save({ text: e.target.value.replace(/^[A-Z]+-[\d.]+ · /, ''), status: k.done ? 'realizat' : k.status });
       row.querySelector('.who').onchange = e => save({ who: e.target.value });
       row.querySelector('.fc').onclick = () => save({ focus: k.focus === 'oameni' ? 'programe' : k.focus === 'programe' ? '' : 'oameni' });
       row.querySelector('.due').onchange = e => save({ due: e.target.value });
@@ -1073,9 +1080,58 @@
     });
   }
   $('tkFilter').onchange = renderLeaders;
+  // 📅 the church's year plan (theme, periods, series) — imported from the pastor's document
+  const ST = { realizat: 'realizat', in_curs: 'în curs', planificat: 'planificat', propunere: 'propunere', de_confirmat: 'de confirmat' };
+  const stBadge = st => st ? `<span class="st-badge st-${st}">${ST[st] || st}</span>` : '';
+  const stageDot = (Y, ids) => (ids || []).map(x => { const e = Y?.stages.find(z => z.id === x); return e ? `<span class="stg" style="background:${e.color}" title="${esc(e.name)}"></span>` : ''; }).join('');
+  const periodNow = Y => { const t = isoDay(new Date()); return Y?.periods.find(p => p.start <= t && t <= p.end); };
+  function renderYear() {
+    const Y = P.year;
+    if (!Y) { $('yearCard').innerHTML = `<label class="ghost" style="display:block;text-align:center;padding:8px;border-radius:12px;border:1px dashed rgba(255,255,255,.2);cursor:pointer">📥 Importă planul anului<input type="file" id="yearFile" accept=".md,.json,.txt" hidden></label>`; }
+    else {
+      const now = periodNow(Y), wk = (Y.series?.weeks || []).find(w => w.date >= isoDay(new Date()));
+      $('yearCard').innerHTML = `<div class="ycard" id="yearOpen" title="Tot planul anului"><small>📅 ${esc(Y.year)} · tema</small><b>${esc(Y.theme)}</b>
+        <small>${now ? esc(now.id + ' · ' + now.name) : ''}${wk ? ` · urmează: ${esc(wk.discipline)} (${esc(wk.date.slice(8) + '.' + wk.date.slice(5, 7))})` : ''}</small>
+        <div class="ytrack">${Y.periods.map(p => `<i class="${p === now ? 'now' : ''}" style="background:${Y.stages.find(e => e.id === p.stages[0])?.color || '#888'}" title="${esc(p.id + ' · ' + p.name + ' · ' + p.start + ' → ' + p.end)}"></i>`).join('')}</div></div>`;
+      $('yearOpen').onclick = showYear;
+    }
+    if ($('yearFile')) $('yearFile').onchange = e => importYear(e.target.files[0]);
+  }
+  async function importYear(file) {
+    if (!file) return;
+    const txt = await file.text(); let data = null;
+    try { data = JSON.parse((txt.match(/```json\s*([\s\S]*?)```/) || [, txt])[1]); } catch { return toast('Nu găsesc partea JSON a planului în fișier'); }
+    const church = $('tChurch').textContent || 'biserica activă', mine = /r[âa]ul vie[țt]ii/i.test(data.biserica || '');
+    dialog('📥 Planul anului', `<p>Import <b>${esc((data.biserica || 'planul').replace(/\s+Pe[șs]tera$/i, ''))}</b> (${esc(data.an || '')}) în biserica <b>${esc(church)}</b>.</p>
+      <p class="hint">Obiectivele și activitățile își păstrează codurile (OBJ-1.2, ACT-1.07): dacă îl imporți din nou, se actualizează, nu se dublează. Duminicile care urmează din serie devin servicii cu predica pregătită.</p>
+      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="yVis" checked style="width:auto"> Pune viziunea în bara echipei (dacă e goală)</label>
+      ${mine ? `<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="yLogo" checked style="width:auto"> Pune logo-ul Bisericii Râul Vieții <img src="/logos/raul-vietii.png" style="height:34px;border-radius:8px;margin-left:6px"></label>` : ''}`,
+      async () => {
+        const r = await fetch('/api/plan/year', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' },
+          body: JSON.stringify({ data, vision: $('yVis').checked, logo: $('yLogo')?.checked ? 'raul-vietii' : '', tz: Intl.DateTimeFormat().resolvedOptions().timeZone }) }).then(r => r.json()).catch(() => ({ error: 'N-a mers' }));
+        if (r.error) { toast(r.error); return false; }
+        await load(); toast(`📅 Planul e în ${r.church}: ${r.goals} obiective, ${r.tasks} activități, ${r.created} duminici noi în program`);
+      }, 'Importă');
+  }
+  function showYear() {
+    const Y = P.year, G = (P.goals || []).filter(g => g.code), T = (P.tasks || []).filter(t => t.code);
+    dialog(`📅 ${esc(Y.theme)} · ${esc(Y.year)}`, `<div style="max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:12px">
+      <div><b>Viziunea:</b> ${esc(Y.vision)}<br><b>Misiunea:</b> ${esc(Y.mission)}</div>
+      <div>${Y.stages.map(e => `<span class="st-badge" style="background:${e.color}33;color:${e.color}"><span class="stg" style="background:${e.color}"></span>${esc(e.name)} · ${esc(e.desc)}</span>`).join(' ')}</div>
+      ${Y.periods.map(p => `<div><h4 style="margin:6px 0">${stageDot(Y, p.stages)} ${esc(p.id)} · ${esc(p.name)} <small class="hint">${esc(p.start)} → ${esc(p.end)}</small></h4>
+        <table class="ytab">${G.filter(g => g.period === p.id).map(g => `<tr><td style="width:64px" class="hint">${esc(g.code)}</td><td>${esc(g.text)}<div class="hint">${esc(g.indicator)}</div></td><td style="width:110px">${g.target == null ? '<span class="hint">ținta: de stabilit</span>' : `${g.done}/${g.target}`}</td><td style="width:90px">${stBadge(g.status)}</td></tr>`).join('')}
+        ${T.filter(t => t.period === p.id).map(t => `<tr><td class="hint">${esc(t.code)}</td><td>${t.done ? '☑' : '☐'} ${esc(t.text)}</td><td class="hint">${esc(t.due || t.when || '')}</td><td>${stBadge(t.status)}</td></tr>`).join('')}</table></div>`).join('')}
+      ${Y.series ? `<div><h4 style="margin:6px 0">📖 ${esc(Y.series.name)}${Y.series.link ? ` · <a href="${esc(Y.series.link)}" target="_blank">jurnalul online</a>` : ''}</h4><table class="ytab">${Y.series.weeks.map(w => `<tr><td style="width:30px" class="hint">${w.n}</td><td style="width:84px">${esc(w.date)}</td><td>${stageDot(Y, w.stages)}<b>${esc(w.discipline)}</b>${w.title ? ' · ' + esc(w.title) : ''}<div class="hint">${esc([w.text, w.verse, w.memory, w.motto].filter(Boolean).join(' · '))}</div></td><td style="width:90px">${stBadge(w.status)}</td></tr>`).join('')}</table></div>` : ''}
+      ${Y.rhythm.length ? `<div><h4 style="margin:6px 0">🔁 Ritmul săptămânal</h4>${Y.rhythm.map(r => `<div><b>${esc(r.day)}:</b> ${esc(r.what)}</div>`).join('')}${Y.prayer.length ? `<div class="hint" style="margin-top:4px">🙏 Rugăciunea pe zile: ${Y.prayer.map(esc).join(' · ')}</div>` : ''}</div>` : ''}
+      ${Y.questions.length ? `<div><h4 style="margin:6px 0">❓ Întrebări deschise pentru pastor</h4><ul style="margin:0;padding-left:18px">${Y.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
+      <label class="ghost" style="text-align:center;padding:8px;border-radius:12px;border:1px dashed rgba(255,255,255,.2);cursor:pointer">📥 Importă o variantă nouă a planului<input type="file" id="yearFile2" accept=".md,.json,.txt" hidden></label></div>`, () => true, 'Închide');
+    $('yearFile2').onchange = e => { $('modal').classList.remove('show'); setTimeout(() => importYear(e.target.files[0]), 60); };
+  }
   // 🎯 goals and 📊 the monthly people / programs split
   function renderGoals() {
-    $('goals').innerHTML = (P.goals || []).map(g => `<div class="goal" data-g="${g.id}"><b>${esc(g.text)}</b><small>${g.done} din ${g.target} ${esc(g.unit || '')} · ${Math.round(g.done / g.target * 100)}%${g.focus ? ' · ' + (g.focus === 'oameni' ? '👥' : '📋') : ''}</small><div class="bar"><i style="width:${Math.min(100, g.done / g.target * 100)}%"></i></div></div>`).join('')
+    renderYear();
+    const pct = g => g.target ? Math.min(100, g.done / g.target * 100) : 0, nowP = periodNow(P.year)?.id;
+    $('goals').innerHTML = (P.goals || []).filter(g => !g.period || !nowP || g.period === nowP).map(g => `<div class="goal" data-g="${g.id}"><b>${g.code ? `<span class="hint">${esc(g.code)}</span> ` : ''}${esc(g.text)}</b><small>${g.target == null ? 'ținta: de stabilit' : `${g.done} din ${g.target} ${esc(g.unit || '')} · ${Math.round(pct(g))}%`}${g.focus ? ' · ' + (g.focus === 'oameni' ? '👥' : '📋') : ''}${stBadge(g.status)}</small><div class="bar"><i style="width:${pct(g)}%"></i></div></div>`).join('')
       || '<p class="hint">Ex.: „Să vorbim cu 52 de oameni despre Isus” (52 · oameni).</p>';
     document.querySelectorAll('#goals [data-g]').forEach(el => el.onclick = () => editGoal(P.goals.find(g => g.id === el.dataset.g)));
     const F = P.focus || [], max = Math.max(1, ...F.map(m => m.oameni + m.programe + m.altele));
@@ -1085,10 +1141,10 @@
   }
   function editGoal(g = { text: '', target: 10, done: 0, unit: '', focus: 'oameni' }) {
     dialog(g.id ? 'Obiectiv' : 'Obiectiv nou', `<label>Ce ne propunem<input id="gT" value="${esc(g.text)}" placeholder="Să vorbim cu oameni despre Isus"></label>
-      <div class="row"><label class="grow">Ținta<input id="gN" type="number" value="${g.target}"></label><label class="grow">Am ajuns la<input id="gD" type="number" value="${g.done}"></label><label class="grow">Unitate<input id="gU" value="${esc(g.unit)}" placeholder="oameni"></label></div>
+      <div class="row"><label class="grow">Ținta (gol = de stabilit)<input id="gN" type="number" value="${g.target ?? ''}"></label><label class="grow">Am ajuns la<input id="gD" type="number" value="${g.done}"></label><label class="grow">Unitate<input id="gU" value="${esc(g.unit)}" placeholder="oameni"></label></div>
       <label>Spre ce merge<select id="gF"><option value="oameni" ${g.focus === 'oameni' ? 'selected' : ''}>👥 oameni</option><option value="programe" ${g.focus === 'programe' ? 'selected' : ''}>📋 programe</option><option value="" ${!g.focus ? 'selected' : ''}>—</option></select></label>
       ${g.id ? '<button class="ghost" id="gDel">🗑 Șterge obiectivul</button>' : ''}`,
-      () => op({ op: 'saveGoal', goal: { ...g, text: $('gT').value, target: +$('gN').value, done: +$('gD').value, unit: $('gU').value, focus: $('gF').value } }));
+      () => op({ op: 'saveGoal', goal: { ...g, text: $('gT').value, target: $('gN').value === '' ? null : +$('gN').value, done: +$('gD').value, unit: $('gU').value, focus: $('gF').value } }));
     if (g.id) $('gDel').onclick = () => { $('modal').classList.remove('show'); op({ op: 'deleteGoal', id: g.id }); };
   }
   $('bAddGoal').onclick = () => editGoal();

@@ -1,0 +1,79 @@
+{
+  "biserica": "Biserica Râul Vieții Peștera",
+  "an": "2026-2027",
+  "serviciu": {"zi": "duminică", "ora": "17:00"},
+  "viziune": "O comunitate de credincioși maturi, uniți în Hristos, care răspândesc Evanghelia cu pasiune și dedicare.",
+  "misiune": "Să facem ucenici care fac ucenici.",
+  "etape": [
+    {"id": "C", "nume": "Câștigare", "descriere": "Îi aducem la Isus", "culoare": "#2E86DE"},
+    {"id": "K", "nume": "Consolidare", "descriere": "Ne așezăm în Hristos", "culoare": "#27AE60"},
+    {"id": "E", "nume": "Echipare", "descriere": "Ne pregătim de slujire", "culoare": "#E67E22"},
+    {"id": "T", "nume": "Trimitere", "descriere": "Suntem trimiși", "culoare": "#C9A227"}
+  ],
+  "valori": ["Rugăciunea", "Cuvântul", "Închinarea", "Ucenicia", "Slujirea", "Părtășia frățească"],
+  "tema": "Restaurarea",
+  "perioade": [
+    {"id": "P1", "nume": "Relația cu Dumnezeu", "start": "2026-09-01", "sfarsit": "2027-01-31", "etape": ["K", "E"]},
+    {"id": "P2", "nume": "Familia", "start": "2027-02-01", "sfarsit": "2027-05-31", "etape": ["K", "E"]},
+    {"id": "P3", "nume": "Pasiunea pentru cei pierduți", "start": "2027-06-01", "sfarsit": "2027-08-31", "etape": ["C", "T"]}
+  ],
+  "obiective": [
+    {"id": "OBJ-1.1", "perioada": "P1", "titlu": "Întâlnire zilnică cu Dumnezeu, la o oră și într-un loc ales", "indicator": "Media zilelor bifate în jurnal (din 7)", "tinta": null, "status": "in_curs"},
+    {"id": "OBJ-1.2", "perioada": "P1", "titlu": "Oamenii folosesc jurnalul (hârtie sau telefon)", "indicator": "Câți completează jurnalul săptămânal", "tinta": null, "status": "in_curs"},
+    {"id": "OBJ-1.3", "perioada": "P1", "titlu": "Fiecare membru își găsește un loc de slujire", "indicator": "Câți s-au înscris într-un departament", "tinta": null, "status": "in_curs"},
+    {"id": "OBJ-1.4", "perioada": "P1", "titlu": "Parteneri de dare de socoteală", "indicator": "Câte perechi s-au format", "tinta": null, "status": "planificat"},
+    {"id": "OBJ-1.5", "perioada": "P1", "titlu": "Mărturii despre ce a făcut Dumnezeu", "indicator": "Câte mărturii pe 13 decembrie", "tinta": null, "status": "planificat"},
+    {"id": "OBJ-2.1", "perioada": "P2", "titlu": "Familiile au un timp de rugăciune și citire împreună", "indicator": "Câte familii au un altar de familie", "tinta": null, "status": "propunere"},
+    {"id": "OBJ-2.2", "perioada": "P2", "titlu": "Căsniciile sunt întărite", "indicator": "Câte cupluri participă la întâlnirile pentru cupluri", "tinta": null, "status": "propunere"},
+    {"id": "OBJ-2.3", "perioada": "P2", "titlu": "Părinții sunt echipați să-și ucenicizeze copiii", "indicator": "Câți părinți participă", "tinta": null, "status": "propunere"},
+    {"id": "OBJ-3.1", "perioada": "P3", "titlu": "Fiecare membru se roagă zilnic pentru 3 oameni care nu-L cunosc pe Isus", "indicator": "Câți membri au lista celor 3", "tinta": null, "status": "propunere"},
+    {"id": "OBJ-3.2", "perioada": "P3", "titlu": "Biserica iese în sat cu Evanghelia", "indicator": "Câte activități de evanghelizare", "tinta": null, "status": "propunere"}
+  ],
+  "serie_discipline": {
+    "nume": "Disciplinele spirituale",
+    "perioada": "P1",
+    "jurnal_online": "https://raulvietiijurnal.netlify.app",
+    "saptamani": [
+      {"nr": 1, "data": "2026-10-11", "disciplina": "Solitudinea și jurnalul", "titlu": "Liniște într-o lume gălăgioasă", "text": "Marcu 1:35-39", "verset": "Psalmul 46:10", "de_tinut_minte": "Mă opresc. Scriu. Trăiesc.", "etape": ["K"], "status": "realizat"},
+      {"nr": 2, "data": "2026-10-18", "disciplina": "Rugăciunea și postul", "titlu": "Poate Dumnezeu să mă audă?", "text": "Luca 11:1-13", "verset": "Luca 11:9", "de_tinut_minte": "Vorbesc cu Tatăl. Mă încred. Nu mă las.", "etape": ["K"], "status": "realizat"},
+      {"nr": 3, "data": "2026-10-25", "disciplina": "Citirea Bibliei", "titlu": null, "text": null, "verset": null, "de_tinut_minte": null, "etape": ["K"], "status": "de_confirmat"},
+      {"nr": 4, "data": "2026-11-01", "disciplina": "Citirea și meditația Cuvântului", "titlu": "Ce spune, de fapt, textul?", "text": "Ezra 7:10", "verset": "Iosua 1:8", "verset_memorat": "Psalmul 119:97", "de_tinut_minte": "Citesc. Înțeleg. Trăiesc.", "etape": ["K"], "status": "realizat"},
+      {"nr": 5, "data": "2026-11-08", "disciplina": "Închinarea", "titlu": null, "text": null, "verset": "Ioan 4:23", "verset_memorat": "Psalmul 95:6", "etape": ["K", "T"], "status": "realizat"},
+      {"nr": 6, "data": "2026-11-15", "disciplina": "Simplitatea", "titlu": null, "text": null, "verset": "Matei 6:33", "verset_memorat": "1 Timotei 6:6", "etape": ["K"], "status": "realizat"},
+      {"nr": 7, "data": "2026-11-22", "disciplina": "Slujirea", "titlu": null, "text": null, "verset": "1 Petru 4:10", "verset_memorat": "Galateni 6:9", "etape": ["E"], "status": "realizat"},
+      {"nr": 8, "data": "2026-11-29", "disciplina": "Darea de socoteală", "etape": ["E"], "status": "planificat"},
+      {"nr": 9, "data": "2026-12-06", "disciplina": "Sărbătoarea / părtășia", "etape": ["K", "T"], "status": "propunere"},
+      {"nr": 10, "data": "2026-12-13", "disciplina": "Încheierea seriei: mărturii", "etape": ["T"], "status": "propunere"}
+    ]
+  },
+  "activitati": [
+    {"id": "ACT-1.01", "perioada": "P1", "data": "2026-10-11", "titlu": "Lansarea jurnalului (hârtie + cod QR)", "obiectiv": "OBJ-1.2", "status": "realizat"},
+    {"id": "ACT-1.02", "perioada": "P1", "data": "2026-10", "titlu": "Ziua de post a bisericii", "obiectiv": "OBJ-1.1", "status": "realizat"},
+    {"id": "ACT-1.03", "perioada": "P1", "data": "lunar", "titlu": "Tabelul lunar „Provocarea săptămânii” (zile din 7)", "obiectiv": "OBJ-1.1", "status": "in_curs"},
+    {"id": "ACT-1.04", "perioada": "P1", "data": "2026-11-15", "titlu": "Pornim pachetele de Crăciun pentru Ivrinezu", "obiectiv": "OBJ-1.3", "status": "in_curs"},
+    {"id": "ACT-1.05", "perioada": "P1", "data": "2026-11-22", "titlu": "Foaia de înscriere în departamente", "obiectiv": "OBJ-1.3", "status": "in_curs"},
+    {"id": "ACT-1.06", "perioada": "P1", "data": "2026-11-28", "titlu": "Discuție cu liderii despre partenerii de dare de socoteală", "obiectiv": "OBJ-1.4", "status": "planificat"},
+    {"id": "ACT-1.07", "perioada": "P1", "data": "2026-11-29", "titlu": "Formarea perechilor de dare de socoteală", "obiectiv": "OBJ-1.4", "status": "planificat"},
+    {"id": "ACT-1.08", "perioada": "P1", "data": "2026-12-12", "titlu": "Adunăm mărturii din serie", "obiectiv": "OBJ-1.5", "status": "planificat"},
+    {"id": "ACT-1.09", "perioada": "P1", "data": "2026-12-13", "titlu": "Duminica mărturiilor", "obiectiv": "OBJ-1.5", "status": "propunere"},
+    {"id": "ACT-1.10", "perioada": "P1", "data": "2026-12", "titlu": "Crăciunul: programul și împărțirea pachetelor", "obiectiv": "OBJ-1.3", "status": "planificat"},
+    {"id": "ACT-1.11", "perioada": "P1", "data": "2027-01", "titlu": "Trecerea spre tema „Familia”", "obiectiv": null, "status": "planificat"},
+    {"id": "ACT-1.12", "perioada": "P1", "data": null, "titlu": "Salvarea online a jurnalului (Google Sheet)", "obiectiv": "OBJ-1.2", "status": "de_confirmat"},
+    {"id": "ACT-2.01", "perioada": "P2", "data": "2027-01", "titlu": "Planificarea seriei despre familie, cu liderii", "obiectiv": null, "status": "propunere"},
+    {"id": "ACT-2.02", "perioada": "P2", "data": "2027-02", "titlu": "Lansarea seriei „Familia” (cu foaie de jurnal pentru familie)", "obiectiv": "OBJ-2.1", "status": "propunere"},
+    {"id": "ACT-3.01", "perioada": "P3", "data": "2027-05", "titlu": "Planificarea verii, cu liderii", "obiectiv": null, "status": "propunere"}
+  ],
+  "ritm_saptamanal": [
+    {"zi": "duminică", "ce": "Predica, momentul „În sală”, împărțirea foii de jurnal"},
+    {"zi": "luni–duminică", "ce": "Jurnalul zilnic: pasajul zilei și provocarea săptămânii"},
+    {"zi": "duminica următoare", "ce": "Darea de socoteală: „Am bifat ___ din 7”"}
+  ],
+  "grupuri_rugaciune": ["Familia", "Biserica", "Liderii", "Ivrinezu", "România", "Misionarii", "Ziua de mulțumire"],
+  "intrebari_deschise": [
+    "Ce s-a predicat pe 25 octombrie (săptămâna 3)?",
+    "Ce subiecte rămân pentru 6 și 13 decembrie?",
+    "Ce ținte numerice punem pentru obiective?",
+    "Cine e responsabil de fiecare activitate?",
+    "Ce s-a făcut în septembrie, înainte de serie?"
+  ]
+}

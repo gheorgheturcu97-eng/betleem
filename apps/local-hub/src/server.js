@@ -1783,6 +1783,17 @@ async function handle(req, res) {
       finally { fs.rmSync(dir, { recursive: true, force: true }); }
     }
     if (p.startsWith('/media/')) return file(res, MEDIA_DIR, decodeURIComponent(p.slice(7)), req);
+    if (p === '/api/plan/year' && req.method === 'POST') {    // 📅 the pastor's year plan document → the plan (and, if wanted, the church's vision and logo)
+      if (!checkLeader(req)) return json(res, 401, { error: 'Doar liderul (PIN de lider).' });
+      const m = JSON.parse(await body(req, 400_000) || '{}');
+      const op = { op: 'importYear', data: m.data, tz: m.tz }; const err = applyPlanOp(db.plan, op); if (err) return json(res, 400, { error: err });
+      const c = activeChurch();
+      if (m.vision && db.plan.year?.vision && !c.vision) c.vision = db.plan.year.vision;
+      const ext = m.logo && /^[a-z0-9-]+$/.test(m.logo) && ['.png', '.svg'].find(e => fs.existsSync(path.join(PUBLIC, 'logos', m.logo + e)));
+      if (ext) { const f = 'logo-echipa-' + m.logo + ext; fs.copyFileSync(path.join(PUBLIC, 'logos', m.logo + ext), path.join(MEDIA_DIR, f)); c.logo = f; }   // the church's own logo
+      save(); broadcast(); const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
+      return json(res, 200, { ok: true, created: op.created, goals: db.plan.goals.filter(g => g.code).length, tasks: db.plan.tasks.filter(t => t.code).length, church: c.name });
+    }
     if (p === '/api/displays') {                                 // 🖥 the monitors by name, and which one shows the projector / the stage
       if (req.viaDoor || !checkPin(req)) return json(res, 403, { error: 'Doar pe calculatorul bisericii' });
       if (req.method === 'POST') { const m = JSON.parse(await body(req, 2000) || '{}'); if (['main', 'stage'].includes(m.kind)) await pickDisplay(m.kind, m.id); }

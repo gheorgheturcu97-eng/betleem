@@ -558,6 +558,26 @@ test('🎨 the church layer (colour, modules switched off) is kept apart and onl
   assert.ok(fs.existsSync(path.join(dir, 'personalizare.json')));
 });
 
+test('📅 the year plan imports goals, activities and the coming Sundays, twice without doubling', async () => {
+  const data = JSON.parse(fs.readFileSync(new URL('./fixtures-plan-anual.json', import.meta.url), 'utf8'));
+  const go = () => fetch('http://localhost:4599/api/plan/year', { method: 'POST', headers: { 'x-pin': '2222', 'content-type': 'application/json' }, body: JSON.stringify({ data, vision: true, logo: 'raul-vietii', tz: 'Europe/Bucharest' }) }).then(r => r.json());
+  const r1 = await go(); assert.equal(r1.ok, true); assert.equal(r1.goals, 10); assert.equal(r1.tasks, 15);
+  const r2 = await go(); assert.equal(r2.goals, 10); assert.equal(r2.tasks, 15); assert.equal(r2.created, 0, 'a second import updates, it does not double');
+  const P = await fetch('http://localhost:4599/api/plan', { headers: { 'x-pin': '2222' } }).then(r => r.json());
+  assert.equal(P.year.theme, 'Restaurarea'); assert.equal(P.year.periods.length, 3);
+  const g = P.goals.find(x => x.code === 'OBJ-1.4'); assert.equal(g.target, null, 'unknown targets stay "de stabilit"');
+  assert.equal(P.tasks.find(x => x.code === 'ACT-1.01').done, true);
+  const dec13 = P.services.find(s => s.date.slice(0, 10) === '2026-12-13');
+  if (new Date().toISOString().slice(0, 10) <= '2026-12-13') {
+    assert.ok(dec13, 'the coming series Sunday is in the program');
+    assert.equal(new Date(dec13.date).toISOString(), '2026-12-13T15:00:00.000Z', '17:00 in Bucharest (winter time)');
+    assert.match(dec13.items.find(i => i.kind === 'sermon').title, /mărturii/);
+  }
+  const w = client(); await w.open; const st = (await w.next(m => m.type === 'hello')).state; w.ws.close();
+  assert.equal(st.church.logo, 'logo-echipa-raul-vietii.png');
+  assert.equal(P.year.church, 'Biserica Râul Vieții');
+});
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

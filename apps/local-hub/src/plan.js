@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 const id = () => crypto.randomUUID();
 const KINDS = ['song', 'sermon', 'prayer', 'announcement', 'reading', 'other', 'media', 'bible'];
 const STATUS = ['pending', 'confirmed', 'declined'];
+const YSTATUS = ['realizat', 'in_curs', 'planificat', 'propunere', 'de_confirmat'];
 /** A personal link for each volunteer (no password): long, random, can be replaced to cancel the old one. */
 export const newToken = () => crypto.randomBytes(18).toString('base64url');
 const ym = iso => String(iso).slice(0, 7);
@@ -61,6 +62,7 @@ function cleanItems(items) {
     title: str(it.title), key: str(it.key, 8), leader: str(it.leader, 60), notes: str(it.notes, 300),
     minutes: Math.min(240, Math.max(0, Number(it.minutes) || 0)),
     ...(Array.isArray(it.arrangement) ? { arrangement: it.arrangement.map(x => str(x, 40)) } : {}),
+    ...(Array.isArray(it.stages) ? { stages: it.stages.map(x => str(x, 4)).slice(0, 4) } : {}),
     ...(it.maxLines ? { maxLines: it.maxLines } : {}), ...(it.background ? { background: str(it.background, 200) } : {}),
     ...(it.kind === 'bible' && it.ref ? { ref: { book: +it.ref.book || 0, chapter: +it.ref.chapter || 1, from: +it.ref.from || 0, to: +it.ref.to || 0 }, versions: (it.versions || []).slice(0, 2).map(x => str(x, 12)) } : {}),
     ...(it.autoAdvance ? { autoAdvance: Math.min(600, Math.max(2, +it.autoAdvance || 0)), loop: !!it.loop } : {}),
@@ -155,7 +157,7 @@ export function applyPlanOp(plan, op) {
       const t = op.task || {}; if (!str(t.text)) return 'Scrie ce e de făcut';
       const old = plan.tasks.find(x => x.id === t.id);
       const clean = { id: t.id || id(), text: str(t.text, 300), who: str(t.who, 40), due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : '',
-        done: !!t.done, meeting: str(t.meeting, 40), focus: ['oameni', 'programe'].includes(t.focus) ? t.focus : '', goal: str(t.goal, 40), at: old?.at || new Date().toISOString(), doneAt: t.done ? old?.doneAt || new Date().toISOString() : '' };
+        done: !!t.done, meeting: str(t.meeting, 40), code: str(t.code, 20), period: str(t.period, 10), when: str(t.when, 20), status: YSTATUS.includes(t.status) ? t.status : '', focus: ['oameni', 'programe'].includes(t.focus) ? t.focus : '', goal: str(t.goal, 40), at: old?.at || new Date().toISOString(), doneAt: t.done ? old?.doneAt || new Date().toISOString() : '' };
       const i = plan.tasks.findIndex(x => x.id === clean.id);
       if (i >= 0) plan.tasks[i] = clean; else plan.tasks.push(clean);
       break;
@@ -175,9 +177,62 @@ export function applyPlanOp(plan, op) {
     // 🎯 the year's goals: a number to reach (e.g. 52 people told about Jesus), how far we are, and whether it is about people or programs
     case 'saveGoal': {
       plan.goals ||= []; const g = op.goal || {}; if (!str(g.text)) return 'Scrie obiectivul';
-      const clean = { id: g.id || id(), text: str(g.text, 200), target: Math.max(1, Math.min(100000, Number(g.target) || 1)), done: Math.max(0, Math.min(100000, Number(g.done) || 0)),
-        unit: str(g.unit, 30), focus: ['oameni', 'programe'].includes(g.focus) ? g.focus : '', year: Number(g.year) || new Date().getFullYear() };
+      const clean = { id: g.id || id(), text: str(g.text, 200), target: g.target === null || g.target === '' || g.target === undefined ? null : Math.max(1, Math.min(100000, Number(g.target) || 1)),
+        done: Math.max(0, Math.min(100000, Number(g.done) || 0)), unit: str(g.unit, 30), focus: ['oameni', 'programe'].includes(g.focus) ? g.focus : '', year: Number(g.year) || new Date().getFullYear(),
+        code: str(g.code, 20), period: str(g.period, 10), indicator: str(g.indicator, 200), status: YSTATUS.includes(g.status) ? g.status : '', stages: (g.stages || []).map(x => str(x, 4)).slice(0, 4) };
       const i = plan.goals.findIndex(x => x.id === clean.id); if (i >= 0) plan.goals[i] = clean; else plan.goals.push(clean);
+      break;
+    }
+    // 📅 the church's year plan (theme, periods, stages, series, goals, activities): imported from the pastor's document
+    case 'importYear': {
+      const d = op.data || {}; if (!d.perioade || !d.obiective) return 'Nu recunosc planul anului (lipsește partea JSON).';
+      const L = (a, n = 40) => (Array.isArray(a) ? a : []).slice(0, n);
+      plan.year = {
+        church: str(d.biserica, 120).replace(/\s+Pe[șs]tera$/i, ''), year: str(d.an, 20), theme: str(d.tema, 120), vision: str(d.viziune, 600), mission: str(d.misiune, 300),
+        service: { day: str(d.serviciu?.zi, 20), time: /^\d{1,2}:\d{2}$/.test(d.serviciu?.ora) ? d.serviciu.ora : '' },
+        stages: L(d.etape, 8).map(e => ({ id: str(e.id, 4), name: str(e.nume, 40), desc: str(e.descriere, 80), color: /^#[0-9a-f]{6}$/i.test(e.culoare) ? e.culoare : '#888888' })),
+        values: L(d.valori, 20).map(v => str(v, 60)),
+        periods: L(d.perioade, 12).map(p => ({ id: str(p.id, 6), name: str(p.nume, 80), start: str(p.start, 10), end: str(p.sfarsit, 10), stages: L(p.etape, 4).map(x => str(x, 4)) })),
+        series: d.serie_discipline ? { name: str(d.serie_discipline.nume, 80), period: str(d.serie_discipline.perioada, 6), link: /^https:\/\//.test(d.serie_discipline.jurnal_online || '') ? str(d.serie_discipline.jurnal_online, 200) : '',
+          weeks: L(d.serie_discipline.saptamani, 60).map(w => ({ n: Number(w.nr) || 0, date: str(w.data, 10), discipline: str(w.disciplina, 80), title: str(w.titlu, 120), text: str(w.text, 60), verse: str(w.verset, 60),
+            memory: str(w.verset_memorat, 60), motto: str(w.de_tinut_minte, 120), stages: L(w.etape, 4).map(x => str(x, 4)), status: YSTATUS.includes(w.status) ? w.status : '' })) } : null,
+        rhythm: L(d.ritm_saptamanal, 12).map(r => ({ day: str(r.zi, 40), what: str(r.ce, 200) })),
+        prayer: L(d.grupuri_rugaciune, 14).map(x => str(x, 60)),
+        questions: L(d.intrebari_deschise, 30).map(x => str(x, 300)),
+        importedAt: new Date().toISOString(),
+      };
+      // goals and activities keep their codes (OBJ-1.2, ACT-1.07): a second import updates them instead of doubling
+      plan.goals ||= [];
+      for (const o of L(d.obiective, 60)) {
+        const old = plan.goals.find(g => g.code === o.id), per = plan.year.periods.find(p => p.id === o.perioada);
+        applyPlanOp(plan, { op: 'saveGoal', goal: { ...(old || {}), id: old?.id, text: o.titlu, target: o.tinta ?? old?.target ?? null, done: old?.done || 0, unit: old?.unit || '',
+          code: o.id, period: o.perioada, indicator: o.indicator, status: o.status, stages: per?.stages || [], focus: old?.focus || (per?.stages || []).some(x => x === 'C' || x === 'T') ? 'oameni' : old?.focus || '' } });
+      }
+      for (const a of L(d.activitati, 120)) {
+        const old = plan.tasks.find(t => t.code === a.id), goal = plan.goals.find(g => g.code === a.obiectiv);
+        applyPlanOp(plan, { op: 'saveTask', task: { ...(old || {}), id: old?.id, text: a.titlu, code: a.id, period: a.perioada, status: a.status, when: str(a.data, 20),
+          due: /^\d{4}-\d{2}-\d{2}$/.test(a.data || '') ? a.data : old?.due || '', done: a.status === 'realizat' || !!old?.done, goal: goal?.id || '', focus: old?.focus || '' } });
+      }
+      // the coming Sundays of the series become services with the sermon ready (past ones stay history)
+      const [hh, mm] = (plan.year.service.time || '10:00').split(':').map(Number), today = new Date().toISOString().slice(0, 10);
+      op.created = 0;
+      for (const w of plan.year.series?.weeks || []) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(w.date) || w.date < today) continue;
+        const notes = [w.text && 'Text: ' + w.text, w.verse && 'Versetul: ' + w.verse, w.memory && 'De memorat: ' + w.memory, w.motto && 'De ținut minte: ' + w.motto].filter(Boolean).join('\n');
+        const title = `${w.discipline}${w.title ? ': ' + w.title : ''}`;
+        let sv = plan.services.find(x => x.date.slice(0, 10) === w.date);
+        if (!sv) {
+          const at = localTime(w.date, hh, mm, op.tz || 'Europe/Bucharest');
+          sv = { id: id(), date: at.toISOString(), title: `Duminică · ${w.discipline}`, status: 'draft', items: [], assignments: {}, series: w.n };
+          sv.items = [{ id: id(), kind: 'other', title: 'Închinare (cântările se aleg)', minutes: 20 }, { id: id(), kind: 'sermon', title, minutes: 35, notes, stages: w.stages },
+            { id: id(), kind: 'other', title: 'Momentul „În sală”', minutes: 10 }, { id: id(), kind: 'announcement', title: 'Foaia de jurnal și provocarea săptămânii', minutes: 5 }];
+          plan.services.push(sv); op.created++;
+        } else {
+          const it = sv.items.find(x => x.kind === 'sermon');
+          if (it) { if (!it.notes) it.notes = notes; if (!it.title || /^predic/i.test(it.title)) it.title = title; it.stages = w.stages; }
+        }
+      }
+      plan.services.sort((a, b) => a.date.localeCompare(b.date));
       break;
     }
     case 'deleteGoal': plan.goals = (plan.goals || []).filter(g => g.id !== op.id); break;
@@ -225,6 +280,14 @@ export function focusByMonth(plan, months = 6) {
       altele: t.filter(x => x.done && !x.focus).length, deschise: t.filter(x => !x.done).length });
   }
   return out;
+}
+
+/** a wall-clock time in a time zone (e.g. 17:00 in Bucharest, summer or winter) as a real moment */
+export function localTime(day, h, m, tz) {
+  const guess = new Date(`${day}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(guess).map(p => [p.type, p.value]));
+  const shown = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour % 24, +parts.minute);
+  return new Date(guess.getTime() - (shown - guess.getTime()));
 }
 
 /** Warnings for a service: same person twice, people marked away, empty positions. */
