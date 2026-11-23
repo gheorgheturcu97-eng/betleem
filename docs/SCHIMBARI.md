@@ -1,6 +1,15 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.23.9 · MD&TRACK: ▶ pentru tot, clic = cursor, „ascultă ghidul”
+- **▶ / ❚❚ din MD&TRACK.** Înainte: doar track-urile. Acum: track-urile și pad-ul pornesc și se opresc împreună (⏹ oprește
+  tot). Pad-ul singur are încă ▶ în mixer; fără track-uri, ▶ pornește doar pad-ul.
+- **Clic pe track-uri / secțiuni.** Înainte: clic pe o secțiune în timp ce cânta sărea abia la măsura următoare. Acum:
+  cursorul sare imediat unde apeși (pe o secțiune, la începutul ei; lipit de timpi). Shift+clic = la măsura următoare.
+- **✦ Secțiuni automat (AI ascultă ghidul).** Înainte: modelul ghicea limba și scria uneori „chess” în loc de „Chorus”.
+  Acum: ascultă întâi în engleză, apoi în română dacă n-a găsit, și înțelege și cuvintele auzite greșit. Comanda vocală
+  „ascultă ghidul” pornește asta.
+
 ## 2026-11-24 · 2026.11.23.8 · MD&TRACK ca în Ableton, cântări noi corecte
 - **Cântare nouă.** Înainte: se salva cum era scrisă. Acum: la Salvează, AI-ul corectează textul (diacritice,
   greșeli, cratime; acordurile și rândurile rămân), iar secțiunile și acordurile pe toate strofele se pun singure.

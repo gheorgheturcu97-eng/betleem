@@ -128,6 +128,7 @@ export function parseMusicCommand(text) {
   const key = t.match(/\bton(ul|alitatea)?\s*(in\s*)?(do|re|mi|fa|sol|la|si|[a-h])\s*(diez|#|bemol|b)?\s*(minor|m)?\b/);
   if (key) { const n = (SOL[key[3]] || key[3].toUpperCase()).replace('H', 'B'); return { do: 'key', value: n + (key[4] ? (/diez|#/.test(key[4]) ? '#' : 'b') : '') + (key[5] ? 'm' : '') }; }
   if (/metronom/.test(t)) return { do: 'metronome', on: !/opreste|stop|fara/.test(t) };
+  if (/(asculta|invata|pune|gaseste).*(ghid|guide|cue)|sectiuni(le)? automat/.test(t)) return { do: 'aiCues' };   // „ascultă ghidul”
   // a track: “tobele mai încet”, “mut la bas”, “solo click”, “pornește guide”
   const track = t.match(/\b(click|guide|ghid|tobe(le)?|drums|bas(ul)?|bass|clape(le)?|keys|pian(ul)?|chitar(a|e)|guitar|voci(le)?|vocal|pad|cor(ul)?|synth)\b/);
   if (track) {
@@ -200,11 +201,18 @@ export async function transcribeTimed(url, onState = () => {}) {
   onState({ working: true, note: 'Ascult track-ul…' });
   const buf = await fetch(url).then(r => r.arrayBuffer());
   const pcm = (await new OfflineAudioContext(1, 1, 16000).decodeAudioData(buf)).getChannelData(0);
-  const out = await model(pcm, { return_timestamps: true, chunk_length_s: 30, stride_length_s: 5 });
+  // guide tracks speak English ("Verse two", "Chorus"); left to guess, the model sometimes writes "chess" for "chorus".
+  // English first; when that finds almost nothing, once more in Romanian ("Strofa doi", "Refren").
+  const run = async language => (await model(pcm, { return_timestamps: true, chunk_length_s: 30, stride_length_s: 5, language, task: 'transcribe' }))?.chunks || [];
+  const map = ch => ch.map(c => ({ text: String(c.text || '').trim(), start: c.timestamp?.[0] ?? 0, end: c.timestamp?.[1] ?? null }));
+  let chunks = map(await run('english'));
+  if (cuesFromWords(chunks).length < 2) { onState({ working: true, note: 'Ascult încă o dată, în română…' }); const ro = map(await run('romanian')); if (cuesFromWords(ro).length > cuesFromWords(chunks).length) chunks = ro; }
   onState({ working: false });
-  return (out?.chunks || []).map(c => ({ text: String(c.text || '').trim(), start: c.timestamp?.[0] ?? 0, end: c.timestamp?.[1] ?? null }));
+  return chunks;
 }
-const CUE_WORDS = [[/\b(pre ?chorus|pre ?refren|pre)\b/, 'pre'], [/\b(chorus|refren|cor)\b/, 'refren'], [/\b(verse|vers|strofa|strofă)\b/, 'strofa'], [/\b(bridge|punte|pod)\b/, 'bridge'],
+// with the words a speech model often writes instead ("chess", "course" for chorus; "worse" for verse; "breach" for bridge)
+const CUE_WORDS = [[/\b(pre ?chorus|pre ?refren|pre ?course|pre ?chess|pre)\b/, 'pre'], [/\b(chorus|choruses|chorous|chores|course|chess|cores|corus|korus|refren|cor)\b/, 'refren'],
+  [/\b(verse|verses|vers|worse|birds|strofa|strofă)\b/, 'strofa'], [/\b(bridge|bridges|breach|brig|punte|pod)\b/, 'bridge'],
   [/\b(intro)\b/, 'intro'], [/\b(outro|ending|end|final)\b/, 'final'], [/\b(tag)\b/, 'tag'], [/\b(instrumental|interlude|turnaround|solo)\b/, 'instrumental']];
 const EN_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, first: 1, second: 2, third: 3 };
 /** "Verse two", "Chorus", "Bridge"… heard in the cue track → [{ t, kind, n }] */

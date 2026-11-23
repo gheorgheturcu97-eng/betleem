@@ -3297,6 +3297,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       else if (c.do === 'bpm') { $('bpm').value = c.value; $('bpm').dispatchEvent(new Event('change')); }
       else if (c.do === 'key') send({ type: 'setKey', item: i, key: c.value });
       else if (c.do === 'metronome') { if (!!met.playing !== c.on) toggleMet(); }
+      else if (c.do === 'aiCues') aiCues();
       else if (c.do === 'track') {
         const ch = mt.ch.find(x => (x.name || x.file).toLowerCase().includes(c.name)); if (!ch) return toast('Nu găsesc track-ul ' + c.name);
         if (c.solo) ch.solo = !ch.solo; if (typeof c.muted === 'boolean') ch.muted = c.muted;
@@ -3386,7 +3387,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('laneEmpty').innerHTML = !has ? vtPanel()
       : 'Dublu-clic aici unde începe fiecare secțiune (sau clic dreapta ca s-o alegi) · ✦ în ⋯ le pune AI-ul din track-ul de cue.';
     const blocks = sectionBlocks(), pct = t => dur ? (t / dur * 100) : 0;
-    $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" data-l="${esc(b.label)}" title="Apasă ca să sari aici (la următoarea măsură, dacă merge)" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
+    $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" data-l="${esc(b.label)}" title="Clic = cursorul sare aici · Shift+clic în timp ce cântă = la următoarea măsură" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
       ${esc(b.label)}<small>${fmt(b.start)}</small>${b.ticks.map(t => `<i class="tick" style="left:${(t - b.start) / Math.max(0.01, b.end - b.start) * 100}%"></i>`).join('')}</div>`).join('') : '';
     // 🎛 like Ableton's arrangement: with a tempo the ruler counts bars (1, 5, 9…) and a light grid marks every bar
     const g = grid();
@@ -3425,9 +3426,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (!mt.duration || e.target.closest('button')) return;
     const blk = e.target.closest('.blk'), th = 150, r = $('lane').getBoundingClientRect();
     if (!blk && e.clientX - r.left < th) return;
-    const t = blk ? +blk.dataset.t : (e.clientX - r.left - th) / (r.width - th) * mt.duration;
-    if (blk) return jumpTo(t, blk.dataset.l);
-    mt.seek(t); lastCue = -2; followCues(t, true);
+    // the cursor goes where you click, right away (like Ableton); on a section it goes to its start.
+    // Shift+click on a section while playing = at the next bar, without breaking the time
+    const t = blk ? +blk.dataset.t : snapT((e.clientX - r.left - th) / (r.width - th) * mt.duration, e);
+    if (blk && e.shiftKey && mt.playing) return jumpTo(t, blk.dataset.l);
+    clearTimeout(pendingJump?.timer);
+    if (mt.playing) mt.seekSmooth(t).then(() => { lastCue = -2; followCues(t, true); markSection(); });
+    else { mt.seek(t); lastCue = -2; followCues(t, true); markSection(); }
+    $('lane').style.setProperty('--p', mt.duration ? t / mt.duration : 0); $('tlTime').innerHTML = timeHtml(t, mt.duration);
   };
   // into a section "fluently": while playing, the jump waits for the next bar and fades, so the band stays on time
   let pendingJump = null;
@@ -3463,14 +3469,18 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (mt.playing) markSection(); if (!$('musicView').hidden) meters();
   };
   mt.onEnd = () => { setPlay(false); if (learning) finishLearning(); };
-  const setPlay = on => { $('tlPlay').textContent = on ? '❚❚' : '▶'; $('tlPlay').classList.toggle('on', on); $('toMusic').classList.toggle('playing', anyPlaying()); };
+  const setPlay = on => { on = on || mt.playing || pad.playing; $('tlPlay').textContent = on ? '❚❚' : '▶'; $('tlPlay').classList.toggle('on', on); $('toMusic').classList.toggle('playing', anyPlaying()); };
+  // ▶ / ❚❚ is for everything that sounds: the tracks and the pad stop together and start together
+  // (the pad alone keeps its own ▶ in the mixer; without tracks, ▶ starts just the pad)
   $('tlPlay').onclick = async () => {
-    if (mt.playing) { mt.pause(); if (met.synced) met.play(); return setPlay(false); }   // the click keeps going on its own
-    if (!mt.ch.length) return toast('Cântarea nu are track-uri. Adaugă-le cu ＋ Track-uri.');
+    if (mt.playing || pad.playing) { if (mt.playing) mt.pause(); if (pad.playing) { pad.pause(); renderMixer(); } if (met.synced) met.play(); return setPlay(false); }
+    const key = padKeyManual || songKeyNow().replace(/m$/, '');
+    if (!mt.ch.length) { if (!key) return toast('Cântarea nu are track-uri. Adaugă-le cu ＋ Track-uri.'); await pad.play(key); renderMixer(); return setPlay(true); }
+    if (key && prefs.padWithPlay !== false) { try { await pad.play(key); renderMixer(); } catch {} }
     lastCue = -2; await mt.play(); setPlay(true);
     if (met.playing && !met.synced) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0);   // a running click locks onto the tracks
   };
-  $('tlStop').onclick = () => { mt.stop(); mt.seek(0); setPlay(false); if (met.synced) met.play(); lastCue = -2; markSection(); if (learning) finishLearning(); };
+  $('tlStop').onclick = () => { mt.stop(); mt.seek(0); if (pad.playing) { pad.pause(); renderMixer(); } setPlay(false); if (met.synced) met.play(); lastCue = -2; markSection(); if (learning) finishLearning(); };
   $('tlStart').onclick = () => { mt.seek(0); lastCue = -2; };
 
   // ---- learn the cues: play the song and press → (or Space) when each slide should come
