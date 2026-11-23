@@ -532,6 +532,12 @@ test('🧱 slide layers follow their slide, 🏷 Props switch on and off, both c
   a.send({ type: 'removeSlide', item: i, slide: 0 });
   st = (await a.next(m => m.type === 'state' && m.state.setlist[i].slideLayers?.[1])).state;
   assert.equal(st.setlist[i].slideLayers[1][0].text, 'Trei', 'the layers move with their slide');
+  // 🎯 the tracks' own key: the first key change on a song with tracks remembers the key until then
+  a.send({ type: 'trackBase', item: i, bpm: 74.63, offset: 2.3, key: 'G' });
+  st = (await a.next(m => m.type === 'state' && m.state.setlist[i]?.trackBpm === 74.63)).state;
+  assert.equal(st.setlist[i].trackKey, 'G'); assert.equal(st.setlist[i].beatOffset, 2.3);
+  a.send({ type: 'trackBase', item: i, key: 'H#' });
+  await a.next(m => m.type === 'error' && /Ton necunoscut/.test(m.error));
   a.send({ type: 'saveProp', prop: { name: 'Logo', layers: [{ type: 'shape', bg: '#112233' }] } });
   st = (await a.next(m => m.type === 'state' && m.state.props?.length === 1)).state;
   const pr = st.props[0]; assert.equal(pr.on, false); assert.equal(pr.layers[0].shape, 'rect');

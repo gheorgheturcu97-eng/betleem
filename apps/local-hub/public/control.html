@@ -2902,6 +2902,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const musicItem = () => S?.setlist[musicItemIndex()];
   const songKeyNow = () => { const it = musicItem(); return it?.kind === 'song' ? (it.key || it.origKey || '') : ''; };
   const songBpmNow = () => { const it = musicItem(); return it ? it.bpm || it.origBpm || 0 : 0; };
+  /** the tempo the tracks were recorded at (exact, with decimals), else the program's */
+  const trackTempo = () => { const it = S?.setlist?.[mtItem]; return it ? it.trackBpm || it.bpm || it.origBpm || 0 : 0; };
   const anyPlaying = () => pad.playing || met.playing || mt.playing;
   const fmt = t => { t = Math.max(0, t || 0); return Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0'); };
   const stemsOf = it => it?.stems?.length ? it.stems : it?.track ? [{ file: it.track, name: 'Track', vol: 1 }] : [];
@@ -2919,9 +2921,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   async function applyTempoKey() {
     const it = S.setlist[mtItem]; if (!it || it.kind !== 'song') return;
     const core = await import('/core/song.js');
-    const orig = it.origBpm || 0, now = it.bpm || orig;
+    // the tracks change only against what they were recorded in (trackKey / trackBpm, kept on the song). Unknown = the
+    // tracks play as recorded: before, the library's key/tempo were used, and a program key from Planning Center or a
+    // rounded BPM pitched or stretched the tracks by itself
+    const now = it.bpm || it.origBpm || 0, orig = it.trackBpm || now;
     mt.setRate(orig && now ? now / orig : 1);
-    let d = it.key && it.origKey ? core.keyDistance(it.origKey, it.key) : 0; if (d > 6) d -= 12;
+    const base = it.trackKey || '', cur = it.key || it.origKey || '';
+    let d = base && cur ? core.keyDistance(base, cur) : 0; if (d > 6) d -= 12;
     mt.setPitch(d);
     const tag = [mt.rate !== 1 ? Math.round(mt.rate * 100) + '% tempo' : '', d ? (d > 0 ? '+' : '') + d + ' semitonuri' : ''].filter(Boolean).join(' · ');
     $('mOrig').hidden = !tag; $('mOrig').textContent = tag ? 'Track-uri: ' + tag : '';
@@ -2933,7 +2939,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const key = padKeyManual || songKeyNow().replace(/m$/, '');
     if (key) pad.setKey(key);
     const b = songBpmNow(); if (b) met.setBpm(b);
-    syncTracks().then(applyTempoKey);
+    syncTracks().then(applyTempoKey).then(() => {   // 🎯 once per song with a click track: its exact tempo and bar 1
+      const it = S.setlist[mtItem];
+      if (it?.kind === 'song' && !it.trackBpm && mt.ch.length && !beatTried.has(it.songId)) { beatTried.add(it.songId); detectTrackBeat(false); }
+    }).catch(() => {});
     $('toMusic').classList.toggle('playing', anyPlaying());
     if (!$('musicView').hidden) renderMusic();
   }
@@ -3115,7 +3124,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   });
   // the bar/beat grid of the song now on the tracks (null without a tempo)
   function grid() {
-    const it = S?.setlist?.[mtItem], bpm = it?.bpm || it?.origBpm; if (!bpm) return null;
+    const it = S?.setlist?.[mtItem], bpm = it?.trackBpm || it?.bpm || it?.origBpm; if (!bpm) return null;   // the grid is in the tracks' time
     const beats = met.beats || 4; return { bpm, beats, bar: 60 / bpm * beats, off: it.beatOffset || 0 };
   }
   let dotAt = -1;
@@ -3135,12 +3144,35 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   const laneTimeRaw = e => { const r = $('blocks').getBoundingClientRect(), v = view(); return Math.max(0, Math.min(mt.duration, v.a + (e.clientX - r.left) / r.width * (v.b - v.a))); };
   const laneTime = e => snapT(laneTimeRaw(e), e);
+  // 🎯 exact tempo and bar 1 from the click (or drums) track: the click and the grid then stay on the tracks to the end
+  var beatTried = new Set();                          // (var: used by syncMusic, which may run first)
+  async function detectTrackBeat(manual = false) {
+    const it = S.setlist[mtItem]; if (!it || !mt.ch.length) return manual && toast('Alege o cântare cu track-uri');
+    const c = mt.ch.find(x => /click|metro|clic/i.test(x.name || x.file)) || (manual && mt.ch.find(x => /drum|tob|perc|kick/i.test(x.name || x.file)));
+    if (!c) return manual && toast('Nu găsesc un track de click sau tobe (pune „Click” în numele lui)');
+    if (manual) toast('🎯 Ascult „' + (c.name || c.file) + '”…');
+    try {
+      const { detectBeat } = await import('/music.js');
+      const buf = await fetch('/media/' + encodeURIComponent(c.file)).then(r => r.arrayBuffer());
+      const audio = await new OfflineAudioContext(1, 1, 22050).decodeAudioData(buf);
+      const r = detectBeat(audio.getChannelData(0), audio.sampleRate, met.beats || 4);
+      if (!r || r.confidence < 0.5) return manual && toast('Nu am găsit un tempo sigur în „' + (c.name || c.file) + '”');
+      send({ type: 'trackBase', item: mtItem, bpm: r.bpm, offset: r.offset });
+      if (!it.bpm && !it.origBpm) send({ type: 'setBpm', item: mtItem, bpm: Math.round(r.bpm) });
+      toast(`🎯 Track-urile: ${r.bpm} BPM, măsura 1 la ${fmt(r.offset)}${r.offset % 1 ? '.' + String(Math.round(r.offset % 1 * 1000)).padStart(3, '0') : ''}`);
+    } catch (e) { if (manual) toast('Nu am putut asculta track-ul: ' + e.message); }
+  }
+  async function askTrackKey() {
+    const it = S.setlist[mtItem]; if (!it) return;
+    const v = await ask('În ce ton sunt înregistrate track-urile? (ex. G, Bb, F#m). Track-urile se schimbă doar când tonul programului e altul decât acesta. Gol = nu se schimbă niciodată.', [{ label: 'Tonul track-urilor', value: it.trackKey || it.key || it.origKey || '' }], 'Salvează');
+    if (v) send({ type: 'trackBase', item: mtItem, key: v[0].trim() });
+  }
   // ⇪ Ableton (.als): markers → the song's sections on the tracks, plus tempo and time signature
   $('alsFile').onchange = async e => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
     if (mtItem < 0 || S.setlist[mtItem]?.kind !== 'song') return toast('Alege întâi cântarea în MD&TRACK');
     let r; try { r = await api('/api/import/ableton', { method: 'POST', body: f }); if (r.error) throw new Error(r.error); } catch (err) { return toast(err.message); }
-    if (r.bpm) send({ type: 'setBpm', item: mtItem, bpm: Math.round(r.bpm) });
+    if (r.bpm) send({ type: 'trackBase', item: mtItem, bpm: r.bpm, offset: 0 });       // the tracks' exact tempo; bar 1 = the start of the set
     if ([2, 3, 4, 6].includes(r.beats)) { met.beats = r.beats; $('beats').value = String(r.beats); prefs.beats = r.beats; savePrefs(); renderDots(); }
     const names = sectionNames(), num = x => (String(x).match(/\d+/) || [''])[0], marks = []; let used = -1; const skipped = [];
     for (const m of r.markers) {
@@ -3167,6 +3199,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       near ? { l: 'Șterge secțiunea de aici', run: () => saveMarks(marks.filter(m => m !== near)) } : null,
       { l: 'Șterge toate secțiunile', run: () => send({ type: 'setCues', item: mtItem, cues: [] }), dis: !marks.length },
       { l: '✦ Secțiuni automat (AI ascultă ghidul)', run: () => aiCues() },
+      { l: '🎯 Tempo exact și măsura 1 din track-ul de click (sau tobe)', run: () => detectTrackBeat(true) },
+      { l: '🎵 Tonul în care sunt înregistrate track-urile…', run: () => askTrackKey() },
       grid() ? { l: `Măsura 1 începe aici (${fmt(laneTimeRaw(e))}) — grila se mută`, run: () => send({ type: 'setBpm', item: mtItem, offset: laneTimeRaw(e) }) } : null,
       grid()?.off ? { l: 'Măsura 1 la începutul track-urilor', run: () => send({ type: 'setBpm', item: mtItem, offset: 0 }) } : null,
     ]);
@@ -3247,7 +3281,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const r = await fetch('/api/tracks/link', { method: 'POST', headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({}));
     toast(r.linked?.length ? `🔗 Track-uri legate la: ${r.linked.join(', ')}${r.unknown?.length ? ' · fără cântare: ' + r.unknown.join(', ') : ''}` : 'Pune în Documente/Betleem/trackuri câte un folder cu numele cântării și track-urile ei înăuntru.' + (r.unknown?.length ? ' Foldere fără cântare: ' + r.unknown.join(', ') : '')); };
   $('beatHere').onclick = () => { $('mToolsPop').classList.remove('show'); const i = mtItem; if (!S.setlist[i]) return;
-    send({ type: 'setBpm', item: i, offset: mt.time }); toast('Click-ul pornește de la ' + fmt(mt.time)); if (met.synced) met.playWith(mt, mt.time); };
+    send({ type: 'setBpm', item: i, offset: mt.time }); toast('Click-ul pornește de la ' + fmt(mt.time)); if (met.synced) met.playWith(mt, mt.time, trackTempo()); };
   // ⏮ ⏭ sections, and the section playing now
   function curSection() { const b = sectionBlocks(), t = mt.time; let k = -1; b.forEach((x, n) => { if (x.start <= t + 0.05) k = n; }); return { b, k }; }
   function stepSection(d) {
@@ -3533,7 +3567,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (!mt.ch.length) { if (!key) return toast('Cântarea nu are track-uri. Adaugă-le cu ＋ Track-uri.'); await pad.play(key); renderMixer(); return setPlay(true); }
     if (key && prefs.padWithPlay !== false) { try { await pad.play(key); renderMixer(); } catch {} }
     lastCue = -2; await mt.play(); setPlay(true);
-    if (met.playing && !met.synced) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0);   // a running click locks onto the tracks
+    if (met.playing && !met.synced) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0, trackTempo());   // a running click locks onto the tracks
   };
   $('tlStop').onclick = () => { mt.stop(); mt.seek(0); if (pad.playing) { pad.pause(); renderMixer(); } setPlay(false); if (met.synced) met.play(); lastCue = -2; markSection(); if (learning) finishLearning(); };
   $('tlStart').onclick = () => { mt.seek(0); lastCue = -2; };
@@ -3631,7 +3665,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // ♩ the click: from the top bar, from the mixer, or by voice
   async function toggleMet() {
     if (met.playing) { met.pause(); } else { met.setBpm(+$('bpm').value || songBpmNow() || 120); if (!$('bpm').value) $('bpm').value = met.bpm;
-      if (mt.duration && mt.playing) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0); else await met.play(); }   // with the tracks when they play, on its own otherwise
+      if (mt.duration && mt.playing) await met.playWith(mt, S.setlist[mtItem]?.beatOffset || 0, trackTempo()); else await met.play(); }   // with the tracks when they play, on its own otherwise
     $('metTop').classList.toggle('on', met.playing); $('metTop').textContent = met.playing ? '♩ Click ❚❚' : '♩ Click';
     renderMixer(); $('toMusic').classList.toggle('playing', anyPlaying());
   }

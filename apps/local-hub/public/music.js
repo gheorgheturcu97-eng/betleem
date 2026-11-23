@@ -120,6 +120,53 @@ export class Pad {
   async output(deviceId) { this.init(); return setOutput(this.ctx, deviceId); }
 }
 
+/**
+ * 🎯 The exact tempo and where bar 1 falls, from a click (or drums) track: find the hits, fit a straight line through them
+ * (time = start + beat × period), so even 0.1 BPM is right over a 7-minute song. The loudest beat of the bar
+ * (the click's accent) is bar 1. Returns { bpm, offset, beats, confidence } or null.
+ */
+export function detectBeat(pcm, rate, beatsPerBar = 4) {
+  const hop = Math.max(64, Math.round(rate * 0.005)), n = Math.floor(pcm.length / hop);   // 5 ms frames
+  if (n < 400) return null;
+  const env = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let m = 0; for (let j = i * hop, e = j + hop; j < e; j++) { const v = Math.abs(pcm[j]); if (v > m) m = v; } env[i] = m; }
+  const on = new Float32Array(n);                     // how much louder than just before: a hit
+  for (let i = 3; i < n; i++) { const prev = Math.max(env[i - 1], env[i - 2], env[i - 3]); on[i] = Math.max(0, env[i] - prev); }
+  let mx = 0; for (const v of on) if (v > mx) mx = v; if (!mx) return null;
+  const hits = [];                                    // [time, strength], at least 120 ms apart
+  for (let i = 1; i < n - 1; i++) {
+    if (on[i] < mx * 0.18 || on[i] < on[i - 1] || on[i] < on[i + 1]) continue;
+    const t = i * hop / rate; if (hits.length && t - hits.at(-1)[0] < 0.12) { if (on[i] > hits.at(-1)[1]) hits[hits.length - 1] = [t, on[i]]; continue; }
+    hits.push([t, on[i]]);
+  }
+  if (hits.length < 16) return null;
+  // rough period: the most common gap between hits (between 60 and 200 BPM)
+  const votes = new Map();
+  for (let i = 1; i < hits.length; i++) for (let k = 1; k <= 3 && i - k >= 0; k++) {
+    const g = (hits[i][0] - hits[i - k][0]) / k; if (g < 0.3 || g > 1) continue;
+    const key = Math.round(g * 200); votes.set(key, (votes.get(key) || 0) + (k === 1 ? 2 : 1));
+  }
+  let best = 0, period = 0; for (const [k, v] of votes) if (v > best) { best = v; period = k / 200; }
+  if (!period) return null;
+  // exact: least squares of hit time against beat number, three passes, keeping hits that sit on the grid
+  let t0 = hits[0][0], used = [];
+  for (let pass = 0; pass < 4; pass++) {
+    used = hits.map(([t, w]) => { const k = Math.round((t - t0) / period); return { k, t, w, r: t - (t0 + k * period) }; }).filter(h => Math.abs(h.r) < period * (pass ? 0.12 : 0.25));
+    if (used.length < 8) return null;
+    let sk = 0, st = 0, skk = 0, skt = 0; for (const h of used) { sk += h.k; st += h.t; skk += h.k * h.k; skt += h.k * h.t; }
+    const m = used.length, den = m * skk - sk * sk; if (!den) return null;
+    period = (m * skt - sk * st) / den; t0 = (st - period * sk) / m;
+  }
+  // bar 1: the beat of the bar with the strongest hits (the accent)
+  const kMin = Math.min(...used.map(h => h.k)), acc = new Array(beatsPerBar).fill(0), cnt = new Array(beatsPerBar).fill(0);
+  for (const h of used) { const b = ((h.k - kMin) % beatsPerBar + beatsPerBar) % beatsPerBar; acc[b] += h.w; cnt[b]++; }
+  const avg = acc.map((a, i) => cnt[i] ? a / cnt[i] : 0), down = avg.indexOf(Math.max(...avg));
+  let first = t0 + (kMin + down) * period; while (first - period * beatsPerBar >= -0.02) first -= period * beatsPerBar;
+  const sorted = avg.slice().sort((a, b) => b - a), accent = sorted[1] ? sorted[0] / sorted[1] : 1;
+  return { bpm: Math.round(6000 / period) / 100, offset: Math.round(Math.max(0, first) * 1000) / 1000, beats: beatsPerBar,
+    confidence: Math.round(used.length / hits.length * 100) / 100, accent: Math.round(accent * 100) / 100 };
+}
+
 export class Metronome {
   constructor() { this.ctx = null; this.bpm = 120; this.beats = 4; this.vol = 0.7; this.playing = false; this.onBeat = () => {}; }
   init() {
@@ -149,13 +196,18 @@ export class Metronome {
     }, 25);
   }
   /** Click locked to the tracks: beats fall on the song's grid (first beat at `offset` s), following tempo changes. */
-  async playWith(track, offset = 0) {
+  // `trackBpm`: the tempo the tracks were recorded at (the beats are in the tracks' own time). The tracks' clock is read
+  // through a smoothed line, so the small jumps of the audio elements' time do not shake the click.
+  async playWith(track, offset = 0, trackBpm = 0) {
     this.init(); await this.ctx.resume();
     this.pause(); this.playing = true; this.synced = true;
-    let lastBeat = null;
+    let lastBeat = null, anchor = null;
     this.timer = setInterval(() => {
-      const rate = track.rate || 1, tt = track.time, now = this.ctx.currentTime, spb = 60 / this.bpm;   // seconds per beat, in song time
-      if (!track.playing) return;
+      const rate = track.rate || 1, now = this.ctx.currentTime, spb = 60 / (trackBpm || this.bpm / rate);   // seconds per beat, in the tracks' time
+      if (!track.playing) { anchor = null; return; }
+      const raw = track.time, guess = anchor ? anchor.tt + (now - anchor.ct) * rate : raw;
+      if (!anchor || Math.abs(guess - raw) > 0.03) anchor = { ct: now, tt: raw };     // a seek or real drift: take the tracks' time again
+      const tt = anchor.tt + (now - anchor.ct) * rate;
       let n = Math.ceil((tt - offset) / spb - 1e-6);
       for (;; n++) {
         const tb = offset + n * spb, at = now + (tb - tt) / rate;
@@ -169,7 +221,7 @@ export class Metronome {
     }, 20);
   }
   pause() { this.playing = false; this.synced = false; clearInterval(this.timer); this.onBeat(-1); }
-  setBpm(b) { this.bpm = Math.min(300, Math.max(30, Math.round(b) || 120)); }
+  setBpm(b) { this.bpm = Math.min(300, Math.max(30, Math.round((+b || 120) * 100) / 100)); }   // decimals kept: 74.98 stays 74.98
   async output(deviceId) { this.init(); return setOutput(this.ctx, deviceId); }
 }
 

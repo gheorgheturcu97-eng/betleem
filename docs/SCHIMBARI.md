@@ -1,6 +1,15 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.1 · track-urile nu se mai schimbă singure, click-ul ține pasul
+- **Ton și tempo la track-uri.** Înainte: track-urile se transpuneau/întindeau după tonul și BPM-ul din bibliotecă (de
+  ex. ton F# din Planning Center față de G în bibliotecă → track-urile coborau singure). Acum: fiecare cântare ține
+  minte tonul și tempo-ul în care sunt înregistrate track-urile; ele se schimbă doar când pui tu alt ton/tempo.
+  Clic dreapta pe riglă → „🎵 Tonul în care sunt înregistrate track-urile…”.
+- **Click-ul (metronomul) cu track-urile.** Înainte: lua BPM-ul rotunjit și citea ceasul track-urilor cu sărituri, deci
+  se depărta. Acum: la cântările cu track de click, aplicația află singură tempo-ul exact (ex. 74.63) și unde e măsura 1;
+  click-ul și grila merg pe ele, cu un ceas netezit. Clic dreapta pe riglă → „🎯 Tempo exact…” (merge și pe tobe).
+
 ## 2026-11-24 · 2026.11.23.10 · MD&TRACK: zoom cu trackpad-ul, grila de la început
 - **Grila.** Înainte: începea abia de la „măsura 1” (unde era pus primul timp), înainte era gol. Acum: merge de la
   începutul track-urilor; clic dreapta pe riglă → „Măsura 1 începe aici” (sau „la începutul track-urilor”).

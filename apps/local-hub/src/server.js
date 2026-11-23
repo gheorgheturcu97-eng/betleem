@@ -356,6 +356,9 @@ function snapshot() {
       guide: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.guide || [] : undefined,
       lights: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.lights || undefined : undefined,     // 🎧 the map in bars, for songs without tracks
       origBpm: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.bpm || 0 : undefined,
+      // the key and tempo the tracks were recorded in: the tracks change only when the program is set differently from these
+      trackKey: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.trackKey || '' : undefined,
+      trackBpm: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.trackBpm || 0 : undefined,
       beatOffset: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.beatOffset || 0 : undefined,
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
@@ -427,7 +430,7 @@ wss.on('connection', (ws, req) => {
 /** One command from a screen, a phone or the AI assistant. `ws` only needs send(); its role is in `sessions`. */
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'slideLayers', 'saveProp', 'deleteProp', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
@@ -445,7 +448,7 @@ function restoreSnapshot(sn) {
 }
 const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', saveProp: 'prop-ul', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -741,6 +744,7 @@ function handleMessage(ws, m) {
         const it = db.setlist[m.item]; if (!it) break;
         const song = it.kind === 'song' && db.songs.find(x => x.id === it.songId);
         if ('offset' in m && song) song.beatOffset = Math.max(0, Math.round(Number(m.offset) * 1000) / 1000) || 0;   // where the first beat falls in the tracks
+        if ('bpm' in m && song?.stems?.length && !song.trackBpm && (it.bpm || song.bpm)) song.trackBpm = it.bpm || song.bpm;   // the tracks' tempo until now
         if ('bpm' in m) {
           const b = Math.round(Number(m.bpm));
           if (song && !song.bpm && b >= 30 && b <= 300) { song.bpm = b; it.bpm = undefined; }   // the first tempo given is the song's own
@@ -748,10 +752,19 @@ function handleMessage(ws, m) {
         }
         save(); break;
       }
+      case 'trackBase': {                            // 🎯 the key / exact tempo / bar 1 of the recorded tracks (detected or told)
+        const it = db.setlist[m.item]; const song = it?.kind === 'song' && db.songs.find(x => x.id === it.songId); if (!song) break;
+        if ('key' in m) { const k = String(m.key || '').trim(); if (k && !core.KEYS.includes(k)) return reply({ type: 'error', error: 'Ton necunoscut: ' + k }); song.trackKey = k || undefined; }
+        if ('bpm' in m) { const b = Math.round(Number(m.bpm) * 100) / 100; song.trackBpm = b >= 30 && b <= 300 ? b : undefined; if (song.trackBpm && !song.bpm) song.bpm = Math.round(song.trackBpm); }
+        if ('offset' in m) song.beatOffset = Math.max(0, Math.round(Number(m.offset) * 1000) / 1000) || 0;
+        song.updatedAt = new Date().toISOString(); save(); break;
+      }
       case 'setKey': {                               // key for this program; chords on the stage follow it
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const k = String(m.key || '').trim();
         if (k && !core.KEYS.includes(k)) return reply({ type: 'error', error: 'Ton necunoscut: ' + k });
+        const sg = db.songs.find(x => x.id === it.songId);       // first change on a song with tracks: the key until now is the tracks' key
+        if (sg?.stems?.length && !sg.trackKey) sg.trackKey = it.key || core.originalKey(sg.key, sg.body) || '';
         it.key = k;
         save(); break;
       }
