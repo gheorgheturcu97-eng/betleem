@@ -40,3 +40,15 @@ Sa&nbsp;cantam&nbsp;Maranata<br></span></div>`;
   const body = normalizeImported(extractLyrics(html, 'resursecrestine.ro').body);
   assert.equal(body, 'Strofa 1:\n[D]Curand [A]Domnul Slavei\n\nRefren:\nSa [D]cantam Ma[G]ranata');
 });
+
+test('Resurse Creștine search: song pages and chord pages, chord pages marked', async () => {
+  const { rcLinks } = await import('../src/websearch.js');
+  const html = `<a href="/cantece/123/o-generatie-se-ridica">O generație se ridică</a>
+    <a class="x" href="https://www.resursecrestine.ro/acorduri/456/o-generatie-se-ridica"><b>O generație</b> se ridică</a>
+    <a href="/cantece/123/o-generatie-se-ridica">dublură</a>`;
+  const r = rcLinks(html);
+  assert.equal(r.length, 2);
+  assert.deepEqual(r.map(x => x.chords), [false, true]);
+  assert.equal(r[1].title, 'O generație se ridică');
+  assert.equal(r[0].url, 'https://www.resursecrestine.ro/cantece/123/o-generatie-se-ridica');
+});

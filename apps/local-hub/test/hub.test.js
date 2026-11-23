@@ -225,6 +225,13 @@ test('presentations: pages are slides; the stage timer starts when an item goes 
   a.send({ type: 'display', screen: 'stage', patch: { upNext: 9, timer: false, headSize: 50 } });
   const d = await a.next(m => m.type === 'state' && m.state.display.stage.timer === false);
   assert.equal(d.state.display.stage.upNext, 5); assert.equal(d.state.display.stage.headSize, 8);
+  a.send({ type: 'display', screen: 'main', patch: { tr: 'crossfade', trDur: 9000 } });
+  const tr = await a.next(m => m.type === 'state' && m.state.display.main.tr === 'crossfade');
+  assert.equal(tr.state.display.main.trDur, 3000, 'transitions last at most 3 s');
+  a.send({ type: 'display', screen: 'main', patch: { tr: 'spin', trDur: null } });
+  a.send({ type: 'display', screen: 'main', patch: { tr: 'cut' } });
+  const cut = await a.next(m => m.type === 'state' && m.state.display.main.tr === 'cut');
+  assert.equal(cut.state.display.main.trDur, 3000, 'an unknown transition or an empty time changes nothing');
   const r = await fetch('http://localhost:4599/api/convert?name=x.pptx', { method: 'POST', body: 'x' });
   assert.equal(r.status, 401, 'converting needs the PIN');
   a.ws.close();

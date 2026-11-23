@@ -10,12 +10,13 @@
   html,body{margin:0;height:100%;background:#000;color:#fff;overflow:hidden;cursor:none;font-family:"Helvetica Neue",Arial,sans-serif}
   #bg,#bg>*{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
   #shade{position:fixed;inset:0;background:rgba(0,0,0,.35)}
-  #text{position:fixed;inset:6vh 6vw;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
+  .txt{position:fixed;inset:6vh 6vw;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
         font-weight:700;font-size:6.2vh;line-height:1.3;text-shadow:0 .3vh 1.2vh rgba(0,0,0,.8);transition:opacity .25s}
-  #text.hide{opacity:0}
+  .txt.hide{opacity:0}
+  .txt.ghost{pointer-events:none;z-index:1}          /* the old words while they leave (fade / crossfade / dissolve) */
   /* Bible: the verse, its reference, and a second language under it */
-  #text .v2{font-size:.74em;font-weight:500;opacity:.88;margin-top:.9em;padding-top:.7em;border-top:1px solid rgba(255,255,255,.35)}
-  #text .ref{font-size:.42em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.75;margin-top:.5em}
+  .txt .v2{font-size:.74em;font-weight:500;opacity:.88;margin-top:.9em;padding-top:.7em;border-top:1px solid rgba(255,255,255,.35)}
+  .txt .ref{font-size:.42em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.75;margin-top:.5em}
   #pic{position:fixed;inset:0;background:#000;display:none}
   #pic{overflow:hidden}
   #pic img,#pic video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;background:#000}
@@ -33,7 +34,7 @@
 </head>
 <body>
 <div id="bg"></div><div id="shade"></div>
-<div id="text"></div>
+<div id="text" class="txt"></div>
 <div id="pic"></div>
 <div id="logo"></div>
 <div id="count"><small id="countLabel"></small><b id="countTime"></b></div>
@@ -115,17 +116,36 @@
     };
     if (el.tagName === 'IMG' && !el.complete) { el.onload = go; el.onerror = go; } else go();   // never show half a picture
   }
+  // how the words change: cut (as before), fade (out, then in), crossfade (both at once), dissolve (soft blur)
+  const TR_DEF = 500;
+  let lastHtml = null;
+  function swapText(html, d) {
+    const t = $('text'), type = d.tr || 'cut', dur = Math.max(0, Math.min(3000, Number.isFinite(+d.trDur) ? +d.trDur : TR_DEF));
+    document.querySelectorAll('.txt.ghost').forEach(g => g.remove()); t.getAnimations().forEach(a => a.cancel());
+    const had = lastHtml; lastHtml = html;
+    if (type === 'cut' || !dur || !had || t.classList.contains('hide')) { t.innerHTML = html; fit(); return; }
+    const g = t.cloneNode(true); g.removeAttribute('id'); g.classList.add('ghost'); g.style.transition = 'none';
+    t.after(g); t.innerHTML = html; fit();
+    const ease = 'cubic-bezier(.4,0,.2,1)', blur = type === 'dissolve';
+    const out = [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: blur ? 'blur(1.2vh)' : 'blur(0)' }];
+    const inn = [{ opacity: 0, filter: blur ? 'blur(1.2vh)' : 'blur(0)' }, { opacity: 1, filter: 'blur(0)' }];
+    const half = type === 'fade' ? dur / 2 : dur;
+    g.animate(out, { duration: half, easing: ease, fill: 'forwards' }).finished.then(() => g.remove(), () => g.remove());
+    t.animate(inn, { duration: half, delay: type === 'fade' ? half : 0, easing: ease, fill: 'backwards' });
+  }
+  const picTr = d => !d.tr || d.tr === 'cut' ? null : { type: 'fade', dur: Number.isFinite(+d.trDur) ? +d.trDur : TR_DEF };
   connect(s => {
     S = s; if (s.now) skew = s.now - Date.now();
     const L = s.live, item = s.setlist[L.item];
-    if (s.display) style({ ...s.display.main, ...(item?.display || {}), ...(item?.slideStyles?.[L.slide] || {}) });
+    const dd = s.display ? { ...s.display.main, ...(item?.display || {}), ...(item?.slideStyles?.[L.slide] || {}) } : {};
+    if (s.display) style(dd);
     tick();
     const slide = L.slides[L.slide];
     // a page of a presentation, a picture or a video: whole screen, nothing on top
     const src = !L.blank && slide?.image || '';
     if ($('pic').dataset.src !== src) {
       $('pic').dataset.src = src;
-      showPic(src, slide?.transition, s.live.video?.muted);
+      showPic(src, slide?.transition || picTr(dd), s.live.video?.muted);
     }
     $('pic').style.display = src ? 'block' : 'none';
     const lines = sl => sl.lines.map(l => esc(stripChords(l))).filter(Boolean).join('<br>');
@@ -135,7 +155,7 @@
       : lines(slide);
     video(L);
     $('text').classList.toggle('hide', L.blank || L.noText || !html);
-    if (!L.blank && !L.noText) { $('text').innerHTML = html; fit(); }
+    if (!L.blank && !L.noText) { if (html !== lastHtml) swapText(html, dd); else fit(); }
     $('black').classList.toggle('on', !!L.blank);
     $('logo').style.display = L.logo ? 'flex' : 'none';
     if (L.logo) {                                    // logo.png from Fundaluri, otherwise the church's own logo

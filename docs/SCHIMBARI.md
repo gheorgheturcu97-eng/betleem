@@ -1,6 +1,18 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-23 · tranziții, acorduri pe toate strofele, bara macOS pe proiector
+- **Schimbarea versurilor pe ecran.** Înainte: imediat (tăiere). Acum: tot așa implicit, dar poți alege în bara de
+  aspect (lângă slide-uri) **Tranziție**: Tăiere / Stingere / Trecere lină / Dizolvare, cu durata. Pe un slide sau pe
+  o cântare anume: dublu-clic pe slide → Tranziție.
+- **Acordurile doar pe strofa 1 / primul refren.** Înainte: celelalte strofe rămâneau fără acorduri. Acum: la orice
+  import (PDF Planning Center, net, lipire) acordurile se pun pe aceleași silabe la toate strofele și refrenele.
+  ♪ din editor face asta pe cântarea deschisă; ♪ din Bibliotecă face asta pe toată biblioteca și caută pe net
+  acordurile cântărilor care n-au deloc (Resurse Creștine, apoi alte site-uri). Asistentul: „pune acorduri pe toate”.
+- **Căutarea pe net.** Înainte: doar prin motorul de căutare, și uneori nu apărea varianta cu acorduri. Acum: întâi
+  căutarea proprie a Resurse Creștine, iar varianta cu acorduri apare mereu în listă (eticheta „acorduri”).
+- **Bara de meniu macOS pe proiector.** Înainte: fereastra de proiecție stătea sub bara de meniu. Acum: o acoperă.
+
 ## 2026-11-22 · 2026.11.22.3 – .7
 - **„Învață cue-urile” și „Secțiunile din track-ul de cue”.** Înainte: două butoane separate, iar varianta AI cerea
   un track numit „Cue”. Acum: grupate sub „Secțiunile cântării”. „✦ Secțiuni automat” găsește singur ghidul, iar

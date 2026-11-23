@@ -53,6 +53,8 @@ export const TOOLS = [
     params: { position: { type: 'number' }, track: { type: 'string' }, volume: { type: 'number' }, muted: { type: 'boolean' } }, required: ['position', 'track'] },
   { name: 'add_part_of_song', description: 'Îmbinare: pune în program doar o parte dintr-o cântare din bibliotecă (de ex. refrenul din „Domnul miracolelor”), după o anumită poziție, în același ton cu cântarea dinainte (dacă match nu e false). Ex.: „după Tu ești vrednic pune refrenul din Domnul miracolelor”.',
     params: { title: { type: 'string' }, sections: { type: 'array', items: { type: 'string' }, description: 'ex. ["Refren"] sau ["Bridge", "Refren"]' }, after: { type: 'number', description: 'poziția după care vine (1 = după prima); lipsă = la final' }, match: { type: 'boolean' } }, required: ['title', 'sections'] },
+  { name: 'fill_chords', description: 'Acorduri pe toată cântarea: unde sunt doar pe strofa 1 / primul refren, le pune pe aceleași silabe la toate strofele, refrenele și bridge-urile; cântărilor fără acorduri le caută acordurile pe net. Fără titlu = toată biblioteca.',
+    params: { title: { type: 'string', description: 'titlul cântării (gol = toată biblioteca)' } } },
   { name: 'fill_team', description: 'Programează oamenii: pune voluntari pe locurile goale ale echipei (corect: cine poate sluji acolo, n-a blocat ziua, e sub limita lunară; cine a slujit mai puțin are prioritate). Opțional doar un departament.',
     params: { department: { type: 'string', description: 'numele departamentului (opțional)' } } },
   { name: 'leaders_tasks', description: 'Întâlnirile liderilor (agenda) și sarcinile (ce, cine, până când, gata sau nu). Folosește-l înainte să adaugi sau să răspunzi la „ce am de făcut”.', params: {} },
@@ -140,6 +142,7 @@ export function runTool(hub, name, a = {}) {
       if (!want.length) return { error: 'Nu găsesc secțiunile ' + (a.sections || []).join(', ') + '. Are: ' + (st?.sections || []).map(x => x.label).join(', ') };
       return done(hub.run({ type: 'arrangement', item: idx, value: want }), `după poziția ${after}: ${want.join(' → ')} din „${song.title}”, ton ${key || '?'}`);
     }
+    case 'fill_chords': return hub.chords ? hub.chords(String(a.title || '')) : { error: 'Nu e disponibil aici' };
     case 'fill_team': {
       if (!hub.fillTeam) return { error: 'Nu e disponibil aici' };
       const P = hub.plan?.(), d = a.department && P ? P.departments.find(x => x.name.toLowerCase().includes(String(a.department).toLowerCase())) : null;

@@ -34,7 +34,7 @@ function firstLine(body) {
 }
 
 /** Try to find chords for one song. Returns { body, key, url, match, chords } or null. */
-export async function findChords(song, core, { fetchImpl = fetch, maxSheets = 5 } = {}) {
+export async function findChords(song, core, { fetchImpl = fetch, maxSheets = 5, extraSheets = null } = {}) {
   const queries = [[song.title, 'titlu'], [firstLine(song.body), 'continut']].filter(q => q[0]);
   const links = [];
   for (const [q, by] of queries) {
@@ -54,24 +54,40 @@ export async function findChords(song, core, { fetchImpl = fetch, maxSheets = 5 
     } catch {}
     await sleep(250);
   }
+  if ((!best || best.match < MIN_MATCH) && extraSheets) {          // not on Resurse Creștine: other sites with chords
+    try {
+      for (const x of (await extraSheets(song.title)).slice(0, maxSheets)) {
+        if (!/\[[A-G]/.test(x.body)) continue;
+        const r = core.applyChords(song.body, x.body);
+        if (!best || r.match > best.match || (r.match === best.match && r.chords > best.chords)) best = { ...r, url: x.url };
+      }
+    } catch {}
+  }
   if (!best || best.match < MIN_MATCH || best.chords < MIN_CHORDS) return null;
-  return { ...best, key: core.guessKey(best.body) };
+  const body = core.fillChords ? core.fillChords(best.body).body : best.body;   // the sheet had chords only on verse 1? all verses get them
+  return { ...best, body, key: core.guessKey(body) };
 }
 
 /**
  * Add chords to many songs. `onProgress({ done, total, current, added })` after each song.
  * Songs that already have chords are skipped. Returns { added: [titles], missed: [titles] }.
  */
-export async function addChordsToSongs(songs, core, { onProgress = () => {}, onSong = () => {}, fetchImpl = fetch, shouldStop = () => false } = {}) {
-  const todo = songs.filter(s => !/\[[A-G][^\]]*\]/.test(s.body));
-  const added = [], missed = [];
+export async function addChordsToSongs(songs, core, { onProgress = () => {}, onSong = () => {}, fetchImpl = fetch, shouldStop = () => false, extraSheets = null } = {}) {
+  const has = s => /\[[A-G][^\]]*\]/.test(s.body);
+  const added = [], missed = [], spread = [];
+  // songs with chords on some sections only (verse 1, the first chorus): the rest get the same chords, no internet needed
+  if (core.fillChords) for (const s of songs.filter(has)) {
+    const r = core.fillChords(s.body);
+    if (r.filled) { onSong(s, { body: r.body, key: s.key || core.guessKey(r.body), url: s.chordsSource || '' }); spread.push(s.title); }
+  }
+  const todo = songs.filter(s => !has(s));
   for (let i = 0; i < todo.length; i++) {
     if (shouldStop()) break;
     const s = todo[i];
     onProgress({ done: i, total: todo.length, current: s.title, added: added.length });
-    const r = await findChords(s, core, { fetchImpl });
+    const r = await findChords(s, core, { fetchImpl, extraSheets });
     if (r) { onSong(s, r); added.push(s.title); } else missed.push(s.title);
   }
   onProgress({ done: todo.length, total: todo.length, current: '', added: added.length });
-  return { added, missed };
+  return { added, missed, spread };
 }

@@ -164,6 +164,8 @@ function cleanDisplay(screen, patch) {
   for (const k of ['upper', 'shadow', 'next', 'italic', 'labels', 'title', 'clock', 'timer', 'service']) if (typeof p[k] === 'boolean') d[k] = p[k];
   if (Number.isFinite(+p.upNext)) d.upNext = Math.min(5, Math.max(0, Math.round(+p.upNext)));        // how many program items the stage shows ahead
   if (Number.isFinite(+p.headSize)) d.headSize = Math.min(8, Math.max(2, +p.headSize));
+  if (['cut', 'fade', 'crossfade', 'dissolve'].includes(p.tr)) d.tr = p.tr;                       // how the words change on screen
+  if (p.trDur != null && Number.isFinite(+p.trDur)) d.trDur = Math.round(Math.min(3000, Math.max(0, +p.trDur)));     // …in milliseconds
   if (Number.isFinite(+p.dim)) d.dim = Math.min(90, Math.max(0, +p.dim));
   if (Number.isFinite(+p.lineHeight)) d.lineHeight = Math.min(2.2, Math.max(0.8, +p.lineHeight));
   if (Number.isFinite(+p.nextSize)) d.nextSize = Math.min(10, Math.max(1.5, +p.nextSize));
@@ -966,6 +968,15 @@ sessions.set(aiSocket, { role: 'leader' });
 const aiHub = {
   /** 🗓 leaders' meetings and tasks, for the assistant ("pune pe agenda de marți…", "dă-i lui Andrei sarcina…") */
   plan: () => { db.plan.meetings ||= []; db.plan.tasks ||= []; return db.plan; },
+  /** ♪ chords on every section: one song (by title) or the whole library; runs in the background */
+  chords(title = '') {
+    if (chordsJob.running) return { error: 'Căutarea acordurilor rulează deja' };
+    const list = title ? core.rankSongs(db.songs, title).slice(0, 1) : db.songs;
+    if (!list.length) return { error: 'N-am găsit cântarea în bibliotecă' };
+    if (list.length > 1) libraryBackup();
+    runChordsJob(list);
+    return { ok: true, started: title ? list[0].title : `toată biblioteca (${list.length} cântări)`, note: 'Rulează în fundal; progresul se vede la Bibliotecă (♪).' };
+  },
   /** ✦ fill the empty team places of a service fairly (the live program's, unless another one is named) */
   fillTeam(serviceId, department = '') {
     const sv = db.plan.services.find(x => x.id === (serviceId || db.service.planId)) || db.plan.services.find(x => new Date(x.date) >= Date.now() - 6 * 3600_000);
@@ -1059,6 +1070,7 @@ export function planHub(serviceId) {
     },
     structure: i => songStructure(svc()?.items[i]),
     fillTeam: (sid, dept) => aiHub.fillTeam(sid || serviceId, dept),
+    chords: t => aiHub.chords(t),
     programSongIds: () => (svc()?.items || []).map(i => i.songId),
   };
 }
@@ -1184,11 +1196,17 @@ function chordsEvent(o) {
   const msg = JSON.stringify({ type: 'chords', ...o });
   for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
 }
+// safety copy of the library before changing many songs
+function libraryBackup() {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  fs.writeFileSync(path.join(DATA_DIR, `library.backup-${stamp}.json`), JSON.stringify(db, null, 2));
+}
 async function runChordsJob(list) {
   Object.assign(chordsJob, { running: true, stop: false });
   try {
     const result = await addChordsToSongs(list, core, {
       shouldStop: () => chordsJob.stop,
+      extraSheets: q => searchLyrics(q, { chords: true, normalize: core.normalizeImported, limit: 4 }).then(r => r.filter(x => x.hasChords)),
       onProgress: p => chordsEvent({ ...p, running: true }),
       onSong: (song, r) => {
         song.body = r.body;
@@ -1198,7 +1216,7 @@ async function runChordsJob(list) {
         save();
       },
     });
-    chordsEvent({ running: false, finished: true, added: result.added.length, missed: result.missed });
+    chordsEvent({ running: false, finished: true, added: result.added.length, missed: result.missed, spread: result.spread.length });
     broadcast();
   } catch (e) {
     chordsEvent({ running: false, finished: true, error: e.message });
@@ -1410,8 +1428,7 @@ async function handle(req, res) {
       const { ids } = JSON.parse((await body(req, 100_000)) || '{}');
       const list = Array.isArray(ids) && ids.length ? db.songs.filter(s => ids.includes(s.id)) : db.songs;
       // safety copy of the library before changing many songs
-      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-      if (list.length > 1) fs.writeFileSync(path.join(DATA_DIR, `library.backup-${stamp}.json`), JSON.stringify(db, null, 2));
+      if (list.length > 1) libraryBackup();
       runChordsJob(list);
       return json(res, 200, { ok: true });
     }
@@ -2180,20 +2197,61 @@ const controlDisplayId = () => {
   const c = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.isVisible() && !kindOf(w) && w.getBounds().width > 600);
   return c ? screen.getDisplayMatching(c.getBounds()).id : null;
 };
+// An installed shell from before 2026.11.23 makes these windows without "enableLargerThanScreen", so macOS keeps them
+// under its menu bar (the bar showed on the projector at Peștera). Until the app is reinstalled, the hub opens its own
+// copy of the screen with that option, over the whole monitor, and parks the old window (blank, hidden, closed with it).
+let shellBig = null;
+const shellHasBig = () => {
+  if (shellBig !== null) return shellBig;
+  try { shellBig = fs.readFileSync(require_main(), 'utf8').includes('enableLargerThanScreen'); } catch { shellBig = true; }
+  return shellBig;
+};
+function require_main() {
+  const c = [process.argv.find(a => /main\.cjs$/.test(a)), path.join(process.resourcesPath || '', 'app', 'main.cjs'), path.join(process.resourcesPath || '', 'app.asar', 'main.cjs')];
+  return c.find(f => f && fs.existsSync(f)) || c[1];
+}
+function coverFor(kind, old) {
+  const { BrowserWindow } = EL;
+  if (old._cover && !old._cover.isDestroyed()) return old._cover;
+  const url = old.webContents.getURL();
+  if (!/^https?:/.test(url)) return null;
+  const c = new BrowserWindow({ ...old.getBounds(), frame: false, backgroundColor: '#000000', show: false, hasShadow: false,
+    enableLargerThanScreen: true, fullscreenable: false, title: old.getTitle(),
+    webPreferences: { contextIsolation: true, sandbox: true, backgroundThrottling: false } });
+  c._betleem = true; c._isCover = true; c._old = old; old._cover = c; outWins[kind] = c;
+  c.loadURL(url); c.once('ready-to-show', () => { c.showInactive(); placeOut(kind); });
+  const park = () => { if (old.isDestroyed()) return; const u = old.webContents.getURL();
+    if (/^https?:/.test(u)) { if (u !== c.webContents.getURL() && !c.isDestroyed()) c.loadURL(u); old.loadURL('about:blank'); }
+    old.hide(); };
+  old.webContents.on('did-navigate', park); old.on('show', () => setTimeout(park, 0));
+  old.on('move', () => setTimeout(() => !c.isDestroyed() && placeOut(kind), 50));
+  old.on('closed', () => { if (!c.isDestroyed()) c.destroy(); if (outWins[kind] === c) delete outWins[kind]; });
+  c.on('closed', () => { if (!old.isDestroyed()) old.close(); });
+  park();
+  return c;
+}
 function placeOut(kind) {
   if (!EL) return;
-  const w = outWins[kind]; if (!w || w.isDestroyed()) return;
+  let w = outWins[kind]; if (!w || w.isDestroyed()) return;
   const { screen } = EL, all = screen.getAllDisplays();
-  const d = all.find(x => x.id === db.screenPick[kind]) || screen.getDisplayMatching(w.getBounds());
+  const d = all.find(x => x.id === db.screenPick[kind]) || screen.getDisplayMatching((w._old && !w._old.isDestroyed() ? w._old : w).getBounds());
   if (w.isFullScreen()) { w.once('leave-full-screen', () => setTimeout(() => placeOut(kind), 60)); w.setFullScreen(false); return; }
   if (d.id === controlDisplayId()) {                   // the same monitor as the program: a small window, never covering it
     w.setAlwaysOnTop(false); w.setBounds({ x: d.workArea.x + 40, y: d.workArea.y + 40, width: Math.round(d.workArea.width / 2), height: Math.round(d.workArea.width / 2 * 9 / 16) });
     return;
   }
+  if (process.platform === 'darwin' && !w._isCover && !shellHasBig()) {            // old shell: cover the monitor with our own window
+    const c = coverFor(kind, w); if (c) { if (!c.isVisible()) return; w = c; }
+  }
   w.setBounds(d.bounds);
   if (process.platform === 'darwin') { w.setAlwaysOnTop(true, 'screen-saver'); w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); }
   else w.setFullScreen(true);
-  setTimeout(() => !w.isDestroyed() && !w.isFullScreen() && w.setBounds(d.bounds), 400);
+  setTimeout(() => {
+    if (w.isDestroyed() || w.isFullScreen()) return;
+    w.setBounds(d.bounds);
+    const b = w.getBounds();                         // macOS kept it under the menu bar: cover the monitor with our own window
+    if (process.platform === 'darwin' && !w._isCover && (b.y > d.bounds.y || b.height < d.bounds.height)) { shellBig = false; placeOut(kind); }
+  }, 400);
 }
 if (process.versions.electron) {
   import('electron').then(m => {

@@ -39,6 +39,19 @@ export function parseBing(html) {
   return out;
 }
 
+/** Resurse Creștine's own search: song pages and chord pages, without going through a search engine. Exported for tests. */
+export function rcLinks(html) {
+  const out = [];
+  for (const m of html.matchAll(/<a[^>]+href="((?:https?:\/\/www\.resursecrestine\.ro)?\/(cantece|acorduri)\/\d+\/[^"#?]+)"[^>]*>([\s\S]*?)<\/a>/g)) {
+    const url = m[1].startsWith('http') ? m[1] : 'https://www.resursecrestine.ro' + m[1];
+    if (!out.some(x => x.url === url)) out.push({ url, title: decode(m[3].replace(/<[^>]+>/g, '')).trim(), chords: m[2] === 'acorduri' });
+  }
+  return out;
+}
+async function searchRC(q) {
+  try { return rcLinks(await get('https://www.resursecrestine.ro/cauta/' + encodeURIComponent(q) + '/1/titlu')); } catch { return []; }
+}
+
 async function searchWeb(query) {
   try {
     const r = parseDuckDuckGo(await get('https://html.duckduckgo.com/html/?kl=ro-ro&q=' + encodeURIComponent(query)));
@@ -74,6 +87,11 @@ export async function searchLyrics(q, { chords = false, normalize = t => t, limi
     ? [`site:resursecrestine.ro acorduri ${q}`, `${q} acorduri versuri`]
     : [`site:resursecrestine.ro ${q}`, `${q} versuri`];
   const seen = new Set(), links = [];
+  // 1. Resurse Creștine's own search. The chord pages come too (marked "acorduri"), so a song can always be taken with chords.
+  const rc = await searchRC(q);
+  for (const r of [...rc.filter(x => x.chords === chords).slice(0, 3), ...rc.filter(x => x.chords !== chords).slice(0, chords ? 1 : 2)]) {
+    const key = r.url; if (seen.has(key)) continue; seen.add(key); links.push(r);
+  }
   for (const query of queries) {
     for (const r of await searchWeb(query)) {
       const key = r.url.replace(/[#?].*$/, '');

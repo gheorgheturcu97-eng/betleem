@@ -971,6 +971,7 @@
             <select id="qFont" title="Fontul versurilor"></select>
             <button data-q="pos" id="qPos" title="Unde stau versurile: sus / mijloc / jos">⇕</button>
             <button data-q="upper" id="qUpper" title="MAJUSCULE">AA</button>
+            <span class="ql" title="Cum se schimbă versurile pe ecranul din sală (pe un slide anume: dublu-clic pe slide → Tranziție)"><small>Tranziție</small><select id="qTr"><option value="cut">✂ Tăiere</option><option value="fade">Stingere</option><option value="crossfade">Trecere lină</option><option value="dissolve">Dizolvare</option></select><select id="qTrDur"><option value="250">0,25 s</option><option value="500">0,5 s</option><option value="1000">1 s</option><option value="2000">2 s</option></select></span>
             <button data-q="more" title="Toate setările ecranelor (culori, umbră, scenă…)">⚙</button>
           </div>
           <label class="zoom" title="Mărimea slide-urilor aici, în listă (nu pe ecran)">🔍<input type="range" id="slideZoom" min="150" max="420" step="10"></label>
@@ -1012,7 +1013,7 @@
         <div id="results" class="scroll"></div>
         <div id="chordsBox" class="chords-box" hidden><div class="bar"><i id="chordsBar"></i></div><span id="chordsText"></span><button id="bChordsStop" class="ghost">Oprește</button></div>
         <div class="libbar"><button id="bNew2" class="acc">＋ Cântare nouă</button><span class="grow"></span>
-          <button id="bChordsAll" class="icon" title="Caută pe Resurse Creștine acordurile pentru cântările fără acorduri">♪</button>
+          <button id="bChordsAll" class="icon" title="Acorduri pentru toată biblioteca: caută pe net cântările fără acorduri și pune acordurile pe fiecare strofă, refren și bridge">♪</button>
           <button id="bClean" class="icon" title="Curăță biblioteca: etichete din semnele site-urilor (1., R:, Str2), fără /: :/, refrenul după fiecare strofă">🧹</button></div>
       </div>
 
@@ -1054,7 +1055,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <div class="editor-actions">
           <button id="bSave" class="acc">Salvează</button>
           <button id="bSaveAdd">Salvează + în program</button>
-          <button id="bChordsOne" class="icon" title="Caută acorduri pentru această cântare" style="flex:none">♪</button>
+          <button id="bChordsOne" class="icon" title="Acorduri pentru această cântare: dacă are doar pe strofa 1, le pun pe toate strofele și refrenele; dacă n-are deloc, le caut pe net" style="flex:none">♪</button>
           <button id="bNew" class="icon" title="Cântare nouă" style="flex:none">＋</button>
         </div>
       </div>
@@ -1388,6 +1389,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       <div class="lf"><span>Spațiu rânduri</span><input type="range" id="sLine" min="0.9" max="2" step="0.05"><b id="sLineV"></b></div>
       <div class="lf"><span>Întunecă fundal</span><input type="range" id="sDim" min="0" max="90" step="5"><b id="sDimV"></b></div>
       <label class="check"><input type="checkbox" id="sShadow"> Umbră la text</label>
+      <div class="lf" title="Cum apare acest slide pe ecran (Tăiere = imediat, ca înainte)"><span>Tranziție</span><select id="sTr"><option value="cut">✂ Tăiere</option><option value="fade">Stingere</option><option value="crossfade">Trecere lină</option><option value="dissolve">Dizolvare</option></select><select id="sTrDur"><option value="250">0,25 s</option><option value="500">0,5 s</option><option value="1000">1 s</option><option value="2000">2 s</option></select></div>
     </div>
   </div>
   <div class="btns"><button id="sedReset" class="ghost" title="Slide-ul arată din nou ca restul cântării">↺ Ca restul</button><span class="grow"></span>
@@ -1402,7 +1404,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   import * as BR from '/bibleref.js';
   import { connect, esc, paintBackground } from '/client.js';
   import { Pad, Metronome, Multitrack, PAD_SOUNDS, tapper, outputs, inputs } from '/music.js';
-  import { stripChords, sectionColor } from '/core/song.js';
+  import { stripChords, sectionColor, fillChords } from '/core/song.js';
   const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', reading: 'citire', bible: 'biblie' };
   const $ = id => document.getElementById(id);
   let S = null, sel = -1;
@@ -1843,6 +1845,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('qRows').textContent = it?.kind === 'song' ? (it.maxLines || 4) : '–';
     if (!$('qFont').options.length) $('qFont').innerHTML = $('lFont').innerHTML;
     $('qFont').value = d.font; $('qUpper').classList.toggle('on', !!d.upper);
+    $('qTr').value = d.tr || 'cut'; $('qTrDur').value = String(d.trDur ?? 500); $('qTrDur').disabled = !d.tr || d.tr === 'cut';
     $('qPos').textContent = { top: '⇕ sus', middle: '⇕ mijloc', bottom: '⇕ jos' }[d.valign || 'middle'];
   }
   $('qLook').addEventListener('click', e => {
@@ -1859,6 +1862,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (q === 'more') { lookScreen = 'main'; openLook(); }
   });
   $('qFont').onchange = e => send({ type: 'display', screen: 'main', patch: { font: e.target.value } });
+  $('qTr').onchange = e => send({ type: 'display', screen: 'main', patch: { tr: e.target.value } });
+  $('qTrDur').onchange = e => send({ type: 'display', screen: 'main', patch: { trDur: +e.target.value } });
   $('lSize').oninput = e => { $('lSizeV').textContent = (+e.target.value).toFixed(1); setLook({ size: +e.target.value }); };
   $('lColor').oninput = e => setLook({ color: e.target.value });
   $('lChord').oninput = e => setLook({ chordColor: e.target.value });
@@ -3671,6 +3676,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('sFont').value = d.font; $('sSize').value = d.size; $('sSizeV').textContent = (+d.size).toFixed(1);
     $('sWeight').value = String(d.weight || 700); $('sColor').value = d.color; $('sItalic').checked = !!d.italic; $('sUpper').checked = !!d.upper;
     $('sLine').value = d.lineHeight || 1.3; $('sLineV').textContent = (+(d.lineHeight || 1.3)).toFixed(2);
+    $('sTr').value = d.tr || 'cut'; $('sTrDur').value = String(d.trDur ?? 500); $('sTrDur').disabled = !d.tr || d.tr === 'cut';
     $('sDim').value = d.dim ?? 35; $('sDimV').textContent = (d.dim ?? 35) + '%'; $('sShadow').checked = d.shadow !== false;
     document.querySelectorAll('#sAlign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.align));
     document.querySelectorAll('#sValign button').forEach(b => b.classList.toggle('sel', b.dataset.v === d.valign));
@@ -3697,6 +3703,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('sLine').oninput = e => setSt({ lineHeight: +e.target.value });
   $('sDim').oninput = e => setSt({ dim: +e.target.value });
   $('sShadow').onchange = e => setSt({ shadow: e.target.checked });
+  $('sTr').onchange = e => setSt({ tr: e.target.value });
+  $('sTrDur').onchange = e => setSt({ trDur: +e.target.value });
   document.querySelectorAll('#sAlign button').forEach(b => b.onclick = () => setSt({ align: b.dataset.v }));
   document.querySelectorAll('#sValign button').forEach(b => b.onclick = () => setSt({ valign: b.dataset.v }));
   document.querySelectorAll('#sedScope button').forEach(b => b.onclick = () => {
@@ -3717,7 +3725,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     };
     $('pvBox').onpointerup = () => { $('pvBox').onpointermove = null; };
   };
-  const STYLE_KEYS = ['font', 'size', 'weight', 'color', 'italic', 'upper', 'align', 'valign', 'lineHeight', 'dim', 'shadow', 'box'];
+  const STYLE_KEYS = ['font', 'size', 'weight', 'color', 'italic', 'upper', 'align', 'valign', 'lineHeight', 'dim', 'shadow', 'box', 'tr', 'trDur'];
   const diff = (a, b) => Object.fromEntries(STYLE_KEYS.filter(k => JSON.stringify(a[k] ?? null) !== JSON.stringify(b[k] ?? null)).map(k => [k, a[k] ?? null]));
   /** Send what changed on the open slide. Returns true if something was sent. */
   function saveSlideEdit() {
@@ -3963,13 +3971,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     } else if (e.finished) {
       $('chordsBar').style.width = '100%'; $('bChordsStop').hidden = true;
       $('chordsText').textContent = e.error ? 'Eroare: ' + e.error
-        : `Gata: acorduri la ${e.added} cântări.` + (e.missed?.length ? ` Fără potrivire sigură (${e.missed.length}): ${e.missed.slice(0, 12).join(', ')}${e.missed.length > 12 ? '…' : ''}` : '');
+        : `Gata: acorduri găsite pe net la ${e.added} cântări` + (e.spread ? `, completate pe toate strofele la ${e.spread}` : '') + '.' + (e.missed?.length ? ` Fără potrivire sigură (${e.missed.length}): ${e.missed.slice(0, 12).join(', ')}${e.missed.length > 12 ? '…' : ''}` : '');
       songCache.clear(); search(); render();
       if ($('songId').value) fetch('/api/songs/' + $('songId').value).then(r => r.json()).then(s => { if (s.id === $('songId').value) fillEditor(s); });
     }
   }
   $('bChordsAll').onclick = async () => {
-    const ok = await ask('Caut acorduri pentru toate cântările fără acorduri pe Resurse Creștine și le pun peste versurile tale. Versurile, etichetele și ordinea rămân la fel. Fac întâi o copie de siguranță a bibliotecii. Durează câteva minute.', [], 'Începe');
+    const ok = await ask('1) La cântările care au acorduri doar pe strofa 1 sau pe primul refren, pun aceleași acorduri pe toate strofele și refrenele (pe aceleași silabe). 2) Pentru cântările fără acorduri, caut pe Resurse Creștine și pe alte site-uri și le pun peste versurile tale. Versurile, etichetele și ordinea rămân la fel. Fac întâi o copie de siguranță a bibliotecii. Durează câteva minute.', [], 'Începe');
     if (!ok) return;
     try { $('chordsBox').hidden = false; $('chordsText').textContent = 'Pornesc căutarea…'; await api('/api/add-chords', { method: 'POST', body: '{}' }); }
     catch (e) { toast(e.message); }
@@ -3977,7 +3985,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('bChordsStop').onclick = () => api('/api/add-chords/stop', { method: 'POST' });
   $('bChordsOne').onclick = async () => {
     const id = $('songId').value; if (!id) return toast('Salvează întâi cântarea');
-    if (/\[[A-G]/.test($('songBody').value)) return toast('Cântarea are deja acorduri');
+    if (/\[[A-G]/.test($('songBody').value)) {           // has chords on some sections: the same chords on all the others, here, no internet
+      const r = fillChords($('songBody').value);
+      if (!r.filled) return toast('Toate secțiunile au deja acorduri (sau nu am după ce să le copiez)');
+      $('songBody').value = r.body; $('songBody').dispatchEvent(new Event('input'));
+      return toast(`Am pus acordurile pe încă ${r.filled} ${r.filled === 1 ? 'secțiune' : 'secțiuni'}. Verifică și Salvează.`);
+    }
     try { await api('/api/add-chords', { method: 'POST', body: JSON.stringify({ ids: [id] }) }); toast('Caut acorduri pentru „' + $('songTitle').value + '”…'); }
     catch (e) { toast(e.message); }
   };

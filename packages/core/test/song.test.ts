@@ -245,3 +245,18 @@ test('autoLabel: pre-chorus before each chorus, bridge late, B: is a bridge', as
   assert.deepEqual(parseSong(autoLabel(body)).map(s => s.label), ['Strofa 1', 'Pre-refren', 'Refren', 'Strofa 2', 'Pre-refren', 'Refren', 'Bridge', 'Refren']);
   assert.deepEqual(parseSong(normalizeImported('1. Unu doi trei\npatru\n\nB: Punte aici\nsi aici')).map(s => s.label), ['Strofa 1', 'Bridge']);
 });
+
+import { fillChords, syllableStarts, chordsOnSameSyllables } from '../src/song.ts';
+
+test('chords on every verse and chorus: the same syllables as the first one', () => {
+  assert.deepEqual(syllableStarts('Mare e Domnul'), [0, 2, 5, 7, 10]);
+  assert.equal(chordsOnSameSyllables('[G]Mare e [D]Domnul în [Em]slavă', 'Tare e Domnul în ceruri'), '[G]Tare e [D]Domnul în [Em]ceruri');
+  const body = `Strofa 1:\n[G]Tu ești [D]Domnul\n[Em]Tu ești [C]Rege\n\nRefren:\n[C]Aleluia [D]Doamne\n\nStrofa 2:\nEu sunt robul\nTu ești Tatăl\n\nRefren:\nAleluia Doamne\n\nBridge:\nNumai Tu`;
+  const r = fillChords(body);
+  assert.equal(r.filled, 2, 'verse 2 and the second chorus; the bridge has no model, it stays as it was');
+  assert.match(r.body, /Strofa 2:\n\[G\]Eu sunt \[D\]robul\n\[Em\]Tu ești \[C\]Tatăl/);
+  assert.match(r.body, /Refren:\n\[C\]Aleluia \[D\]Doamne\n\nBridge:\nNumai Tu$/);
+  assert.equal(fillChords('Strofa 1:\nfără acorduri').filled, 0, 'a song without chords is left alone');
+  assert.equal(fillChords(r.body).body, r.body, 'running it again changes nothing');
+  assert.match(normalizeImported(body), /Strofa 2:\n\[G\]Eu sunt/, 'imports get it too');
+});

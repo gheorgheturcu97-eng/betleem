@@ -299,7 +299,7 @@ export function normalizeImported(text: string): string {
   t = labelStanzas(t);
   // blocks without a name get one (the "/: :/" marks help find the chorus), then the marks are dropped
   if (parseSong(t).some(sec => !sec.label)) t = autoLabel(t);
-  return stripRepeatMarks(t);
+  return fillChords(stripRepeatMarks(t)).body;   // chords written only on the first verse / chorus go on all of them
 }
 
 /** Render one line as HTML with chords placed above the syllables (stage / music stand). */
@@ -437,6 +437,108 @@ export function applyChords(lyrics: string, sheet: string): { body: string; matc
     return line;
   });
   return { body: out.join('\n'), match: total ? found / total : 0, chords: placed };
+}
+
+// ---------------------------------------------------------------------------
+// Chords on every section: most sheets (websites, Planning Center PDFs) write the chords only on the first verse and
+// the first chorus. The other verses sing the same melody, so the same chords fall on the same syllables.
+// ---------------------------------------------------------------------------
+
+const VOWEL = /[aeiouyăâîáéíóúàèìòùäëïöüœæ]/i;
+const LETTER = /\p{L}/u;
+
+/** Where each syllable of a line starts (column), for placing a chord on it. Romanian-friendly, good enough for songs. */
+export function syllableStarts(text: string): number[] {
+  const out: number[] = [];
+  for (const m of text.matchAll(/\S+/g)) {
+    const w = m[0], base = m.index ?? 0;
+    let first = -1, prevEnd = -1;
+    for (let i = 0; i < w.length; i++) {
+      if (!VOWEL.test(w[i])) continue;
+      if (i > 0 && VOWEL.test(w[i - 1])) continue;                   // same vowel group ("ia", "oa", "eu")
+      if (first >= 0 && /^i\P{L}*$/iu.test(w.slice(i))) continue;  // Romanian final "i" after a consonant is not a syllable: "ești", "pomi"
+      if (first < 0) {                                              // first syllable: from the first letter of the word
+        let s = 0; while (s < w.length && !LETTER.test(w[s])) s++;
+        first = s; out.push(base + s);
+      } else {                                                      // next ones: one consonant before the vowel goes with it
+        const c = i - 1 > prevEnd && LETTER.test(w[i - 1]) && !VOWEL.test(w[i - 1]) ? i - 1 : i;
+        out.push(base + c);
+      }
+      let e = i; while (e + 1 < w.length && VOWEL.test(w[e + 1])) e++;
+      prevEnd = e;
+    }
+    if (first < 0) { let s = 0; while (s < w.length && !LETTER.test(w[s])) s++; if (s < w.length) out.push(base + s); }   // "Și", "în" have vowels; "/:" has none
+  }
+  return out;
+}
+
+type ChordAt = { col: number; chord: string };
+/** A ChordPro line split into the words and the chords with their column in those words. */
+function splitChords(line: string): { text: string; chords: ChordAt[] } {
+  let text = ''; const chords: ChordAt[] = [];
+  for (const part of line.split(/(\[[^\]]*\])/)) {
+    if (/^\[.*\]$/.test(part)) { const c = part.slice(1, -1).trim(); if (c) chords.push({ col: text.length, chord: c }); }
+    else text += part;
+  }
+  return { text, chords };
+}
+
+/** Put the chords of `tmpl` (a ChordPro line) on the same syllables of `lyric` (a plain line). */
+export function chordsOnSameSyllables(tmpl: string, lyric: string): string {
+  const { text, chords } = splitChords(tmpl);
+  if (!chords.length) return lyric;
+  const S = syllableStarts(text), T = syllableStarts(lyric);
+  const at = new Map<number, string[]>();
+  const put = (col: number, c: string) => { if (!at.has(col)) at.set(col, []); at.get(col)!.push(c); };
+  for (const { col, chord } of chords) {
+    const atSpace = col >= text.trimEnd().length;
+    let k = -1;
+    if (!atSpace) { k = 0; for (let i = 0; i < S.length; i++) if (S[i] <= col) k = i; if (/\s/.test(text[col] || '')) k = S.findIndex(x => x >= col); }
+    if (atSpace || k < 0 || !T.length) put(lyric.trimEnd().length, chord);   // a chord after the last word stays at the end
+    else put(T[Math.min(k, T.length - 1)], chord);
+  }
+  let out = lyric;
+  for (const col of [...at.keys()].sort((a, b) => b - a)) out = out.slice(0, col) + at.get(col)!.map(c => `[${c}]`).join('') + out.slice(col);
+  return out;
+}
+
+/**
+ * Give chords to the sections that have none, from the first section of the same kind that has them
+ * (Strofa 2, 3 from Strofa 1; every Refren from the first Refren). Lines and words never change.
+ * Returns the new body and how many sections got chords.
+ */
+export function fillChords(body: string): { body: string; filled: number } {
+  const lines = body.split('\n');
+  const hasCh = (l: string) => /\[[A-H][^\]]*\]/.test(l);
+  const lyric = (l: string) => !!stripChords(l).trim();
+  type Block = { kind: SectionKind; label: string; rows: number[] };
+  const blocks: Block[] = [];
+  let cur: Block | null = null, label = '';
+  lines.forEach((raw, i) => {
+    const t = raw.trim();
+    if (!t) { cur = null; return; }
+    if (isLabelLine(t) || /^\{(c|comment|soc|sov|sob)\b/i.test(t)) { label = cleanLabel(t); cur = null; return; }
+    if (/^\{/.test(t)) return;
+    if (!cur) { cur = { kind: sectionKind(label), label, rows: [] }; blocks.push(cur); label = ''; }
+    if (lyric(raw)) cur.rows.push(i);
+  });
+  const tmpl = new Map<string, Block>();
+  for (const b of blocks) {
+    const n = b.rows.filter(r => hasCh(lines[r])).length;
+    if (n && n * 2 >= b.rows.length && !tmpl.has(b.kind)) tmpl.set(b.kind, b);
+  }
+  if (!tmpl.size) return { body, filled: 0 };
+  let filled = 0;
+  for (const b of blocks) {
+    if (!b.rows.length || b.rows.some(r => hasCh(lines[r]))) continue;
+    let src = tmpl.get(b.kind);
+    if (!src && !b.kind) src = [...tmpl.values()].find(x => x.rows.length === b.rows.length) || tmpl.get('verse');   // no name: same shape
+    if (!src) continue;
+    const from = src.rows.filter(r => hasCh(lines[r])).length === src.rows.length ? src.rows : src.rows.filter(r => hasCh(lines[r]));
+    b.rows.forEach((r, j) => { lines[r] = chordsOnSameSyllables(lines[from[j % from.length]], lines[r]); });
+    filled++;
+  }
+  return { body: lines.join('\n'), filled };
 }
 
 // ---------------------------------------------------------------------------

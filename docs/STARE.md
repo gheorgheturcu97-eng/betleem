@@ -56,6 +56,15 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - 📥 **Primite**: fișiere trimise de pe telefon (QR) sau prin AirDrop.
 - Mod zi și noapte (☀), mod rapid pentru calculatoare slabe, Setări în carduri.
 
+- **Tranziții text** (23 nov): `tr` (cut/fade/crossfade/dissolve) și `trDur` în setările ecranului (`cleanDisplay`), pe cântare
+  și pe slide (editorul de slide). `swapText` în main.html (stratul vechi `.txt.ghost`). Imaginile fără tranziție proprie
+  folosesc stingere. Verificat în browser.
+- **Acorduri pe toate secțiunile** (23 nov): `fillChords` / `chordsOnSameSyllables` / `syllableStarts` în song.ts (test),
+  apelat din `normalizeImported` (toate importurile), din ♪ (editor, local) și din jobul ♪ al bibliotecii (`src/chords.js`,
+  care acum încearcă și alte site-uri prin `searchLyrics`). Unealta asistentului `fill_chords`.
+- **Fereastra de proiecție pe Mac**: dacă macOS o ține sub bara de meniu (aplicație instalată înainte de 22.10), hub-ul
+  deschide propria fereastră cu `enableLargerThanScreen` și o parchează pe cea veche (`coverFor` în server.js). Neverificat pe Mac.
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,
