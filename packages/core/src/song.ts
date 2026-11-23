@@ -173,26 +173,46 @@ export function isChordLine(line: string): boolean {
   const tokens = line.trim().split(/\s+/).filter(Boolean);
   if (!tokens.length) return false;
   if (!tokens.some(t => /[A-Ha-h]/.test(t))) return false;
-  return tokens.every(t => { const c = t.replace(/[()|,]/g, ''); return CHORD_TOKEN.test(c) || LOWER_CHORD.test(c) || /^[|/\-x\d.]+$/.test(t); });
+  return tokens.every(t => /^[|/\-x\d.]+$/.test(t) || isChordWord(t));
+}
+/** "Am", "f#", "A4-", "G-A" (two chords joined), "(D)" */
+function isChordWord(t: string): boolean {
+  const parts = t.replace(/[()|,]/g, '').split('-').filter(Boolean);
+  return parts.length > 0 && parts.every(c => CHORD_TOKEN.test(c) || LOWER_CHORD.test(c));
+}
+/** The chords of a chord line (plain or half in brackets), each with its column in the words below. */
+function chordsOfLine(line: string): { col: number; chord: string }[] {
+  const { text, chords } = splitChords(line), out = chords.map(c => ({ col: c.col, chord: chordName(c.chord) }));
+  for (const m of text.matchAll(/\S+/g)) {
+    if (/^[|/\-x\d.]+$/.test(m[0]) || !isChordWord(m[0])) continue;
+    m[0].replace(/[()|,]/g, '').split('-').filter(Boolean).forEach(c => out.push({ col: m.index ?? 0, chord: chordName(c) }));
+  }
+  return out.sort((a, b) => a.col - b.col);
+}
+/** A chord line half converted before ("A        [F]e"): with the brackets taken off, only chords are left. */
+function isMixedChordLine(line: string): boolean {
+  if (!line.includes('[')) return false;
+  const plain = line.replace(/\[[^\]]*\]/g, ' ');                 // what is outside the brackets must hold a chord too
+  return /[A-Ha-h]/.test(plain) && isChordLine(line.replace(/\[([^\]]*)\]/g, ' $1 '));
 }
 /** "f" -> "Fm", "c#7" -> "C#m7", "h" -> "Bm", "b" -> "Bbm"; anything else unchanged. */
 export function chordName(t: string): string {
   if (!LOWER_CHORD.test(t)) return t;
   const m = t.match(/^([a-h])([b#]?)(.*)$/)!;
-  const root = m[1] === 'h' ? 'B' : m[1] === 'b' && !m[2] ? 'Bb' : m[1].toUpperCase() + m[2];
+  const root = m[1] === 'h' ? 'B' : m[1].toUpperCase() + m[2];   // Romanian sheets: "b" = Bm (English letters, small = minor)
   const rest = m[3].replace(/\/([a-h])/, (_, x) => '/' + (x === 'h' ? 'B' : x.toUpperCase()));
   return root + (/^(maj|dim|aug)/.test(rest) ? '' : 'm') + rest;
 }
 
 // "Pre: Isus…", "R: Cel născut…", "Intro: Ab Db": the name of the section written on the same line as the words
 // (or the chords). The name goes on its own line; a chord line above the words moves with them.
-const INLINE_LABEL = /^(\s*)(r|ref|refren|refrain|cor|chorus|pre|pr|pre-?\s?refren|pre-?\s?chorus|bridge|punte|pod|intro|final|outro|coda|tag|str(?:ofa|ofă)?\.?\s*\d{1,2}|v\s*\d{1,2}|vers(?:ul)?\s*\d{1,2})\s*(\d*)\s*:\s*(\S.*)$/i;
+const INLINE_LABEL = /^(\s*)(B(?=\s*\d*\s*:)|r|ref|refren|refrain|cor|chorus|pre|pr|pre-?\s?refren|pre-?\s?chorus|bridge|punte|pod|intro|final|outro|coda|tag|str(?:ofa|ofă)?\.?\s*\d{1,2}|v\s*\d{1,2}|vers(?:ul)?\s*\d{1,2})\s*(\d*)\s*:\s*(\S.*)$/i;
 function inlineLabelName(w: string, n: string): string {
   const t = w.toLowerCase().replace(/\s+/g, '');
   const num = (t.match(/\d+/) || [n])[0] || '';
   if (/^(pre|pr)/.test(t)) return 'Pre-refren' + (num ? ' ' + num : '');
   if (/^(r|ref|refren|refrain|cor|chorus)$/.test(t.replace(/\d+/, ''))) return 'Refren' + (num ? ' ' + num : '');
-  if (/^(bridge|punte|pod)/.test(t)) return 'Bridge' + (num ? ' ' + num : '');
+  if (/^(bridge|punte|pod|b$|b\d)/.test(t)) return 'Bridge' + (num ? ' ' + num : '');
   if (/^intro/.test(t)) return 'Intro';
   if (/^(final|outro|coda)/.test(t)) return 'Final';
   if (/^tag/.test(t)) return 'Tag';
@@ -200,7 +220,7 @@ function inlineLabelName(w: string, n: string): string {
 }
 /** A song saved before lower-case chords and "Pre: words" were understood: chord letters still sit on lines of words. */
 export function needsChordCleanup(body: string): boolean {
-  return body.split('\n').some(l => { const t = l.trim(); return !!t && !t.includes('[') && !t.startsWith('{') && (isChordLine(t) || (INLINE_LABEL.test(t) && !isLabelLine(t))); });
+  return body.split('\n').some(l => { const t = l.trim(); return !!t && !t.startsWith('{') && ((!t.includes('[') && isChordLine(t)) || isMixedChordLine(t) || (INLINE_LABEL.test(t) && !isLabelLine(t))); });
 }
 export function splitInlineLabels(text: string): string {
   const out: string[] = [];
@@ -232,11 +252,18 @@ export function chordsOverToChordPro(text: string): string {
   const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (isChordLine(line)) {
+    if (isChordLine(line) || isMixedChordLine(line)) {
       const next = lines[i + 1];
-      const chords: { col: number; chord: string }[] = [];
-      for (const m of line.matchAll(/\S+/g)) if (!/^[|/\-x\d.]+$/.test(m[0])) chords.push({ col: m.index ?? 0, chord: chordName(m[0].replace(/[()|,]/g, '')) });
-      if (next !== undefined && next.trim() !== '' && !isChordLine(next) && !SECTION_LABEL.test(next.trim())) {
+      const chords = chordsOfLine(line);                            // a half-converted line: its bracket chords count as written
+      if (next !== undefined && next.trim() !== '' && next.includes('[') && !isChordLine(next) && !isMixedChordLine(next) && !SECTION_LABEL.test(next.trim())) {
+        // the words already have some chords: put these in too, by column in the words, keeping theirs
+        const { text, chords: have } = splitChords(next);
+        const all = [...have, ...chords.filter(c => !have.some(h => Math.abs(h.col - Math.min(c.col, text.length)) <= 1 && h.chord === c.chord)).map(c => ({ col: Math.min(c.col, text.length), chord: c.chord }))];
+        let merged = text;
+        for (const { col, chord } of all.sort((a, b) => b.col - a.col)) merged = merged.slice(0, col) + `[${chord}]` + merged.slice(col);
+        out.push(merged.trimEnd()); i++; continue;
+      }
+      if (next !== undefined && next.trim() !== '' && !isChordLine(next) && !isMixedChordLine(next) && !SECTION_LABEL.test(next.trim())) {
         let merged = next.padEnd(Math.max(next.length, (chords.at(-1)?.col ?? 0)), ' ');
         for (const { col, chord } of [...chords].reverse()) {
           merged = merged.slice(0, col) + `[${chord}]` + merged.slice(col);
@@ -244,7 +271,9 @@ export function chordsOverToChordPro(text: string): string {
         out.push(merged.trimEnd());
         i++;
       } else {
-        out.push(chords.map(c => `[${c.chord}]`).join(' ')); // instrumental line
+        // instrumental line; with bars ("|G - - -|C - G -|") the bars stay, for the stage: "[|G] [-] [-] [-|C] …"
+        out.push(line.includes('|') ? line.replace(/\[([^\]]*)\]/g, '$1 ').trim().split(/\s+/).map(t => `[${t.replace(/(?<=^|[|\-])[a-h][#b]?(?:\d|maj|dim|sus)*(?=$|[-|/])/g, x => LOWER_CHORD.test(x) ? chordName(x) : x)}]`).join(' ')
+          : chords.map(c => `[${c.chord}]`).join(' '));
       }
     } else {
       out.push(line);
@@ -343,7 +372,7 @@ export function normalizeImported(text: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   t = splitInlineLabels(t);                                     // "Pre: words", "Intro: Ab Db" -> the name on its own line
-  if (t.split("\n").some(isChordLine)) t = chordsOverToChordPro(t); // also fixes mixed pastes
+  if (t.split("\n").some(l => isChordLine(l) || isMixedChordLine(l))) t = chordsOverToChordPro(t); // also fixes mixed pastes
   t = labelStanzas(t);
   // blocks without a name get one (the "/: :/" marks help find the chorus), then the marks are dropped
   if (parseSong(t).some(sec => !sec.label)) t = autoLabel(t);

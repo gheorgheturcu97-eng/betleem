@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-23 · 2026.11.23.7 · 🧹 Curăță biblioteca
+- **🧹 și curățarea de la pornire.** Înainte: nu vedeau rândurile de acorduri pe jumătate convertite („A    [F]e”),
+  ritmul cu bare („|G - - -|C - G -|”), „G-A”, „e5”, „b” și „B: …”, deci spunea „0 din 600”. Acum: le recunoaște;
+  acordurile trec pe silabe, barele rămân pentru Scenă („[|G] [-] …”), „B:” devine Bridge, „b” = Si minor. Pe Sală
+  rămân doar versurile. Pe biblioteca de pe MacBook: ~180 de cântări se curăță singure la pornire (cu copie înainte).
+
 ## 2026-11-23 · 2026.11.23.6 · import din ProPresenter, cântări care există deja
 - **Bibliotecă.** Acum: butonul **⇪** importă toate cântările ProPresenter de pe calculator (.pro din ProPresenter 7 și
   .pro6), cu secțiunile lor (Verse → Strofa, Chorus → Refren) și ordinea aleasă. Ce există deja nu se dublează

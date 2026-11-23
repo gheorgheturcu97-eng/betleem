@@ -1266,10 +1266,10 @@ async function runChordsJob(list) {
   } finally { chordsJob.running = false; }
 }
 
-// Once (2026.11.23.5): songs saved with chord letters as lines of words ("f", "Eb f Db Ab", "Intro: Ab Db") or with
+// Once (2026.11.23.5, again in .7 for half-converted lines and bars): songs saved with chord letters as lines of words ("f", "Eb f Db Ab", "Intro: Ab Db") or with
 // "Pre: …" / "R: …" in front of the words are cleaned like a new import, so the hall shows only the words.
 // A copy of the library is kept first; a song whose sections changed loses its custom order (it gets the automatic one).
-if (!db.migrated?.chordLines) {
+if (!db.migrated?.chordLines2) {
   try {
     const bad = db.songs.filter(x => core.needsChordCleanup?.(x.body || ''));
     if (bad.length) {
@@ -1285,7 +1285,7 @@ if (!db.migrated?.chordLines) {
       }
       console.log(`Cântări curățate (acorduri pe rânduri de versuri): ${bad.length}`);
     }
-    db.migrated = { ...(db.migrated || {}), chordLines: true }; save();
+    db.migrated = { ...(db.migrated || {}), chordLines: true, chordLines2: true }; save();
   } catch (e) { logError('curățarea acordurilor', e); }
 }
 

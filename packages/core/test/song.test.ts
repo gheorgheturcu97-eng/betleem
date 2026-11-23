@@ -274,3 +274,11 @@ test('lower-case minor chords and section names written on the same line', () =>
   assert.match(out, /Pre-refren:\n\[Eb\]/);
   assert.ok(!/^f$/m.test(out), 'no chord letter left as a line of words');
 });
+
+test('half-converted chord lines, bars and "B:" leave the words alone', () => {
+  const out = normalizeImported('Strofa 1:\nA                 [F]e\nCELUI CE ȘADE PE TRON\n\nIntro:\n|G - - -|C - G -|\n\nRefren:\nB: [G]Sfânt, Sfânt');
+  assert.match(out, /\[A\]CELUI/); assert.ok(!/^A\s+\[F\]e$/m.test(out));
+  assert.match(out, /\[\|G\] \[-\] \[-\] \[-\|C\] \[-\] \[G\] \[-\|\]/, 'the bars stay for the stage');
+  assert.match(out, /Bridge:\n\[G\]Sfânt, Sfânt/);
+  assert.equal(chordName('b'), 'Bm');
+});
