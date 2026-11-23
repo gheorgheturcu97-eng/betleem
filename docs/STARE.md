@@ -75,6 +75,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   greyshirtguy/ProPresenter7-Proto, MIT; .pro6 XML), `/api/import/propresenter`, `/api/songs/same` (avertisment la cântare
   nouă), butonul ⇪ în Bibliotecă. Test cu fișiere generate; neverificat pe fișiere .pro reale.
 
+- **MD&TRACK grilă + Ableton** (24 nov): `grid()`, `snapT`, `timeHtml` în control.html; `src/ableton.js` (markere, tempo
+  cu rampe, măsura; fapte din dawtool, BSD-3, cod propriu), `/api/import/ableton`, butonul ⇪ Ableton. Test cu seturi generate.
+- **✍ Corectare text** (24 nov): `/api/songs/fix` (AI local/Claude; păstrează acordurile, respinge rândurile schimbate prea
+  mult), automat la cântare nouă, butonul ✍ în Editor. Verificat cu un AI de probă.
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.23.8 · MD&TRACK ca în Ableton, cântări noi corecte
+- **Cântare nouă.** Înainte: se salva cum era scrisă. Acum: la Salvează, AI-ul corectează textul (diacritice,
+  greșeli, cratime; acordurile și rândurile rămân), iar secțiunile și acordurile pe toate strofele se pun singure.
+  În Editor e și butonul **✍** pentru o cântare existentă (cu Anulează în mesaj).
+- **MD&TRACK.** Înainte: rigla în minute, secțiunile puse exact unde dai clic. Acum: cu BPM, rigla numără măsurile
+  (1, 5, 9…), o grilă discretă arată fiecare măsură, ora arată și „măsura.timpul”, secțiunile se lipesc de timpi
+  (Alt = fără lipire), iar punctele de timp merg după track-uri chiar cu click-ul oprit.
+- **⇪ Ableton** lângă ＋ Track-uri: dintr-un proiect .als ia markerele (Verse, Chorus…), tempo-ul și măsura și pune
+  secțiunile pe track-uri.
+
 ## 2026-11-23 · 2026.11.23.7 · 🧹 Curăță biblioteca
 - **🧹 și curățarea de la pornire.** Înainte: nu vedeau rândurile de acorduri pe jumătate convertite („A    [F]e”),
   ritmul cu bare („|G - - -|C - G -|”), „G-A”, „e5”, „b” și „B: …”, deci spunea „0 din 600”. Acum: le recunoaște;

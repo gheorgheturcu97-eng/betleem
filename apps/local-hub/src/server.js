@@ -18,6 +18,7 @@ import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
 import * as propres from './propresenter.js';
+import { parseAls } from './ableton.js';
 import { feedbackProposal, runAssistant, askAI } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings, newToken, focusByMonth } from './plan.js';
 import * as pco from './pco.js';
@@ -1518,6 +1519,41 @@ async function handle(req, res) {
       });
       if (r.added.length) { save(); broadcast(); }
       return json(res, 200, { ...r, dirs });
+    }
+    // 🎛 an Ableton Live set (.als): markers, tempo and time signature for MD&TRACK (the file is only read, not kept)
+    if (p === '/api/import/ableton' && req.method === 'POST') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      try { return json(res, 200, parseAls(await body(req, 60_000_000, true))); }
+      catch (e) { return json(res, 400, { error: e.message.startsWith('Nu e') ? e.message : 'Nu am putut citi setul Ableton' }); }
+    }
+    // ✍ the words of a song, corrected: diacritics, spelling, hyphens. Only the words change; chords stay on them,
+    // sections and lines stay as they are. A line the AI changed too much keeps its old form.
+    if (p === '/api/songs/fix' && req.method === 'POST') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const { body: text = '' } = JSON.parse((await body(req, 200_000)) || '{}');
+      const lines = String(text).split('\n'), idx = [];
+      lines.forEach((l, i) => { const t = core.stripChords(l).trim(); if (t && !core.isChordLine(t) && !/^\{/.test(t) && !/:\s*$/.test(t)) idx.push(i); });
+      if (!idx.length) return json(res, 200, { body: text, changed: 0 });
+      const ask = idx.map((i, k) => `${k + 1}| ${core.stripChords(lines[i]).trim()}`).join('\n');
+      let answer;
+      try {
+        answer = await askAI(aiSettings, 'Corectezi versuri de cântări creștine în limba română. Pui diacriticele corecte (ă, â, î, ș, ț), corectezi greșelile de scriere și cratima (s-a, într-o, m-ai), majuscula la începutul rândului și la numele lui Dumnezeu (Isus, Domnul, Tu/Ție când e despre El). NU schimbi cuvintele, ordinea lor, rima sau sensul; nu adaugi și nu scoți rânduri. Primești rânduri numerotate „N| text”. Răspunzi DOAR cu aceleași rânduri, în același format „N| text”, fără alte explicații.', ask);
+      } catch (e) { return json(res, 503, { error: e.message }); }
+      const fixed = new Map();
+      for (const m of String(answer).matchAll(/^\s*(\d+)\s*\|\s?(.*)$/gm)) fixed.set(+m[1], m[2].trim());
+      const norm = w => core.normWord(w), words = t => t.split(/\s+/).map(norm).filter(Boolean);
+      let changed = 0; const out = lines.slice();
+      idx.forEach((i, k) => {
+        const old = core.stripChords(lines[i]).trim(), neu = fixed.get(k + 1);
+        if (!neu || neu === old) return;
+        const a = words(old), b = words(neu);                       // the same words (diacritics apart), give or take one
+        const same = a.filter(w => b.includes(w)).length;
+        if (Math.abs(a.length - b.length) > 1 || same < Math.max(1, a.length - 1)) return;
+        const lead = lines[i].match(/^\s*/)[0];
+        out[i] = /\[[A-H]/.test(lines[i]) ? core.applyChords(lead + neu, lines[i]).body : lead + neu;   // chords back on their words
+        changed++;
+      });
+      return json(res, 200, { body: out.join('\n'), changed });
     }
     // 🔎 a new song that may already be in the library (same name, or the same first lines)
     if (p === '/api/songs/same' && req.method === 'POST') {

@@ -733,6 +733,7 @@
   .rt-meter{width:120px;height:8px;border-radius:4px;background:#000;overflow:hidden} .rt-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22c55e,#facc15 70%,#ef4444)}
   #mVoice.md{box-shadow:0 0 0 2px #ff6b9d}
   .marklines{position:absolute;left:var(--th);right:0;top:0;bottom:0;pointer-events:none}
+  .marklines b.bar{position:absolute;top:0;bottom:0;left:calc(var(--x) * 100%);width:1px;background:rgba(255,255,255,.07)} .marklines b.bar.big{background:rgba(255,255,255,.16)}
   .marklines i{position:absolute;top:0;bottom:0;left:calc(var(--x) * 100%);width:2px;background:var(--sc);opacity:.85;box-shadow:0 0 8px var(--sc)}
   .arrange .arow.head{cursor:copy}
   /* names under the faders again; the output right on each strip */
@@ -1066,6 +1067,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <div class="editor-actions">
           <button id="bSave" class="acc">Salvează</button>
           <button id="bSaveAdd">Salvează + în program</button>
+          <button id="bFixWords" class="icon" title="✍ Corectează textul: diacritice, greșeli de scriere, cratime. Acordurile și rândurile rămân. (La o cântare nouă se face singur la Salvează.)" style="flex:none">✍</button>
           <button id="bChordsOne" class="icon" title="Acorduri pentru această cântare: dacă are doar pe strofa 1, le pun pe toate strofele și refrenele; dacă n-are deloc, le caut pe net" style="flex:none">♪</button>
           <button id="bNew" class="icon" title="Cântare nouă" style="flex:none">＋</button>
         </div>
@@ -1108,6 +1110,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Le pun eu (apăs la fiecare slide)</button>
         <label class="check"><input type="checkbox" id="tlAuto" checked> Versurile merg singure după track</label>
         <label class="btn pill" title="Unul sau mai multe fișiere audio: click, guide, tobe, bas, clape…">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*" multiple hidden></label>
+        <label class="btn pill" title="🎛 Un proiect Ableton Live (.als) al cântării: ia markerele (Verse, Chorus…), tempo-ul și măsura și pune secțiunile pe track-uri">⇪ Ableton<input type="file" id="alsFile" accept=".als" hidden></label>
         <button id="trkLink" class="pill" title="Pune toate track-urile într-un singur loc: Documente/Betleem/trackuri/<titlul cântării>/. Apasă și fiecare cântare își ia track-urile din folderul ei.">🔗 Track-uri din folderul comun</button>
         <button id="audioOut" class="pill" title="Ce iese pe fiecare ieșire a plăcii de sunet; microfonul MD">🎛 Rutare audio și microfon MD</button>
         <button id="beatHere" class="pill" title="Pune redarea pe primul timp al cântării (prima lovitură) și apasă: click-ul se aliniază cu track-urile">⌖ Primul timp e aici (aliniază click-ul)</button>
@@ -1427,7 +1430,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   import * as BR from '/bibleref.js';
   import { connect, esc, paintBackground } from '/client.js';
   import { Pad, Metronome, Multitrack, PAD_SOUNDS, tapper, outputs, inputs } from '/music.js';
-  import { stripChords, sectionColor, fillChords } from '/core/song.js';
+  import { stripChords, sectionColor, fillChords, sectionKind } from '/core/song.js';
   import { LayerEditor, renderLayers, sameLayers, newLayer } from '/layers.js';
   const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', reading: 'citire', bible: 'biblie' };
   const $ = id => document.getElementById(id);
@@ -3108,7 +3111,43 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     S.setlist[mtItem].guide = next; vt.marks = next.slice().sort((a, b) => a.bar - b.bar); vtSave(next); vtDraw();
     toast(`${label} · măsura ${bar + 1}`);
   });
-  const laneTime = e => { const r = $('blocks').getBoundingClientRect(); return Math.max(0, Math.min(mt.duration, (e.clientX - r.left) / r.width * mt.duration)); };
+  // the bar/beat grid of the song now on the tracks (null without a tempo)
+  function grid() {
+    const it = S?.setlist?.[mtItem], bpm = it?.bpm || it?.origBpm; if (!bpm) return null;
+    const beats = met.beats || 4; return { bpm, beats, bar: 60 / bpm * beats, off: it.beatOffset || 0 };
+  }
+  let dotAt = -1;
+  /** "12.3" (bar.beat) next to the minutes, when there is a tempo */
+  function timeHtml(t, dur) {
+    const g = grid();
+    if (!g) return `<b>${clock(t)}</b><small>${clock(dur)}</small>`;
+    const beat = Math.max(0, t - g.off) / (g.bar / g.beats), bar = Math.floor(beat / g.beats) + 1, b = Math.floor(beat % g.beats) + 1;
+    return `<b>${bar}.${b}</b><small>${clock(t)} / ${clock(dur)}</small>`;
+  }
+  /** a section start lands on the nearest beat (on the bar, when it is within a beat of it); Alt = exactly where you clicked */
+  function snapT(t, e) {
+    const g = grid(); if (!g || e?.altKey) return t;
+    const beat = g.bar / g.beats, k = Math.round((t - g.off) / beat), barK = Math.round((t - g.off) / g.bar);
+    const onBar = g.off + barK * g.bar, onBeat = g.off + k * beat;
+    return Math.max(0, Math.round((Math.abs(t - onBar) <= beat * 0.75 ? onBar : onBeat) * 1000) / 1000);
+  }
+  const laneTime = e => { const r = $('blocks').getBoundingClientRect(); return snapT(Math.max(0, Math.min(mt.duration, (e.clientX - r.left) / r.width * mt.duration)), e); };
+  // ⇪ Ableton (.als): markers → the song's sections on the tracks, plus tempo and time signature
+  $('alsFile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    if (mtItem < 0 || S.setlist[mtItem]?.kind !== 'song') return toast('Alege întâi cântarea în MD&TRACK');
+    let r; try { r = await api('/api/import/ableton', { method: 'POST', body: f }); if (r.error) throw new Error(r.error); } catch (err) { return toast(err.message); }
+    if (r.bpm) send({ type: 'setBpm', item: mtItem, bpm: Math.round(r.bpm) });
+    if ([2, 3, 4, 6].includes(r.beats)) { met.beats = r.beats; $('beats').value = String(r.beats); prefs.beats = r.beats; savePrefs(); renderDots(); }
+    const names = sectionNames(), num = x => (String(x).match(/\d+/) || [''])[0], marks = []; let used = -1; const skipped = [];
+    for (const m of r.markers) {
+      const k = sectionKind(m.name.replace(/^v(\d)/i, 'verse $1')), n = num(m.name);
+      const hit = k && names.find(x => x.p > used && sectionKind(x.label) === k && (!n || !num(x.label) || num(x.label) === n));
+      if (hit) { marks.push({ t: m.sec, p: hit.p }); used = hit.p; } else skipped.push(m.name);
+    }
+    if (marks.length) saveMarks(marks);
+    toast(`Ableton: ${r.bpm} BPM · ${r.beats}/${r.unit}` + (marks.length ? ` · ${marks.length} secțiuni puse` : ' · nicio secțiune potrivită') + (skipped.length ? ` · fără pereche: ${skipped.slice(0, 6).join(', ')}` : ''));
+  };
   $('lane').addEventListener('dblclick', e => {
     if (!e.target.closest('#blocks, .arow.head') || !mt.duration) return;
     const t = laneTime(e), marks = marksNow(), before = marks.filter(m => m.t <= t).at(-1);
@@ -3349,8 +3388,17 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const blocks = sectionBlocks(), pct = t => dur ? (t / dur * 100) : 0;
     $('blocks').innerHTML = dur ? blocks.map(b => `<div class="blk" data-t="${b.start}" data-l="${esc(b.label)}" title="Apasă ca să sari aici (la următoarea măsură, dacă merge)" style="left:${pct(b.start)}%;width:${Math.max(0.5, pct(b.end) - pct(b.start))}%;--sc:${sectionColor(b.label)}">
       ${esc(b.label)}<small>${fmt(b.start)}</small>${b.ticks.map(t => `<i class="tick" style="left:${(t - b.start) / Math.max(0.01, b.end - b.start) * 100}%"></i>`).join('')}</div>`).join('') : '';
-    const stepS = dur > 600 ? 60 : dur > 240 ? 30 : 15;
-    $('ruler').innerHTML = dur ? Array.from({ length: Math.floor(dur / stepS) + 1 }, (_, k) => `<span style="left:${pct(k * stepS)}%">${fmt(k * stepS)}</span>`).join('') : '';
+    // 🎛 like Ableton's arrangement: with a tempo the ruler counts bars (1, 5, 9…) and a light grid marks every bar
+    const g = grid();
+    if (g && dur) {
+      const w = $('blocks').clientWidth || 800, pxBar = w * g.bar / dur, step = [1, 2, 4, 8, 16, 32, 64].find(x => x * pxBar >= 34) || 64, n = Math.floor((dur - g.off) / g.bar) + 1;
+      $('ruler').innerHTML = Array.from({ length: Math.ceil(n / step) }, (_, k) => `<span style="left:${pct(g.off + k * step * g.bar)}%">${k * step + 1}</span>`).join('');
+      $('ruler').title = `Măsuri: ${g.bpm} BPM · ${g.beats}/${g.beats === 6 ? 8 : 4}. Secțiunile se lipesc de timpi (Alt = fără lipire).`;
+    } else {
+      const stepS = dur > 600 ? 60 : dur > 240 ? 30 : 15;
+      $('ruler').innerHTML = dur ? Array.from({ length: Math.floor(dur / stepS) + 1 }, (_, k) => `<span style="left:${pct(k * stepS)}%">${fmt(k * stepS)}</span>`).join('') : '';
+      $('ruler').title = '';
+    }
     const key = mt.ch.map(c => c.file + (c.muted ? 'm' : '') + (c.solo ? 's' : '')).join('|') + '#' + blocks.map(b => b.label + b.start).join(',') + '#' + dur;
     if ($('tracks').dataset.key !== key) {
       $('tracks').dataset.key = key;
@@ -3366,8 +3414,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       $('tracks').querySelectorAll('[data-solo]').forEach(b => b.onclick = e => { e.stopPropagation(); const c = mt.ch[+b.dataset.solo]; c.solo = !c.solo; mt.apply(); renderMixer(); });
       requestAnimationFrame(() => $('tracks').querySelectorAll('canvas').forEach(cv => drawWave(cv, mt.ch[+cv.dataset.w].file, blocks, trackColor(+cv.dataset.w, mt.ch[+cv.dataset.w].name))));
     }
-    $('markLines').innerHTML = dur ? blocks.map(b => `<i style="--x:${b.start / dur};--sc:${sectionColor(b.label)}"></i>`).join('') : '';
-    $('tlTime').innerHTML = `<b>${clock(mt.time)}</b><small>${clock(dur)}</small>`;
+    const bars = g && dur && ($('blocks').clientWidth || 800) * g.bar / dur >= 5
+      ? Array.from({ length: Math.floor((dur - g.off) / g.bar) + 1 }, (_, k) => `<b class="bar ${k % 4 ? '' : 'big'}" style="--x:${(g.off + k * g.bar) / dur}"></b>`).join('') : '';
+    $('markLines').innerHTML = bars + (dur ? blocks.map(b => `<i style="--x:${b.start / dur};--sc:${sectionColor(b.label)}"></i>`).join('') : '');
+    $('tlTime').innerHTML = timeHtml(mt.time, dur);
     $('lane').style.setProperty('--p', dur ? mt.time / dur : 0);
   }
   addEventListener('resize', () => { if (!$('musicView').hidden) { $('tracks').dataset.key = ''; renderLane(); } });
@@ -3407,7 +3457,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   mt.onTime = t => {
     if (mt.playing) followCues(t);                    // lyrics on time, every frame
     const now = performance.now(); if (mt.playing && now - uiAt < 50) return; uiAt = now;   // the rest ~20 times a second: lighter for the computer
-    $('lane').style.setProperty('--p', mt.duration ? t / mt.duration : 0); $('tlTime').innerHTML = `<b>${fmt(t)}</b><small>${fmt(mt.duration)}</small>`;
+    $('lane').style.setProperty('--p', mt.duration ? t / mt.duration : 0); $('tlTime').innerHTML = timeHtml(t, mt.duration);
+    const g = grid();                                  // the beat dots follow the tracks, even with the click off
+    if (g && mt.playing && !met.playing) { const b = Math.floor(Math.max(0, t - g.off) / (g.bar / g.beats)) % g.beats; if (b !== dotAt) { dotAt = b; renderDots(b); } }
     if (mt.playing) markSection(); if (!$('musicView').hidden) meters();
   };
   mt.onEnd = () => { setPlay(false); if (learning) finishLearning(); };
@@ -3638,7 +3690,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     mtKey = ''; toast(`Am adăugat ${added.length} track-uri la „${it.title}”`);
   };
   // tempo and key
-  $('beats').onchange = e => { met.beats = +e.target.value; prefs.beats = met.beats; savePrefs(); renderDots(); };
+  $('beats').onchange = e => { met.beats = +e.target.value; prefs.beats = met.beats; savePrefs(); renderDots(); renderLane(); };
   const renderDots = (on = -1) => { $('dots').innerHTML = Array.from({ length: met.beats }, (_, i) => `<i class="${i === on ? 'on' : ''} ${i === 0 ? 'first' : ''}"></i>`).join(''); };
   met.onBeat = b => renderDots(b); renderDots();
   const setBpm = b => {
@@ -3989,6 +4041,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   async function saveSong(addAfter) {
     const song = { id: $('songId').value || undefined, title: $('songTitle').value, key: $('songKey').value, bpm: $('songBpm').value ? +$('songBpm').value : null, body: $('songBody').value, source: $('songBody').dataset.source, tags: editorTags };
     if (!song.title.trim() || !song.body.trim()) return toast('Pune titlu și versuri');
+    if (!song.id) {                                  // ✍ a new song: the words corrected (diacritics, spelling), if an AI answers in time
+      try {
+        toast('Verific textul (diacritice, greșeli)…');
+        const r = await Promise.race([api('/api/songs/fix', { method: 'POST', body: JSON.stringify({ body: song.body }) }), new Promise((_, no) => setTimeout(() => no(new Error('t')), 25000))]);
+        if (r?.changed) { song.body = r.body; $('songBody').value = r.body; toast(`✍ Am corectat ${r.changed} ${r.changed === 1 ? 'rând' : 'rânduri'} (diacritice, scriere)`); }
+      } catch {}
+    }
     if (!song.id) {                                  // 🔎 a new song: is it already in the library?
       try {
         const hit = await api('/api/songs/same', { method: 'POST', body: JSON.stringify({ title: song.title, body: song.body }) });
@@ -4101,6 +4160,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     catch (e) { toast(e.message); }
   };
   $('bChordsStop').onclick = () => api('/api/add-chords/stop', { method: 'POST' });
+  $('bFixWords').onclick = async () => {
+    const t = $('songBody').value; if (!t.trim()) return toast('Scrie întâi versurile');
+    $('bFixWords').disabled = true; toast('AI-ul corectează textul…');
+    try {
+      const r = await api('/api/songs/fix', { method: 'POST', body: JSON.stringify({ body: t }) }); if (r.error) throw new Error(r.error);
+      if (!r.changed) return toast('Textul e corect, n-am schimbat nimic');
+      $('songBody').value = r.body; $('songBody').dispatchEvent(new Event('input'));
+      toast(`✍ Am corectat ${r.changed} ${r.changed === 1 ? 'rând' : 'rânduri'}. Verifică și Salvează.`, () => { $('songBody').value = t; $('songBody').dispatchEvent(new Event('input')); });
+    } catch (e) { toast(e.message || 'AI-ul nu răspunde'); } finally { $('bFixWords').disabled = false; }
+  };
   // ⇪ ProPresenter → the library, once; songs already here are not copied again
   async function importPro(pick = false) {
     toast(pick ? 'Alege folderul ProPresenter…' : 'Caut cântările ProPresenter pe acest calculator…');
