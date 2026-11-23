@@ -71,6 +71,10 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - **Acorduri cu literă mică și secțiuni pe același rând** (23 nov): `chordName`, `splitInlineLabels`, `needsChordCleanup`
   în song.ts (test); curățare o dată la pornire (`db.migrated.chordLines`).
 
+- **⇪ Import ProPresenter** (23 nov): `src/propresenter.js` (cititor protobuf mic + RTF, câmpurile din
+  greyshirtguy/ProPresenter7-Proto, MIT; .pro6 XML), `/api/import/propresenter`, `/api/songs/same` (avertisment la cântare
+  nouă), butonul ⇪ în Bibliotecă. Test cu fișiere generate; neverificat pe fișiere .pro reale.
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

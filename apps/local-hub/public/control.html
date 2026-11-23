@@ -1024,6 +1024,7 @@
         <div id="chordsBox" class="chords-box" hidden><div class="bar"><i id="chordsBar"></i></div><span id="chordsText"></span><button id="bChordsStop" class="ghost">Oprește</button></div>
         <div class="libbar"><button id="bNew2" class="acc">＋ Cântare nouă</button><span class="grow"></span>
           <button id="bChordsAll" class="icon" title="Acorduri pentru toată biblioteca: caută pe net cântările fără acorduri și pune acordurile pe fiecare strofă, refren și bridge">♪</button>
+          <button id="bPro" class="icon" title="⇪ Importă cântările din ProPresenter de pe acest calculator (cele care există deja nu se dublează)">⇪</button>
           <button id="bClean" class="icon" title="Curăță biblioteca: etichete din semnele site-urilor (1., R:, Str2), fără /: :/, refrenul după fiecare strofă">🧹</button></div>
       </div>
 
@@ -3985,9 +3986,18 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // editor
   function fillEditor(s) { editorTags = [...(s.tags || [])]; renderEditorTags(); $('songId').value = s.id || ''; $('songTitle').value = s.title || ''; $('songKey').value = s.key || ''; $('songBpm').value = s.bpm || ''; import('/core/song.js').then(c => { $('songKey').placeholder = c.guessKey(s.body || '') || 'Ton'; }); $('songBody').value = s.body || ''; $('songBody').dataset.source = s.source || ''; }
   async function loadSongInEditor(it) { if (it.kind === 'song') { songCache.delete(it.songId); fillEditor(await fetch('/api/songs/' + it.songId).then(r => r.json())); } }
-  function saveSong(addAfter) {
+  async function saveSong(addAfter) {
     const song = { id: $('songId').value || undefined, title: $('songTitle').value, key: $('songKey').value, bpm: $('songBpm').value ? +$('songBpm').value : null, body: $('songBody').value, source: $('songBody').dataset.source, tags: editorTags };
     if (!song.title.trim() || !song.body.trim()) return toast('Pune titlu și versuri');
+    if (!song.id) {                                  // 🔎 a new song: is it already in the library?
+      try {
+        const hit = await api('/api/songs/same', { method: 'POST', body: JSON.stringify({ title: song.title, body: song.body }) });
+        if (hit?.id) {
+          const ok = await ask(`„${hit.title}” există deja în bibliotecă (același nume sau aceleași prime versuri). OK = o deschid pe aceea în Editor. Renunță = salvez totuși una nouă.`, [], 'Deschide-o pe cea existentă');
+          if (ok) { fillEditor(await fetch('/api/songs/' + hit.id).then(r => r.json())); return toast('Ai în Editor cântarea existentă'); }
+        }
+      } catch {}
+    }
     send({ type: 'saveSong', song, addToProgram: addAfter && !song.id });
     if (song.id) songCache.delete(song.id);
     toast(addAfter && !song.id ? 'Salvată și adăugată în program' : 'Salvat');
@@ -4091,6 +4101,23 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     catch (e) { toast(e.message); }
   };
   $('bChordsStop').onclick = () => api('/api/add-chords/stop', { method: 'POST' });
+  // ⇪ ProPresenter → the library, once; songs already here are not copied again
+  async function importPro(pick = false) {
+    toast(pick ? 'Alege folderul ProPresenter…' : 'Caut cântările ProPresenter pe acest calculator…');
+    let r;
+    try { r = await api('/api/import/propresenter', { method: 'POST', body: JSON.stringify({ pick }) }); } catch (e) { return toast(e.message); }
+    if (r.canceled) return;
+    if (!r.files) {
+      const again = await ask(r.dirs?.length ? 'N-am găsit fișiere .pro în folderele ProPresenter.' : 'N-am găsit folderul ProPresenter pe acest calculator. Îl alegi tu? (În ProPresenter: Settings → General → Library.)', [], 'Alege folderul');
+      if (again) importPro(true); return;
+    }
+    const sameList = r.same.slice(0, 15).map(x => x.title === x.existing ? x.title : `${x.title} → ${x.existing}`).join(', ');
+    await ask(`Am găsit ${r.files} fișiere. Adăugate: ${r.added.length}. Existau deja (nu le-am dublat): ${r.same.length}${sameList ? ' (' + sameList + (r.same.length > 15 ? '…' : '') + ')' : ''}.`
+      + (r.failed.length ? ` Nu s-au putut citi: ${r.failed.length} (${r.failed.slice(0, 8).join(', ')}${r.failed.length > 8 ? '…' : ''}).` : '')
+      + (r.added.length ? ' Am făcut întâi o copie a bibliotecii.' : ''), [], 'OK');
+    search();
+  }
+  $('bPro').onclick = () => importPro(false);
   $('bChordsOne').onclick = async () => {
     const id = $('songId').value; if (!id) return toast('Salvează întâi cântarea');
     if (/\[[A-G]/.test($('songBody').value)) {           // has chords on some sections: the same chords on all the others, here, no internet

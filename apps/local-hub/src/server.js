@@ -17,6 +17,7 @@ import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
 import { searchLyrics } from './websearch.js';
 import { addChordsToSongs } from './chords.js';
+import * as propres from './propresenter.js';
 import { feedbackProposal, runAssistant, askAI } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings, newToken, focusByMonth } from './plan.js';
 import * as pco from './pco.js';
@@ -1496,6 +1497,34 @@ async function handle(req, res) {
       if (list.length > 1) libraryBackup();
       runChordsJob(list);
       return json(res, 200, { ok: true });
+    }
+    // ⇪ every song from ProPresenter on this computer (its own folders, or one the operator picks); the same song twice is skipped
+    if (p === '/api/import/propresenter' && req.method === 'POST') {
+      if (req.viaDoor || !checkPin(req)) return json(res, 403, { error: 'Doar pe calculatorul bisericii, cu PIN' });
+      const m = JSON.parse((await body(req, 5000)) || '{}');
+      let dirs = propres.defaultFolders();
+      if (m.pick && EL) {                                // the operator shows the folder (ProPresenter → Settings → Library location)
+        const r = await EL.dialog.showOpenDialog({ title: 'Alege folderul ProPresenter (cu fișierele .pro)', properties: ['openDirectory'] });
+        if (r.canceled || !r.filePaths[0]) return json(res, 200, { canceled: true });
+        dirs = [r.filePaths[0]];
+      }
+      if (!dirs.length) return json(res, 200, { files: 0, added: [], same: [], failed: [], dirs: [] });
+      libraryBackup();
+      const r = propres.importFolders(dirs, db.songs, core, s => {
+        const order = s.arrangement || core.autoArrangement(s.body);
+        const song = { id: crypto.randomUUID(), title: s.title, author: s.author, key: s.key, body: s.body, source: s.source,
+          ...(order ? { arrangement: order } : {}), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        db.songs.push(song); return song;
+      });
+      if (r.added.length) { save(); broadcast(); }
+      return json(res, 200, { ...r, dirs });
+    }
+    // 🔎 a new song that may already be in the library (same name, or the same first lines)
+    if (p === '/api/songs/same' && req.method === 'POST') {
+      if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
+      const m = JSON.parse((await body(req, 200_000)) || '{}');
+      const hit = propres.findSame(db.songs.filter(x => x.id !== m.id), String(m.title || ''), String(m.body || ''));
+      return json(res, 200, hit ? { id: hit.id, title: hit.title } : {});
     }
     if (p === '/api/add-chords/stop' && req.method === 'POST') { chordsJob.stop = true; return json(res, 200, { ok: true }); }
     if (p === '/api/plan') {

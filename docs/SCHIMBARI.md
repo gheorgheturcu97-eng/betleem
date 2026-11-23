@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-23 · 2026.11.23.6 · import din ProPresenter, cântări care există deja
+- **Bibliotecă.** Acum: butonul **⇪** importă toate cântările ProPresenter de pe calculator (.pro din ProPresenter 7 și
+  .pro6), cu secțiunile lor (Verse → Strofa, Chorus → Refren) și ordinea aleasă. Ce există deja nu se dublează
+  (același nume sau aceleași prime versuri). Dacă nu găsește singur folderul, te lasă să-l alegi.
+- **Cântare nouă.** Înainte: se salva chiar dacă exista deja. Acum: dacă există una cu același nume sau aceleași prime
+  versuri, te întreabă: o deschizi pe cea existentă sau o salvezi totuși.
+
 ## 2026-11-23 · 2026.11.23.5 · straturi, Props, acordurile care apăreau pe Sală
 - **Acorduri scrise cu literă mică („f”, „Eb f Db Ab”) și „Intro: Ab Db”, „Pre: …”, „R: …”.** Înainte: apăreau ca
   versuri pe ecranul din sală. Acum: sunt recunoscute ca acorduri („f” = Fm) și puse pe silabe, iar „Pre:”/„R:” devin
