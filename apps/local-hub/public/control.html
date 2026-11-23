@@ -29,7 +29,7 @@
   body{margin:0;color:var(--fg);background:var(--bg);font-size:14px;line-height:1.4;overflow:hidden;-webkit-font-smoothing:antialiased}
   /* soft colour drifting behind the glass */
   .aurora{position:fixed;inset:-20%;z-index:-1;filter:blur(110px) saturate(130%);opacity:.42;pointer-events:none}
-  .aurora i{position:absolute;border-radius:50%;animation:float 30s ease-in-out infinite alternate}
+  .aurora i{position:absolute;border-radius:50%;animation:none   /* still: a drifting blur behind glass kept the graphics chip busy all the time (60% GPU) */}
   .aurora i:nth-child(1){width:46vw;height:46vw;left:2%;top:4%;background:#5b3cff}
   .aurora i:nth-child(2){width:40vw;height:40vw;right:4%;top:0;background:#00b3a4;animation-delay:-9s}
   .aurora i:nth-child(3){width:42vw;height:42vw;left:32%;bottom:-6%;background:#ff8a1e;opacity:.7;animation-delay:-17s}

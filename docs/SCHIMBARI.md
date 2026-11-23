@@ -1,6 +1,10 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.9 · mai ușor pentru placa grafică
+- **Fundalul colorat din spatele sticlei (Live și Planificare).** Înainte: se mișca încet tot timpul, iar sticla îl
+  re-încețoșa la fiecare cadru (~60% placă grafică pe M1 Pro). Acum: stă pe loc; arată la fel, iar placa grafică stă liberă.
+
 ## 2026-11-24 · 2026.11.24.8 · medley pe track-uri, pachete .zip
 - **🎚 pe o înregistrare cu o altă cântare înăuntru** (ex. „Liber” cu bridge-ul din „Tu ești vrednic Domnul meu”). Acum:
   versurile care nu sunt din cântare sunt căutate în bibliotecă; partea găsită e pusă în program după cântare (în același
