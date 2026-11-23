@@ -54,6 +54,7 @@ export const TOOLS = [
   { name: 'add_part_of_song', description: 'Îmbinare: pune în program doar o parte dintr-o cântare din bibliotecă (de ex. refrenul din „Domnul miracolelor”), după o anumită poziție, în același ton cu cântarea dinainte (dacă match nu e false). Ex.: „după Tu ești vrednic pune refrenul din Domnul miracolelor”.',
     params: { title: { type: 'string' }, sections: { type: 'array', items: { type: 'string' }, description: 'ex. ["Refren"] sau ["Bridge", "Refren"]' }, after: { type: 'number', description: 'poziția după care vine (1 = după prima); lipsă = la final' }, match: { type: 'boolean' } }, required: ['title', 'sections'] },
   { name: 'auto_sections', description: 'MD&TRACK: ascultă track-ul de ghid (vocea care spune „Verse”, „Chorus”, „Bridge”) al cântării deschise în MD&TRACK și pune singur secțiunile pe track-uri (unde începe fiecare și cât ține). Folosește-l când cere să analizezi ghidul, vocea, durata secțiunilor sau „pune secțiunile”.', params: {} },
+  { name: 'guide_from_recording', description: 'MD&TRACK: din înregistrarea unei cântări (pusă ca track) află tempo-ul și secțiunile (ascultă versurile) și face în jurul ei track-urile Click și Guide. Folosește-l când cere „construiește ghidul / click-ul pe înregistrare”.', params: {} },
   { name: 'fill_chords', description: 'Acorduri pe toată cântarea: unde sunt doar pe strofa 1 / primul refren, le pune pe aceleași silabe la toate strofele, refrenele și bridge-urile; cântărilor fără acorduri le caută acordurile pe net. Fără titlu = toată biblioteca.',
     params: { title: { type: 'string', description: 'titlul cântării (gol = toată biblioteca)' } } },
   { name: 'fill_team', description: 'Programează oamenii: pune voluntari pe locurile goale ale echipei (corect: cine poate sluji acolo, n-a blocat ziua, e sub limita lunară; cine a slujit mai puțin are prioritate). Opțional doar un departament.',
@@ -144,6 +145,7 @@ export function runTool(hub, name, a = {}) {
       return done(hub.run({ type: 'arrangement', item: idx, value: want }), `după poziția ${after}: ${want.join(' → ')} din „${song.title}”, ton ${key || '?'}`);
     }
     case 'auto_sections': return hub.autoSections ? hub.autoSections() : { error: 'Se face din MD&TRACK, pe calculatorul cu track-urile' };
+    case 'guide_from_recording': return hub.autoSections ? hub.autoSections('aiBuild') : { error: 'Se face din MD&TRACK, pe calculatorul cu track-urile' };
     case 'fill_chords': return hub.chords ? hub.chords(String(a.title || '')) : { error: 'Nu e disponibil aici' };
     case 'fill_team': {
       if (!hub.fillTeam) return { error: 'Nu e disponibil aici' };

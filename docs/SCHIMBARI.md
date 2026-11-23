@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.7 · Click + Guide în jurul unei înregistrări
+- **MD&TRACK → ⋯ → 🎚 Click + Guide pe o înregistrare.** Acum: pui înregistrarea cântării ca track (YouTube, repetiție),
+  iar aplicația îi află tempo-ul exact și măsura 1 (din bătăi), ascultă versurile ca să găsească unde începe fiecare
+  secțiune și face lângă ea track-urile Click și Guide, cu secțiunile puse. Înregistrarea rămâne neatinsă. Și asistentul:
+  „construiește ghidul pe înregistrare”.
+
 ## 2026-11-24 · 2026.11.24.6 · ghid vorbit cu vocile FS2S, track-uri Click + Guide dintr-un clic
 - **Vocile ghidului.** Înainte: vocea calculatorului. Acum: înregistrările din Documente/Betleem/ghid (pe MacBook: cele
   45 de voci FS2S, „Verse”, „Chorus”, „1”–„12”…); „Verse 2” se spune „Verse” + „2” când nu există o înregistrare separată.

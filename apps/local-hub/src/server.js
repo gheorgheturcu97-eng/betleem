@@ -1038,8 +1038,8 @@ const aiHub = {
   /** 🗓 leaders' meetings and tasks, for the assistant ("pune pe agenda de marți…", "dă-i lui Andrei sarcina…") */
   plan: () => { db.plan.meetings ||= []; db.plan.tasks ||= []; return db.plan; },
   /** 🎛 ✦ Secțiuni automat: the computer with the tracks listens to the guide (Whisper runs there, in the page) */
-  autoSections() {
-    const msg = JSON.stringify({ type: 'md', cmd: 'aiCues' }); let n = 0;
+  autoSections(cmd = 'aiCues') {
+    const msg = JSON.stringify({ type: 'md', cmd }); let n = 0;
     for (const c of wss.clients) if (c.readyState === 1 && ROLE_RANK[sessions.get(c)?.role] >= 1) { c.send(msg); n++; }
     return n ? { ok: true, note: 'Calculatorul cu track-urile ascultă acum ghidul (durează cam un minut). Secțiunile apar pe track-uri și rămân salvate la cântare.' }
       : { error: 'Deschide MD&TRACK cu o cântare care are track-uri, apoi cere din nou.' };

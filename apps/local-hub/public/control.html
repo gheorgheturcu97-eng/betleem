@@ -1118,6 +1118,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       <div class="pop glass mtools" id="mToolsPop">
         <b class="hint" style="margin:0">Secțiunile cântării</b>
         <button id="aiCues" class="pill acc" title="AI-ul găsește track-ul cu ghidul vorbit, ascultă „Verse”, „Chorus”, „Bridge” (sau „Strofa”, „Refren”) și pune secțiunile pe track-uri. Rămân salvate la cântare.">✦ Secțiuni automat (AI ascultă ghidul)</button>
+        <button id="aiBuild" class="pill" title="Ai pus o înregistrare a cântării (ex. de pe YouTube sau de la repetiție)? Aplicația îi află tempo-ul și unde începe fiecare secțiune (ascultă versurile) și face în jurul ei track-urile Click și Guide.">🎚 Click + Guide pe o înregistrare</button>
         <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Le pun eu (apăs la fiecare slide)</button>
         <label class="check"><input type="checkbox" id="tlAuto" checked> Versurile merg singure după track</label>
         <label class="btn pill" title="Unul sau mai multe fișiere audio: click, guide, tobe, bas, clape…">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*" multiple hidden></label>
@@ -3320,6 +3321,57 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       toast(`✦ ${order.length} secțiuni (${how}): ${order.map(l => abbr(l)).join(' ')}`);
     } catch (e) { say(''); toast('Nu am putut asculta track-ul: ' + e.message); }
   }
+  // 🎚 a recording of the song (any mix): its tempo and bar 1 from the beat, its sections from the sung words (Whisper,
+  // matched to our lyrics), then a Click and a Guide made around it. The recording stays a track; nothing else changes.
+  async function buildAroundRecording() {
+    const i = mtItem, it = S.setlist[i]; if (!it || it.kind !== 'song') return toast('Alege cântarea');
+    const rec = mt.ch.filter(c => !/click|metro|guide|ghid|cue/i.test(c.name || c.file)).sort((a, b) => (b.el.duration || 0) - (a.el.duration || 0))[0];
+    if (!rec) return toast('Pune întâi înregistrarea cântării cu ＋ Track-uri (mp3, wav, m4a)');
+    const say = t => { $('voiceSay').hidden = !t; $('voiceSay').textContent = t || ''; };
+    try {
+      say('🎚 1/3 Aflu tempo-ul din „' + (rec.name || rec.file) + '”…');
+      const { detectBeat } = await import('/music.js');
+      const raw = await fetch('/media/' + encodeURIComponent(rec.file)).then(r => r.arrayBuffer());
+      const audio = await new OfflineAudioContext(1, 1, 22050).decodeAudioData(raw), beats = met.beats || 4;
+      const low = await (async () => { const ac = new OfflineAudioContext(1, audio.length, audio.sampleRate), src = ac.createBufferSource(), f = ac.createBiquadFilter();
+        src.buffer = audio; f.type = 'lowpass'; f.frequency.value = 160; src.connect(f).connect(ac.destination); src.start(); return ac.startRendering(); })();
+      const cands = [detectBeat(low.getChannelData(0), low.sampleRate, beats), detectBeat(audio.getChannelData(0), audio.sampleRate, beats)].filter(Boolean).sort((a, b) => b.confidence - a.confidence);
+      let det = cands[0], told = +$('bpm').value || songBpmNow();
+      if (det && told) { for (const k of [2, 0.5]) if (Math.abs(det.bpm * k - told) < Math.abs(det.bpm - told) && Math.abs(det.bpm * k - told) < 4) det = { ...det, bpm: Math.round(det.bpm * k * 100) / 100 }; }   // half / double tempo
+      if (!det || det.confidence < 0.3) {
+        if (!told) { say(''); return toast('Nu am găsit tempo-ul sigur. Pune BPM-ul (apasă ♩ în ritm) și încearcă din nou.'); }
+        det = { bpm: told, offset: it.beatOffset || 0 };
+      }
+      say('🎚 2/3 Ascult versurile ca să găsesc secțiunile (poate dura 1–3 minute)…');
+      const V = await import('/voice.js'), url = '/media/' + encodeURIComponent(rec.file), song = await getSong(it);
+      const ro = /[ăâîșțşţ]/i.test(song.body);
+      let chunks = [];                                // without the voice model (no internet the first time) the tracks are still made, without sections
+      try { chunks = await V.transcribeTimed(url, st => st.note && say('🎚 2/3 ' + st.note), { language: ro ? 'romanian' : 'english' }); } catch (e) { toast('Versurile nu au putut fi ascultate (' + e.message + '). Fac track-urile fără secțiuni.'); }
+      const words = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 2);
+      const names = sectionNames(), starts = sectionStarts(mtSlides), bar = 60 / det.bpm * beats, marks = [];
+      let from = 0;
+      names.forEach(({ p }) => {                      // each section in order: the first place after the previous one where its first line is sung
+        const first = words(stripChords((mtSlides[starts[p]]?.lines || []).join(' '))).slice(0, 6); if (!first.length) return;
+        for (let c = from; c < chunks.length; c++) {
+          const w = new Set(words(chunks[c].text + ' ' + (chunks[c + 1]?.text || ''))), hit = first.filter(x => w.has(x)).length / first.length;
+          if (hit >= 0.5) { const b = Math.max(0, Math.round((chunks[c].start - det.offset) / bar)); if (!marks.length || b > marks.at(-1).bar) marks.push({ bar: b, p }); from = c + 1; break; }
+        }
+      });
+      say('🎚 3/3 Fac track-urile Click și Guide…');
+      const v = await vtGet(), { renderGuide } = await import('/guide.js');
+      const r = await renderGuide({ marks, names: names.map(n => n.label), bpm: det.bpm, beats, voices: v.voices, offset: det.offset, duration: audio.duration });
+      const base = (it.title || 'cantare').normalize('NFD').replace(/[^\w ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 40) || 'cantare';
+      const up = async (blob, name) => (await api('/api/media?name=' + encodeURIComponent(name), { method: 'POST', body: blob })).name || name;
+      const fc = await up(r.click, base + ' - Click.wav'), fg = await up(r.guide, base + ' - Guide.wav');
+      const keep = (it.stems || []).filter(x => x.file !== fc && x.file !== fg);
+      send({ type: 'setStems', item: i, stems: [...keep, { file: fc, name: 'Click', vol: 1 }, { file: fg, name: 'Guide', vol: 1 }] });
+      send({ type: 'trackBase', item: i, bpm: det.bpm, offset: det.offset });
+      if (marks.length) setTimeout(() => saveMarks(marks.map(m => ({ t: det.offset + m.bar * bar, p: m.p }))), 1500);
+      say('');
+      toast(`🎚 Gata: ${det.bpm} BPM, măsura 1 la ${fmt(det.offset)}, ${marks.length} din ${names.length} secțiuni găsite în versuri. Click și Guide sunt lângă înregistrare; mută secțiunile dacă trebuie, apoi 🎚 din nou.`);
+    } catch (e) { say(''); toast('Nu am reușit: ' + e.message); }
+  }
+  $('aiBuild').onclick = () => { $('mToolsPop').classList.remove('show'); buildAroundRecording(); };
   $('aiCues').onclick = () => { $('mToolsPop').classList.remove('show'); aiCues(); };
   $('aiCues2').onclick = e => { e.stopPropagation(); aiCues(); };
   $('trkLink').onclick = async () => { $('mToolsPop').classList.remove('show');
@@ -3355,6 +3407,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (e.cmd === 'section' && b[e.k]) { if (e.now && mt.playing) { mt.seekSmooth(b[e.k].start); lastCue = -2; followCues(b[e.k].start, true); } else jumpTo(b[e.k].start, b[e.k].label); }
     else if (e.cmd === 'click') toggleMet();
     else if (e.cmd === 'aiCues') aiCues();
+    else if (e.cmd === 'aiBuild') buildAroundRecording();
     else if (e.cmd === 'ask') mdTell(true);
     setTimeout(() => mdTell(true), 150);
   }

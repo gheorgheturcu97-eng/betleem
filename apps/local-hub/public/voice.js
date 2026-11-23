@@ -196,7 +196,7 @@ export async function listenOn({ deviceId, channel = 1, onText, onState = () => 
 }
 
 /** Whisper on a whole audio file (a cue / guide track): the words with their times. */
-export async function transcribeTimed(url, onState = () => {}) {
+export async function transcribeTimed(url, onState = () => {}, { language = '' } = {}) {
   const model = await whisper(onState);
   onState({ working: true, note: 'Ascult track-ul…' });
   const buf = await fetch(url).then(r => r.arrayBuffer());
@@ -205,6 +205,7 @@ export async function transcribeTimed(url, onState = () => {}) {
   // English first; when that finds almost nothing, once more in Romanian ("Strofa doi", "Refren").
   const run = async language => (await model(pcm, { return_timestamps: true, chunk_length_s: 30, stride_length_s: 5, language, task: 'transcribe' }))?.chunks || [];
   const map = ch => ch.map(c => ({ text: String(c.text || '').trim(), start: c.timestamp?.[0] ?? 0, end: c.timestamp?.[1] ?? null }));
+  if (language) { const ch = map(await run(language)); onState({ working: false }); return ch; }   // a sung recording: its own language
   let chunks = map(await run('english'));
   if (cuesFromWords(chunks).length < 2) { onState({ working: true, note: 'Ascult încă o dată, în română…' }); const ro = map(await run('romanian')); if (cuesFromWords(ro).length > cuesFromWords(chunks).length) chunks = ro; }
   onState({ working: false });

@@ -33,22 +33,25 @@ export function voiceParts(key, voices) {
  * as WAV files, so a song without bought tracks gets them in a minute and everything in MD&TRACK works for it
  * (sections on the tracks, the phone, the jumps). Bar 1 starts after one count-in bar.
  */
-export async function renderGuide({ marks, names, bpm, beats = 4, voices, bars, rate = 44100 }) {
-  const beat = 60 / bpm, bar = beat * beats, total = (bars + 1) * bar + 1.5, len = Math.ceil(total * rate);
+export async function renderGuide({ marks, names, bpm, beats = 4, voices, bars, offset, duration, rate = 44100 }) {
+  // offset = where bar 1 starts (a recording: its first downbeat; without one: after a count-in bar)
+  const beat = 60 / bpm, bar = beat * beats; offset ??= bar;
+  const total = duration || offset + bars * bar + 1.5, len = Math.ceil(total * rate);
   const click = new OfflineAudioContext(1, len, rate), guide = new OfflineAudioContext(1, len, rate);
-  for (let k = 0; k < (bars + 1) * beats; k++) {                 // the click, the first beat of every bar higher
-    const t = k * beat, acc = k % beats === 0 && beats > 1, o = click.createOscillator(), g = click.createGain();
+  for (let k = -Math.floor(offset / beat + 1e-6); offset + k * beat < total - 0.05; k++) {   // the click, from the first beat that fits
+    const t = offset + k * beat; if (t < 0) continue;
+    const acc = ((k % beats) + beats) % beats === 0 && beats > 1, o = click.createOscillator(), g = click.createGain();
     o.type = 'square'; o.frequency.value = acc ? 1760 : 1180;
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(acc ? 0.5 : 0.32, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
     o.connect(g); g.connect(click.destination); o.start(t); o.stop(t + 0.06);
   }
   const buf = {};
   for (const [k, u] of Object.entries(voices)) { try { buf[k] = await guide.decodeAudioData(await (await fetch(u)).arrayBuffer()); } catch {} }
-  const say = (key, t) => { for (const k of voiceParts(key, buf)) { const b = buf[k]; if (!b) continue; const s = guide.createBufferSource(); s.buffer = b; s.connect(guide.destination); s.start(t); t += b.duration * 0.92; } };
-  for (let j = 0; j < beats; j++) say('n' + (j + 1), j * beat);        // count-in: one, two, three, four
-  for (const m of marks) if (m.bar > 0) say(guideKey(names[m.p]), m.bar * bar);   // a bar before the section (its bar starts at (bar+1)·bar)
+  const say = (key, t) => { if (t < 0) return; for (const k of voiceParts(key, buf)) { const b = buf[k]; if (!b) continue; const s = guide.createBufferSource(); s.buffer = b; s.connect(guide.destination); s.start(t); t += b.duration * 0.92; } };
+  if (offset >= bar - 0.05) for (let j = 0; j < beats; j++) say('n' + (j + 1), offset - bar + j * beat);   // count-in, when there is room before bar 1
+  for (const m of marks) if (m.bar > 0) say(guideKey(names[m.p]), offset + (m.bar - 1) * bar);           // a bar before each section
   const [c, g] = await Promise.all([click.startRendering(), guide.startRendering()]);
-  return { click: wav(c), guide: wav(g), offset: bar, bar, duration: total };
+  return { click: wav(c), guide: wav(g), offset, bar, duration: total };
 }
 function wav(audio) {                                  // 16-bit mono WAV
   const d = audio.getChannelData(0), n = d.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), r = audio.sampleRate;
