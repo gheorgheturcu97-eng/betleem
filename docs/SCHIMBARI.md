@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.20 · numele Reverb
+- **Numele și iconița.** Înainte: „Echipa Betleem”, cu steaua aurie. Acum: **Reverb**, cu logoul Reverb (unda albă pe
+  negru, de pe reverbw.com) în pagini, pe telefon (Adaugă pe ecranul principal), în fila browserului și în aplicație.
+  Betleem rămâne numele bisericii (sus: „Reverb · Betleem”); un logo propriu al bisericii, dacă e pus, are întâietate.
+  Folderul de date rămâne Documente/Betleem. Numele din Dock/meniul Mac se schimbă la următorul pachet de instalare.
+
 ## 2026-11-24 · 2026.11.24.19 · fundalurile de pe calculatorul principal, pe toate calculatoarele
 - **Fundaluri → ⇩ De la alt calculator (nou).** Înainte: fiecare calculator își avea fundalurile lui; altele se puneau de
   mână. Acum: alegi un Betleem pornit în rețeaua bisericii (de ex. Mac mini-ul principal) și se copiază aici doar

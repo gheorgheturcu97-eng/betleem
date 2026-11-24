@@ -7,13 +7,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Betleem">
+<meta name="apple-mobile-web-app-title" content="Reverb">
 
 <link rel="stylesheet" href="/fonts/inter.css">
 <link rel="stylesheet" href="/fonts/display/display.css">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111214">
-<title>Echipa Betleem</title>
+<title>Reverb</title>
 <style>
   :root{--bg:#111214;--card:#1b1d21;--line:#2a2d33;--fg:#f1f1f1;--mute:#8d939b;--acc:#f5b301}
   *{box-sizing:border-box}
@@ -75,7 +75,7 @@
 </style>
 </head>
 <body>
-<header><h1><span id="dot"></span><span id="title">Betleem</span></h1><span id="now" style="color:var(--mute);font-size:14px;flex:1;text-align:right"></span><a id="whoBack" href="/m.html?alege=1" hidden title="Schimbă ce faci (muzician, versuri, predicator, echipa media)" style="margin-left:12px;font-size:20px;text-decoration:none;color:var(--mute)">⇄</a></header>
+<header><h1><span id="dot"></span><span id="title">Reverb</span></h1><span id="now" style="color:var(--mute);font-size:14px;flex:1;text-align:right"></span><a id="whoBack" href="/m.html?alege=1" hidden title="Schimbă ce faci (muzician, versuri, predicator, echipa media)" style="margin-left:12px;font-size:20px;text-decoration:none;color:var(--mute)">⇄</a></header>
 <nav>
   <button data-v="plan">Planificare</button>
   <button data-v="chords">Acorduri</button>
@@ -183,7 +183,7 @@
   let nextT;
   async function renderNext() {                       // the next program of the church, as the pastor sees it from the office QR
     const r = await fetch('/api/next').then(x => x.json()).catch(() => null), s = r?.service;
-    $('title').textContent = r?.church || 'Betleem'; $('now').textContent = '';
+    $('title').textContent = r?.church || 'Reverb'; $('now').textContent = '';
     if (!s) { $('nextv').innerHTML = '<p style="color:var(--mute)">Niciun program planificat încă.</p>'; return; }
     const d = new Date(s.date); let t = d.getTime();
     $('nextv').innerHTML = `<h2>${esc(s.title)}</h2><div class="when">${esc(d.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}${s.draft ? ' · <span class="draft">ciornă, se mai poate schimba</span>' : ''}</div>
@@ -195,7 +195,7 @@
     if (view === 'pred') return renderPred();
     if (view === 'next') { clearTimeout(nextT); nextT = setTimeout(renderNext, 400); return; }   // the program changed somewhere: read it again
     const L = S.live, item = S.setlist[L.item];
-    $('title').textContent = S.service.title || 'Betleem';
+    $('title').textContent = S.service.title || 'Reverb';
     $('now').textContent = item ? item.title : '';
     $('lyrics').hidden = $('tools').hidden = view === 'order'; $('order').hidden = view !== 'order';
     $('songhead').hidden = $('nextsong').hidden = true;

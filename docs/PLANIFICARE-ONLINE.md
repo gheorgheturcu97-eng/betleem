@@ -4,6 +4,16 @@ Status: **propunere, de aprobat de proprietar înainte de cod** (2026-11-24). Co
 schema `supabase/migrations` (biserici, roluri lider/operator/muzician, coduri de biserică), `src/cloud.js`
 (client Supabase fără dependențe), `src/plan.js` (programul și operațiile lui) și linkurile personale ale voluntarilor.
 
+## Reverb, rețele și biserici (decizia proprietarului, 2026-11-24)
+- Aplicația se numește **Reverb** (reverbw.com) și devine unealta de resurse pentru bisericile care se înscriu.
+  Betleem e o biserică din Reverb (prima). Folderul de date rămâne `Documents/Betleem` pe calculatoarele existente.
+- **Rețeaua Betleem** (bisericile proprietarului, ~12): văd **biblioteca de cântări a rețelei** (cea a Betleem-ului),
+  doar citire; fiecare își poate adăuga cântările ei.
+- **Orice altă biserică din Reverb**: **nu vede biblioteca Betleem**. Își scrie singură cântările sau le importă din
+  Planning Center / ProPresenter. Regula stă în baza de date (RLS): `songs.network_id` / `songs.church_id`,
+  iar o biserică vede o cântare doar dacă e a ei sau e a rețelei din care face parte.
+- Schema veche avea „cântări comune pentru toată rețeaua” (`church_id = null`): se înlocuiește cu rețele explicite.
+
 ## Ce se schimbă pentru oameni
 - Planificarea se deschide **din browser, de oriunde** (telefon, laptop de acasă), la o adresă fixă
   (ex. `https://betleem-app.github.io/planificare`), **chiar dacă Mac mini-ul e închis**.

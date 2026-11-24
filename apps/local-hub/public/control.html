@@ -7,12 +7,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Betleem">
+<meta name="apple-mobile-web-app-title" content="Reverb">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/fonts/inter.css">
 <link rel="stylesheet" href="/fonts/display/display.css">
-<title>Echipa Betleem</title>
+<title>Reverb</title>
 <style>
   :root{
     --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
@@ -900,6 +900,8 @@
   .slides-head .zoom{order:1;margin-left:auto} .slides-head .zoom input{width:64px}
   .lib .acts button{width:24px;height:24px;font-size:11px} #results{gap:0}
   .modal label.check{flex-direction:row;align-items:center;font-size:12.5px} #sedAutoTag{align-self:flex-start;padding:5px 12px;font-size:12px}
+  /* Reverb: the logo instead of the old star (a church's own logo still replaces it, when set) */
+  .brand .star,.doors-brand .star{background:url(/icon.svg) center/cover no-repeat!important;color:transparent!important;font-size:0!important;box-shadow:none!important}
 </style>
 <link rel="stylesheet" href="/glass.css">
 </head>
@@ -916,7 +918,7 @@
   <header class="top glass">
     <button class="brand" id="churchBtn" title="Schimbă biserica">
       <span class="star">✦</span>
-      <span class="who"><b id="churchName">Betleem</b><small id="churchCity"></small></span>
+      <span class="who"><b id="churchName">Reverb</b><small id="churchCity"></small></span>
       <span class="caret">▾</span>
     </button>
     <span id="dot" title="Conexiune"></span>
@@ -944,7 +946,7 @@
  <button id="bPhones" class="icon" title="📱 Telefoane: scanează codul și vezi programul și cântările cu acorduri">📱</button>
     <button id="bInbox" class="icon inbox-btn" title="📥 Primite: trimite de pe telefon (cod QR) sau prin AirDrop">📥<i id="inboxN" hidden></i></button>
     <button id="bKeys" class="icon" title="Scurtături de tastatură">⌨</button>
-    <button id="aiTop" class="ai-top" title="Asistentul Betleem">✦</button>
+    <button id="aiTop" class="ai-top" title="Asistentul Reverb">✦</button>
     <button id="bMore" class="more-btn" title="Mai multe: logo, numărătoare, telefoane, Canva, asistent…">⋯ Mai mult</button>
     <button id="bTheme" class="icon" title="Mod luminos (zi) / mod întunecat (noapte)">☀</button>
     <button id="bSettings" class="icon" title="⚙ Setări: Planning Center, Canva, asistent, biserici, calculatoare">⚙</button>
@@ -1027,7 +1029,7 @@
           <div class="seg bgtabs"><button data-bt="bg" class="sel">Fundaluri</button><button data-bt="light" data-mod="lumini" title="💡 Scenele de lumini (MIDI), legate de program și de secțiuni">💡 Lumini</button><button data-bt="props" title="🏷 Props: logo, bandă, text fix, anunț. Stau pe ecran peste orice slide, până le oprești">🏷 Props</button></div><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
           <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează pe cântare</button>
           <label class="btn">＋ Imagine / video<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
-          <button id="bPull" class="btn" title="Ia fundalurile de pe alt Betleem din rețeaua bisericii (de ex. calculatorul principal); doar cele care lipsesc">⇩ De la alt calculator</button>
+          <button id="bPull" class="btn" title="Ia fundalurile de pe alt Reverb din rețeaua bisericii (de ex. calculatorul principal); doar cele care lipsesc">⇩ De la alt calculator</button>
         </div>
         <div id="gallery"></div>
         <div id="propPanel" hidden>
@@ -1062,7 +1064,7 @@
         <div id="chordsBox" class="chords-box" hidden><div class="bar"><i id="chordsBar"></i></div><span id="chordsText"></span><button id="bChordsStop" class="ghost">Oprește</button></div>
         <div class="libbar"><button id="bNew2" class="acc">＋ Cântare nouă</button><span class="grow"></span>
           <button id="bChordsAll" class="icon" title="Acorduri pentru toată biblioteca: caută pe net cântările fără acorduri și pune acordurile pe fiecare strofă, refren și bridge">♪</button>
-          <button id="bBetleemLib" class="icon" title="📥 Adaugă cântările altui Betleem (library.json, o copie de siguranță sau pachetul liderilor); cele care există deja nu se dublează">📥</button><input type="file" id="betleemLibFile" accept=".json,application/json" hidden>
+          <button id="bBetleemLib" class="icon" title="📥 Adaugă cântările altui Reverb (library.json, o copie de siguranță sau pachetul liderilor); cele care există deja nu se dublează">📥</button><input type="file" id="betleemLibFile" accept=".json,application/json" hidden>
           <button id="bPro" class="icon" title="⇪ Importă cântările din ProPresenter de pe acest calculator (cele care există deja nu se dublează)">⇪</button>
           <button id="bClean" class="icon" title="Curăță biblioteca: etichete din semnele site-urilor (1., R:, Str2), fără /: :/, refrenul după fiecare strofă">🧹</button></div>
       </div>
@@ -1148,7 +1150,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         <b class="hint" style="margin:0">Secțiunile cântării</b>
         <button id="aiCues" class="pill acc" title="AI-ul găsește track-ul cu ghidul vorbit, ascultă „Verse”, „Chorus”, „Bridge” (sau „Strofa”, „Refren”) și pune secțiunile pe track-uri. Rămân salvate la cântare.">✦ Secțiuni automat (AI ascultă ghidul)</button>
         <button id="aiBuild" class="pill" title="Ai pus o înregistrare a cântării (ex. de pe YouTube sau de la repetiție)? Aplicația îi află tempo-ul și unde începe fiecare secțiune (ascultă versurile) și face în jurul ei track-urile Click și Guide.">🎚 Click + Guide pe o înregistrare</button>
-        <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Betleem ține minte momentele">⏺ Le pun eu (apăs la fiecare slide)</button>
+        <button id="tlLearn" class="pill" title="Pornește track-ul și apasă → (sau Spațiu) când începe fiecare slide; Reverb ține minte momentele">⏺ Le pun eu (apăs la fiecare slide)</button>
         <label class="check"><input type="checkbox" id="tlAuto" checked> Versurile merg singure după track</label>
         <label class="btn pill" title="Unul sau mai multe fișiere audio (click, guide, tobe, bas, clape…) sau direct arhiva .zip a pachetului de multitrack, fără s-o dezarhivezi">＋ Track-uri<input type="file" id="stemFiles" accept="audio/*,.zip,application/zip" multiple hidden></label>
         <label class="btn pill" title="🎛 Un proiect Ableton Live (.als) al cântării: ia markerele (Verse, Chorus…), tempo-ul și măsura și pune secțiunile pe track-uri">⇪ Ableton<input type="file" id="alsFile" accept=".als" hidden></label>
@@ -1204,7 +1206,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       <b>Scanează cu telefonul</b>
       <div id="qrWifi">
         <p class="hint">iPhone sau Android: alege poze, video, PowerPoint, Keynote sau PDF și apasă trimite. Telefonul trebuie să fie pe același Wi-Fi.</p>
-        <p class="hint">Pe Mac merge și cu <b>AirDrop</b>: ce primești cât timp Betleem e deschis apare aici.</p>
+        <p class="hint">Pe Mac merge și cu <b>AirDrop</b>: ce primești cât timp Reverb e deschis apare aici.</p>
         <div class="row qr-urls" id="qrUrls"></div>
       </div>
       <div id="qrNet" hidden>
@@ -1218,7 +1220,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 </div></div>
 <div class="doors" id="doors" hidden>
   <div class="doors-in">
-    <div class="doors-brand"><img id="doorsLogo" alt="" hidden><span class="star" id="doorsStar">✦</span><div><b id="doorsChurch">Echipa Betleem</b><small>Ce faci astăzi?</small></div></div>
+    <div class="doors-brand"><img id="doorsLogo" alt="" hidden><span class="star" id="doorsStar">✦</span><div><b id="doorsChurch">Reverb</b><small>Ce faci astăzi?</small></div></div>
     <div class="door-row">
       <button class="door" data-m="pregatesc"><i>🗓</i><b>Planificare</b><span>Programul serviciului, cântările, echipele, categoriile. Pentru lideri, în timpul săptămânii.</span></button>
       <button class="door acc" data-m="proiectez"><i>▶</i><b>Proiectez</b><span>Duminică, la proiector: versurile, prezentările și fundalurile. Doar butoanele de care ai nevoie.</span></button>
@@ -1292,7 +1294,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="look-head"><b>📱 Pe telefon</b><span class="grow"></span><button id="phClose" class="icon" title="Închide">✕</button></div>
   <p class="hint">Telefonul trebuie să fie în aceeași rețea Wi-Fi ca acest calculator. Un singur cod pentru toți: scanezi cu camera, apoi alegi în telefon ce faci (echipa media, muzician, versuri sau predicator). Telefonul ține minte alegerea.</p>
   <div class="ph-one">
-    <div class="ph"><div class="qr big" id="phQr4"></div><b>📱 Aplicația Betleem</b><small id="phAddr"></small></div>
+    <div class="ph"><div class="qr big" id="phQr4"></div><b>📱 Aplicația Reverb</b><small id="phAddr"></small></div>
     <div class="ph-who">
       <div><b>🎛 Echipa media</b><small>Proiectez și MD&amp;TRACK cer PIN-ul echipei. Planificarea (cu datele voluntarilor) cere PIN-ul de lider, care merge și la celelalte.</small><span class="pin" id="phTeamPin"></span><span class="pin" id="phLeadPin"></span></div>
       <div><b>🎸 Muzician</b><small>Programul și cântările cu acorduri, în tonul ales.</small></div>
@@ -1316,9 +1318,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 <div class="modal" id="brandModal"><div class="glass canva" id="brandBox"></div></div>
 <div class="modal" id="shareModal"><div class="glass canva">
   <div class="look-head"><b>📦 Dă aplicația altor biserici</b><span class="grow"></span><button id="shareClose" class="icon" title="Închide">✕</button></div>
-  <p class="hint">Acest Mac devine „magazinul” zonei: faci un link personal pentru fiecare lider, iar el descarcă de aici aplicația Betleem pentru Mac
+  <p class="hint">Acest Mac devine „magazinul” zonei: faci un link personal pentru fiecare lider, iar el descarcă de aici aplicația Reverb pentru Mac
     <b>cu toate cântările din bibliotecă</b> (fără track-uri, programe, oameni sau PIN-uri). Linkul expiră și îl poți anula oricând.
-    Merge cât timp Betleem e pornit pe acest Mac.</p>
+    Merge cât timp Reverb e pornit pe acest Mac.</p>
   <div class="row" id="sharePkg"></div>
   <div class="row"><input id="shareName" class="grow" placeholder="Pentru cine? ex. Ionuț · Biserica Peștera"><select id="shareDays" style="width:auto"><option value="3">3 zile</option><option value="14" selected>14 zile</option><option value="30">30 de zile</option></select><button id="shareNew" class="acc">＋ Link nou</button></div>
   <div id="shareList"></div>
@@ -1379,10 +1381,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <p class="hint">Un calculator ține programul, de obicei cel cu proiectorul. Celelalte se conectează la el și lucrează pe același program, în timp real: unul pornește track-urile, altul schimbă versurile.</p>
   <div class="look-sec" id="pcThisHead">Acest calculator</div>
   <div id="pcThis" class="pc-this"></div>
-  <div class="look-sec">Alte calculatoare cu Betleem în rețea</div>
+  <div class="look-sec">Alte calculatoare cu Reverb în rețea</div>
   <div id="pcList" class="pc-list"></div>
   <div class="row"><input id="pcAddr" placeholder="sau scrie adresa, ex. 192.168.1.20" class="grow"><button id="pcGo">Conectează</button></div>
-  <label class="check"><input type="checkbox" id="pcAuto"> Când pornesc Betleem aici, conectează-l singur la calculatorul ales</label>
+  <label class="check"><input type="checkbox" id="pcAuto"> Când pornesc Reverb aici, conectează-l singur la calculatorul ales</label>
 </div></div>
 <div class="look glass" id="look">
   <div class="look-head"><b>Ecrane</b><span class="grow"></span><button id="lookClose" class="icon" title="Închide">✕</button></div>
@@ -1426,7 +1428,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="lf stage-only"><span>Urmează · culoare</span><input type="color" id="lNextColor"></div>
   <button id="lReset" class="ghost main-only">↺ Scoate setările speciale ale cântării</button>
 </div>
-<button id="aiBtn" class="ai-btn acc" data-mod="asistent" title="Asistentul Betleem">✦ Asistent</button>
+<button id="aiBtn" class="ai-btn acc" data-mod="asistent" title="Asistentul Reverb">✦ Asistent</button>
 <div class="ai glass" id="ai">
   <div class="ai-head"><b>✦ Asistent</b><span class="ai-mode"><button id="aiModeDo" class="on" title="Asistentul face lucruri în aplicație">Fă</button><button id="aiModeFb" title="Spune ce nu-ți place sau ce ți-ar trebui: asistentul face o propunere de îmbunătățire a aplicației">💡 Părere</button></span><span class="grow"></span><span id="aiProv" class="hint"></span>
     <button id="aiSet" class="icon" title="Setări">⚙</button><button id="aiClose" class="icon" title="Închide">✕</button></div>
@@ -1497,7 +1499,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', reading: 'citire', bible: 'biblie' };
   const $ = id => document.getElementById(id);
   let S = null, sel = -1;
-  // ---- several computers: this page may be served by another computer's Betleem
+  // ---- several computers: this page may be served by another computer's Reverb
   const REMOTE = !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const LOCAL_HOME = 'http://localhost:' + (location.port || 4545) + '/control.html?aici';
   (() => {                                            // PIN handed over when joining: #pin=1234
@@ -1608,15 +1610,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (link) { const q = qrcode(0, 'M'); q.addData(link); q.make(); $('qr').innerHTML = q.createSvgTag({ cellSize: 6, margin: 3, scalable: true }); $('qr').classList.remove('off'); }
     else { $('qr').innerHTML = `<p class="hint">${empty}</p>`; $('qr').classList.add('off'); }
   }
-  // the internet: a Cloudflare link (free) that reaches only the "send files" page of this Betleem
+  // the internet: a Cloudflare link (free) that reaches only the "send files" page of this Reverb
   async function renderNet(t) {
     if (t) tun = t; else try { tun = await fetch('/api/tunnel').then(r => r.json()); } catch {}
     if (qrMode !== 'net') return;
     const b = $('netBtn'); b.disabled = false; $('netCopy').hidden = !tun.link;
     if (tun.installing) { b.textContent = 'Se instalează…'; b.disabled = true; $('netInfo').textContent = 'Descarc programul gratuit de la Cloudflare (cam 20 MB).'; }
     else if (!tun.available) { b.textContent = 'Pregătește (o singură dată)'; b.dataset.do = 'install';
-      $('netInfo').innerHTML = 'Ca să trimiți de oriunde (date mobile, alt oraș), Betleem folosește un link gratuit de la Cloudflare. Prin el se pot doar <b>trimite fișiere</b>; programul și PIN-urile nu se văd de pe internet.'; }
-    else if (!tun.running) { b.textContent = 'Pornește linkul'; b.dataset.do = 'on'; $('netInfo').textContent = tun.error || 'Linkul merge cât timp Betleem e deschis; la fiecare pornire e altul.'; }
+      $('netInfo').innerHTML = 'Ca să trimiți de oriunde (date mobile, alt oraș), Reverb folosește un link gratuit de la Cloudflare. Prin el se pot doar <b>trimite fișiere</b>; programul și PIN-urile nu se văd de pe internet.'; }
+    else if (!tun.running) { b.textContent = 'Pornește linkul'; b.dataset.do = 'on'; $('netInfo').textContent = tun.error || 'Linkul merge cât timp Reverb e deschis; la fiecare pornire e altul.'; }
     else { b.textContent = 'Oprește linkul'; b.dataset.do = 'off'; $('netInfo').textContent = tun.link ? 'Merge de pe orice telefon, din orice rețea. Trimite codul sau linkul celui care are fișierele.' : (tun.error || 'Pornesc… (câteva secunde)'); }
     drawQr(tun.link, tun.running ? 'Pornesc linkul…' : 'Linkul prin internet e oprit');
   }
@@ -1768,8 +1770,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       { l: 'Caută o comandă…', k: 'Mod+K', run: () => openPalette() },
       { l: 'Scurtături de tastatură', run: () => $('bKeys').click() },
       '-',
-      { l: 'Caută actualizări', run: async () => { toast('Caut…'); try { const u = await api('/api/update', { method: 'POST', body: '{}' }); toast(u.ready ? `Versiunea ${u.ready} e gata: repornește Betleem` : u.error || 'Ai cea mai nouă versiune (' + u.version + ')'); } catch (err) { toast(err.message); } } },
-      { l: 'Despre Echipa Betleem', run: async () => { const u = await fetch('/api/update').then(r => r.json()).catch(() => ({})); toast(`Echipa Betleem ${u.version || ''} · gratuit, pentru bisericile din rețeaua Betleem`); } },
+      { l: 'Caută actualizări', run: async () => { toast('Caut…'); try { const u = await api('/api/update', { method: 'POST', body: '{}' }); toast(u.ready ? `Versiunea ${u.ready} e gata: repornește Reverb` : u.error || 'Ai cea mai nouă versiune (' + u.version + ')'); } catch (err) { toast(err.message); } } },
+      { l: 'Despre Reverb', run: async () => { const u = await fetch('/api/update').then(r => r.json()).catch(() => ({})); toast(`Reverb ${u.version || ''} · gratuit, pentru bisericile din rețeaua Reverb`); } },
     ]],
   ];
   const cmds = MENUS.flatMap(([m, items]) => items.filter(i => i !== '-').map(i => ({ ...i, menu: m })));
@@ -1826,7 +1828,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // a new version is unpacked and waits: it is used from the next start
   function showUpdate(u) {
     const b = $('updPill'); b.hidden = false; b.textContent = '↻ Versiune nouă';
-    b.title = `Betleem ${u.ready} e pregătit${u.from ? ' (de la ' + u.from + ')' : ''}. Închide și deschide Betleem când nu e serviciu.`;
+    b.title = `Reverb ${u.ready} e pregătit${u.from ? ' (de la ' + u.from + ')' : ''}. Închide și deschide Reverb când nu e serviciu.`;
   }
   $('updPill').onclick = () => toast($('updPill').title);
   fetch('/api/update').then(r => r.json()).then(u => { if (u.ready) showUpdate(u); }).catch(() => {});
@@ -1841,17 +1843,17 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     } else {
       const t = await fetch('/api/this').then(r => r.json()).catch(() => null);
       $('pcThis').innerHTML = t && !t.error ? `<div class="pc"><b>${esc(t.name)}</b><small>${t.urls.map(esc).join(' · ') || 'nu e conectat la o rețea'}</small>
-        <small>Ca să lucreze altcineva pe acest program: pe celălalt calculator deschide Betleem → 🖥 → alege „${esc(t.name)}” și scrie PIN-ul de lider <b class="pinv">${esc(t.leaderPin)}</b></small></div>` : '';
+        <small>Ca să lucreze altcineva pe acest program: pe celălalt calculator deschide Reverb → 🖥 → alege „${esc(t.name)}” și scrie PIN-ul de lider <b class="pinv">${esc(t.leaderPin)}</b></small></div>` : '';
     }
     const list = await fetch('/api/peers').then(r => r.json()).catch(() => []);
     $('pcList').innerHTML = list.length ? list.map(p => `<div class="pc"><b>${esc(p.name)}</b><small>${esc(p.church)} · ${esc(p.url.replace('http://', ''))}</small><button class="mini acc" data-url="${esc(p.url)}">Conectează</button></div>`).join('')
-      : '<p class="hint">Caut… Celălalt calculator trebuie să aibă Betleem deschis și să fie în aceeași rețea (același Wi-Fi sau hotspot).</p>';
+      : '<p class="hint">Caut… Celălalt calculator trebuie să aibă Reverb deschis și să fie în aceeași rețea (același Wi-Fi sau hotspot).</p>';
     document.querySelectorAll('#pcList [data-url]').forEach(b => b.onclick = () => joinPc(b.dataset.url));
   }
   async function joinPc(url) {
     url = url.trim().replace(/\/+$/, ''); if (!/^https?:\/\//.test(url)) url = 'http://' + url; if (!/:\d+$/.test(url)) url += ':4545';
     const ok = await fetch(url + '/api/hello').then(r => r.json()).then(j => j.app === 'betleem').catch(() => false);
-    if (!ok) return toast('Nu găsesc Betleem la ' + url.replace('http://', '') + '. E deschis? E în aceeași rețea?');
+    if (!ok) return toast('Nu găsesc Reverb la ' + url.replace('http://', '') + '. E deschis? E în aceeași rețea?');
     const v = await ask('PIN-ul de lider de pe celălalt calculator\n(îl vezi acolo în 🖥)', [{ label: 'PIN', type: 'password' }], 'Conectează');
     if (!v) return;
     try { if ($('pcAuto').checked) localStorage.setItem('betleem.join', url); else localStorage.removeItem('betleem.join'); } catch {}
@@ -2623,8 +2625,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   let autoWait = null;
   $('sedAutoTag').onclick = () => {                  // labels for the whole song, from the slide editor
     send({ type: 'autoLabel', item: sel });
-    clearTimeout(autoWait);                          // an old Betleem still running does not answer
-    autoWait = setTimeout(() => toast('Betleem nu a răspuns. Închide-l complet și deschide-l din nou.'), 2500);
+    clearTimeout(autoWait);                          // an old Reverb still running does not answer
+    autoWait = setTimeout(() => toast('Reverb nu a răspuns. Închide-l complet și deschide-l din nou.'), 2500);
     $('sedModal').classList.remove('show');
   };
 
@@ -2769,7 +2771,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (m === 'proiectez' && $('tabs').querySelector('.sel')?.dataset.t !== 'lib' && $('tabs').querySelector('.sel')?.dataset.t !== 'bible') $('tabs').querySelector('[data-t=lib]').click();
   }
   function showDoors() {
-    const c = S?.church; $('doorsChurch').textContent = c?.name ? 'Echipa ' + c.name : 'Echipa Betleem';
+    const c = S?.church; $('doorsChurch').textContent = c?.name ? 'Echipa ' + c.name : 'Reverb';
     if (c?.logo) { $('doorsLogo').src = '/media/' + encodeURIComponent(c.logo); $('doorsLogo').hidden = false; $('doorsStar').hidden = true; }
     $('doors').hidden = false;
   }
@@ -2957,14 +2959,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const mods = [['md', 'MD&TRACK (track-uri, mixer)'], ['lumini', 'Lumini (MIDI)'], ['lideri', 'Lideri (întâlniri, sarcini, obiective)'], ['voluntari', 'Linkuri personale și WhatsApp pentru voluntari'], ['asistent', 'Asistentul AI']];
     $('brandBox').innerHTML = `<div class="look-head"><b>🎨 Aspect și funcții</b><span class="grow"></span><button class="icon" onclick="this.closest('.modal').classList.remove('show')">✕</button></div>
       <p class="hint">Doar pentru biserica voastră; actualizările nu schimbă nimic din ce alegeți aici. Funcțiile noi vin oprite și le porniți voi.</p>
-      <div class="row"><label class="grow">Culoarea bisericii<input id="brAcc" type="color" value="${b.accent || '#ffbf2f'}" style="width:60px;height:38px;padding:2px"></label><button id="brReset" class="ghost">Culoarea Betleem</button></div>
+      <div class="row"><label class="grow">Culoarea bisericii<input id="brAcc" type="color" value="${b.accent || '#ffbf2f'}" style="width:60px;height:38px;padding:2px"></label><button id="brReset" class="ghost">Culoarea Reverb</button></div>
       <p class="hint" style="margin:10px 0 4px">Ce folosiți (debifat = se ascunde peste tot):</p>
       ${mods.map(([k, l]) => `<label class="sec-row" style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" data-bm="${k}" ${(b.off || []).includes(k) ? '' : 'checked'} style="width:18px;height:18px"> ${l}</label>`).join('')}
       <div class="row" style="justify-content:flex-end"><button id="brSave" class="acc">Salvează</button></div>`;
     $('brandModal').classList.add('show');
     let acc = b.accent || '';
     $('brAcc').oninput = () => { acc = $('brAcc').value; document.documentElement.style.setProperty('--acc', acc); };
-    $('brReset').onclick = () => { acc = ''; document.documentElement.style.removeProperty('--acc'); toast('Culoarea Betleem'); };
+    $('brReset').onclick = () => { acc = ''; document.documentElement.style.removeProperty('--acc'); toast('Culoarea Reverb'); };
     $('brSave').onclick = async () => {
       const off = [...$('brandBox').querySelectorAll('[data-bm]')].filter(c => !c.checked).map(c => c.dataset.bm);
       const r = await fetch('/api/brand', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' }, body: JSON.stringify({ accent: acc, off }) }).then(r => r.json()).catch(() => ({}));
@@ -4519,10 +4521,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   // backgrounds
   let media = null;
-  // ⇩ backgrounds from another Betleem on the church network
+  // ⇩ backgrounds from another Reverb on the church network
   $('bPull').onclick = async () => {
     const peers = await fetch('/api/peers').then(r => r.json()).catch(() => []);
-    if (!peers.length) return ask('Nu văd alt Betleem pornit în rețeaua bisericii. Pornește Betleem pe calculatorul principal (același Wi-Fi) și mai încearcă.', [], 'OK');
+    if (!peers.length) return ask('Nu văd alt Reverb pornit în rețeaua bisericii. Pornește Reverb pe calculatorul principal (același Wi-Fi) și mai încearcă.', [], 'OK');
     const names = peers.map((x, i) => `${i + 1}. ${x.name}${x.church ? ' · ' + x.church : ''}`).join('\n');
     const r = await ask('De pe ce calculator iei fundalurile? (se copiază doar cele care lipsesc aici)\n' + names, [{ label: 'Numărul', value: '1' }], 'Ia fundalurile');
     const peer = peers[(parseInt(r?.[0]) || 0) - 1]; if (!peer) return;

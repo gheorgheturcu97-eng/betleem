@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Betleem">
+<meta name="apple-mobile-web-app-title" content="Reverb">
 <meta name="theme-color" content="#121316">
 <link rel="stylesheet" href="/fonts/inter.css">
 <title>Slujirea mea</title>
@@ -105,7 +105,7 @@
       <p class="tip">Sfat: pune pagina pe ecranul principal (Distribuie → Adaugă pe ecranul principal) și o ai ca pe o aplicație.</p>`;
     document.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { const x = D.serve[+b.dataset.a]; await load({ action: 'answer', service: x.service, key: x.key, status: b.dataset.s }); toast(b.dataset.s === 'confirmed' ? 'Mulțumim! Te așteptăm.' : 'Am anunțat liderul.'); });
     document.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { const x = D.serve[+b.dataset.c]; ics(`${x.pos} · ${x.title}`, x.date, 120); });
-    document.querySelectorAll('[data-kc]').forEach(b => b.onclick = () => { const k = D.tasks[+b.dataset.kc]; ics('Betleem: ' + k.text, k.due, 0, true); });
+    document.querySelectorAll('[data-kc]').forEach(b => b.onclick = () => { const k = D.tasks[+b.dataset.kc]; ics('Reverb: ' + k.text, k.due, 0, true); });
     document.querySelectorAll('[data-mc]').forEach(b => b.onclick = () => { const m = D.meetings[+b.dataset.mc]; ics(m.title, m.date, 90); });
     document.querySelectorAll('[data-up]').forEach(inp => inp.onchange = async () => {
       const f = inp.files[0], x = D.serve[+inp.dataset.up]; if (!f) return;

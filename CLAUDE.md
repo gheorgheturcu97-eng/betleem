@@ -1,6 +1,6 @@
 # CLAUDE.md: instructions for Claude Code
 
-You are helping build **Echipa Betleem** (repo name: bethlehem-network), a free church app for a network of ~12 Romanian
+You are helping build **Reverb** (formerly Echipa Betleem; repo name: bethlehem-network; Betleem is the first church in it; the data folder stays `Documents/Betleem`), a free church app for a network of ~12 Romanian
 churches. It replaces ProPresenter, FreeShow, Planning Center and a playback rig (like Tracks Live), and later becomes
 **River**, an open-source platform for churches in Romania.
 

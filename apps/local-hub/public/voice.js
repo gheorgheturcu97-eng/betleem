@@ -79,7 +79,7 @@ export async function speechBursts(url) {
 async function whisperListen(onState) {
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-  catch { throw new Error('Nu am acces la microfon. Permite microfonul pentru Echipa Betleem.'); }
+  catch { throw new Error('Nu am acces la microfon. Permite microfonul pentru Reverb.'); }
   const model = whisper(onState);                     // loads while you speak
   const ctx = new AudioContext(), src = ctx.createMediaStreamSource(stream), an = ctx.createAnalyser(); an.fftSize = 1024; src.connect(an);
   const rec = new MediaRecorder(stream), parts = [];

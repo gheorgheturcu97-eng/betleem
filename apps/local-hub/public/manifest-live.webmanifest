@@ -1,6 +1,6 @@
 {
-  "name": "Echipa Betleem",
-  "short_name": "Betleem Live",
+  "name": "Reverb",
+  "short_name": "Reverb Live",
   "description": "Versurile, acordurile și programul, live",
   "start_url": "/live.html",
   "display": "standalone",

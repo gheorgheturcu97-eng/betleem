@@ -7,11 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Betleem">
+<meta name="apple-mobile-web-app-title" content="Reverb">
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/fonts/inter.css">
-<title>Echipa Betleem – Planificare</title>
+<title>Reverb – Planificare</title>
 <style>
   :root{
     --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
@@ -251,6 +251,8 @@
   .pco-list .pl:hover{background:rgba(255,255,255,.08)} .pco-list .pl.done .t{opacity:.75}
   .pco-list .pl input{width:auto;margin:0} .pco-list .d{color:var(--mute);font-size:12.5px} .pco-list .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .pco-list .m{color:var(--mute);font-size:12px}
   @media (max-width:600px){ .pco-list .pl{grid-template-columns:auto 1fr} .pco-list .d,.pco-list .m{grid-column:2} }
+  /* Reverb: the logo instead of the old star (a church's own logo still replaces it, when set) */
+  .brand .star,.doors-brand .star{background:url(/icon.svg) center/cover no-repeat!important;color:transparent!important;font-size:0!important;box-shadow:none!important}
 </style>
 <link rel="stylesheet" href="/glass.css">
 </head>
@@ -258,7 +260,7 @@
 <div class="aurora"><i></i><i></i><i></i></div>
 <div class="app">
   <header class="top glass">
-    <div class="brand"><span class="star">✦</span><span id="church">Betleem<small></small></span></div>
+    <div class="brand"><span class="star">✦</span><span id="church">Reverb<small></small></span></div>
  <button class="ai-open" id="aiOpen" data-mod="asistent" title="Asistentul: spune-i sau scrie-i ce program vrei">✦ Asistent</button>
     <button class="mode-chip" id="modeChip" title="Schimbă ce faci: Planificare / Proiectez / MD&amp;TRACK">🗓 Planificare ▾</button>
     <div class="seg nav"><button id="toLive">Live</button><button id="toMusicP" data-mod="md">MD&amp;TRACK</button><button class="sel">Planificare</button></div>
@@ -273,7 +275,7 @@
   <section class="teambar glass" id="teamBar">
     <button class="tlogo" id="tLogo" title="Logo-ul echipei (apasă ca să-l schimbi)"><span>✦</span></button>
     <div class="tinfo">
-      <small>Echipa Betleem · <b id="tChurch"></b></small>
+      <small>Reverb · <b id="tChurch"></b></small>
       <p id="tVision" class="tvision"></p>
     </div>
     <button id="tEdit" class="ghost" title="Scrie viziunea echipei și pune logo-ul">✎ Viziune și logo</button>
@@ -394,7 +396,7 @@
   </form>
 </div>
 <div class="signin" id="signin"><div class="glass">
-  <div class="brand" style="justify-content:center;margin-bottom:6px"><span class="star">✦</span>Echipa Betleem</div>
+  <div class="brand" style="justify-content:center;margin-bottom:6px"><span class="star">✦</span>Reverb</div>
   <h3>Intră în Planificare</h3>
   <p class="hint">Scrie PIN-ul de lider. Îl vezi pe calculatorul bisericii: Live → 📱 Pe telefon, la „Lider”.</p>
   <input id="pinIn" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
@@ -430,7 +432,7 @@
         <div class="row" style="gap:6px;flex-wrap:wrap"><label class="btn" style="margin:0">Alege logo…<input type="file" id="lpFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
         <button class="ghost" id="lpDel" ${logo ? '' : 'hidden'}>Fără logo</button></div></div>
       <label>Viziunea echipei<textarea id="lpVision" rows="6" placeholder="De ce slujim, cum slujim, ce ne dorim…">${esc(church?.vision || '')}</textarea></label>
-      <p class="hint">Logo-ul apare sus în Betleem și pe ecranul din sală când apeși „Logo” (dacă nu ai pus alt logo acolo).</p>
+      <p class="hint">Logo-ul apare sus în Reverb și pe ecranul din sală când apeși „Logo” (dacă nu ai pus alt logo acolo).</p>
       <div class="btns"><button class="ghost" id="lpNo">Renunță</button><button class="acc" id="lpOk">Salvează</button></div>`;
     $('modal').classList.add('show');
     $('lpFile').onchange = async e => {
@@ -474,7 +476,7 @@
 
   // ---- Planning Center: connect once with a personal token, then import songs (with chords) and upcoming plans
   const pcoApi = (url, body) => fetch(url, { method: body ? 'POST' : 'GET', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
-    .then(async r => { const j = await r.json().catch(() => ({ error: 'Închide și redeschide Betleem pe laptop.' })); if (!r.ok) throw new Error(j.error); return j; });
+    .then(async r => { const j = await r.json().catch(() => ({ error: 'Închide și redeschide Reverb pe laptop.' })); if (!r.ok) throw new Error(j.error); return j; });
   $('bPco').onclick = openPco;
   $('toMusicP').onclick = () => { location.href = '/control.html?mode=complet#muzica'; };
   if (/[?&]pco=1/.test(location.search)) setTimeout(() => { history.replaceState(null, '', '/planning.html'); openPco(); }, 600);   // came from Live: open the import right away
@@ -483,10 +485,10 @@
     $('modal').classList.add('show');
     if (!st.connected) {
       $('mBox').innerHTML = `<h3>Conectează Planning Center pentru ${esc(st.church || '')}</h3>
-        <p class="hint" style="line-height:1.55">Fiecare biserică din Betleem are contul ei de Planning Center. Pentru altă biserică, alege-o întâi din meniul de sus (numele bisericii), apoi conectează contul ei.</p>
+        <p class="hint" style="line-height:1.55">Fiecare biserică din Reverb are contul ei de Planning Center. Pentru altă biserică, alege-o întâi din meniul de sus (numele bisericii), apoi conectează contul ei.</p>
         <p class="hint" style="line-height:1.55">1. Intră pe <b>api.planningcenteronline.com/personal_access_tokens</b> cu contul tău Planning Center.<br>
         2. Apasă <b>Create token</b> (Services trebuie să fie bifat).<br>3. Copiază aici <b>Client ID</b> și <b>Secret</b>.<br>
-        Betleem doar <b>citește</b> din Planning Center, nu schimbă nimic acolo. Cheia rămâne doar pe acest laptop.</p>
+        Reverb doar <b>citește</b> din Planning Center, nu schimbă nimic acolo. Cheia rămâne doar pe acest laptop.</p>
         <label>Client ID<input id="pcoId" autocomplete="off"></label><label>Secret<input id="pcoSec" type="password" autocomplete="off"></label>
         <div class="btns"><button id="mNo">Renunță</button><button id="pcoGo" class="acc">Conectează</button></div>`;
       $('mNo').onclick = () => $('modal').classList.remove('show');
@@ -502,7 +504,7 @@
     $('mBox').innerHTML = `<div class="pco-head"><h3>Planning Center · ${esc(st.church || '')}</h3><span class="hint">Conectat (${esc(st.appIdHint)})${st.lastImport ? ' · ultimul import ' + new Date(st.lastImport).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span></div>
       <div class="pco-types" id="pcoTypes"></div>
       <div class="pco-list" id="pcoList"><div class="hint">Caut programele din Planning Center…</div></div>
-      <p class="hint">Programele alese intră în <b>${esc($('church').firstChild?.textContent || '')}</b>, cu cântările lor (cu acorduri și ordinea strofelor). Echipele rămân cele din Betleem.</p>
+      <p class="hint">Programele alese intră în <b>${esc($('church').firstChild?.textContent || '')}</b>, cu cântările lor (cu acorduri și ordinea strofelor). Echipele rămân cele din Reverb.</p>
       <label class="check" style="flex-direction:row;align-items:center;gap:8px;color:var(--fg)"><input type="checkbox" id="pcoPrefer" checked> Cântările din Planning Center sunt cele corecte: înlocuiesc versurile și acordurile din bibliotecă (cele vechi rămân salvate). O cântare adusă deja din contul altei biserici nu e înlocuită.</label>
       <div id="pcoProg" class="hint"></div>
       <div class="btns" style="flex-wrap:wrap"><button id="pcoOff" class="ghost" title="Șterge legătura de pe acest calculator">Deconectează</button><span style="flex:1"></span>
@@ -951,7 +953,7 @@
       try {
         const res = await fetch('/api/songs', { method: 'POST', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' },
           body: JSON.stringify({ title: r.title, body: r.body, source: r.url }) });
-        const song = await res.json().catch(() => { throw new Error('Închide și redeschide Betleem pe laptop (are o versiune veche pornită).'); });
+        const song = await res.json().catch(() => { throw new Error('Închide și redeschide Reverb pe laptop (are o versiune veche pornită).'); });
         if (!res.ok) throw new Error(song.error);
         addSongToService(song.id, song.key); toast('„' + song.title + '” e acum în bibliotecă și în program');
       } catch (e) { el.style.opacity = 1; toast(e.message); }
@@ -1075,7 +1077,7 @@
       row.querySelector('.who').onchange = e => save({ who: e.target.value });
       row.querySelector('.fc').onclick = () => save({ focus: k.focus === 'oameni' ? 'programe' : k.focus === 'programe' ? '' : 'oameni' });
       row.querySelector('.due').onchange = e => save({ due: e.target.value });
-      row.querySelector('.cal').onclick = () => ics('Betleem: ' + k.text + (k.who ? ' (' + volName(k.who) + ')' : ''), k.due, 0, true);
+      row.querySelector('.cal').onclick = () => ics('Reverb: ' + k.text + (k.who ? ' (' + volName(k.who) + ')' : ''), k.due, 0, true);
       row.querySelector('.del').onclick = () => op({ op: 'deleteTask', id: k.id });
     });
   }
@@ -1116,7 +1118,7 @@
           body: JSON.stringify({ data, churchId: pick === 'new' ? '' : pick, newChurch: pick === 'new' ? shortName : '', vision: $('yVis').checked, logo: $('yLogo')?.checked ? 'raul-vietii' : '', tz: Intl.DateTimeFormat().resolvedOptions().timeZone }) }).then(r => r.json()).catch(() => ({ error: 'N-a mers' }));
         if (r.error) { toast(r.error); return false; }
         await load();
-        toast(`📅 Planul e la ${r.church}: ${r.goals} obiective, ${r.tasks} activități, ${r.created} duminici noi.` + (r.other ? ` Ca să-l vezi, deschide biserica ${r.church} (Betleem ▾ sus, stânga).` : ''));
+        toast(`📅 Planul e la ${r.church}: ${r.goals} obiective, ${r.tasks} activități, ${r.created} duminici noi.` + (r.other ? ` Ca să-l vezi, deschide biserica ${r.church} (Reverb ▾ sus, stânga).` : ''));
       }, 'Importă');
   }
   function showYear() {

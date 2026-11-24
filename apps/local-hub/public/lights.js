@@ -2,7 +2,7 @@
 // it is ticked once ("Lumini de pe acest calculator"). A scene is a list of MIDI messages; CC values fade smoothly.
 let access = null;
 export async function midiOutputs() {
-  if (!navigator.requestMIDIAccess) throw new Error('Acest calculator nu are MIDI în browser. Folosește aplicația Betleem.');
+  if (!navigator.requestMIDIAccess) throw new Error('Acest calculator nu are MIDI în browser. Folosește aplicația Reverb.');
   access ||= await navigator.requestMIDIAccess({ sysex: false });
   return [...access.outputs.values()].map(o => ({ id: o.id, name: o.name }));
 }
