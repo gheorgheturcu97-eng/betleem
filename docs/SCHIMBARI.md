@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.15 · predicatorul intră din telefon
+- **🎤 Predicator pe telefon.** Înainte: butonul „Intră” de lângă PIN ieșea din ecran pe unele telefoane, iar fără o predică
+  în program pagina spunea doar „Nu există o predică”. Acum: PIN-ul și „Intră” încap pe orice telefon, cu „Fără PIN”
+  pornit intră direct, iar pagina spune „Ai intrat ✔” și ce mai trebuie (o predică adăugată în program de regie).
+
 ## 2026-11-24 · 2026.11.24.14 · 🎭 Looks (idee din ProPresenter)
 - **🎭 Looks.** Înainte: aspectul ecranului din sală se schimba setare cu setare (mărime, poziție, aliniere, tranziție…).
   Acum: un Look schimbă tot dintr-un clic. Sunt 3 gata făcute: ⛪ Serviciu (aspectul de până acum), 🙌 Închinare

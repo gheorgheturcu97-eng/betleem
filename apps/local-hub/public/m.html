@@ -100,8 +100,9 @@
   #who .opt b{font-size:30px;width:42px;text-align:center;font-weight:400} #who .opt span{display:flex;flex-direction:column;gap:3px;font-weight:700;font-size:17px}
   #who .opt small{font-weight:400;color:var(--mute);font-size:13.5px}
   #who .ppin{display:none;gap:8px} #who .ppin.on{display:flex}
-  #who .ppin input{flex:1;height:50px;border-radius:12px;border:1px solid var(--line);background:#0f141b;color:var(--ink);font-size:22px;text-align:center;letter-spacing:.3em}
-  #who .ppin button{padding:0 18px;border-radius:12px;background:var(--blue);font-weight:700}
+  #who .ppin input{flex:1;min-width:0;width:100%;height:50px;border-radius:12px;border:1px solid var(--line);background:#0f141b;color:var(--ink);font-size:22px;text-align:center;letter-spacing:.3em}
+  #who .ppin input::placeholder{letter-spacing:normal;font-size:16px}
+  #who .ppin button{flex:none;padding:0 18px;border-radius:12px;background:var(--blue);font-weight:700}
   .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
   .sheet.on{display:flex}
   .box{width:min(420px,100%);background:#1f242b;border-radius:18px;overflow:hidden}
@@ -175,12 +176,14 @@
   if (!store.get('who', null)) $('who').classList.add('on');
   document.querySelectorAll('#who .opt').forEach(b => b.onclick = () => {
     const w = b.dataset.w;
-    if (w === 'preacher') { $('whoPin').classList.add('on'); $('whoPinIn').focus(); return; }
+    // 🔓 with "Fără PIN" on the computer, the preacher goes straight in (no PIN to ask for)
+    if (w === 'preacher' && !S?.noPin) { $('whoPin').classList.add('on'); $('whoPinIn').focus(); $('whoPin').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
     store.set('who', w);
     if (w === 'app') { $('who').classList.remove('on'); history.replaceState(null, '', '/m.html'); show(tab); } else location.href = WHO_TO[w];
   });
-  $('whoPinOk').onclick = () => { const p = $('whoPinIn').value.trim(); if (!p) return;
-    try { localStorage.setItem('bnc-pin', p); } catch {} store.set('who', 'preacher'); location.href = WHO_TO.preacher; };
+  $('whoPinOk').onclick = () => { const p = $('whoPinIn').value.trim();
+    if (p) try { localStorage.setItem('bnc-pin', p); } catch {}   // empty: the sermon page asks for it again
+    store.set('who', 'preacher'); location.href = WHO_TO.preacher; };
   $('whoPinIn').onkeydown = e => { if (e.key === 'Enter') $('whoPinOk').click(); };
   document.querySelectorAll('.ib.who').forEach(b => b.onclick = () => { store.set('who', null); $('whoPin').classList.remove('on'); $('who').classList.add('on'); });
 

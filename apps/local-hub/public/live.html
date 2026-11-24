@@ -158,8 +158,8 @@
     const L = S.live, si = L.sermon, it = S.setlist[si], on = si >= 0 && L.item === si, ctl = hub.role === 'preacher' || hub.role === 'operator' || hub.role === 'leader';
     $('login').hidden = ctl;
     $('pState').className = L.preacherOff ? 'off' : '';
-    $('pState').textContent = !ctl ? 'Introdu PIN-ul de predicator (e lângă codul QR, în 📱 Telefoane).'
-      : si < 0 ? 'Nu există o predică în programul de azi.'
+    $('pState').textContent = !ctl ? 'Introdu PIN-ul de predicator. Îl vezi pe calculatorul bisericii: Live → 📱 Pe telefon, la 🎤 Predicator.'
+      : si < 0 ? 'Ai intrat ✔. Nu există încă o predică în programul de azi: regia o adaugă în program (➕ Predică), apoi apeși ▶ aici.'
       : L.preacherOff ? 'Regia a preluat controlul slide-urilor. Așteaptă sau roagă regia să ți-l dea înapoi.'
       : on ? `🎤 Ai controlul: ${it.title || 'Predica'}` : `Predica „${it.title || 'Predica'}” nu e încă pe ecran. Apasă ▶ ca s-o pornești.`;
     const sl = it?.slides || [], cur = on ? L.slide : -1;
