@@ -146,6 +146,10 @@
     const { data: inv } = await sb.from('invites').select('id, display_name, role, departments, leads, expires_at, revoked_at, last_used_at, user_id, created_at')
       .eq('church_id', church).is('revoked_at', null).order('display_name');
     invList = inv || [];
+    // people of this church whose link was made in another church (they serve in both): shown, managed from there
+    const { data: mem } = await sb.from('members').select('user_id, display_name, role').eq('church_id', church);
+    const mine = new Set(invList.map(i => i.user_id).filter(Boolean));
+    const guests = (mem || []).filter(x => !mine.has(x.user_id));
     const count = d => invList.filter(i => (i.departments || []).includes(d)).length;
     $('filter').innerHTML = [`<span class="chip f${filterDep ? '' : ' on'}" data-f="">Toți · ${invList.length}</span>`,
       ...deps.map(d => `<span class="chip f${filterDep === d ? ' on' : ''}" data-f="${esc(d)}">${esc(d)} · ${count(d)}</span>`),
@@ -156,6 +160,8 @@
       <div>${(i.leads || []).map(d => `<span class="tag l">★ ${esc(d)}</span>`).join('')}${(i.departments || []).filter(d => !(i.leads || []).includes(d)).map(d => `<span class="tag">${esc(d)}</span>`).join('')}</div></div>
       <button data-do="edit" title="Rolul și departamentele">✎</button><button data-do="renew" title="Linkul vechi nu mai merge; omul iese de pe toate dispozitivele">↻ Link nou</button><button data-do="remove" class="ghost">Scoate</button></div>`).join('')
       || '<p class="mute">Nimeni aici încă.</p>';
+    if (!filterDep && guests.length) $('people').insertAdjacentHTML('beforeend', '<p class="mute" style="margin:14px 0 4px">Slujesc și în altă biserică (linkul lor e acolo):</p>'
+      + guests.map(g => `<div class="person"><div class="who"><b>${esc(g.display_name || 'Fără nume')}</b><small>${ROLE[g.role]} · ✓ conectat</small></div></div>`).join(''));
   }
   $('filter').onclick = e => { const c = e.target.closest('[data-f]'); if (!c) return; filterDep = c.dataset.f; people(); };
   $('nRole').onchange = () => { $('nLeads').hidden = $('nRole').value !== 'leader'; };
