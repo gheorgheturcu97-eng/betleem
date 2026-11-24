@@ -15,6 +15,7 @@ const admin = createClient(URL_, SECRET, { auth: { persistSession: false, autoRe
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS' };
 const out = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 const ROLES = ['member', 'leader', 'coordinator'];
+const list = (v: unknown) => (Array.isArray(v) ? v : []).map(x => String(x).trim().slice(0, 60)).filter(Boolean).slice(0, 12);
 
 async function sha256(s: string) {
   const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
@@ -41,7 +42,7 @@ async function makeInvite(church: string, by: string | null, x: Record<string, u
   const days = Math.min(365, Math.max(1, Number(x.days) || 60));
   const row = {
     church_id: church, token_hash: await sha256(token), role: ROLES.includes(String(x.role)) ? String(x.role) : 'member',
-    department: x.department ? String(x.department).slice(0, 60) : null, person_id: x.person_id ? String(x.person_id).slice(0, 80) : null,
+    departments: list(x.departments), leads: String(x.role) === 'leader' ? list(x.leads) : [], person_id: x.person_id ? String(x.person_id).slice(0, 80) : null,
     display_name: x.display_name ? String(x.display_name).slice(0, 80) : null, created_by: by,
     expires_at: new Date(Date.now() + days * 864e5).toISOString(), user_id: keepUser ?? null,
   };
@@ -71,7 +72,7 @@ Deno.serve(async req => {
         uid = data.user.id;
         await admin.from('invites').update({ user_id: uid }).eq('id', inv.id);
       }
-      await admin.from('members').upsert({ church_id: inv.church_id, user_id: uid, role: inv.role, department: inv.department,
+      await admin.from('members').upsert({ church_id: inv.church_id, user_id: uid, role: inv.role, departments: inv.departments || [], leads: inv.leads || [],
         person_id: inv.person_id, display_name: inv.display_name }, { onConflict: 'church_id,user_id' });
       const { data: link, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
       if (error) throw new Error(error.message);
@@ -86,6 +87,16 @@ Deno.serve(async req => {
       const church = String(m.church_id || '');
       if (!(await canManage(me.id, church))) return out(403, { error: 'Doar coordonatorul bisericii face linkuri.' });
       return out(200, await makeInvite(church, me.id, m));
+    }
+    if (m.action === 'update') {                     // role and departments, from the coordinator's page (link stays the same)
+      const { data: inv } = await admin.from('invites').select('*').eq('id', String(m.invite_id || '')).maybeSingle();
+      if (!inv || !(await canManage(me.id, inv.church_id))) return out(403, { error: 'Nu poți schimba această persoană.' });
+      const role = ROLES.includes(String(m.role)) ? String(m.role) : inv.role;
+      const ch = { role, departments: list(m.departments), leads: role === 'leader' ? list(m.leads) : [],
+        ...(m.display_name ? { display_name: String(m.display_name).slice(0, 80) } : {}) };
+      await admin.from('invites').update(ch).eq('id', inv.id);
+      if (inv.user_id) await admin.from('members').update(ch).eq('church_id', inv.church_id).eq('user_id', inv.user_id);
+      return out(200, { ok: true });
     }
     if (m.action === 'renew' || m.action === 'remove') {
       const { data: inv } = await admin.from('invites').select('*').eq('id', String(m.invite_id || '')).maybeSingle();

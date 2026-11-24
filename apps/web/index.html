@@ -29,9 +29,16 @@
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .row>*{flex:1 1 140px}
   input,select{font:15px Montserrat,sans-serif;background:#0d0c0b;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%}
   .person{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)} .person:first-of-type{border-top:0}
-  .person .who{flex:1;min-width:0} .person .who b{display:block} .person .who small{color:var(--mute)}
+  .person .who{flex:1 1 220px;min-width:0} .person .who b{display:block} .person .who small{color:var(--mute)}
   .person button{padding:8px 10px;font-size:13px}
   .linkbox{margin-top:12px;padding:12px;border-radius:12px;background:#0d0c0b;border:1px dashed var(--sand);word-break:break-all;font-size:14px}
+  .deps{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center} .deps small{color:var(--mute);margin-right:4px}
+  .deps label{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#26241f;border:1px solid var(--line);cursor:pointer;font-size:14px}
+  .deps input{width:auto;margin:0;accent-color:var(--acc)} .deps label:has(input:checked){background:rgba(58,91,217,.25);border-color:var(--acc)}
+  .deps.lead label:has(input:checked){background:rgba(201,183,156,.25);border-color:var(--sand)}
+  .chip.f{cursor:pointer;border:1px solid transparent} .chip.f.on{border-color:var(--acc);background:rgba(58,91,217,.25)}
+  .edit{width:100%;padding:10px 0 4px} .edit .row{margin-top:8px}
+  .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:#26241f;margin:2px 4px 0 0} .tag.l{background:rgba(201,183,156,.3)}
   [hidden]{display:none!important}
 </style>
 </head>
@@ -64,11 +71,13 @@
       <div class="row">
         <input id="nName" placeholder="Numele (ex. Andrei Popescu)" maxlength="80">
         <select id="nRole"><option value="member">Membru</option><option value="leader">Lider</option><option value="coordinator">Coordonator</option></select>
-        <input id="nDept" placeholder="Departament (opțional)" maxlength="60">
         <button id="nGo" class="acc">＋ Link nou</button>
       </div>
+      <div class="deps" id="nDeps"></div>
+      <div class="deps" id="nLeads" hidden></div>
       <div id="newLink" class="linkbox" hidden></div>
-      <div id="people" style="margin-top:12px"></div>
+      <div class="chips" id="filter" style="margin-top:14px"></div>
+      <div id="people" style="margin-top:6px"></div>
     </div>
   </section>
 </main>
@@ -107,14 +116,14 @@
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return show('vDoor');
     me = session.user; $('out').hidden = false;
-    const { data: ms } = await sb.from('members').select('church_id, role, display_name, department').eq('user_id', me.id);
+    const { data: ms } = await sb.from('members').select('church_id, role, display_name, departments, leads').eq('user_id', me.id);
     const ids = (ms || []).map(m => m.church_id);
     const { data: cs } = ids.length ? await sb.from('churches').select('id, name, city').in('id', ids) : { data: [] };
     churches = (ms || []).map(m => ({ ...m, ...(cs || []).find(c => c.id === m.church_id) }));
     const name = churches.find(c => c.display_name)?.display_name || me.user_metadata?.name || '';
     $('hello').textContent = name ? 'Salut, ' + name.split(' ')[0] + '!' : 'Salut!';
     $('sub').textContent = churches.map(c => c.name).join(' · ') || 'Reverb';
-    $('myChurches').innerHTML = churches.map(c => `<span class="chip">${esc(c.name)}${c.city && c.city !== c.name ? ' · ' + esc(c.city) : ''} — ${ROLE[c.role]}${c.department ? ' · ' + esc(c.department) : ''}</span>`).join('')
+    $('myChurches').innerHTML = churches.map(c => `<span class="chip">${esc(c.name)}${c.city && c.city !== c.name ? ' · ' + esc(c.city) : ''} — ${ROLE[c.role]}${c.leads?.length ? ' ' + esc(c.leads.join(', ')) : ''}${c.departments?.length ? ' · ' + esc(c.departments.join(', ')) : ''}</span>`).join('')
       || '<span class="mute">Nu ești încă în nicio biserică.</span>';
     const coord = churches.filter(c => c.role === 'coordinator');
     $('vPeople').hidden = !coord.length;
@@ -124,14 +133,39 @@
   }
 
   // 3) coordinators: the people and their links
+  let deps = [], filterDep = '', invList = [];
+  const depBoxes = (id, sel = [], lead = false) => `<small>${lead ? 'Conduce:' : 'Departamente:'}</small>` + deps.map(d =>
+    `<label><input type="checkbox" data-g="${id}" value="${esc(d)}"${sel.includes(d) ? ' checked' : ''}>${esc(d)}</label>`).join('');
+  const picked = id => [...document.querySelectorAll(`input[data-g="${id}"]:checked`)].map(x => x.value);
   async function people() {
     const church = $('pChurch').value;
-    const { data: inv } = await sb.from('invites').select('id, display_name, role, department, expires_at, revoked_at, last_used_at, user_id, created_at')
-      .eq('church_id', church).is('revoked_at', null).order('created_at', { ascending: false });
-    $('people').innerHTML = (inv || []).map(i => `<div class="person" data-id="${i.id}"><div class="who"><b>${esc(i.display_name || 'Fără nume')}</b>
-      <small>${ROLE[i.role]}${i.department ? ' · ' + esc(i.department) : ''} · ${i.last_used_at ? '<span class="ok">✓ conectat</span>' : 'n-a intrat încă'} · linkul ${i.last_used_at ? 'mai poate fi folosit (pe alt telefon)' : 'merge'} până pe ${new Date(i.expires_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}</small></div>
-      <button data-do="renew" title="Linkul vechi nu mai merge; omul iese de pe toate dispozitivele">↻ Link nou</button><button data-do="remove" class="ghost">Scoate</button></div>`).join('')
-      || '<p class="mute">Încă niciun om. Fă primul link mai sus.</p>';
+    const { data: ds } = await sb.from('departments').select('name').eq('church_id', church).order('sort');
+    deps = (ds || []).map(d => d.name);
+    $('nDeps').innerHTML = depBoxes('n'); $('nLeads').innerHTML = depBoxes('nl', [], true); $('nLeads').classList.add('lead');
+    $('nLeads').hidden = $('nRole').value !== 'leader';
+    const { data: inv } = await sb.from('invites').select('id, display_name, role, departments, leads, expires_at, revoked_at, last_used_at, user_id, created_at')
+      .eq('church_id', church).is('revoked_at', null).order('display_name');
+    invList = inv || [];
+    const count = d => invList.filter(i => (i.departments || []).includes(d)).length;
+    $('filter').innerHTML = [`<span class="chip f${filterDep ? '' : ' on'}" data-f="">Toți · ${invList.length}</span>`,
+      ...deps.map(d => `<span class="chip f${filterDep === d ? ' on' : ''}" data-f="${esc(d)}">${esc(d)} · ${count(d)}</span>`),
+      `<span class="chip f${filterDep === '—' ? ' on' : ''}" data-f="—">Fără departament · ${invList.filter(i => !(i.departments || []).length).length}</span>`].join('');
+    const shown = invList.filter(i => !filterDep || (filterDep === '—' ? !(i.departments || []).length : (i.departments || []).includes(filterDep)));
+    $('people').innerHTML = shown.map(i => `<div class="person" data-id="${i.id}" style="flex-wrap:wrap"><div class="who"><b>${esc(i.display_name || 'Fără nume')}</b>
+      <small>${ROLE[i.role]}${(i.leads || []).length ? ' ' + esc(i.leads.join(', ')) : ''} · ${i.last_used_at ? '<span class="ok">✓ conectat</span>' : 'n-a intrat încă'}</small>
+      <div>${(i.leads || []).map(d => `<span class="tag l">★ ${esc(d)}</span>`).join('')}${(i.departments || []).filter(d => !(i.leads || []).includes(d)).map(d => `<span class="tag">${esc(d)}</span>`).join('')}</div></div>
+      <button data-do="edit" title="Rolul și departamentele">✎</button><button data-do="renew" title="Linkul vechi nu mai merge; omul iese de pe toate dispozitivele">↻ Link nou</button><button data-do="remove" class="ghost">Scoate</button></div>`).join('')
+      || '<p class="mute">Nimeni aici încă.</p>';
+  }
+  $('filter').onclick = e => { const c = e.target.closest('[data-f]'); if (!c) return; filterDep = c.dataset.f; people(); };
+  $('nRole').onchange = () => { $('nLeads').hidden = $('nRole').value !== 'leader'; };
+  function editor(row) {
+    const i = invList.find(x => x.id === row.dataset.id); if (!i || row.querySelector('.edit')) return;
+    const k = 'e' + i.id.slice(0, 8);
+    row.insertAdjacentHTML('beforeend', `<div class="edit"><div class="row"><select id="${k}r"><option value="member">Membru</option><option value="leader">Lider</option><option value="coordinator">Coordonator</option></select>
+      <button class="acc" data-do="save">Salvează</button><button class="ghost" data-do="cancel">Renunță</button></div>
+      <div class="deps">${depBoxes(k, i.departments || [])}</div><div class="deps lead" id="${k}L"${i.role === 'leader' ? '' : ' hidden'}>${depBoxes(k + 'l', i.leads || [], true)}</div></div>`);
+    $(k + 'r').value = i.role; $(k + 'r').onchange = () => { $(k + 'L').hidden = $(k + 'r').value !== 'leader'; };
   }
   function showLink(name, token) {
     const url = myLink(token);
@@ -144,12 +178,22 @@
   $('nGo').onclick = async () => {
     const name = $('nName').value.trim(); if (!name) return $('nName').focus();
     $('nGo').disabled = true;
-    try { const r = await fn({ action: 'create', church_id: $('pChurch').value, display_name: name, role: $('nRole').value, department: $('nDept').value.trim() });
-      showLink(name, r.token); $('nName').value = ''; $('nDept').value = ''; people(); }
+    try { const r = await fn({ action: 'create', church_id: $('pChurch').value, display_name: name, role: $('nRole').value, departments: [...new Set([...picked('n'), ...($('nRole').value === 'leader' ? picked('nl') : [])])], leads: $('nRole').value === 'leader' ? picked('nl') : [] });
+      showLink(name, r.token); $('nName').value = ''; $('nRole').value = 'member'; people(); }
     catch (e) { alert(e.message); } finally { $('nGo').disabled = false; }
   };
   $('people').onclick = async e => {
     const b = e.target.closest('button'); if (!b) return; const row = b.closest('.person'), name = row.querySelector('b').textContent;
+    if (b.dataset.do === 'edit') return editor(row);
+    if (b.dataset.do === 'cancel') return row.querySelector('.edit').remove();
+    if (b.dataset.do === 'save') {
+      const k = 'e' + row.dataset.id.slice(0, 8), role = $(k + 'r').value;
+      b.disabled = true;
+      try { const leads = role === 'leader' ? picked(k + 'l') : [];
+      await fn({ action: 'update', invite_id: row.dataset.id, role, departments: [...new Set([...picked(k), ...leads])], leads }); people(); }
+      catch (err) { alert(err.message); b.disabled = false; }
+      return;
+    }
     if (b.dataset.do === 'remove' && !confirm(`Îl scoți pe ${name} din biserică? Linkul lui nu mai merge.`)) return;
     try { const r = await fn({ action: b.dataset.do, invite_id: row.dataset.id }); if (r.token) showLink(name, r.token); people(); } catch (err) { alert(err.message); }
   };

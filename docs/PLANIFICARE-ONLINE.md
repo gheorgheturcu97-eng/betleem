@@ -83,6 +83,10 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
   (intră cu linkul `#t=…`, rămâne conectat; coordonatorul face linkuri, ↻ link nou, scoate). Verificat cap-coadă
   cu o biserică de probă (link → cont → vede doar biserica lui; liderul nu poate face linkuri; anonimul nu vede nimic).
   Găzduire: GitHub Pages din ramura `gh-pages` (proprietarul o pornește din Settings → Pages).
+- ✅ **Departamente (2026-11-24):** tabelul `departments` (Betleem: Închinare, Copii, Asimilare și ospitalitate, Media),
+  `members/invites.departments[]` + `leads[]` (liderul conduce unul sau mai multe); telefoanele: coordonatorul pe toate,
+  liderul doar ale departamentelor pe care le conduce (`private.leads_any`). Pagina: bife pentru departamente, ✎ pe
+  fiecare om (rol + departamente + ce conduce), filtru pe departament. Verificat cu Playwright pe o biserică de probă.
 - ⏳ Pasul 3: Planificarea online (citire pentru membri, scriere pentru lideri).
 
 ## Ordinea construcției
