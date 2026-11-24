@@ -512,6 +512,14 @@
   .look-pv{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--stroke);background:#000;flex:none}
   .look-pv iframe{position:absolute;inset:0;width:400%;height:400%;transform:scale(.25);transform-origin:0 0;border:0;pointer-events:none}
   .look .mini{padding:4px 11px;font-size:12px}
+  .lk-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .lk{display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.07);border:.5px solid var(--stroke)}
+  .lk>button{height:30px;padding:0 12px;border-radius:999px;font-weight:650;font-size:13px;background:none}
+  .lk>button.x{display:none;padding:0 10px 0 0;color:var(--mute);font-weight:400} .lk:hover>button.x{display:block} .lk.on>button.x{color:var(--acc-ink)}
+  .lk.on{background:var(--acc);border-color:transparent} .lk.on>button{color:var(--acc-ink)}
+  .lk-item{display:inline-flex;align-items:center;gap:6px} .lk-item small{color:var(--mute);font-size:11.5px} .lk-item select{height:28px;width:auto;max-width:150px}
+  .look.stage .main-only{display:none}
+  .qlook select.qlooksel{font-weight:700}
   .look-sec{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-top:6px}
   .look .checks{display:flex;flex-wrap:wrap;gap:6px 14px} .look .checks .check{font-size:12.5px}
   .look .lf>span{width:96px}
@@ -991,6 +999,7 @@
               <label class="check"><input type="checkbox" id="autoLoop"> buclă</label></span>
           </div>
           <div class="qlook" id="qLook" title="Aspectul versurilor pe ecranul din sală (se vede imediat)">
+            <select id="qLookSel" class="qlooksel" title="🎭 Look: tot aspectul ecranelor dintr-un clic (Serviciu, Închinare, Predică…)"></select>
             <span class="ql" title="Câte rânduri pe un slide, la cântarea aleasă"><small>Rânduri</small><button data-q="rows-">−</button><b id="qRows">4</b><button data-q="rows+">＋</button></span>
             <span class="ql" title="Mărimea textului pe ecranul din sală"><small>Text</small><button data-q="size-">A−</button><button data-q="size+">A＋</button></span>
             <select id="qFont" title="Fontul versurilor"></select>
@@ -1357,6 +1366,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 <div class="look glass" id="look">
   <div class="look-head"><b>Ecrane</b><span class="grow"></span><button id="lookClose" class="icon" title="Închide">✕</button></div>
   <div class="seg" id="lookTabs"><button data-s="main" class="sel">Sală · proiector</button><button data-s="stage">Scenă · monitor</button></div>
+  <div class="looks main-only" id="looksBox">
+    <div class="look-sec">🎭 Looks · tot aspectul dintr-un clic</div>
+    <div class="lk-row" id="lkList"></div>
+    <div class="lk-row"><button id="lkSave" class="mini" title="Ține minte aspectul de acum ca Look (textul din sală; la alegere scena, fundalul și Props)">＋ Salvează aspectul de acum</button>
+      <span class="grow"></span><span class="lk-item" id="lkItemRow" title="Când acest moment din program intră pe ecran, trece singur la Look-ul ales"><small>Momentul ales trece la</small><select id="lkItem"></select></span></div>
+  </div>
   <div class="look-pv"><iframe id="lookPv" title="Previzualizare" tabindex="-1"></iframe></div>
   <div class="row"><button id="lookOpen" class="mini">Deschide pe ecran ↗</button><span class="grow"></span><button id="lTimerReset" class="mini stage-only" title="Timer-ul pornește din nou pentru ce e acum pe ecran">⟲ Timer de la zero</button></div>
   <div class="look-sec stage-only">Ce apare pe scenă</div>
@@ -1511,14 +1526,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     return new Promise(done => {
       $('mTitle').textContent = title; $('mOk').textContent = okText;
       $('mFields').style.display = '';
-      $('mFields').innerHTML = fields.map((f, i) => f.type === 'textarea'
+      $('mFields').innerHTML = fields.map((f, i) => f.type === 'checkbox' ? `<label class="check"><input data-i="${i}" type="checkbox"${f.value ? ' checked' : ''}> ${esc(f.label)}</label>` : f.type === 'textarea'
         ? `<label>${esc(f.label)}<textarea data-i="${i}" rows="${f.rows || 6}" spellcheck="false">${esc(f.value ?? '')}</textarea></label>`
         : `<label>${esc(f.label)}<input data-i="${i}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" placeholder="${esc(f.placeholder || '')}"></label>`).join('');
       $('modal').classList.add('show');
       const inputs = [...$('mFields').querySelectorAll('input,textarea')];
       setTimeout(() => (inputs[0] || $('mOk')).focus(), 30);
       const close = v => { $('modal').classList.remove('show'); $('mOk').onclick = $('mCancel').onclick = $('modal').onkeydown = null; done(v); };
-      $('mOk').onclick = () => close(inputs.map(i => i.value));
+      $('mOk').onclick = () => close(inputs.map(i => i.type === 'checkbox' ? i.checked : i.value));
       $('mCancel').onclick = () => close(null);
       $('modal').onkeydown = e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') $('mOk').click(); if (e.key === 'Escape') close(null); };
     });
@@ -1873,6 +1888,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function fillLook() {
     if (!S?.display || !look.classList.contains('show')) return;
     look.classList.toggle('stage', lookScreen === 'stage'); look.classList.toggle('main', lookScreen === 'main');
+    looksFill();
     $('lookItemRow').style.display = lookScreen === 'main' && S.setlist[sel] ? 'flex' : 'none';
     const d = currentLook();
     $('lFont').value = d.font; $('lSize').value = d.size; $('lSizeV').textContent = (+d.size).toFixed(1);
@@ -1919,6 +1935,40 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('qFont').onchange = e => send({ type: 'display', screen: 'main', patch: { font: e.target.value } });
   $('qTr').onchange = e => send({ type: 'display', screen: 'main', patch: { tr: e.target.value } });
   $('qTrDur').onchange = e => send({ type: 'display', screen: 'main', patch: { trDur: +e.target.value } });
+  // ---- 🎭 Looks (idea from ProPresenter): the whole look in one click; a moment of the program can switch by itself
+  function looksFill() {
+    if (!S) return;
+    const L = S.looks || [], on = S.lookOn;
+    const opts = L.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+    $('qLookSel').innerHTML = `<option value="">🎭 ${on ? '' : 'Look…'}</option>` + opts; $('qLookSel').value = on || '';
+    if (!on) $('qLookSel').options[0].textContent = '🎭 Look…'; else $('qLookSel').options[0].textContent = '🎭 —';
+    $('lkList').innerHTML = L.map(l => `<span class="lk${l.id === on ? ' on' : ''}" data-id="${esc(l.id)}"><button class="go" title="Pune acest Look${l.stage ? ' (și scena)' : ''}${l.background != null ? ' (și fundalul)' : ''}${l.props ? ' (și Props)' : ''} · dublu-clic = redenumește">${esc(l.name)}</button><button class="x" title="Șterge Look-ul">✕</button></span>`).join('')
+      || '<small style="color:var(--mute)">Niciun Look încă: aranjează ecranul, apoi „Salvează aspectul de acum”.</small>';
+    const it = S.setlist[sel];
+    $('lkItemRow').style.display = it ? '' : 'none';
+    if (it) { $('lkItem').innerHTML = '<option value="">— rămâne cum e —</option>' + opts; $('lkItem').value = it.look || ''; }
+  }
+  $('qLookSel').onchange = e => { if (e.target.value) { send({ type: 'applyLook', id: e.target.value }); toast('🎭 ' + e.target.selectedOptions[0].textContent); } };
+  $('lkList').onclick = async e => {
+    const c = e.target.closest('.lk'); if (!c) return; const id = c.dataset.id, l = (S.looks || []).find(x => x.id === id); if (!l) return;
+    if (e.target.closest('.x')) { if (await ask(`Ștergi Look-ul „${l.name}”?`, [], 'Șterge')) send({ type: 'deleteLook', id }); return; }
+    send({ type: 'applyLook', id }); toast('🎭 ' + l.name);
+  };
+  $('lkList').ondblclick = async e => {
+    const c = e.target.closest('.lk'); if (!c) return; const l = (S.looks || []).find(x => x.id === c.dataset.id); if (!l) return;
+    const r = await ask('Numele Look-ului', [{ label: 'Nume', value: l.name }], 'Redenumește'); if (r?.[0]?.trim()) send({ type: 'saveLook', look: { id: l.id, name: r[0].trim() } });
+  };
+  $('lkSave').onclick = async () => {
+    const r = await ask('Salvezi aspectul de acum ca Look. Scrie un nume nou sau numele unui Look existent (îl înlocuiește). Textul din sală e mereu inclus.',
+      [{ label: 'Nume', value: (S.looks || []).find(x => x.id === S.lookOn)?.name || '' },
+       { label: 'și aspectul scenei (monitorul)', type: 'checkbox', value: false }, { label: 'și fundalul de acum', type: 'checkbox', value: !!S.live?.background },
+       { label: 'și Props pornite acum (logo, anunț…)', type: 'checkbox', value: false }], 'Salvează');
+    if (!r?.[0]?.trim()) return; const yes = v => v === true;
+    const old = (S.looks || []).find(x => x.name.toLowerCase() === r[0].trim().toLowerCase());
+    send({ type: 'saveLook', look: { id: old?.id, name: r[0].trim(), take: { stage: yes(r[1]), background: yes(r[2]), props: yes(r[3]) } } });
+    toast('🎭 Look salvat: ' + r[0].trim());
+  };
+  $('lkItem').onchange = e => { if (S.setlist[sel]) { send({ type: 'itemLook', item: sel, id: e.target.value }); toast(e.target.value ? 'Când intră pe ecran, trece singur la ' + e.target.selectedOptions[0].textContent : 'Momentul rămâne cu aspectul de atunci'); } };
   $('lSize').oninput = e => { $('lSizeV').textContent = (+e.target.value).toFixed(1); setLook({ size: +e.target.value }); };
   $('lColor').oninput = e => setLook({ color: e.target.value });
   $('lChord').oninput = e => setLook({ chordColor: e.target.value });
@@ -2454,7 +2504,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   async function render() {
     try { qLookFill(); } catch {}
     if (!S) return;
-    churchChanged(); renderChurches(); fillLook(); renderPrograms(); syncMusic();
+    churchChanged(); renderChurches(); fillLook(); renderPrograms(); syncMusic(); looksFill();
     $('noPinState').textContent = S.noPin ? 'Pornit: telefoanele de pe Wi-Fi-ul bisericii intră fără PIN. Apasă ca să ceri iar PIN.' : 'Oricine e pe Wi-Fi-ul bisericii intră fără PIN (Planificare, Proiectez, MD&TRACK)';
     if (document.activeElement !== $('svcTitle')) $('svcTitle').value = S.service.title || '';
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {

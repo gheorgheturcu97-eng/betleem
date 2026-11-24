@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.14 · 🎭 Looks (idee din ProPresenter)
+- **🎭 Looks.** Înainte: aspectul ecranului din sală se schimba setare cu setare (mărime, poziție, aliniere, tranziție…).
+  Acum: un Look schimbă tot dintr-un clic. Sunt 3 gata făcute: ⛪ Serviciu (aspectul de până acum), 🙌 Închinare
+  (mare, la mijloc, trecere lină) și 📖 Predică (jos, la stânga, mai mic). Le alegi din bara de deasupra slide-urilor
+  (🎭) sau din ⚙ Ecrane. „＋ Salvează aspectul de acum” ține minte ce ai aranjat (la alegere și scena, fundalul, Props).
+  Dublu-clic = redenumește, ✕ = șterge, ⌘Z anulează.
+- **Un moment din program poate avea Look-ul lui** (⚙ Ecrane → „Momentul ales trece la”): când predica intră pe
+  ecran, trece singur la 📖 Predică. Nimic nu se schimbă singur dacă nu alegi asta.
+- **Asistentul** știe „pune Look-ul Predică” și „predica să treacă singură la Look-ul Predică”.
+
 ## 2026-11-24 · 2026.11.24.13 · 🔓 Fără PIN (comutator)
 - **⚙ Setări → 🔓 Fără PIN.** Înainte: telefoanele cereau PIN-ul echipei (Proiectez, MD&TRACK) și PIN-ul de lider
   (Planificare). Acum: cu „Fără PIN” pornit, oricine e pe Wi-Fi-ul bisericii (sau Tailscale) intră direct ca lider, iar

@@ -88,6 +88,10 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   (#who: app / musician → live.html?v=chords / lyrics → live.html / preacher → live.html?v=pred cu PIN), ținut minte în
   localStorage `m.who`; ⇄ în m.html și live.html (m.html?alege=1) schimbă rolul. Verificat în Playwright (iPhone 13).
 
+- **🎭 Looks** (2026.11.24.14): db.looks [{id,name,main,stage?,background?,props?}] + db.lookOn; mesaje saveLook (take:{stage,background,props}),
+  applyLook, deleteLook, itemLook (it.look → aplicat la `go`); 3 Looks de start; undo. UI: #qLookSel în bara rapidă, #looksBox în ⚙ Ecrane.
+  Asistent: apply_look. Test: hub.test.js „🎭 Looks”. Verificat cu Playwright.
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

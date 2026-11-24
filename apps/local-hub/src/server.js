@@ -159,6 +159,33 @@ const DISPLAY_DEFAULTS = {
            title: true, clock: true, timer: true, service: true, upNext: 2, headSize: 3.2 },
 };
 db.display = { main: { ...DISPLAY_DEFAULTS.main, ...(db.display?.main || {}) }, stage: { ...DISPLAY_DEFAULTS.stage, ...(db.display?.stage || {}) } };
+// 🎭 Looks: the whole look of the screens in one click (idea from ProPresenter, our own code). A Look keeps the hall
+// screen's text look, and optionally the stage's, the background and which Props are on. Undefined = leave as it is.
+if (!Array.isArray(db.looks)) {
+  const m = db.display.main;
+  db.looks = [
+    { id: 'serviciu', name: '⛪ Serviciu', main: { ...m } },
+    { id: 'inchinare', name: '🙌 Închinare', main: { ...m, align: 'center', valign: 'middle', size: Math.max(m.size || 6.2, 6.6), tr: 'crossfade', trDur: 700 } },
+    { id: 'predica', name: '📖 Predică', main: { ...m, align: 'left', valign: 'bottom', size: 4.4, upper: false, dim: 55, tr: 'fade', trDur: 400 } },
+  ];
+}
+function cleanLook(x, old = {}) {
+  const l = { id: String(x.id || old.id || crypto.randomUUID()).replace(/[^\w-]/g, '').slice(0, 40), name: String(x.name ?? old.name ?? 'Look').trim().slice(0, 40) || 'Look' };
+  const main = 'main' in x ? x.main : old.main, stage = 'stage' in x ? x.stage : old.stage;
+  if (main) l.main = cleanDisplay('main', main);
+  if (stage) l.stage = cleanDisplay('stage', stage);
+  const bg = 'background' in x ? x.background : old.background; if (bg != null) l.background = String(bg).slice(0, 500);
+  const pr = 'props' in x ? x.props : old.props; if (Array.isArray(pr)) l.props = pr.map(String).slice(0, 50);
+  return l;
+}
+function applyLook(id) {
+  const l = (db.looks || []).find(x => x.id === id); if (!l) return false;
+  if (l.main) db.display.main = { ...DISPLAY_DEFAULTS.main, ...l.main };
+  if (l.stage) db.display.stage = { ...DISPLAY_DEFAULTS.stage, ...l.stage };
+  if (l.background != null) live.background = l.background;
+  if (l.props) for (const pr of db.props || []) pr.on = l.props.includes(pr.id);
+  db.lookOn = l.id; return true;
+}
 function cleanDisplay(screen, patch) {
   const d = {}, p = patch || {};
   if (typeof p.font === 'string') d.font = p.font.slice(0, 60).replace(/[^\w\s-]/g, '');
@@ -349,6 +376,7 @@ function snapshot() {
     display: db.display,
     lights: db.lights || { scenes: [] },
     noPin: !!db.noPin,                               // 🔓 everyone on the church Wi-Fi is let in without a PIN
+    looks: db.looks || [], lookOn: db.lookOn || null,  // 🎭 Looks (whole look in one click) and the one on now
     props: db.props || [],                           // 🏷 things on screen independent of the slide (logo, banner, text)
     church: (({ id, name, city, logo, vision }) => ({ id, name, city, logo: logo || '', vision: vision || '' }))(activeChurch()),
     churches: db.churches.map(c => ({ id: c.id, name: c.name, city: c.city, locked: !!c.code })),
@@ -437,25 +465,25 @@ wss.on('connection', (ws, req) => {
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 let lastMd = null;                                     // the last MD&TRACK state, for a phone that just opened
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
-    setlist: structuredClone(db.setlist), service: structuredClone(db.service), display: structuredClone(db.display), props: structuredClone(db.props || []),
+    setlist: structuredClone(db.setlist), service: structuredClone(db.service), display: structuredClone(db.display), props: structuredClone(db.props || []), looks: structuredClone(db.looks || []), lookOn: db.lookOn || null,
     plan: structuredClone(db.plan?.services || []),
     songs: db.songs.map(x => ({ ...x, ...(x.arrangement ? { arrangement: [...x.arrangement] } : {}), ...(x.tags ? { tags: [...x.tags] } : {}) })),
     liveItemId: db.setlist[live.item]?.id || null, slide: live.slide,
   };
 }
 function restoreSnapshot(sn) {
-  db.setlist = sn.setlist; db.service = sn.service; db.display = sn.display; db.songs = sn.songs; if (sn.props) db.props = sn.props;
+  db.setlist = sn.setlist; db.service = sn.service; db.display = sn.display; db.songs = sn.songs; if (sn.props) db.props = sn.props; if (sn.looks) { db.looks = sn.looks; db.lookOn = sn.lookOn; }
   if (db.plan) db.plan.services = sn.plan;
   live.item = sn.liveItemId ? db.setlist.findIndex(x => x.id === sn.liveItemId) : -1;
   live.slide = live.item >= 0 ? clamp(sn.slide, 0, Math.max(0, slidesFor(live.item).length - 1)) : 0;
 }
 const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -519,7 +547,8 @@ function handleMessage(ws, m) {
     switch (m.type) {
       case 'go': {                                   // go to item + slide
         const item = clamp(m.item ?? live.item, -1, db.setlist.length - 1);
-        if (item !== live.item) { applyItemBackground(item); live.video = { ...live.video, cmd: 'play', at: Date.now() }; }
+        if (item !== live.item) { applyItemBackground(item); live.video = { ...live.video, cmd: 'play', at: Date.now() };
+          const lk = db.setlist[item]?.look; if (lk && lk !== db.lookOn) { applyLook(lk); if (db.setlist[item].background) live.background = db.setlist[item].background; } }
         live.item = item;
         live.slide = clamp(m.slide ?? 0, 0, Math.max(0, slidesFor(item).length - 1));
         live.blank = false; live.logo = false;
@@ -618,9 +647,29 @@ function handleMessage(ws, m) {
         if ('background' in m) it.background = String(m.background || '');
         save(); break;
       }
+      case 'saveLook': {                             // 🎭 save the screens as they are now (new or over an existing Look)
+        db.looks ||= []; const x = m.look || {}; const i = db.looks.findIndex(z => z.id === x.id);
+        const take = x.take;                         // { stage, background, props }: what else to keep besides the hall text
+        const src = take ? { ...x, main: db.display.main, ...(take.stage ? { stage: db.display.stage } : {}),
+          ...(take.background ? { background: live.background || '' } : {}), ...(take.props ? { props: (db.props || []).filter(p => p.on).map(p => p.id) } : {}) } : x;
+        const l = cleanLook(src, i >= 0 ? db.looks[i] : {});
+        if (take && i >= 0) { if (!take.stage) delete l.stage; if (!take.background) delete l.background; if (!take.props) delete l.props; }
+        if (i >= 0) db.looks[i] = l; else if (db.looks.length < 30) db.looks.push(l);
+        if (take) db.lookOn = l.id;
+        save(); break;
+      }
+      case 'deleteLook': db.looks = (db.looks || []).filter(z => z.id !== m.id); if (db.lookOn === m.id) db.lookOn = null;
+        for (const it of db.setlist) if (it.look === m.id) delete it.look; save(); break;
+      case 'applyLook': if (!applyLook(m.id)) return reply({ type: 'error', error: 'Nu găsesc acest Look' }); save(); break;
+      case 'itemLook': {                             // a moment of the program switches to its Look when it goes live (sermon → 📖 Predică)
+        const it = db.setlist[m.item]; if (!it) break;
+        if (m.id && (db.looks || []).some(z => z.id === m.id)) it.look = m.id; else delete it.look;
+        save(); break;
+      }
       case 'display': {                              // look of the main / stage screen
         const screen = m.screen === 'stage' ? 'stage' : 'main';
         Object.assign(db.display[screen], cleanDisplay(screen, m.patch));
+        db.lookOn = null;
         save(); break;
       }
       case 'itemDisplay': {                          // a song's own look on the main screen (null = use the general one)
@@ -1084,9 +1133,9 @@ const aiHub = {
   state: () => ({
     church: activeChurch().name, service: db.service,
     program: db.setlist.map((it, i) => ({ position: i + 1, kind: it.kind,
-      title: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.title : it.title, key: it.key || '', minutes: it.minutes, display: it.display, background: it.background })),
+      title: it.kind === 'song' ? db.songs.find(s => s.id === it.songId)?.title : it.title, key: it.key || '', minutes: it.minutes, display: it.display, background: it.background, look: it.look })),
     live: { position: live.item + 1, slide: live.slide + 1, blank: live.blank, background: live.background },
-    display: db.display,
+    display: db.display, looks: (db.looks || []).map(l => ({ id: l.id, name: l.name })), look_on: db.lookOn || null,
   }),
   run(m) { aiSocket.last = null; handleMessage(aiSocket, m); return aiSocket.last; },
   searchSongs, media: mediaList, tags: allTags,

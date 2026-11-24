@@ -44,6 +44,7 @@ export const TOOLS = [
     }, required: ['screen'] },
   { name: 'set_song_tags', description: 'Pune etichetele unei cântări (înlocuiește lista).', params: { song_id: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } } }, required: ['song_id', 'tags'] },
   { name: 'list_backgrounds', description: 'Lista fundalurilor disponibile.', params: {} },
+  { name: 'apply_look', description: 'Schimbă tot aspectul ecranelor dintr-o dată cu un Look (vezi looks din get_state, ex. Predică, Închinare). Cu position: acel moment din program trece singur la Look când intră pe ecran (gol = fără).', params: { look: { type: 'string', description: 'id sau nume' }, position: { type: 'number' } }, required: ['look'] },
   { name: 'set_background', description: 'Pune un fundal pe ecranul mare (nume din list_backgrounds; gol = fără fundal).', params: { name: { type: 'string' } }, required: ['name'] },
   { name: 'show_slide', description: 'Trimite pe ecran un slide: poziția din program și numărul slide-ului (1 = primul).', params: { position: { type: 'number' }, slide: { type: 'number' } }, required: ['position'] },
   { name: 'get_song_structure', description: 'Secțiunile unei cântări din program (Strofa 1, Refren, Bridge…), ordinea de acum și track-urile ei.', params: { position: { type: 'number' } }, required: ['position'] },
@@ -126,6 +127,13 @@ export function runTool(hub, name, a = {}) {
       return done(hub.run({ type: 'saveSong', song: { ...s, tags: a.tags } }));
     }
     case 'list_backgrounds': return hub.media();
+    case 'apply_look': {
+      const st = hub.state(), q = String(a.look || '').toLowerCase().replace(/[^\p{L}\d]/gu, '');
+      const l = st.looks.find(x => x.id === a.look) || st.looks.find(x => x.name.toLowerCase().replace(/[^\p{L}\d]/gu, '').includes(q));
+      if (a.position) return done(hub.run({ type: 'itemLook', item: pos(a.position), id: q ? l?.id || '' : '' }));
+      if (!l) return { error: 'Nu există Look-ul „' + a.look + '”. Sunt: ' + st.looks.map(x => x.name).join(', ') };
+      return done(hub.run({ type: 'applyLook', id: l.id }));
+    }
     case 'set_background': return done(hub.run({ type: 'background', value: a.name || '' }));
     case 'show_slide': return done(hub.run({ type: 'go', item: pos(a.position), slide: Math.max(0, Math.round(Number(a.slide || 1)) - 1) }));
     case 'set_service': return done(hub.run({ type: 'service', value: { ...(a.title ? { title: a.title } : {}), ...(a.starts_at ? { startsAt: new Date(a.starts_at).toISOString() } : {}) } }));

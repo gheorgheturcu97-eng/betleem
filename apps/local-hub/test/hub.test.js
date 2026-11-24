@@ -672,6 +672,40 @@ test('🔓 no PIN on the church network: phones get in as leader; off again asks
 });
 
 
+test('🎭 Looks: seeded, applied in one click, saved from the screen, a program moment switches by itself, undo', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'applyLook', id: 'serviciu' });
+  let st = (await a.next(m => m.type === 'state' && m.state.lookOn === 'serviciu')).state;
+  assert.deepEqual(st.looks.map(l => l.id).slice(0, 3), ['serviciu', 'inchinare', 'predica'], 'three starter Looks');
+  a.send({ type: 'applyLook', id: 'predica' });
+  st = (await a.next(m => m.type === 'state' && m.state.lookOn === 'predica')).state;
+  assert.equal(st.display.main.valign, 'bottom'); assert.equal(st.display.main.align, 'left');
+  a.send({ type: 'display', screen: 'main', patch: { size: 9 } });
+  st = (await a.next(m => m.type === 'state' && m.state.display.main.size === 9)).state;
+  assert.equal(st.lookOn, null, 'changed by hand: no Look is exactly on');
+  a.send({ type: 'background', value: 'nor.jpg' }); await a.next(m => m.type === 'state' && m.state.live.background === 'nor.jpg');
+  a.send({ type: 'saveLook', look: { name: 'Mare', take: { background: true } } });
+  st = (await a.next(m => m.type === 'state' && m.state.looks.some(l => l.name === 'Mare'))).state;
+  const mare = st.looks.find(l => l.name === 'Mare');
+  assert.equal(mare.main.size, 9); assert.equal(mare.background, 'nor.jpg'); assert.equal(mare.stage, undefined, 'stage left out');
+  a.send({ type: 'undo' }); st = (await a.next(m => m.type === 'state' && !m.state.looks.some(l => l.name === 'Mare'))).state;
+  a.send({ type: 'redo' }); st = (await a.next(m => m.type === 'state' && m.state.looks.some(l => l.name === 'Mare'))).state;
+  // a program moment with its Look
+  a.send({ type: 'addItem', kind: 'text', title: 'Predica' }); st = (await a.next(m => m.type === 'state' && m.state.setlist.length)).state;
+  const i = st.setlist.length - 1;
+  a.send({ type: 'applyLook', id: 'serviciu' }); await a.next(m => m.type === 'state' && m.state.lookOn === 'serviciu');
+  a.send({ type: 'itemLook', item: i, id: 'predica' }); await a.next(m => m.type === 'state' && m.state.setlist[i].look === 'predica');
+  a.send({ type: 'go', item: i, slide: 0 });
+  st = (await a.next(m => m.type === 'state' && m.state.live.item === i)).state;
+  assert.equal(st.lookOn, 'predica'); assert.equal(st.display.main.valign, 'bottom');
+  a.send({ type: 'deleteLook', id: 'predica' });
+  st = (await a.next(m => m.type === 'state' && !m.state.looks.some(l => l.id === 'predica'))).state;
+  assert.equal(st.setlist[i].look, undefined, 'the moment forgets a deleted Look');
+  a.ws.close();
+});
+
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());
