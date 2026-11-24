@@ -1240,6 +1240,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="ideas"><i>💡</i><b>Propuneri</b><span>Păreri și propuneri de îmbunătățire, pentru dezvoltarea aplicației</span></button>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
     <button data-s="brand"><i>🎨</i><b>Aspect și funcții</b><span>Culoarea bisericii și ce module folosiți (restul se ascund)</span></button>
+    <button data-s="nopin"><i>🔓</i><b>Fără PIN</b><span id="noPinState">Oricine e pe Wi-Fi-ul bisericii intră fără PIN (Planificare, Proiectez, MD&amp;TRACK)</span></button>
     <button data-s="sec"><i>🔒</i><b>Acces de acasă și backup</b><span>Voluntarii își văd programarea de acasă; copii zilnice pe NAS</span></button>
   </div>
 </div></div>
@@ -1273,7 +1274,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="ph-one">
     <div class="ph"><div class="qr big" id="phQr4"></div><b>📱 Aplicația Betleem</b><small id="phAddr"></small></div>
     <div class="ph-who">
-      <div><b>🎛 Echipa media</b><small>Planificare, Proiectez și MD&amp;TRACK. Le spui PIN-ul echipei (doar celor din echipă):</small><span class="pin" id="phTeamPin"></span></div>
+      <div><b>🎛 Echipa media</b><small>Proiectez și MD&amp;TRACK cer PIN-ul echipei. Planificarea (cu datele voluntarilor) cere PIN-ul de lider, care merge și la celelalte.</small><span class="pin" id="phTeamPin"></span><span class="pin" id="phLeadPin"></span></div>
       <div><b>🎸 Muzician</b><small>Programul și cântările cu acorduri, în tonul ales.</small></div>
       <div><b>📖 Versuri</b><small>Pentru oricine: versurile de pe ecran și programul.</small></div>
       <div id="phPred"><b>🎤 Predicator</b><small>Schimbă singur slide-urile predicii. Îi spui PIN-ul de mai jos; tu poți prelua oricând din bara de sus.</small>
@@ -2297,7 +2298,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const { default: qrcode } = await import('/vendor/qrcode.js');
     const draw = (el, link) => { const q = qrcode(0, 'M'); q.addData(link); q.make(); $(el).innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); };
     draw('phQr4', base + '/m.html'); $('phAddr').innerHTML = 'Sau scrie în browser: <b>' + esc(base) + '/m.html</b>' + (/localhost|127\.0\.0\.1/.test(base) ? '<br>Calculatorul nu pare conectat la Wi-Fi.' : '');
-    $('phTeamPin').textContent = t?.pin ? 'PIN ' + t.pin : ''; $('phTeamPin').hidden = !t?.pin;
+    $('phTeamPin').textContent = t?.pin ? 'Echipă ' + t.pin : ''; $('phTeamPin').hidden = !t?.pin;
+    $('phLeadPin').textContent = t?.leaderPin ? 'Lider ' + t.leaderPin : ''; $('phLeadPin').hidden = !t?.leaderPin;
     $('phPred').hidden = !t?.preacherPin;
     if (t?.preacherPin) $('phPin').textContent = 'PIN ' + t.preacherPin;
     $('phNewPin').onclick = async () => { const r = await fetch('/api/preacher/pin', { method: 'POST', headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({}));
@@ -2453,6 +2455,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     try { qLookFill(); } catch {}
     if (!S) return;
     churchChanged(); renderChurches(); fillLook(); renderPrograms(); syncMusic();
+    $('noPinState').textContent = S.noPin ? 'Pornit: telefoanele de pe Wi-Fi-ul bisericii intră fără PIN. Apasă ca să ceri iar PIN.' : 'Oricine e pe Wi-Fi-ul bisericii intră fără PIN (Planificare, Proiectez, MD&TRACK)';
     if (document.activeElement !== $('svcTitle')) $('svcTitle').value = S.service.title || '';
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -2759,6 +2762,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'ai') $('aiSet').click(); else if (x === 'pcs') openPcs(); else if (x === 'bible') $('bibImport').click();
     else if (x === 'phones') $('bPhones').click(); else if (x === 'audio') { showView('music'); $('audioOut').click(); }
     else if (x === 'lite') setLite(!document.documentElement.classList.contains('lite'));
+    else if (x === 'nopin') { const on = !S?.noPin;
+      (async () => {
+        if (on && !(await ask('🔓 Scot PIN-urile? Oricine e pe Wi-Fi-ul bisericii va putea schimba ecranele și track-urile și va vedea Planificarea (cu telefoanele voluntarilor). De pe internet tot nu se poate intra. Le pui la loc tot de aici.', [], 'Scoate PIN-urile'))) return;
+        send({ type: 'noPin', on }); toast(on ? '🔓 Fără PIN: telefoanele din rețea intră direct' : '🔒 PIN-urile sunt iar cerute');
+      })(); }
     else if (x === 'theme') setTheme(!document.documentElement.classList.contains('light'));
     else if (x === 'ideas') openIdeas(); else if (x === 'sec') openSec(); else if (x === 'brand') openBrand();
   });

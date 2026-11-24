@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.13 · 🔓 Fără PIN (comutator)
+- **⚙ Setări → 🔓 Fără PIN.** Înainte: telefoanele cereau PIN-ul echipei (Proiectez, MD&TRACK) și PIN-ul de lider
+  (Planificare). Acum: cu „Fără PIN” pornit, oricine e pe Wi-Fi-ul bisericii (sau Tailscale) intră direct ca lider, iar
+  telefoanele deja conectate intră pe loc. De pe internet (🌐 ușa) tot nu se poate. Se oprește tot de acolo.
+- **📱 Pe telefon.** PIN-ul de lider apare lângă cel al echipei; textul din Planificare arată unde îl găsești.
+
 ## 2026-11-24 · 2026.11.24.12 · PIN-ul echipei la vedere pe calculator
 - **📱 Pe telefon.** Înainte: PIN-ul echipei nu apărea nicăieri în aplicație. Acum: apare lângă „Echipa media”, ca și al
   predicatorului (doar pe calculatorul bisericii, nu în rețea).

@@ -656,6 +656,22 @@ test('📅 the year plan of another church goes to that church, not to the one o
   assert.equal(ch.churches.find(c => c.id === ch.suggested)?.name, 'Râul Vieții', 'next time it is found by name');
 });
 
+test('🔓 no PIN on the church network: phones get in as leader; off again asks for the PIN', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'noPin', on: true });
+  assert.match((await a.next(m => m.type === 'error')).error, /liderul|PIN/, 'a viewer cannot remove the PINs');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  const v = client(); await v.open; assert.equal((await v.next(m => m.type === 'hello')).role, 'viewer');
+  a.send({ type: 'noPin', on: true });
+  assert.equal((await v.next(m => m.type === 'login')).role, 'leader', 'an already connected phone is let in');
+  const st = await a.next(m => m.type === 'state' && m.state.noPin); assert.equal(st.state.noPin, true);
+  const n = client(); await n.open; assert.equal((await n.next(m => m.type === 'hello')).role, 'leader', 'a new phone too');
+  a.send({ type: 'noPin', on: false }); await a.next(m => m.type === 'state' && !m.state.noPin);
+  const o = client(); await o.open; assert.equal((await o.next(m => m.type === 'hello')).role, 'viewer', 'PIN asked again');
+  for (const c of [a, v, n, o]) c.ws.close();
+});
+
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

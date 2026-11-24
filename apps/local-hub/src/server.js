@@ -43,6 +43,11 @@ const isLocal = addr => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(String
 /** This computer itself (trusted as leader with TRUST_LOCALHOST). Never true for the 🌐 public door: the tunnel also
  *  connects from 127.0.0.1, so without this check anyone on the internet would count as "this computer". */
 const localReq = req => !req.viaDoor && isLocal(req.socket.remoteAddress);
+/** 🔓 "Fără PIN" (⚙): every phone/computer on the church network counts as leader. Only private network addresses
+ *  (Wi-Fi 192.168/10/172.16-31, Tailscale 100.64/10, IPv6 fe80/fd), and never the 🌐 internet door. */
+const isLan = addr => { const a = String(addr || '').replace(/^::ffff:/, '');
+  return isLocal(addr) || /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(a) || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(a) || /^f[cde][0-9a-f]{2}:/i.test(a); };
+const openLan = req => !!db?.noPin && !req.viaDoor && isLan(req.socket?.remoteAddress);
 
 fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
@@ -343,6 +348,7 @@ function snapshot() {
     service: db.service,
     display: db.display,
     lights: db.lights || { scenes: [] },
+    noPin: !!db.noPin,                               // 🔓 everyone on the church Wi-Fi is let in without a PIN
     props: db.props || [],                           // 🏷 things on screen independent of the slide (logo, banner, text)
     church: (({ id, name, city, logo, vision }) => ({ id, name, city, logo: logo || '', vision: vision || '' }))(activeChurch()),
     churches: db.churches.map(c => ({ id: c.id, name: c.name, city: c.city, locked: !!c.code })),
@@ -414,7 +420,7 @@ function sermonIndex() {
 const need = (ws, role) => ROLE_RANK[sessions.get(ws)?.role ?? 'viewer'] >= ROLE_RANK[role];
 
 wss.on('connection', (ws, req) => {
-  sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && localReq(req)) ? 'leader' : 'viewer', addr: String(req.socket.remoteAddress) });
+  sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && localReq(req)) || openLan(req) ? 'leader' : 'viewer', addr: String(req.socket.remoteAddress) });
   ws.send(JSON.stringify({ type: 'hello', role: sessions.get(ws).role, state: snapshot() }));
   ws.on('close', () => { const was = sessions.get(ws)?.role; sessions.delete(ws); if (was === 'preacher') broadcast(); });
   ws.on('message', raw => {
@@ -850,6 +856,13 @@ function handleMessage(ws, m) {
           db.songs.push(created);
           if (m.addToProgram && need(ws, 'leader')) db.setlist.push({ id: crypto.randomUUID(), kind: 'song', songId: created.id, title: '', key: created.key || '', minutes: 5, notes: [] });
         }
+        save(); break;
+      }
+      case 'noPin': {                                // 🔓 no PINs on the church network (⚙); the phones already connected get in at once
+        if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate scoate PIN-urile.' });
+        db.noPin = !!m.on;
+        if (db.noPin) for (const [c, x] of sessions) if (c !== aiSocket && isLan(x.addr) && x.role !== 'leader') {
+          x.role = 'leader'; try { c.send(JSON.stringify({ type: 'login', ok: true, role: 'leader' })); } catch {} }
         save(); break;
       }
       // --- leader only: the service order ---
@@ -2106,8 +2119,8 @@ function pinCheck(req, ok) {
   if (given) wrongPin(addr);
   return false;
 }
-function checkLeader(req) { return !LEADER_PIN || (TRUST_LOCALHOST && localReq(req)) || (!req.viaDoor && pinCheck(req, x => safeEq(x, LEADER_PIN))); }
-function checkPin(req) { return !PIN || (TRUST_LOCALHOST && localReq(req)) || (!req.viaDoor && pinCheck(req, x => safeEq(x, PIN) || safeEq(x, LEADER_PIN))); }
+function checkLeader(req) { return !LEADER_PIN || (TRUST_LOCALHOST && localReq(req)) || openLan(req) || (!req.viaDoor && pinCheck(req, x => safeEq(x, LEADER_PIN))); }
+function checkPin(req) { return !PIN || (TRUST_LOCALHOST && localReq(req)) || openLan(req) || (!req.viaDoor && pinCheck(req, x => safeEq(x, PIN) || safeEq(x, LEADER_PIN))); }
 function safeEq(a, b) {
   const x = Buffer.from(String(a ?? '')), y = Buffer.from(String(b ?? ''));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
