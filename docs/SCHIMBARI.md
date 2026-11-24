@@ -1,6 +1,10 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.12 · PIN-ul echipei la vedere pe calculator
+- **📱 Pe telefon.** Înainte: PIN-ul echipei nu apărea nicăieri în aplicație. Acum: apare lângă „Echipa media”, ca și al
+  predicatorului (doar pe calculatorul bisericii, nu în rețea).
+
 ## 2026-11-24 · 2026.11.24.11 · un singur QR pentru telefon
 - **📱 Pe telefon (Live).** Înainte: 4 coduri QR (Muzicieni, Aplicația, Echipă, Predicator). Acum: un singur cod, spre
   aplicația Betleem (/m.html). Prima dată telefonul întreabă „Ce faci azi?”: 🎛 Echipa media (Planificare, Proiectez,

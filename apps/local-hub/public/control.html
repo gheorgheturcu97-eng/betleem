@@ -1273,7 +1273,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="ph-one">
     <div class="ph"><div class="qr big" id="phQr4"></div><b>📱 Aplicația Betleem</b><small id="phAddr"></small></div>
     <div class="ph-who">
-      <div><b>🎛 Echipa media</b><small>Planificare, Proiectez și MD&amp;TRACK, cu PIN-ul echipei.</small></div>
+      <div><b>🎛 Echipa media</b><small>Planificare, Proiectez și MD&amp;TRACK. Le spui PIN-ul echipei (doar celor din echipă):</small><span class="pin" id="phTeamPin"></span></div>
       <div><b>🎸 Muzician</b><small>Programul și cântările cu acorduri, în tonul ales.</small></div>
       <div><b>📖 Versuri</b><small>Pentru oricine: versurile de pe ecran și programul.</small></div>
       <div id="phPred"><b>🎤 Predicator</b><small>Schimbă singur slide-urile predicii. Îi spui PIN-ul de mai jos; tu poți prelua oricând din bara de sus.</small>
@@ -2297,6 +2297,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const { default: qrcode } = await import('/vendor/qrcode.js');
     const draw = (el, link) => { const q = qrcode(0, 'M'); q.addData(link); q.make(); $(el).innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); };
     draw('phQr4', base + '/m.html'); $('phAddr').innerHTML = 'Sau scrie în browser: <b>' + esc(base) + '/m.html</b>' + (/localhost|127\.0\.0\.1/.test(base) ? '<br>Calculatorul nu pare conectat la Wi-Fi.' : '');
+    $('phTeamPin').textContent = t?.pin ? 'PIN ' + t.pin : ''; $('phTeamPin').hidden = !t?.pin;
     $('phPred').hidden = !t?.preacherPin;
     if (t?.preacherPin) $('phPin').textContent = 'PIN ' + t.preacherPin;
     $('phNewPin').onclick = async () => { const r = await fetch('/api/preacher/pin', { method: 'POST', headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({}));
