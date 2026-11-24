@@ -1053,6 +1053,7 @@
         <div id="chordsBox" class="chords-box" hidden><div class="bar"><i id="chordsBar"></i></div><span id="chordsText"></span><button id="bChordsStop" class="ghost">Oprește</button></div>
         <div class="libbar"><button id="bNew2" class="acc">＋ Cântare nouă</button><span class="grow"></span>
           <button id="bChordsAll" class="icon" title="Acorduri pentru toată biblioteca: caută pe net cântările fără acorduri și pune acordurile pe fiecare strofă, refren și bridge">♪</button>
+          <button id="bBetleemLib" class="icon" title="📥 Adaugă cântările altui Betleem (library.json, o copie de siguranță sau pachetul liderilor); cele care există deja nu se dublează">📥</button><input type="file" id="betleemLibFile" accept=".json,application/json" hidden>
           <button id="bPro" class="icon" title="⇪ Importă cântările din ProPresenter de pe acest calculator (cele care există deja nu se dublează)">⇪</button>
           <button id="bClean" class="icon" title="Curăță biblioteca: etichete din semnele site-urilor (1., R:, Str2), fără /: :/, refrenul după fiecare strofă">🧹</button></div>
       </div>
@@ -4577,6 +4578,15 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     search();
   }
   $('bPro').onclick = () => importPro(false);
+  $('bBetleemLib').onclick = () => $('betleemLibFile').click();
+  $('betleemLibFile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    toast('Citesc cântările din ' + f.name + '…'); let r;
+    try { r = await api('/api/import/betleem', { method: 'POST', body: await f.text() }); } catch (err) { return toast(err.message); }
+    const sameList = r.same.slice(0, 12).map(x => x.title).join(', ');
+    await ask(`În fișier: ${r.files} cântări. Adăugate: ${r.added.length}. Existau deja (nu le-am dublat): ${r.same.length}${sameList ? ' (' + sameList + (r.same.length > 12 ? '…' : '') + ')' : ''}.` + (r.added.length ? ' Am făcut întâi o copie a bibliotecii.' : ''), [], 'OK');
+    search();
+  };
   $('bChordsOne').onclick = async () => {
     const id = $('songId').value; if (!id) return toast('Salvează întâi cântarea');
     if (/\[[A-G]/.test($('songBody').value)) {           // has chords on some sections: the same chords on all the others, here, no internet

@@ -722,6 +722,16 @@ test('📦 links for other churches: only the leader makes them, a wrong link is
   assert.equal((await fetch('http://localhost:4599/api/descarca?t=' + sh.token)).status, 404, 'cancelled');
 });
 
+test('📥 songs from another Betleem: only songs are taken, the ones already here are skipped', async () => {
+  const lib = { songs: [{ id: 'x1', title: 'Cântare din alt Betleem', key: 'G', body: 'Strofa 1:\n[G]Prima linie nouă aici\nA doua linie', tags: ['Colinde'] },
+    { id: 'x2', title: 'Cântare din alt Betleem', body: 'Strofa 1:\nAltceva' }], people: [{ name: 'Nu se ia', phone: '0700' }] };
+  const r = await fetch('http://localhost:4599/api/import/betleem', { method: 'POST', headers: { 'x-pin': '1111' }, body: JSON.stringify(lib) }).then(r => r.json());
+  assert.equal(r.added.length, 1); assert.equal(r.same.length, 1, 'same name: skipped');
+  const again = await fetch('http://localhost:4599/api/import/betleem', { method: 'POST', headers: { 'x-pin': '1111' }, body: JSON.stringify(lib) }).then(r => r.json());
+  assert.equal(again.added.length, 0, 'never doubled');
+  assert.equal((await fetch('http://localhost:4599/api/import/betleem', { method: 'POST', body: '{}' })).status, 403);
+});
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

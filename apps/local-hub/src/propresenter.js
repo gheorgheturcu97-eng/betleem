@@ -156,6 +156,9 @@ export function defaultFolders() {
   ].filter(Boolean);
   return c.filter(d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } });
 }
+const NOT_SONGS = /anun[tț]|count ?down|cowntdown|predic|sermon|templat|teme\b|announce/i;
+/** The ProPresenter library a file is in (Libraries/<name>/…), to keep it as a tag: „Colinde”, „Înmormântare”… (not for the main „Songs”). */
+export function libraryOf(f) { const m = String(f).split(/[\\/]/); const i = m.lastIndexOf('Libraries'); return i >= 0 && m[i + 2] ? m[i + 1].trim() : ''; }
 /** Every .pro / .pro6 file under these folders (not following links, at most 6 levels, at most 20 000 files). */
 export function findFiles(dirs) {
   const out = [];
@@ -165,7 +168,9 @@ export function findFiles(dirs) {
     for (const e of list) {
       if (e.name.startsWith('.')) continue;
       const f = path.join(d, e.name);
-      if (e.isDirectory() && !/\.(app|bundle)$/i.test(e.name) && !/^(Media|Cache|Thumbnails|Backups?)$/i.test(e.name)) walk(f, depth + 1);
+      // not songs: ProPresenter's own folders (themes, playlists, presets…) and libraries of announcements, sermons or countdowns
+      if (e.isDirectory() && !/\.(app|bundle)$/i.test(e.name) && !/^(Media|Cache|Thumbnails|Backups?|Themes|Playlists|Presets|Configuration|Downloads|Templates|Props|Macros|Looks|Stage)$/i.test(e.name)
+        && !NOT_SONGS.test(e.name)) walk(f, depth + 1);
       else if (e.isFile() && /\.pro6?$/i.test(e.name)) out.push(f);
     }
   };
@@ -197,7 +202,8 @@ export function importFolders(dirs, songs, core, add) {
       if (!body.trim()) { failed.push(path.basename(f)); continue; }
       const hit = findSame(songs, title, body);
       if (hit) { same.push({ title, existing: hit.title }); continue; }
-      const song = add({ title, author: s.author || '', key: s.key || core.readMeta(body).key || '', body, source: 'ProPresenter: ' + path.basename(f),
+      const lib = libraryOf(f), tag = lib && !/^(songs?|cant[aă]ri|c[aâ]nt[aă]ri|library|default)$/i.test(lib) ? lib : '';
+      const song = add({ title, author: s.author || '', key: s.key || core.readMeta(body).key || '', body, source: 'ProPresenter: ' + path.basename(f), ...(tag ? { tags: [tag] } : {}),
         arrangement: s.order.length && s.order.every(n => core.sectionKind(n)) ? s.order.map(roName) : undefined });
       songs = songs.concat(song); added.push(title);
     } catch { failed.push(path.basename(f)); }

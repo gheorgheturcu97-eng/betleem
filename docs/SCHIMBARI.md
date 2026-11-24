@@ -1,6 +1,14 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.17 · cântările pe Mac mini (ProPresenter + alt Betleem)
+- **⇪ ProPresenter.** Înainte: citea tot din folderul ProPresenter, inclusiv anunțuri, teme, playlist-uri și
+  countdown-uri, care ajungeau în bibliotecă drept „cântări”. Acum: citește doar bibliotecile de cântări (sare peste
+  Anunțuri, Countdown, Predici, Themes, Playlists, Presets) și pune numele bibliotecii ca etichetă (Colinde,
+  Înmormântare, FUSION…; „Songs” rămâne fără etichetă).
+- **📥 lângă ⇪ în Bibliotecă (nou).** Adaugă cântările altui Betleem (library.json, o copie de siguranță sau fișierul
+  de cântări din pachetul liderilor): doar cântările, fără oameni sau programe; cele care există deja nu se dublează.
+
 ## 2026-11-24 · 2026.11.24.16 · 📦 aplicația cu bibliotecă pentru bisericile din zonă
 - **⚙ Setări → 📦 Dă aplicația altor biserici.** Înainte: aplicația se dădea ca fișier, fără cântări, și trebuia urcată
   de mână undeva. Acum: Mac-ul tău face singur pachetul (aplicația de Mac cu cea mai nouă versiune + toate cântările,

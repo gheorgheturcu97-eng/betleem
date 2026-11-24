@@ -1608,12 +1608,35 @@ async function handle(req, res) {
       libraryBackup();
       const r = propres.importFolders(dirs, db.songs, core, s => {
         const order = s.arrangement || core.autoArrangement(s.body);
-        const song = { id: crypto.randomUUID(), title: s.title, author: s.author, key: s.key, body: s.body, source: s.source,
+        const song = { id: crypto.randomUUID(), title: s.title, author: s.author, key: s.key, body: s.body, source: s.source, ...(s.tags ? { tags: s.tags } : {}),
           ...(order ? { arrangement: order } : {}), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
         db.songs.push(song); return song;
       });
       if (r.added.length) { save(); broadcast(); }
       return json(res, 200, { ...r, dirs });
+    }
+    // 📥 the songs of another Betleem (its library.json, a backup or the leaders' package): only the songs are taken,
+    // the ones already here are skipped (same name or same first lines), never overwritten
+    if (p === '/api/import/betleem' && req.method === 'POST') {
+      if (req.viaDoor || !checkPin(req)) return json(res, 403, { error: 'Doar pe calculatorul bisericii, cu PIN' });
+      let src; try { src = JSON.parse(await body(req, 80_000_000)); } catch { return json(res, 400, { error: 'Nu e un fișier de bibliotecă Betleem' }); }
+      const list = Array.isArray(src) ? src : Array.isArray(src?.songs) ? src.songs : null;
+      if (!list) return json(res, 400, { error: 'În fișier nu sunt cântări Betleem' });
+      const KEEP = ['title', 'author', 'key', 'body', 'source', 'ccli', 'chordsSource', 'arrangement', 'bpm', 'tags', 'createdAt'];
+      const added = [], same = [];
+      const ids = new Set(db.songs.map(x => x.id));
+      for (const x of list) {
+        if (!x || typeof x.title !== 'string' || typeof x.body !== 'string' || !x.body.trim()) continue;
+        const hit = propres.findSame(db.songs, x.title, x.body);
+        if (hit) { same.push({ title: x.title, existing: hit.title }); continue; }
+        if (!added.length) libraryBackup();
+        const song = Object.fromEntries(KEEP.filter(k => x[k] != null).map(k => [k, x[k]]));
+        song.id = x.id && !ids.has(x.id) ? String(x.id) : crypto.randomUUID(); ids.add(song.id);
+        song.title = song.title.trim().slice(0, 120); song.updatedAt = new Date().toISOString(); song.createdAt ||= song.updatedAt;
+        db.songs.push(song); added.push(song.title);
+      }
+      if (added.length) { save(); broadcast(); }
+      return json(res, 200, { files: list.length, added, same, failed: [] });
     }
     // 🎛 an Ableton Live set (.als): markers, tempo and time signature for MD&TRACK (the file is only read, not kept)
     if (p === '/api/import/ableton' && req.method === 'POST') {

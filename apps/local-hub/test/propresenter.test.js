@@ -53,3 +53,16 @@ test('a folder of ProPresenter songs: new ones added, the same song is never cop
   assert.equal(findSame(lib, 'Alt titlu', 'Cu totul alte versuri aici\nși încă un rând'), null);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('ProPresenter folders: only song libraries are read, and a library name becomes a tag', async () => {
+  const { findFiles, libraryOf } = await import('../src/propresenter.js');
+  const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-'));
+  for (const f of ['Libraries/Songs/A.pro', 'Libraries/Colinde/B.pro', 'Libraries/Anunturi/C.pro', 'Libraries/COWNTDOWN/D.pro', 'Themes/Black/E.pro', 'Playlists/F.pro']) {
+    fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true }); fs.writeFileSync(path.join(root, f), 'x');
+  }
+  const got = findFiles([root]).map(f => path.relative(root, f)).sort();
+  assert.deepEqual(got, ['Libraries/Colinde/B.pro', 'Libraries/Songs/A.pro']);
+  assert.equal(libraryOf(path.join(root, 'Libraries/Colinde/B.pro')), 'Colinde');
+  assert.equal(libraryOf('/x/B.pro'), '');
+});
