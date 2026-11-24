@@ -129,7 +129,7 @@
     const { data: inv } = await sb.from('invites').select('id, display_name, role, department, expires_at, revoked_at, last_used_at, user_id, created_at')
       .eq('church_id', church).is('revoked_at', null).order('created_at', { ascending: false });
     $('people').innerHTML = (inv || []).map(i => `<div class="person" data-id="${i.id}"><div class="who"><b>${esc(i.display_name || 'Fără nume')}</b>
-      <small>${ROLE[i.role]}${i.department ? ' · ' + esc(i.department) : ''} · ${i.last_used_at ? '<span class="ok">a intrat</span>' : 'n-a intrat încă'} · expiră ${new Date(i.expires_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}</small></div>
+      <small>${ROLE[i.role]}${i.department ? ' · ' + esc(i.department) : ''} · ${i.last_used_at ? '<span class="ok">✓ conectat</span>' : 'n-a intrat încă'} · linkul ${i.last_used_at ? 'mai poate fi folosit (pe alt telefon)' : 'merge'} până pe ${new Date(i.expires_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}</small></div>
       <button data-do="renew" title="Linkul vechi nu mai merge; omul iese de pe toate dispozitivele">↻ Link nou</button><button data-do="remove" class="ghost">Scoate</button></div>`).join('')
       || '<p class="mute">Încă niciun om. Fă primul link mai sus.</p>';
   }
