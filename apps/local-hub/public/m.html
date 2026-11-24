@@ -116,6 +116,11 @@
   .login input{height:52px;border-radius:12px;border:1px solid var(--line);background:#0f141b;color:var(--ink);font-size:22px;text-align:center;letter-spacing:.3em}
   .login button{height:50px;border-radius:12px;background:var(--blue);font-weight:700;font-size:17px}
   .hint{color:var(--mute);font-size:14px;text-align:center;padding:20px}
+  /* the whole song on the screen: the bars go away, a tap on the song brings them back */
+  body.clean #tLive header,body.clean #lNow,body.clean #lItems,body.clean #cBar,body.clean nav.tabs{display:none!important}
+  body.clean #tLive{bottom:var(--bot)}
+  #tapHint{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:8px 14px;border-radius:999px;font:600 13px Inter,system-ui;z-index:30;pointer-events:none;opacity:0;transition:opacity .3s}
+  #tapHint.on{opacity:1}
 </style>
 </head>
 <body>
@@ -152,6 +157,7 @@
   <div class="ctl"><button id="mPrev">⏮</button><button id="mPlay" class="play">▶</button><button id="mStop">⏹</button><button id="mClick">♩</button><button id="mNext">⏭</button></div>
 </section>
 
+<div id="tapHint">Atinge piesa ca să vezi meniul</div>
 <nav class="tabs">
   <button data-t="tPlan"><b>🗓</b>Planificare</button>
   <button data-t="tLive"><b>▶</b>Proiectez</button>
@@ -234,7 +240,7 @@
   document.body.classList.toggle('dark', store.get('dark', true));
   $('sTheme').onclick = () => { document.body.classList.toggle('dark'); store.set('dark', document.body.classList.contains('dark')); };
   $('cFollow').checked = follow;
-  $('cFollow').onchange = () => { follow = $('cFollow').checked; store.set('follow', follow); if (follow && S.live.item >= 0) lSel = S.live.item; renderLive(); };
+  $('cFollow').onchange = () => { follow = $('cFollow').checked; bars = false; store.set('follow', follow); if (follow && S.live.item >= 0) lSel = S.live.item; renderLive(); };
   document.querySelectorAll('#lMode button').forEach(b => b.onclick = () => { mode = b.dataset.m; store.set('lmode', mode); renderLive(); });
   async function renderLive() {
     const L = S.live;
@@ -251,6 +257,7 @@
     document.querySelector('#lItems .sel')?.scrollIntoView({ inline: 'center', block: 'nearest' });
     const chords = mode === 'chords';
     $('lSlides').hidden = chords; $('sChart').hidden = $('cBar').hidden = !chords;
+    if (!chords) document.body.classList.remove('clean');
     if (chords) return renderChart();
     const key = lSel + '|' + (S.setlist[lSel]?.rev || '') + '|' + (lSel === L.item ? JSON.stringify(L.slides?.map(x => x.lines)) : '');
     if (key !== lKey) { lKey = key; lSlides = await slidesOf(lSel); }
@@ -305,13 +312,17 @@
       if (follow) document.querySelector('#sChart .cur')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
     // not following the screens: the whole song fitted on the phone (no scrolling while you sing or play)
-    const fk = chartKey + '|' + follow + '|' + innerWidth + 'x' + innerHeight;
+    const clean = !follow && !bars, was = document.body.classList.contains('clean');
+    document.body.classList.toggle('clean', clean);
+    if (clean && !was && !hinted) { hinted = true; $('tapHint').classList.add('on'); setTimeout(() => $('tapHint').classList.remove('on'), 2500); }
+    const fk = chartKey + '|' + follow + '|' + clean + '|' + innerWidth + 'x' + innerHeight;
     if (fk !== fitKey) { fitKey = fk; if (!follow) requestAnimationFrame(() => { unfit($('sChart')); fitWhole($('sChart'), { own: true }); }); else unfit($('sChart')); }
   }
-  let fitKey = '';
+  let fitKey = '', bars = false, hinted = false;   // bars: the menus shown again over the whole song (a tap)
   addEventListener('resize', () => { if (!follow && !$('sChart').hidden) { fitKey = ''; renderChart(); } });
   // tap a line of the chart = that slide on the screens (with the PIN)
   $('sChart').addEventListener('click', e => {
+    if (!follow) { bars = !bars; renderChart(); return; }   // whole song: a tap shows / hides the menus
     const n = +e.target.closest('[data-n]')?.dataset.n; if (!Number.isFinite(n)) return;
     const c = JSON.parse($('sChart').dataset.counts || '[]'); let acc = 0, k = 0; for (; k < c.length; k++) { if (n < acc + c[k]) break; acc += c[k]; }
     if (can()) go({ type: 'go', item: lSel, slide: k });
