@@ -74,6 +74,12 @@ Deno.serve(async req => {
       }
       await admin.from('members').upsert({ church_id: inv.church_id, user_id: uid, role: inv.role, departments: inv.departments || [], leads: inv.leads || [],
         person_id: inv.person_id, display_name: inv.display_name }, { onConflict: 'church_id,user_id' });
+      for (const x of Array.isArray(inv.also) ? inv.also : []) {   // the same person in other churches (one link, one account)
+        if (!x?.church_id) continue;
+        await admin.from('members').upsert({ church_id: x.church_id, user_id: uid, role: ROLES.includes(x.role) ? x.role : 'member',
+          departments: list(x.departments), leads: x.role === 'leader' ? list(x.leads) : [], display_name: inv.display_name },
+          { onConflict: 'church_id,user_id', ignoreDuplicates: true });
+      }
       const { data: link, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
       if (error) throw new Error(error.message);
       await admin.from('invites').update({ last_used_at: new Date().toISOString() }).eq('id', inv.id);
@@ -107,7 +113,9 @@ Deno.serve(async req => {
         if (inv.user_id) await admin.from('members').delete().eq('church_id', inv.church_id).eq('user_id', inv.user_id);
         return out(200, { ok: true });
       }
-      return out(200, await makeInvite(inv.church_id, me.id, { ...inv, days: m.days }, inv.user_id));
+      const nu = await makeInvite(inv.church_id, me.id, { ...inv, days: m.days }, inv.user_id);
+      if (Array.isArray(inv.also) && inv.also.length) await admin.from('invites').update({ also: inv.also }).eq('id', nu.id);
+      return out(200, nu);
     }
     return out(400, { error: 'Acțiune necunoscută' });
   } catch (e) {
