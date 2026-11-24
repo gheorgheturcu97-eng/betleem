@@ -19,7 +19,7 @@
   *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Montserrat,system-ui,-apple-system,"Segoe UI",sans-serif}
   main{max-width:720px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
   header{display:flex;align-items:center;gap:12px;margin-bottom:22px} header img{width:44px;height:44px;border-radius:11px}
-  header b{font:800 24px Syne,Montserrat,sans-serif;letter-spacing:.01em} header small{display:block;color:var(--mute);font-size:13px}
+  header .wm{display:block;height:26px;width:auto;margin-bottom:6px} header small{display:block;color:var(--mute);font-size:13px}
   header .sp{flex:1} button,.btn{font:600 15px Montserrat,sans-serif;border:0;border-radius:12px;padding:11px 16px;cursor:pointer;background:var(--bg2);color:var(--fg);border:1px solid var(--line)}
   button.acc{background:var(--acc);border-color:transparent;color:#fff} button.ghost{background:none} button:disabled{opacity:.5}
   .card{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
@@ -37,7 +37,7 @@
 </head>
 <body>
 <main>
-  <header><img src="icon.svg" alt=""><div><b>Reverb</b><small id="sub">Închinarea care răsună</small></div><span class="sp"></span><button id="out" class="ghost" hidden>Ieși</button></header>
+  <header><div><img src="wordmark.svg" class="wm" alt="Reverb"><small id="sub">Închinarea care răsună</small></div><span class="sp"></span><button id="out" class="ghost" hidden>Ieși</button></header>
 
   <section id="vWait" class="card"><p class="mute">Se încarcă…</p></section>
 

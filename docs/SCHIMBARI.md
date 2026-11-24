@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.21 · logoul Reverb adevărat
+- **Logoul.** Înainte: iconița cu unda + cuvântul „Reverb” scris cu un font obișnuit. Acum: semnul Reverb original
+  (REVERB cu „V”-ul ca undă, de pe reverbw.com) pe ecranul de start, în Planificare și în Reverb online; iconița
+  pătrată rămâne doar ca iconiță de aplicație.
+
 ## 2026-11-24 · 2026.11.24.20 · numele Reverb
 - **Numele și iconița.** Înainte: „Echipa Betleem”, cu steaua aurie. Acum: **Reverb**, cu logoul Reverb (unda albă pe
   negru, de pe reverbw.com) în pagini, pe telefon (Adaugă pe ecranul principal), în fila browserului și în aplicație.
