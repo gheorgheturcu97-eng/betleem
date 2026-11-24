@@ -1,6 +1,15 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.10 · MD&TRACK citibil cu multe track-uri, asistentul local mai rapid
+- **Rândurile track-urilor (MD&TRACK).** Înainte: cu 20+ track-uri, rândurile se striveau și numele se tăiau pe jumătate.
+  Acum: peste 8 track-uri, fiecare are un rând curat (nume + M S); volumul e în mixerul de jos; restul se derulează.
+- **Lista „Cântările” din MD&TRACK.** Înainte: titlurile lungi apăreau câte un cuvânt pe rând. Acum: titlul ocupă
+  lățimea (max 3 rânduri), iar tonul/BPM coboară sub el.
+- **Asistentul cu Ollama.** Înainte: qwen3 „gândea” minute întregi înainte de fiecare pas, iar orice întârziere apărea ca
+  „Asistentul nu are încă un AI”. Acum: răspunde direct (fără gândirea lungă), modelul rămâne încărcat 30 min, iar mesajul
+  spune clar ce e: „Ollama nu e pornit” sau „răspunde prea greu, mai încearcă”.
+
 ## 2026-11-24 · 2026.11.24.9 · mai ușor pentru placa grafică
 - **Fundalul colorat din spatele sticlei (Live și Planificare).** Înainte: se mișca încet tot timpul, iar sticla îl
   re-încețoșa la fiecare cadru (~60% placă grafică pe M1 Pro). Acum: stă pe loc; arată la fel, iar placa grafică stă liberă.

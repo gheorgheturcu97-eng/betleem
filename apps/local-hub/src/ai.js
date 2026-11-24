@@ -246,6 +246,11 @@ export async function runClaude(settings, history, hub, { fetchImpl = fetch, max
 }
 
 // ------------------------------------------------------------------ Ollama (local)
+// a timeout is not "missing": the model is there but slow (first load after a restart, or a thinking model)
+function ollamaDown(e) {
+  if (/timeout|aborted/i.test((e?.name || '') + (e?.message || ''))) return new Error('AI-ul local răspunde prea greu (prima pornire a modelului poate dura 1–2 minute). Mai încearcă o dată.');
+  return new Error('Nu găsesc AI-ul local. Instalează Ollama (ollama.com) și pornește-l.');
+}
 export async function runOllama(settings, history, hub, { fetchImpl = fetch, maxSteps = 12, images = [] } = {}) {
   const base = (settings.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
   const messages = [{ role: 'system', content: SYSTEM }, ...history.map(m => ({ role: m.role, content: m.content }))];
@@ -256,7 +261,7 @@ export async function runOllama(settings, history, hub, { fetchImpl = fetch, max
       r = await fetchImpl(`${base}/api/chat`, { method: 'POST', signal: AbortSignal.timeout(180000), headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ model: vm, stream: false, messages: [{ role: 'user', images: images.map(im => im.data),
           content: 'Transcrie exact textul din imagine (titluri de cântări, tonuri, structuri ca Strofa 1, Refren, Bridge, ordinea). Doar textul, fără comentarii.' }] }) });
-    } catch { throw new Error('Nu găsesc AI-ul local. Instalează Ollama (ollama.com) și pornește-l.'); }
+    } catch (e) { throw ollamaDown(e); }
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error?.includes('not found') ? `Pentru poze, AI-ul local are nevoie de un model care vede. În Terminal: ollama pull ${vm}` : (j.error || 'Eroare AI local'));
     messages.at(-1).content += '\n\n[Textul din poză]\n' + (j.message?.content || '').trim();
@@ -266,9 +271,9 @@ export async function runOllama(settings, history, hub, { fetchImpl = fetch, max
   for (let step = 0; step < maxSteps; step++) {
     let r;
     try {
-      r = await fetchImpl(`${base}/api/chat`, { method: 'POST', signal: AbortSignal.timeout(120000), headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: settings.ollamaModel || 'qwen2.5:7b', messages, tools, stream: false }) });
-    } catch { throw new Error('Nu găsesc AI-ul local. Instalează Ollama (ollama.com) și pornește-l.'); }
+      r = await fetchImpl(`${base}/api/chat`, { method: 'POST', signal: AbortSignal.timeout(240000), headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: settings.ollamaModel || 'qwen2.5:7b', messages, tools, stream: false, think: false, keep_alive: '30m' }) });
+    } catch (e) { throw ollamaDown(e); }
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error?.includes('not found') ? `Modelul nu e instalat. În Terminal: ollama pull ${settings.ollamaModel || 'qwen2.5:7b'}` : (j.error || 'Eroare AI local'));
     const msg = j.message || {};
@@ -295,7 +300,9 @@ export async function runAssistant(settings, history, hub, opts) {
   }
   try { return await runOllama(settings, history, hub, opts); }
   catch (e) {
-    if (!settings.claudeKey && /Nu găsesc/.test(e.message)) throw new Error('Asistentul nu are încă un AI: pune cheia Claude la ⚙, sau instalează Ollama (ollama.com) pe acest PC sau pe serverul bisericii.');
+    if (!settings.claudeKey && /Nu găsesc/.test(e.message)) throw new Error(settings.ollamaModel
+      ? `Ollama nu e pornit pe acest computer. Deschide aplicația Ollama (iconița cu lama din bara de sus a Mac-ului apare când merge) și trimite din nou. Modelul ales: ${settings.ollamaModel}.`
+      : 'Asistentul nu are încă un AI: pune cheia Claude la ⚙, sau instalează Ollama (ollama.com) pe acest PC sau pe serverul bisericii.');
     throw e;
   }
 }
@@ -322,7 +329,7 @@ export async function askAI(settings, system, text, { fetchImpl = fetch } = {}) 
   const ollama = async () => {
     const base = (settings.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
     let r; try { r = await fetchImpl(`${base}/api/chat`, { method: 'POST', signal: AbortSignal.timeout(120000), headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: settings.ollamaModel || 'qwen2.5:7b', stream: false, messages: [{ role: 'system', content: system }, { role: 'user', content: text }] }) }); }
+      body: JSON.stringify({ model: settings.ollamaModel || 'qwen2.5:7b', stream: false, think: false, messages: [{ role: 'system', content: system }, { role: 'user', content: text }] }) }); }
     catch { throw new Error('Nu găsesc AI-ul local (Ollama).'); }
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Eroare AI local'); return String(j.message?.content || '').trim();
   };
