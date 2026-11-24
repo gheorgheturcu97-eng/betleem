@@ -2277,7 +2277,7 @@ ready.catch(() => {});
 // A tunnel (Tailscale Funnel: a fixed https address) brings internet requests to it. No router ports are opened.
 db.security ||= { door: false, publicUrl: '', backupDir: '' };
 const DOOR_PORT = PORT + 1;                          // = SEND_PORT
-const DOOR_PAGES = new Set(['/descarca.html', '/eu.html', '/live.html', '/client.js', '/core/song.js', '/glass.js', '/glass.css', '/manifest.webmanifest', '/icon.svg']);
+const DOOR_PAGES = new Set(['/descarca.html', '/eu.html', '/live.html', '/client.js', '/core/song.js', '/fit.js', '/glass.js', '/glass.css', '/manifest.webmanifest', '/icon.svg']);
 const DOOR_API = new Set(['/api/eu', '/api/next', '/api/descarca', '/api/descarca/Betleem-Mac.zip']);
 const ACCESS_LOG = path.join(DATA_DIR, 'acces-internet.log');
 // 📦 The package for other churches: a copy of THIS Mac's Betleem app (newest code) with the song library inside

@@ -87,6 +87,8 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - **Un singur QR pentru telefoane** (2026.11.24.11): Live → 📱 arată un cod spre /m.html; m.html are ecranul „Ce faci azi?”
   (#who: app / musician → live.html?v=chords / lyrics → live.html / preacher → live.html?v=pred cu PIN), ținut minte în
   localStorage `m.who`; ⇄ în m.html și live.html (m.html?alege=1) schimbă rolul. Verificat în Playwright (iPhone 13).
+- **Toată piesa pe ecran** (2026.11.24.22): `public/fit.js` (fitWhole/unfit: coloane + cea mai mare literă care încape);
+  live.html (#lyrics) și m.html (#sChart) îl folosesc când „Urmează ecranul” e debifat. Verificat în Playwright (iPhone 13).
 
 - **🎭 Looks** (2026.11.24.14): db.looks [{id,name,main,stage?,background?,props?}] + db.lookOn; mesaje saveLook (take:{stage,background,props}),
   applyLook, deleteLook, itemLook (it.look → aplicat la `go`); 3 Looks de start; undo. UI: #qLookSel în bara rapidă, #looksBox în ⚙ Ecrane.

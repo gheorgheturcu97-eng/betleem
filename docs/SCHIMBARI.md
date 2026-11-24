@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.22 · toată piesa pe ecranul telefonului
+- **Acorduri / versuri pe telefon, fără „Urmează ecranul”.** Înainte: debifat, vedeai piesa întreagă dar trebuia să
+  derulezi. Acum: piesa întreagă încape pe ecran (literele cât de mari se poate, în 2 coloane pe telefon, secțiunile
+  nu se rup între coloane), în live.html și în aplicația de telefon (m.html → Acorduri). Bifat: ca înainte, urmărește
+  slide-ul de pe ecran. Pe telefon ținut culcat, dacă nu încape nici la litere mici, se derulează (nu taie nimic).
+
 ## 2026-11-24 · 2026.11.24.21 · logoul Reverb adevărat
 - **Logoul.** Înainte: iconița cu unda + cuvântul „Reverb” scris cu un font obișnuit. Acum: semnul Reverb original
   (REVERB cu „V”-ul ca undă, de pe reverbw.com) pe ecranul de start, în Planificare și în Reverb online; iconița

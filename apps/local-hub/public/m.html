@@ -63,6 +63,7 @@
   .row.now{box-shadow:inset 4px 0 0 var(--red)}
   .key{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:999px;background:#1d4f9e;color:#fff;font-size:14px;font-weight:800;vertical-align:2px}
   .bpm{display:inline-block;margin-left:6px;padding:1px 9px;border-radius:999px;background:#3a3f47;color:#ddd;font-size:13px;vertical-align:2px}
+  .chart.fit-whole{padding:8px 10px;line-height:1.1} .chart.fit-whole h2{font-size:1.15em;margin:0 0 .2em} .chart.fit-whole .lbl{margin-top:.4em}
   .chart{flex:1;overflow:auto;background:var(--paper);color:var(--paperInk);padding:16px 16px 30px;font-family:ui-monospace,Menlo,monospace;font-size:calc(17px * var(--fz));line-height:1.15}
   body.dark .chart{--paper:#121418;--paperInk:#e9ecf1;--chord:#ff6b6b}
   .chart h2{font-family:Inter,system-ui;font-size:1.5em;margin:0 0 2px;background:rgba(0,0,0,.08);padding:10px 12px;border-radius:4px}
@@ -165,6 +166,7 @@
 
 <script type="module">
   import { connect, esc, stayAwake } from '/client.js';
+  import { fitWhole, unfit } from '/fit.js';
   import { chordLineToHtml, sectionColor, originalKey, keyDistance, toSlides, arrange, parseSong, transpose, prefersFlats, stripChords } from '/core/song.js';
   const $ = id => document.getElementById(id);
   const store = { get: (k, d) => { try { const v = localStorage.getItem('m.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set: (k, v) => { try { localStorage.setItem('m.' + k, JSON.stringify(v)); } catch {} } };
@@ -291,7 +293,7 @@
         : `<div class="ln" data-n="${i}">${chordLineToHtml(l.replace(/\[([^\]]*)\]/g, (_, c) => '[' + chord(c) + ']'), esc)}</div>`; };
       $('sKeyBtn').textContent = (nmode === 'chords' ? want || 'Ton' : nmode === 'number' ? '1 2 3' : 'I IV V') + ' ▾';
       $('sChart').innerHTML = `<h2>${esc(s.title)}${want ? ` [${esc(want)}]` : ''}</h2>${s.author ? `<div class="by">[${esc(s.author)}]</div>` : ''}`
-        + slides.map(sl => { const head = sl.label !== last ? `${sl.label ? `<div class="lbl" style="color:${sectionColor(sl.label)}">${esc(sl.label)}:</div>` : '<div style="height:14px"></div>'}` : ''; last = sl.label; return head + sl.lines.map(line).join(''); }).join('');
+        + slides.map(sl => { const head = sl.label !== last ? `${sl.label ? `<div class="lbl" style="color:${sectionColor(sl.label)}">${esc(sl.label)}:</div>` : '<div style="height:14px"></div>'}` : ''; last = sl.label; return `<div data-fit-keep>${head}${sl.lines.map(line).join('')}</div>`; }).join('');
       $('sChart').dataset.counts = JSON.stringify(slides.map(x => x.lines.length));
       $('sChart').scrollTop = 0;
     }
@@ -302,7 +304,12 @@
       for (let j = from; j < from + len; j++) document.querySelector(`#sChart [data-n="${j}"]`)?.classList.add('cur');
       if (follow) document.querySelector('#sChart .cur')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
+    // not following the screens: the whole song fitted on the phone (no scrolling while you sing or play)
+    const fk = chartKey + '|' + follow + '|' + innerWidth + 'x' + innerHeight;
+    if (fk !== fitKey) { fitKey = fk; if (!follow) requestAnimationFrame(() => { unfit($('sChart')); fitWhole($('sChart'), { own: true }); }); else unfit($('sChart')); }
   }
+  let fitKey = '';
+  addEventListener('resize', () => { if (!follow && !$('sChart').hidden) { fitKey = ''; renderChart(); } });
   // tap a line of the chart = that slide on the screens (with the PIN)
   $('sChart').addEventListener('click', e => {
     const n = +e.target.closest('[data-n]')?.dataset.n; if (!Number.isFinite(n)) return;

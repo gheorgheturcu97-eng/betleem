@@ -31,6 +31,7 @@
   .order time{color:var(--mute);font-variant-numeric:tabular-nums;min-width:44px}
   .order small{color:var(--mute);display:block}
   #lyrics{padding:8px 16px;font-size:calc(22px * var(--fz,1));line-height:1.35}
+  #lyrics.fit-whole{padding:4px 12px} #lyrics.fit-whole .label{font-size:.55em;margin:.5em 0 .1em;break-after:avoid} #lyrics.fit-whole .slide{opacity:1;padding:0 0 .35em;margin:0;border-radius:0}
   .songhead{display:flex;align-items:center;gap:10px;padding:6px 16px 0}
   .songhead b{font-size:19px;flex:1;min-width:0} .songhead .key{padding:3px 10px;border-radius:999px;background:var(--acc);color:#000;font-weight:700;font-size:14px}
   .songhead .back{border:0;border-radius:999px;padding:6px 12px;background:var(--card);color:var(--fg);font:600 13px system-ui}
@@ -99,6 +100,7 @@
 <div id="pad"><button id="prev">◀ Înapoi</button><button id="blank">Negru</button><button class="go" id="next">Înainte ▶</button></div>
 <script type="module">
   import { connect, esc, stayAwake } from '/client.js';
+  import { fitWhole, unfit } from '/fit.js';
   import { stripChords, chordLineToHtml, sectionColor, originalKey, keyDistance, toSlides, arrange, parseSong, transpose, prefersFlats } from '/core/song.js';
   const $ = id => document.getElementById(id);
   try { if (localStorage.getItem('m.who')) $('whoBack').hidden = false; } catch {}
@@ -139,6 +141,7 @@
     if (e.type === 'login' && !e.ok) alertBox('PIN greșit');
     if (e.type === 'error') alertBox(e.error);
   });
+  addEventListener('resize', () => { if ($('lyrics').classList.contains('fit-whole')) fitWhole($('lyrics'), { below: $('pad') }); });
   function alertBox(t) { $('now').textContent = t; setTimeout(render, 2500); }
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
     if (b.dataset.v === 'plan') { location.href = '/planning.html'; return; }   // the lyrics are in Acorduri too: this place is for the plan
@@ -221,9 +224,12 @@
     $('lyrics').innerHTML = slides.map((sl, i) => {
       const head = sl.label && sl.label !== last ? `<div class="label" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : ''; last = sl.label;
       const body = sl.image ? (/\.(mp4|webm|mov)$/i.test(sl.image) ? '▶ video' : `<img src="${esc(sl.image)}" alt="" style="width:100%;border-radius:8px">`) : sl.lines.map(l => chords ? `<div class="line">${chordLineToHtml(l, esc)}</div>` : `<div>${esc(stripChords(l))}</div>`).join('');
-      return `${head}<div class="slide ${i === cur || cur < 0 ? 'now' : ''}" data-i="${i}">${body}</div>`;
+      return `${head}<div class="slide ${i === cur || cur < 0 ? 'now' : ''}" data-i="${i}" data-fit-keep>${body}</div>`;
     }).join('') || `<p style="color:var(--mute)">Nimic pe ecran acum. Deschide <b>Program</b> și alege o cântare.</p>`;
-    if (cur >= 0) document.querySelector('.slide.now')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // not following the screen: the whole song fitted on the phone (no scrolling while you sing or play)
+    const whole = !$('follow').checked && !!it && slides.length > 0;
+    if (whole) requestAnimationFrame(() => fitWhole($('lyrics'), { below: $('pad') })); else unfit($('lyrics'));
+    if (cur >= 0 && !whole) document.querySelector('.slide.now')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     if (hub.role !== 'viewer' && hub.role !== 'preacher') document.querySelectorAll('.slide').forEach(el => el.onclick = () => hub.send({ type: 'go', item: browse >= 0 ? browse : L.item, slide: +el.dataset.i }));
   }
 </script>

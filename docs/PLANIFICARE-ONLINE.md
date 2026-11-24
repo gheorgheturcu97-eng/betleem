@@ -87,7 +87,12 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
   `members/invites.departments[]` + `leads[]` (liderul conduce unul sau mai multe); telefoanele: coordonatorul pe toate,
   liderul doar ale departamentelor pe care le conduce (`private.leads_any`). Pagina: bife pentru departamente, ✎ pe
   fiecare om (rol + departamente + ce conduce), filtru pe departament. Verificat cu Playwright pe o biserică de probă.
+- ✅ Râul Vieții: departamentele Închinare și Tineret (2026-11-24).
 - ⏳ Pasul 3: Planificarea online (citire pentru membri, scriere pentru lideri).
+- ⏳ **Feedback după slujire** (cerut 2026-11-24): cine a fost programat la un serviciu primește după serviciu o
+  notificare „Cum a fost?” și scrie un feedback (ce a mers, ce nu); îl citesc coordonatorul și liderul departamentului.
+  Vine după Pasul 3 (are nevoie de programările online); notificarea = pe pagina Reverb (și push dacă e instalată pe telefon).
+- ⏳ Cântările Betleem în Reverb online (repetiție pe telefon, fără program): în lucru.
 
 ## Ordinea construcției
 1. Tabelele + regulile RLS + teste (cine vede ce) — fără să schimbe nimic în Betleem.
