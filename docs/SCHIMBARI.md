@@ -1,6 +1,14 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.16 · 📦 aplicația cu bibliotecă pentru bisericile din zonă
+- **⚙ Setări → 📦 Dă aplicația altor biserici.** Înainte: aplicația se dădea ca fișier, fără cântări, și trebuia urcată
+  de mână undeva. Acum: Mac-ul tău face singur pachetul (aplicația de Mac cu cea mai nouă versiune + toate cântările,
+  fără track-uri, programe, oameni sau PIN-uri) și îl dă prin linkuri personale, câte unul pentru fiecare lider
+  (expiră în 3/14/30 de zile, se anulează dintr-un clic, vezi câte descărcări). Liderul deschide linkul, apasă
+  „Descarcă” și urmează pașii de pe pagină; la prima pornire are deja toate cântările.
+  Linkurile merg pe Wi-Fi-ul bisericii și prin Tailscale; de oriunde doar cu 🔒 ușa deschisă. Nimic în GitHub.
+
 ## 2026-11-24 · 2026.11.24.15 · predicatorul intră din telefon
 - **🎤 Predicator pe telefon.** Înainte: butonul „Intră” de lângă PIN ieșea din ecran pe unele telefoane, iar fără o predică
   în program pagina spunea doar „Nu există o predică”. Acum: PIN-ul și „Intră” încap pe orice telefon, cu „Fără PIN”

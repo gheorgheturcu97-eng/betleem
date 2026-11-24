@@ -11,7 +11,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
 import * as nodeModule from 'node:module';
 import { WebSocketServer } from 'ws';
 import { extractLyrics } from './extract.js';
@@ -1972,6 +1972,37 @@ async function handle(req, res) {
         meetings: me.leader ? plan.meetings.filter(mt => new Date(mt.date).getTime() >= now).slice(0, 3).map(mt => ({ ...mt,
           tasks: plan.tasks.filter(tk => tk.meeting === mt.id).map(tk => ({ text: tk.text, who: name(tk.who), due: tk.due, done: tk.done })) })) : [] });
     }
+    // 📦 give Betleem (with the song library) to the churches around: personal links made by the leader on this Mac
+    if (p === '/api/shares') {                              // the leader, on this computer: the links and the package
+      if (req.viaDoor || !checkLeader(req)) return json(res, 403, { error: 'Doar liderul, pe calculatorul bisericii.' });
+      if (req.method === 'POST') {
+        const m = JSON.parse(await body(req, 5000) || '{}');
+        if (m.new) {
+          const days = Math.min(90, Math.max(1, Number(m.days) || 14));
+          db.shares.push({ id: crypto.randomUUID().slice(0, 8), name: String(m.name || 'Lider').trim().slice(0, 60) || 'Lider',
+            token: crypto.randomBytes(18).toString('base64url'), created: new Date().toISOString(), expires: new Date(Date.now() + days * 864e5).toISOString(), downloads: 0 });
+          if (!pkg.building && pkgStale()) buildPackage();
+        }
+        if (m.off) db.shares = db.shares.filter(x => x.id !== m.off);
+        if (m.build) buildPackage();
+        save();
+      }
+      const bases = [...lanIPs().map(i => `http://${i.address}:${PORT}`), ...(db.security.door && db.security.publicUrl ? [db.security.publicUrl] : [])];
+      return json(res, 200, { package: pkgInfo(), door: !!(db.security.door && db.security.publicUrl), bases,
+        shares: db.shares.filter(x => Date.parse(x.expires) > Date.now()).map(x => ({ ...x })) });
+    }
+    if (p === '/api/descarca' || p === '/api/descarca/Betleem-Mac.zip') {   // the leader who got a link (church Wi-Fi, Tailscale or the 🔒 door)
+      const ip = who(req);
+      if (locked(ip)) return json(res, 429, { error: 'Prea multe încercări. Mai încearcă peste câteva minute.' });
+      const sh = shareOf(url.searchParams.get('t'));
+      if (!sh) { wrongPin(ip); return json(res, 404, { error: 'Linkul nu mai e valabil. Cere unul nou liderului de la Betleem.' }); }
+      if (p === '/api/descarca') return json(res, 200, { name: sh.name, expires: sh.expires, church: activeChurch()?.name || 'Betleem', ...pkgInfo() });
+      if (!pkg.ready || !fs.existsSync(PKG_FILE)) { if (!pkg.building) buildPackage(); return json(res, 503, { error: 'Pachetul se pregătește. Încearcă din nou peste un minut.' }); }
+      sh.downloads = (sh.downloads || 0) + 1; save();
+      const st = fs.statSync(PKG_FILE);
+      res.writeHead(200, { 'content-type': 'application/zip', 'content-length': st.size, 'content-disposition': 'attachment; filename="Betleem-Mac.zip"', 'cache-control': 'no-store' });
+      return fs.createReadStream(PKG_FILE).pipe(res);
+    }
     if (p === '/api/security') {                            // 🔒 the leader, on this computer only
       if (req.viaDoor || !checkLeader(req)) return json(res, 403, { error: 'Doar liderul, pe calculatorul bisericii.' });
       if (req.method === 'POST') {
@@ -2213,9 +2244,46 @@ ready.catch(() => {});
 // A tunnel (Tailscale Funnel: a fixed https address) brings internet requests to it. No router ports are opened.
 db.security ||= { door: false, publicUrl: '', backupDir: '' };
 const DOOR_PORT = PORT + 1;                          // = SEND_PORT
-const DOOR_PAGES = new Set(['/eu.html', '/live.html', '/client.js', '/core/song.js', '/glass.js', '/glass.css', '/manifest.webmanifest', '/icon.svg']);
-const DOOR_API = new Set(['/api/eu', '/api/next']);
+const DOOR_PAGES = new Set(['/descarca.html', '/eu.html', '/live.html', '/client.js', '/core/song.js', '/glass.js', '/glass.css', '/manifest.webmanifest', '/icon.svg']);
+const DOOR_API = new Set(['/api/eu', '/api/next', '/api/descarca', '/api/descarca/Betleem-Mac.zip']);
 const ACCESS_LOG = path.join(DATA_DIR, 'acces-internet.log');
+// 📦 The package for other churches: a copy of THIS Mac's Betleem app (newest code) with the song library inside
+// (hub/starter/library.json: only songs, without track paths or Planning Center ids). Never in the public updates:
+// it leaves this Mac only through a personal link, which expires and can be cancelled.
+db.shares ||= [];
+const SHARE_DIR = path.join(DATA_DIR, 'descarca'), PKG_FILE = path.join(SHARE_DIR, 'Betleem-Mac.zip');
+const pkg = { building: false, ready: false, error: '', version: '', songs: 0, size: 0, at: '' };
+try { Object.assign(pkg, JSON.parse(fs.readFileSync(path.join(SHARE_DIR, 'pachet.json'), 'utf8')), { building: false }); pkg.ready = pkg.ready && fs.existsSync(PKG_FILE); } catch {}
+const shareOf = t => typeof t === 'string' && t.length >= 20 ? db.shares.find(x => safeEq(x.token, t) && Date.parse(x.expires) > Date.now()) : null;
+const SHARE_SONG_KEYS = ['id', 'title', 'author', 'key', 'body', 'source', 'createdAt', 'updatedAt', 'ccli', 'chordsSource', 'arrangement', 'bpm', 'tags'];
+const pkgStale = () => !pkg.ready || pkg.version !== VERSION || pkg.songs !== db.songs.length;
+const pkgInfo = () => ({ ready: pkg.ready, building: pkg.building, error: pkg.error, version: pkg.version, songs: pkg.songs, size: pkg.size, at: pkg.at, stale: pkgStale() });
+function buildPackage() {
+  if (pkg.building) return;
+  const run = (cmd, args) => new Promise((ok, bad) => execFile(cmd, args, { maxBuffer: 1 << 20 }, e => e ? bad(e) : ok()));
+  pkg.building = true; pkg.error = ''; broadcast();
+  (async () => {
+    // the app bundle this hub runs in: …/Betleem.app/Contents/MacOS/<exe>
+    const bundle = path.resolve(process.execPath, '../../..');
+    if (process.platform !== 'darwin' || !process.versions.electron || !bundle.endsWith('.app')) throw new Error('Pachetul se face doar din aplicația Betleem de pe Mac.');
+    const work = path.join(SHARE_DIR, 'lucru'), app = path.join(work, 'Betleem.app');
+    fs.rmSync(work, { recursive: true, force: true }); fs.mkdirSync(work, { recursive: true });
+    await run('ditto', [bundle, app]);
+    const hubDst = path.join(app, 'Contents/Resources/app/hub');
+    fs.rmSync(hubDst, { recursive: true, force: true });             // the newest code (this running hub), not the one from the installer
+    fs.cpSync(ROOT, hubDst, { recursive: true, filter: f => !['starter', '.git', 'test'].includes(path.relative(ROOT, f).split(path.sep)[0]) });
+    const songs = db.songs.map(x => Object.fromEntries(SHARE_SONG_KEYS.filter(k => x[k] != null).map(k => [k, x[k]])));
+    fs.mkdirSync(path.join(hubDst, 'starter'), { recursive: true });
+    fs.writeFileSync(path.join(hubDst, 'starter/library.json'), JSON.stringify({ songs }));
+    const tmp = PKG_FILE + '.tmp';
+    fs.rmSync(tmp, { force: true });
+    await run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, tmp]);
+    fs.renameSync(tmp, PKG_FILE); fs.rmSync(work, { recursive: true, force: true });
+    Object.assign(pkg, { ready: true, version: VERSION, songs: songs.length, size: fs.statSync(PKG_FILE).size, at: new Date().toISOString() });
+  })().catch(e => { pkg.error = e.message; logError('pachetul pentru alte biserici', e); })
+    .finally(() => { pkg.building = false; try { fs.writeFileSync(path.join(SHARE_DIR, 'pachet.json'), JSON.stringify({ ...pkg, building: false })); } catch {} broadcast(); });
+}
+
 /** Called by the internet server for anything that isn't the file sending. Returns false if not one of the door's pages. */
 function doorHandle(req, res) {
   req.viaDoor = true;

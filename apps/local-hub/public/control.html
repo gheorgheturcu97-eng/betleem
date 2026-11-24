@@ -1249,6 +1249,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="ideas"><i>💡</i><b>Propuneri</b><span>Păreri și propuneri de îmbunătățire, pentru dezvoltarea aplicației</span></button>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
     <button data-s="brand"><i>🎨</i><b>Aspect și funcții</b><span>Culoarea bisericii și ce module folosiți (restul se ascund)</span></button>
+    <button data-s="share"><i>📦</i><b>Dă aplicația altor biserici</b><span>Linkuri personale pentru liderii din zonă: aplicația de Mac cu toate cântările, de pe acest Mac</span></button>
     <button data-s="nopin"><i>🔓</i><b>Fără PIN</b><span id="noPinState">Oricine e pe Wi-Fi-ul bisericii intră fără PIN (Planificare, Proiectez, MD&amp;TRACK)</span></button>
     <button data-s="sec"><i>🔒</i><b>Acces de acasă și backup</b><span>Voluntarii își văd programarea de acasă; copii zilnice pe NAS</span></button>
   </div>
@@ -1303,6 +1304,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button id="ltTry">▶ Încearcă</button><button id="ltDel" class="ghost">🗑</button><button id="ltSave" class="acc">Salvează</button></div>
 </div></div>
 <div class="modal" id="brandModal"><div class="glass canva" id="brandBox"></div></div>
+<div class="modal" id="shareModal"><div class="glass canva">
+  <div class="look-head"><b>📦 Dă aplicația altor biserici</b><span class="grow"></span><button id="shareClose" class="icon" title="Închide">✕</button></div>
+  <p class="hint">Acest Mac devine „magazinul” zonei: faci un link personal pentru fiecare lider, iar el descarcă de aici aplicația Betleem pentru Mac
+    <b>cu toate cântările din bibliotecă</b> (fără track-uri, programe, oameni sau PIN-uri). Linkul expiră și îl poți anula oricând.
+    Merge cât timp Betleem e pornit pe acest Mac.</p>
+  <div class="row" id="sharePkg"></div>
+  <div class="row"><input id="shareName" class="grow" placeholder="Pentru cine? ex. Ionuț · Biserica Peștera"><select id="shareDays" style="width:auto"><option value="3">3 zile</option><option value="14" selected>14 zile</option><option value="30">30 de zile</option></select><button id="shareNew" class="acc">＋ Link nou</button></div>
+  <div id="shareList"></div>
+  <p class="hint" id="shareWhere"></p>
+</div></div>
 <div class="modal" id="secModal"><div class="glass canva">
   <div class="look-head"><b>🔒 Acces de acasă și backup</b><span class="grow"></span><button id="secClose" class="icon" title="Închide">✕</button></div>
   <p class="hint">Aplicația rămâne pe rețeaua bisericii. De acasă se poate intra <b>doar</b> pe două pagini: linkul personal al voluntarului
@@ -2818,7 +2829,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         send({ type: 'noPin', on }); toast(on ? '🔓 Fără PIN: telefoanele din rețea intră direct' : '🔒 PIN-urile sunt iar cerute');
       })(); }
     else if (x === 'theme') setTheme(!document.documentElement.classList.contains('light'));
-    else if (x === 'ideas') openIdeas(); else if (x === 'sec') openSec(); else if (x === 'brand') openBrand();
+    else if (x === 'ideas') openIdeas(); else if (x === 'sec') openSec(); else if (x === 'share') openShare(); else if (x === 'brand') openBrand();
   });
 
   // ================= 💡 LUMINI: scenes over MIDI, by hand or by themselves with the program / the song's sections
@@ -2965,6 +2976,34 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     $('secLog').textContent = (j.log || []).join('\n') || 'Nimic încă.';
     fetch('/api/this').then(r => r.ok ? r.json() : null).then(t => { const ts = (t?.urls || []).find(u => /\/\/100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(u)); if (ts) $('secTail').textContent = ts + '/planning.html'; }).catch(() => {});
   }
+  // 📦 the Mac app with the song library, for the leaders of the churches around (personal links, this Mac serves them)
+  let shareT = null;
+  async function shareApi(b) {
+    const r = await fetch('/api/shares', b ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': hub.pin?.() || '' }, body: JSON.stringify(b) } : { headers: { 'x-pin': hub.pin?.() || '' } });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'N-a mers'); return j;
+  }
+  function shareShow(j) {
+    const k = j.package, mb = k.size ? Math.round(k.size / 1048576) + ' MB' : '';
+    $('sharePkg').innerHTML = k.building ? '<span class="hint">⏳ Se face pachetul (aplicația + cântările)… cam un minut.</span>'
+      : `<span class="hint">${k.ready ? `Pachet gata: ${k.songs} cântări · ${esc(k.version)} · ${mb}${k.stale ? ' · <b>s-au schimbat cântări sau aplicația</b>' : ''}` : 'Pachetul nu e făcut încă.'}${k.error ? ' ⚠ ' + esc(k.error) : ''}</span><span class="grow"></span><button id="shareBuild" class="mini">${k.ready ? '↻ Refă pachetul' : 'Fă pachetul'}</button>`;
+    const base = j.door ? j.bases[j.bases.length - 1] : (j.bases.find(u => /\/\/100\./.test(u)) || j.bases[0] || location.origin);
+    window._shareBase = base;
+    $('shareList').innerHTML = (j.shares || []).map(x => `<div class="row" data-id="${x.id}" style="border-top:.5px solid var(--stroke);padding-top:8px"><b class="grow">${esc(x.name)}</b>
+      <small class="hint">până pe ${new Date(x.expires).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })} · ${x.downloads || 0} descărcări</small>
+      <button class="mini acc" data-copy="${esc(base + '/descarca.html#t=' + x.token)}">📋 Copiază linkul</button><button class="mini ghost" data-off="${x.id}" title="Anulează linkul">✕</button></div>`).join('') || '<p class="hint">Niciun link încă.</p>';
+    $('shareWhere').innerHTML = j.door ? 'Linkurile merg de oriunde (prin 🔒 ușa deschisă).'
+      : 'Linkurile merg pe Wi-Fi-ul bisericii și prin Tailscale (pentru liderii din contul vostru). Ca să meargă de oriunde, deschide 🔒 ușa din ⚙ Setări → 🔒 Acces de acasă.';
+    clearTimeout(shareT); if (k.building && $('shareModal').classList.contains('show')) shareT = setTimeout(async () => shareShow(await shareApi().catch(() => j)), 4000);
+  }
+  async function openShare() { $('shareModal').classList.add('show'); try { shareShow(await shareApi()); } catch (e) { toast(e.message); } }
+  const shareDo = async b => { try { shareShow(await shareApi(b)); } catch (e) { toast(e.message); } };
+  $('shareClose').onclick = () => { $('shareModal').classList.remove('show'); clearTimeout(shareT); };
+  $('shareNew').onclick = () => { if (!$('shareName').value.trim()) return toast('Scrie pentru cine e linkul'); shareDo({ new: true, name: $('shareName').value, days: +$('shareDays').value }); $('shareName').value = ''; };
+  $('shareModal').addEventListener('click', async e => {
+    if (e.target.id === 'shareBuild') return shareDo({ build: true });
+    const c = e.target.dataset.copy; if (c) { try { await navigator.clipboard.writeText(c); toast('Link copiat: trimite-l pe WhatsApp liderului'); } catch { ask('Copiază linkul și trimite-l liderului', [{ label: 'Link', value: c }], 'Gata'); } return; }
+    const off = e.target.dataset.off; if (off && await ask('Anulezi linkul? Cine îl are nu mai poate descărca.', [], 'Anulează linkul')) shareDo({ off });
+  });
   async function openSec() { $('secModal').classList.add('show'); try { secShow(await secApi()); } catch (e) { toast(e.message); } }
   const secSet = async b => { try { secShow(await secApi(b)); toast('Salvat'); } catch (e) { toast(e.message); } };
   $('secClose').onclick = () => $('secModal').classList.remove('show');

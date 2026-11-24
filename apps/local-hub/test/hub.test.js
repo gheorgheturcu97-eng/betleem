@@ -706,6 +706,22 @@ test('🎭 Looks: seeded, applied in one click, saved from the screen, a program
 });
 
 
+test('📦 links for other churches: only the leader makes them, a wrong link is refused, a good one shows the package', async () => {
+  const H = { 'content-type': 'application/json', 'x-pin': '2222' };
+  assert.equal((await fetch('http://localhost:4599/api/shares', { headers: { 'x-pin': '1111' } })).status, 403, 'an operator cannot');
+  const j = await fetch('http://localhost:4599/api/shares', { method: 'POST', headers: H, body: JSON.stringify({ new: true, name: 'Ionuț · Peștera', days: 3 }) }).then(r => r.json());
+  const sh = j.shares.find(x => x.name === 'Ionuț · Peștera'); assert.ok(sh?.token?.length >= 20);
+  assert.equal((await fetch('http://localhost:4599/api/descarca?t=gresit-gresit-gresit-gresit')).status, 404);
+  const info = await fetch('http://localhost:4599/api/descarca?t=' + sh.token).then(r => r.json());
+  assert.equal(info.name, 'Ionuț · Peștera');
+  const st = await fetch('http://localhost:4599/api/descarca/Betleem-Mac.zip?t=' + sh.token);
+  assert.equal(st.status, 503, 'no package outside the Mac app: it says it is being prepared'); await st.text();
+  const state = await fetch('http://localhost:4599/api/state').then(r => r.ok ? r.text() : '').catch(() => '');
+  assert.ok(!state.includes(sh.token), 'the token is never broadcast');
+  await fetch('http://localhost:4599/api/shares', { method: 'POST', headers: H, body: JSON.stringify({ off: sh.id }) });
+  assert.equal((await fetch('http://localhost:4599/api/descarca?t=' + sh.token)).status, 404, 'cancelled');
+});
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

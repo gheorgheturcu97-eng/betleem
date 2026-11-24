@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#121316">
+<link rel="icon" href="/icon.svg">
+<title>Echipa Betleem pentru Mac</title>
+<style>
+  /* 📦 the page a leader of another church opens from his personal link: the Mac app with the song library inside */
+  :root{--bg:#121316;--card:#1d1f24;--line:#2b2e35;--fg:#f2f3f5;--mute:#9aa0aa;--acc:#f5b301;--no:#ff7a7a}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,system-ui,"Segoe UI",sans-serif}
+  main{max-width:620px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) 16px 40px}
+  .logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(145deg,#ffd35a,#f39c12);display:grid;place-items:center;font-size:28px;color:#3a2600}
+  h1{font-size:28px;margin:14px 0 2px} .sub{color:var(--mute);margin:0 0 20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+  .facts{display:flex;flex-wrap:wrap;gap:8px} .facts span{background:#26292f;border-radius:999px;padding:5px 12px;font-size:14px}
+  a.dl{display:flex;align-items:center;justify-content:center;gap:10px;height:56px;margin:16px 0 6px;border-radius:14px;background:var(--acc);color:#2b1d00;font-weight:800;font-size:18px;text-decoration:none}
+  a.dl.off{pointer-events:none;opacity:.45}
+  ol{padding-left:22px;margin:6px 0} li{margin:8px 0}
+  code{display:block;background:#0c0d10;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0;font:14px ui-monospace,Menlo,monospace;overflow-x:auto;white-space:pre;user-select:all}
+  .note{color:var(--mute);font-size:14px} .err{color:var(--no);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">✦</div>
+  <h1>Echipa Betleem</h1>
+  <p class="sub" id="sub">Aplicația pentru proiecție, planificare și track-uri, pentru Mac.</p>
+  <div class="card" id="box"><p class="note">Se încarcă…</p></div>
+  <div class="card" id="steps" hidden>
+    <b>Instalare (3 minute)</b>
+    <ol>
+      <li>Deschide fișierul descărcat (dublu-clic). Apare <b>Betleem.app</b>.</li>
+      <li>Trage <b>Betleem.app</b> în <b>Aplicații</b>.</li>
+      <li>Deschide <b>Terminal</b> și scrie, pe rând (aplicația nu vine din App Store, asta îi spune lui macOS că o accepți):
+        <code>xattr -cr /Applications/Betleem.app</code>
+        <code>codesign --force --deep -s - /Applications/Betleem.app</code></li>
+      <li>Pornește Betleem. Dacă macOS tot o blochează: <b>Setări sistem → Confidențialitate și securitate → Deschide oricum</b>.</li>
+      <li>Când întreabă de <b>rețeaua locală</b>, apasă <b>Permite</b> (ca să vadă telefoanele și ecranele).</li>
+    </ol>
+    <p class="note">La prima pornire, cântările vin deja în bibliotecă. Aplicația se actualizează singură. Datele stau în Documente/Betleem, pe calculatorul vostru.
+      Folosiți cântările sub licența CCLI a bisericii voastre.</p>
+  </div>
+</main>
+<script>
+  // the token comes after # (never sent to the network as part of the page address, so it stays out of logs)
+  const t = new URLSearchParams(location.hash.slice(1)).get('t') || new URLSearchParams(location.search).get('t') || '';
+  const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  async function load() {
+    const r = await fetch('/api/descarca?t=' + encodeURIComponent(t)).catch(() => null), j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok) { $('box').innerHTML = `<p class="err">${esc(j.error || 'Nu pot ajunge la calculatorul de la Betleem. E pornit?')}</p>`; return; }
+    $('sub').textContent = `Trimisă de ${j.church} pentru ${j.name}. Doar pentru Mac-uri cu M1, M2, M3 sau M4.`;
+    const mb = j.size ? Math.round(j.size / 1048576) + ' MB' : '';
+    const ready = j.ready && !j.building;
+    $('box').innerHTML = `<div class="facts"><span>🎵 ${j.songs || '…'} cântări incluse</span>${j.version ? `<span>versiunea ${esc(j.version)}</span>` : ''}${mb ? `<span>${mb}</span>` : ''}</div>
+      <a class="dl${ready ? '' : ' off'}" href="/api/descarca/Betleem-Mac.zip?t=${encodeURIComponent(t)}">${ready ? '⬇ Descarcă Betleem pentru Mac' : j.building || !j.error ? '⏳ Pachetul se pregătește…' : '⚠ Pachetul nu e gata'}</a>
+      <p class="note">${ready ? 'Linkul e personal și expiră pe ' + new Date(j.expires).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) + '.' : (j.error ? '<span class="err">' + esc(j.error) + '</span>' : 'Durează cam un minut. Pagina se reîncarcă singură.')}</p>`;
+    $('steps').hidden = false;
+    if (!ready && (j.building || !j.error)) setTimeout(load, 8000);
+  }
+  if (location.hash) history.replaceState(null, '', location.pathname + '#t=' + t);
+  load();
+</script>
+</body>
+</html>

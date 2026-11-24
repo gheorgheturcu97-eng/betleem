@@ -92,6 +92,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   applyLook, deleteLook, itemLook (it.look → aplicat la `go`); 3 Looks de start; undo. UI: #qLookSel în bara rapidă, #looksBox în ⚙ Ecrane.
   Asistent: apply_look. Test: hub.test.js „🎭 Looks”. Verificat cu Playwright.
 
+- **📦 Pachet pentru alte biserici** (2026.11.24.16): server.js `buildPackage` (ditto din aplicația care rulează + hub-ul curent
+  + hub/starter/library.json doar cu cântări) în Documents/Betleem/descarca; linkuri `db.shares` (token, expiră), `/api/shares`
+  (lider, nu prin ușă), `/api/descarca[?t]` + `/descarca.html#t=` (și prin ușă; ghicirea = blocare). UI: ⚙ → 📦.
+  Construirea pachetului e **neverificată pe Mac** (în teste: doar linkurile).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,
