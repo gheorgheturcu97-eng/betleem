@@ -97,6 +97,10 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   (lider, nu prin ușă), `/api/descarca[?t]` + `/descarca.html#t=` (și prin ușă; ghicirea = blocare). UI: ⚙ → 📦.
   Construirea pachetului e **neverificată pe Mac** (în teste: doar linkurile).
 
+- **Reverb online, pasul 1** (2026-11-24): baza de date Supabase cu biserici, rețele, roluri (coordonator/lider/membru),
+  cântări (biblioteca rețelei citită de bisericile ei), programul ca document, telefoane separat, linkuri (doar amprenta).
+  Reguli RLS testate (`supabase/tests/cine-vede-ce.sql`). Încă nelegată de aplicație. Detalii: docs/PLANIFICARE-ONLINE.md.
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

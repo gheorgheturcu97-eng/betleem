@@ -71,6 +71,15 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
    funcției, după pașii pe care i-i arăt. Nu o trimite în chat.
 3. Activează GitHub Pages pe depozit (un clic, îi arăt unde).
 
+## Unde suntem
+- ✅ **Pasul 1 (2026-11-24):** proiectul Supabase „Reverb app” (`wkkqvlnjauwpnuiwldem`, eu-west-1 Irlanda, gratuit).
+  Tabele + reguli: `supabase/migrations/2026112420*`; rețeaua și cele 8 biserici: `supabase/seed-retea-betleem.sql`.
+  Testul „cine vede ce” (`supabase/tests/cine-vede-ce.sql`) trece: membrul vede programul fără telefoane și nu
+  poate scrie; liderul Rhema citește biblioteca Betleem dar n-o poate schimba; o biserică din afară vede doar ale ei
+  și nu se poate băga în Betleem; anonimul nu vede nimic. Avertismentele de securitate Supabase: 0.
+  Adresa și cheia publică: `apps/web/reverb-config.js`. Schema veche (nefolosită): `supabase/arhiva/`.
+- ⏳ Pasul 2: linkurile personale (Edge Function) și pagina „Intră”.
+
 ## Ordinea construcției
 1. Tabelele + regulile RLS + teste (cine vede ce) — fără să schimbe nimic în Betleem.
 2. Linkurile personale → conturi; pagina „Intră”.
