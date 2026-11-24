@@ -39,6 +39,19 @@
   .chip.f{cursor:pointer;border:1px solid transparent} .chip.f.on{border-color:var(--acc);background:rgba(58,91,217,.25)}
   .edit{width:100%;padding:10px 0 4px} .edit .row{margin-top:8px}
   .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:#26241f;margin:2px 4px 0 0} .tag.l{background:rgba(201,183,156,.3)}
+  /* 🎵 the library: any song, to rehearse on the phone (not tied to the program) */
+  .sq{display:flex;gap:8px;margin-bottom:10px} .slist{max-height:56vh;overflow:auto;margin:0 -6px}
+  .srow{display:flex;align-items:center;gap:10px;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer} .srow:first-child{border-top:0}
+  .srow b{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .srow small{color:var(--mute)} .srow:active{background:#26241f}
+  #vSong{position:fixed;inset:0;z-index:5;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .stop{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)} .stop .t{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stop button,.stop select{padding:8px 11px;font-size:14px;width:auto} .stop button.on{background:var(--acc);border-color:transparent;color:#fff}
+  .chart{flex:1;min-height:0;overflow:auto;padding:14px 14px 30px;font:16px/1.15 ui-monospace,Menlo,monospace;--chord:#ffb35c}
+  .chart .lbl{font:800 .8em Montserrat,sans-serif;letter-spacing:.06em;text-transform:uppercase;margin:1.1em 0 .3em} .chart>div:first-child .lbl{margin-top:0}
+  .chart .ln{display:flex;flex-wrap:wrap;margin:0 0 .25em} .chart .seg{display:inline-flex;flex-direction:column;white-space:pre}
+  .chart .seg b{color:var(--chord);font-weight:700;height:1.2em;line-height:1.2em} .chart .seg i{font-style:normal;line-height:1.2em}
+  .chart .only{color:var(--chord);font-weight:700} .chart.lyr{font-family:Montserrat,sans-serif}
+  .chart.fit-whole{padding:8px 10px;line-height:1.1} .chart.fit-whole .lbl{margin-top:.5em}
   [hidden]{display:none!important}
 </style>
 </head>
@@ -62,6 +75,13 @@
       <p class="mute" style="margin:12px 0 0">Planificarea online vine aici în pasul următor. Până atunci, programul se face în Reverb la biserică.</p>
     </div>
 
+
+    <div class="card" id="vSongs" hidden>
+      <h2>🎵 Cântări</h2>
+      <p class="mute" style="margin-top:0">Deschide orice cântare din bibliotecă, ca să repeți. Nu o pune pe program.</p>
+      <div class="sq"><input id="sFind" type="search" placeholder="Caută titlu sau autor…" autocomplete="off"></div>
+      <div class="slist" id="sList"></div>
+    </div>
     <div class="card" id="vPeople" hidden>
       <h2>Oamenii bisericii și linkurile lor</h2>
       <p class="mute" style="margin-top:0">Fiecare om primește un link personal. „↻ Link nou” oprește linkul vechi și îl scoate de pe toate dispozitivele (telefon pierdut). „Scoate” îl scoate din biserică.</p>
@@ -80,11 +100,18 @@
       <div id="people" style="margin-top:6px"></div>
     </div>
   </section>
+  <section id="vSong" hidden>
+    <div class="stop"><button id="sBack">←</button><span class="t" id="sTitle"></span>
+      <select id="sKey" title="Tonul"></select><button id="sChords" class="on" title="Acorduri da/nu">Acorduri</button><button id="sFit" class="on" title="Toată piesa pe ecran / derulez">⤢</button></div>
+    <div class="chart" id="sChart"></div>
+  </section>
 </main>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
+  import { parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS } from './core/song.js';
+  import { fitWhole, unfit } from './core/fit.js';
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'reverb-session' } });
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -129,7 +156,7 @@
     $('vPeople').hidden = !coord.length;
     $('pChurch').innerHTML = coord.map(c => `<option value="${c.church_id}">${esc(c.name)}</option>`).join('');
     $('pChurch').parentElement.hidden = coord.length < 2;
-    show('vHome'); if (coord.length) people();
+    show('vHome'); if (coord.length) people(); songs();
   }
 
   // 3) coordinators: the people and their links
@@ -203,6 +230,55 @@
     if (b.dataset.do === 'remove' && !confirm(`Îl scoți pe ${name} din biserică? Linkul lui nu mai merge.`)) return;
     try { const r = await fn({ action: b.dataset.do, invite_id: row.dataset.id }); if (r.token) showLink(name, r.token); people(); } catch (err) { alert(err.message); }
   };
+
+  // 4) 🎵 the library: every song this person may read (his church + the library of his network; the rule is in the
+  // database). The list is small (titles); the words come only when a song is opened.
+  let lib = [], cur = null, want = '', withChords = true, whole = true;
+  const fold = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  async function songs() {
+    lib = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from('songs').select('id, title, author, key').order('title').range(from, from + 999);
+      if (error || !data?.length) break; lib.push(...data); if (data.length < 1000) break;
+    }
+    $('vSongs').hidden = !lib.length; listSongs();
+  }
+  function listSongs() {
+    const q = fold($('sFind').value.trim()), hit = lib.filter(x => !q || fold(x.title + ' ' + (x.author || '')).includes(q));
+    $('sList').innerHTML = hit.slice(0, 200).map(x => `<div class="srow" data-id="${x.id}"><b>${esc(x.title)}</b><small>${esc(x.key || '')}</small></div>`).join('')
+      + (hit.length > 200 ? `<p class="mute">…și încă ${hit.length - 200}. Scrie mai mult din titlu.</p>` : '') || '<p class="mute">Nicio cântare găsită.</p>';
+  }
+  $('sFind').oninput = listSongs;
+  $('sList').onclick = async e => {
+    const r = e.target.closest('.srow'); if (!r) return;
+    const { data, error } = await sb.from('songs').select('id, title, author, key, body, arrangement').eq('id', r.dataset.id).single();
+    if (error || !data) return alert('Nu pot deschide cântarea. Verifică internetul.');
+    cur = data; want = originalKey(cur.key, cur.body) || '';
+    $('sKey').innerHTML = want ? KEYS.filter(k => k.endsWith('m') === want.endsWith('m')).map(k => `<option${k === want ? ' selected' : ''}>${k}</option>`).join('') : '<option>—</option>';
+    $('sKey').disabled = !want; $('sTitle').textContent = cur.title; $('vSong').hidden = false; document.body.style.overflow = 'hidden';
+    history.pushState({ song: 1 }, ''); drawSong();
+  };
+  function drawSong() {
+    const orig = originalKey(cur.key, cur.body), steps = want && orig ? keyDistance(orig, want) : 0;
+    const body = transpose(cur.body, steps, prefersFlats(want || 'C'));
+    const slides = toSlides(arrange(parseSong(body), cur.arrangement), 4);
+    let last = null;
+    const line = l => /\[/.test(l) && !stripChords(l).trim()
+      ? (withChords ? `<div class="only">${esc(l.match(/\[([^\]]*)\]/g).map(x => x.slice(1, -1)).join('  '))}</div>` : '')
+      : `<div class="ln">${withChords ? chordLineToHtml(l, esc) : esc(stripChords(l))}</div>`;
+    const el = $('sChart'); unfit(el); el.classList.toggle('lyr', !withChords);
+    el.innerHTML = slides.map(sl => { const head = sl.label !== last && sl.label ? `<div class="lbl" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : ''; last = sl.label;
+      return `<div data-fit-keep>${head}${sl.lines.map(line).join('')}</div>`; }).join('') || '<p class="mute">Cântarea nu are text.</p>';
+    el.scrollTop = 0;
+    if (whole) requestAnimationFrame(() => fitWhole(el, { own: true, max: 40 }));
+  }
+  const closeSong = () => { $('vSong').hidden = true; document.body.style.overflow = ''; cur = null; };
+  $('sBack').onclick = () => history.back();
+  addEventListener('popstate', () => { if (!$('vSong').hidden) closeSong(); });
+  $('sKey').onchange = () => { want = $('sKey').value; drawSong(); };
+  $('sChords').onclick = () => { withChords = !withChords; $('sChords').classList.toggle('on', withChords); drawSong(); };
+  $('sFit').onclick = () => { whole = !whole; $('sFit').classList.toggle('on', whole); drawSong(); };
+  addEventListener('resize', () => { if (cur && whole) drawSong(); });
   $('out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
   sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') show('vDoor'); });
   load();
