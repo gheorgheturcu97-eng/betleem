@@ -12,6 +12,9 @@ schema `supabase/migrations` (biserici, roluri lider/operator/muzician, coduri d
 - **Orice altă biserică din Reverb**: **nu vede biblioteca Betleem**. Își scrie singură cântările sau le importă din
   Planning Center / ProPresenter. Regula stă în baza de date (RLS): `songs.network_id` / `songs.church_id`,
   iar o biserică vede o cântare doar dacă e a ei sau e a rețelei din care face parte.
+- **Bisericile din Rețeaua Betleem** (lista proprietarului, 2026-11-24; numele lipsă le completează el, până atunci
+  apare localitatea): Betleem · Medgidia (biserica principală, a ei e biblioteca rețelei) · Rhema · Cobadin ·
+  Râul Vieții · Peștera · Izvorul (de confirmat: nume sau localitate) · Mircea Vodă · Satul Nou · Cuza Vodă · Băneasa.
 - Schema veche avea „cântări comune pentru toată rețeaua” (`church_id = null`): se înlocuiește cu rețele explicite.
 
 ## Ce se schimbă pentru oameni
