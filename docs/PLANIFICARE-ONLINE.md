@@ -1,0 +1,65 @@
+# Planificarea online (Pasul 3, varianta 2: cloud gratuit): planul de securitate
+
+Status: **propunere, de aprobat de proprietar înainte de cod** (2026-11-24). Construiește peste ce există deja:
+schema `supabase/migrations` (biserici, roluri lider/operator/muzician, coduri de biserică), `src/cloud.js`
+(client Supabase fără dependențe), `src/plan.js` (programul și operațiile lui) și linkurile personale ale voluntarilor.
+
+## Ce se schimbă pentru oameni
+- Planificarea se deschide **din browser, de oriunde** (telefon, laptop de acasă), la o adresă fixă
+  (ex. `https://betleem-app.github.io/planificare`), **chiar dacă Mac mini-ul e închis**.
+  Se poate „instala” pe telefon ca aplicație (Adaugă pe ecranul principal).
+- Betleem de pe Mac mini **trage singur** programul nou la pornire și la câteva minute, și îl ține local:
+  duminica totul merge și fără internet. Ce schimbi în Betleem urcă înapoi în cloud.
+- **Cântările, track-urile, fundalurile și numerele de telefon NU urcă în cloud.** Programul trimite doar titlul și
+  tonul cântării; versurile rămân în biserică (drepturi de autor).
+
+## Cine vede ce (conturi cu roluri)
+| Rol | Cine | Vede | Poate |
+|---|---|---|---|
+| Coordonator | păstorul, tu | tot, toate departamentele | adaugă/scoate oameni, schimbă roluri, „ieși de peste tot” |
+| Lider de departament | lider închinare, media… | programul întreg + echipa lui cu telefoane | programează oamenii din departamentul lui |
+| Membru / voluntar | muzicieni, tehnicieni… | programul (ce, când, cine slujește, fără telefoane), programările lui | ✓/✕ la programări, zile blocate, notițe |
+| Oricine fără cont | — | nimic | — |
+
+Numerele de telefon stau într-un tabel separat, citit doar de coordonatori și de liderul departamentului (regulă în
+baza de date, nu doar în pagină).
+
+## Cum se intră (fără parolă de ținut minte)
+1. Coordonatorul adaugă omul în Betleem (nume, telefon, rol, departament). Aplicația face un **link personal**
+   (24+ caractere aleatorii) și îl trimiți pe WhatsApp, ca acum.
+2. Omul deschide linkul o dată; telefonul primește o sesiune și **ține minte** contul (nu mai cere nimic).
+3. Opțional, mai târziu: „Intră cu Google / Apple” pentru cine vrea pe mai multe dispozitive.
+
+Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate” îi închide imediat toate sesiunile.
+
+## Ce se întâmplă dacă…
+- **Se pierde un telefon:** „↻ Link nou” + „ieși de pe toate dispozitivele” pentru acel om. Telefonul pierdut nu mai vede nimic.
+- **Pleacă cineva din echipă:** „⛔ Scoate”: contul se închide, datele lui personale se șterg (GDPR).
+- **Cineva încearcă linkuri la nimereală:** sunt imposibil de ghicit, iar încercările sunt limitate.
+- **Pică internetul la biserică:** Betleem lucrează cu ultima copie; trimite schimbările când revine internetul.
+- **Două persoane schimbă programul în același timp:** fiecare schimbare e o operație mică (ca acum în Betleem);
+  se aplică pe rând, iar dacă două ating același loc, câștigă ultima și apare în „Istoric”.
+- **Supabase pune proiectul pe pauză (planul gratuit, după 7 zile fără folosire):** Betleem îl atinge zilnic.
+- **Furnizorul dispare / vrem să plecăm:** copia completă e mereu și pe Mac mini + NAS; programul se mută oricând.
+
+## Cum e făcut (pe scurt, pentru cine continuă codul)
+- **Supabase (gratuit):** tabelele `plans` (documentul programului pe biserică, fără telefoane), `plan_ops`
+  (istoricul operațiilor), `people_private` (telefoane: RLS doar coordonator / lider de departament),
+  `invites` (amprenta linkului, nu linkul). Toate cu RLS; nimic citibil fără cont.
+- **Link personal → sesiune:** o funcție Supabase (Edge Function, gratuită) primește linkul, îl verifică după
+  amprentă și dă sesiunea. Cheia de administrator stă doar în funcție, niciodată în pagină sau pe calculatoare.
+- **Pagina web:** aceeași `planning.html`, cu un mod „online” care vorbește cu Supabase în loc de Mac mini,
+  folosind același `plan.js`. Găzduită gratuit pe GitHub Pages (codul paginii e public, datele nu).
+- **Mac mini:** `cloud.js` + sincronizare (trage la pornire și la 2–5 minute, urcă operațiile locale).
+
+## Ce face proprietarul (o singură dată)
+1. Cont gratuit pe supabase.com → proiect nou „betleem” (regiunea Frankfurt).
+2. Îmi spune adresa proiectului și cheia publică (anon); cheia secretă (service role) o pune doar el, în setările
+   funcției, după pașii pe care i-i arăt. Nu o trimite în chat.
+3. Activează GitHub Pages pe depozit (un clic, îi arăt unde).
+
+## Ordinea construcției
+1. Tabelele + regulile RLS + teste (cine vede ce) — fără să schimbe nimic în Betleem.
+2. Linkurile personale → conturi; pagina „Intră”.
+3. Pagina Planificare online (citire), apoi scriere pentru lideri.
+4. Sincronizarea în Betleem (pornită dintr-un buton în ⚙, oprită implicit; duminica nu se schimbă nimic).
