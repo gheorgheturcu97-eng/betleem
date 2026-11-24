@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · Reverb online · cântările pe telefon (fără actualizare de aplicație)
+- **🎵 Cântări în Reverb online.** Înainte: pe telefon vedeai doar cântările de pe programul de azi, și doar pe Wi-Fi-ul
+  bisericii. Acum: oricine are link Reverb din Rețeaua Betleem deschide **orice cântare** din biblioteca Betleem (628),
+  de oriunde, ca să repete: caută, schimbă tonul, acorduri da/nu, ⤢ toată pe ecran (sau derulat). Nu o pune pe program.
+  Versurile stau în cloud doar pentru bisericile rețelei (regula e în baza de date); bisericile din afară nu le văd.
+- **Departamente:** Betleem are și Tineret; Râul Vieții are Închinare și Tineret.
+
 ## 2026-11-24 · 2026.11.24.22 · toată piesa pe ecranul telefonului
 - **Acorduri / versuri pe telefon, fără „Urmează ecranul”.** Înainte: debifat, vedeai piesa întreagă dar trebuia să
   derulezi. Acum: piesa întreagă încape pe ecran (literele cât de mari se poate, în 2 coloane pe telefon, secțiunile

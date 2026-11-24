@@ -23,8 +23,8 @@ schema `supabase/migrations` (biserici, roluri lider/operator/muzician, coduri d
   Se poate „instala” pe telefon ca aplicație (Adaugă pe ecranul principal).
 - Betleem de pe Mac mini **trage singur** programul nou la pornire și la câteva minute, și îl ține local:
   duminica totul merge și fără internet. Ce schimbi în Betleem urcă înapoi în cloud.
-- **Cântările, track-urile, fundalurile și numerele de telefon NU urcă în cloud.** Programul trimite doar titlul și
-  tonul cântării; versurile rămân în biserică (drepturi de autor).
+- **Track-urile, fundalurile și numerele de telefon NU urcă în cloud.** Cântările (versuri + acorduri) urcă doar
+  pentru biserica lor și rețeaua ei (decizia proprietarului, 24 nov: membrii repetă de pe telefon); nu în depozitul public.
 
 ## Cine vede ce (conturi cu roluri)
 | Rol | Cine | Vede | Poate |
@@ -92,7 +92,11 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
 - ⏳ **Feedback după slujire** (cerut 2026-11-24): cine a fost programat la un serviciu primește după serviciu o
   notificare „Cum a fost?” și scrie un feedback (ce a mers, ce nu); îl citesc coordonatorul și liderul departamentului.
   Vine după Pasul 3 (are nevoie de programările online); notificarea = pe pagina Reverb (și push dacă e instalată pe telefon).
-- ⏳ Cântările Betleem în Reverb online (repetiție pe telefon, fără program): în lucru.
+- ✅ **Cântările în Reverb online (2026-11-24):** 628 de cântări Betleem (din exportul MacBook) urcate prin funcția
+  `reverb-import` (cheie de o singură folosință, doar amprenta în `import_tokens`; potrivire după local_id, fără dubluri).
+  Pagina: 🎵 Cântări (caută, ton, acorduri da/nu, ⤢ toată pe ecran cu `core/fit.js`). `apps/web/core/song.js` și
+  `fit.js` sunt copii din build/hub/core-dist și apps/local-hub/public: se recopiază când se schimbă.
+  De făcut: butonul din aplicație „⇧ Trimite biblioteca în Reverb” (biblioteca reală de pe Mac mini, cu cântările ProPresenter).
 
 ## Ordinea construcției
 1. Tabelele + regulile RLS + teste (cine vede ce) — fără să schimbe nimic în Betleem.
