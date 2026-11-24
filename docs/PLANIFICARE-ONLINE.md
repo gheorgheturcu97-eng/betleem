@@ -78,7 +78,12 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
   poate scrie; liderul Rhema citește biblioteca Betleem dar n-o poate schimba; o biserică din afară vede doar ale ei
   și nu se poate băga în Betleem; anonimul nu vede nimic. Avertismentele de securitate Supabase: 0.
   Adresa și cheia publică: `apps/web/reverb-config.js`. Schema veche (nefolosită): `supabase/arhiva/`.
-- ⏳ Pasul 2: linkurile personale (Edge Function) și pagina „Intră”.
+- ✅ **Pasul 2 (2026-11-24):** funcția `reverb-link` (supabase/functions/reverb-link: redeem / create / renew / remove;
+  cheia secretă o dă Supabase funcției, n-o scrie nimeni) și pagina Reverb online `apps/web/index.html`
+  (intră cu linkul `#t=…`, rămâne conectat; coordonatorul face linkuri, ↻ link nou, scoate). Verificat cap-coadă
+  cu o biserică de probă (link → cont → vede doar biserica lui; liderul nu poate face linkuri; anonimul nu vede nimic).
+  Găzduire: GitHub Pages din ramura `gh-pages` (proprietarul o pornește din Settings → Pages).
+- ⏳ Pasul 3: Planificarea online (citire pentru membri, scriere pentru lideri).
 
 ## Ordinea construcției
 1. Tabelele + regulile RLS + teste (cine vede ce) — fără să schimbe nimic în Betleem.

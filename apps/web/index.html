@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#12110F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Reverb">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<title>Reverb</title>
+<style>
+  /* Reverb online: the door (personal link → account) and, for coordinators, the people of the church and their links */
+  :root{--bg:#12110F;--bg2:#1B1A17;--fg:#F2EEE8;--mute:#A8A196;--line:rgba(255,255,255,.1);--acc:#3A5BD9;--sand:#C9B79C;--no:#ff8a7a;--ok:#7bd88f}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Montserrat,system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{max-width:720px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:22px} header img{width:44px;height:44px;border-radius:11px}
+  header b{font:800 24px Syne,Montserrat,sans-serif;letter-spacing:.01em} header small{display:block;color:var(--mute);font-size:13px}
+  header .sp{flex:1} button,.btn{font:600 15px Montserrat,sans-serif;border:0;border-radius:12px;padding:11px 16px;cursor:pointer;background:var(--bg2);color:var(--fg);border:1px solid var(--line)}
+  button.acc{background:var(--acc);border-color:transparent;color:#fff} button.ghost{background:none} button:disabled{opacity:.5}
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+  h1{font:800 28px/1.15 Syne,Montserrat,sans-serif;margin:6px 0 8px} h2{font:700 18px Syne,Montserrat,sans-serif;margin:0 0 10px}
+  .mute{color:var(--mute)} .err{color:var(--no);font-weight:600} .ok{color:var(--ok)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px} .chip{padding:5px 12px;border-radius:999px;background:#26241f;font-size:14px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .row>*{flex:1 1 140px}
+  input,select{font:15px Montserrat,sans-serif;background:#0d0c0b;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%}
+  .person{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)} .person:first-of-type{border-top:0}
+  .person .who{flex:1;min-width:0} .person .who b{display:block} .person .who small{color:var(--mute)}
+  .person button{padding:8px 10px;font-size:13px}
+  .linkbox{margin-top:12px;padding:12px;border-radius:12px;background:#0d0c0b;border:1px dashed var(--sand);word-break:break-all;font-size:14px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <header><img src="icon.svg" alt=""><div><b>Reverb</b><small id="sub">Închinarea care răsună</small></div><span class="sp"></span><button id="out" class="ghost" hidden>Ieși</button></header>
+
+  <section id="vWait" class="card"><p class="mute">Se încarcă…</p></section>
+
+  <section id="vDoor" class="card" hidden>
+    <h1>Bine ai venit</h1>
+    <p class="mute">Reverb se deschide cu <b>linkul tău personal</b>, primit de la coordonatorul bisericii (de obicei pe WhatsApp).
+      Deschide-l o dată pe acest telefon sau calculator și rămâi conectat.</p>
+    <p id="doorErr" class="err" hidden></p>
+  </section>
+
+  <section id="vHome" hidden>
+    <div class="card">
+      <h1 id="hello">Salut</h1>
+      <div class="chips" id="myChurches"></div>
+      <p class="mute" style="margin:12px 0 0">Planificarea online vine aici în pasul următor. Până atunci, programul se face în Reverb la biserică.</p>
+    </div>
+
+    <div class="card" id="vPeople" hidden>
+      <h2>Oamenii bisericii și linkurile lor</h2>
+      <p class="mute" style="margin-top:0">Fiecare om primește un link personal. „↻ Link nou” oprește linkul vechi și îl scoate de pe toate dispozitivele (telefon pierdut). „Scoate” îl scoate din biserică.</p>
+      <div class="row" style="margin-bottom:10px">
+        <select id="pChurch"></select>
+      </div>
+      <div class="row">
+        <input id="nName" placeholder="Numele (ex. Andrei Popescu)" maxlength="80">
+        <select id="nRole"><option value="member">Membru</option><option value="leader">Lider</option><option value="coordinator">Coordonator</option></select>
+        <input id="nDept" placeholder="Departament (opțional)" maxlength="60">
+        <button id="nGo" class="acc">＋ Link nou</button>
+      </div>
+      <div id="newLink" class="linkbox" hidden></div>
+      <div id="people" style="margin-top:12px"></div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
+  import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'reverb-session' } });
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ROLE = { coordinator: 'Coordonator', leader: 'Lider', member: 'Membru' };
+  const show = v => ['vWait', 'vDoor', 'vHome'].forEach(x => $(x).hidden = x !== v);
+  const fn = async (body) => {
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/reverb-link', { method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: SUPABASE_KEY, ...(session ? { authorization: 'Bearer ' + session.access_token } : {}) },
+      body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'N-a mers'); return j;
+  };
+  const myLink = token => location.origin + location.pathname + '#t=' + token;
+
+  // 1) the personal link: #t=… (after # it never reaches any server log), then forgotten from the address bar
+  const t = new URLSearchParams(location.hash.slice(1)).get('t');
+  if (t) {
+    history.replaceState(null, '', location.pathname);
+    try {
+      const r = await fn({ action: 'redeem', token: t });
+      const { error } = await sb.auth.verifyOtp({ token_hash: r.token_hash, type: 'magiclink' });
+      if (error) throw error;
+    } catch (e) { show('vDoor'); $('doorErr').textContent = e.message; $('doorErr').hidden = false; }
+  }
+
+  // 2) who am I
+  let me = null, churches = [];
+  async function load() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return show('vDoor');
+    me = session.user; $('out').hidden = false;
+    const { data: ms } = await sb.from('members').select('church_id, role, display_name, department').eq('user_id', me.id);
+    const ids = (ms || []).map(m => m.church_id);
+    const { data: cs } = ids.length ? await sb.from('churches').select('id, name, city').in('id', ids) : { data: [] };
+    churches = (ms || []).map(m => ({ ...m, ...(cs || []).find(c => c.id === m.church_id) }));
+    const name = churches.find(c => c.display_name)?.display_name || me.user_metadata?.name || '';
+    $('hello').textContent = name ? 'Salut, ' + name.split(' ')[0] + '!' : 'Salut!';
+    $('sub').textContent = churches.map(c => c.name).join(' · ') || 'Reverb';
+    $('myChurches').innerHTML = churches.map(c => `<span class="chip">${esc(c.name)}${c.city && c.city !== c.name ? ' · ' + esc(c.city) : ''} — ${ROLE[c.role]}${c.department ? ' · ' + esc(c.department) : ''}</span>`).join('')
+      || '<span class="mute">Nu ești încă în nicio biserică.</span>';
+    const coord = churches.filter(c => c.role === 'coordinator');
+    $('vPeople').hidden = !coord.length;
+    $('pChurch').innerHTML = coord.map(c => `<option value="${c.church_id}">${esc(c.name)}</option>`).join('');
+    $('pChurch').parentElement.hidden = coord.length < 2;
+    show('vHome'); if (coord.length) people();
+  }
+
+  // 3) coordinators: the people and their links
+  async function people() {
+    const church = $('pChurch').value;
+    const { data: inv } = await sb.from('invites').select('id, display_name, role, department, expires_at, revoked_at, last_used_at, user_id, created_at')
+      .eq('church_id', church).is('revoked_at', null).order('created_at', { ascending: false });
+    $('people').innerHTML = (inv || []).map(i => `<div class="person" data-id="${i.id}"><div class="who"><b>${esc(i.display_name || 'Fără nume')}</b>
+      <small>${ROLE[i.role]}${i.department ? ' · ' + esc(i.department) : ''} · ${i.last_used_at ? '<span class="ok">a intrat</span>' : 'n-a intrat încă'} · expiră ${new Date(i.expires_at).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}</small></div>
+      <button data-do="renew" title="Linkul vechi nu mai merge; omul iese de pe toate dispozitivele">↻ Link nou</button><button data-do="remove" class="ghost">Scoate</button></div>`).join('')
+      || '<p class="mute">Încă niciun om. Fă primul link mai sus.</p>';
+  }
+  function showLink(name, token) {
+    const url = myLink(token);
+    $('newLink').hidden = false;
+    $('newLink').innerHTML = `Linkul lui <b>${esc(name || '')}</b> (trimite-l doar lui, pe WhatsApp):<br><span id="lk">${esc(url)}</span>
+      <div class="row" style="margin-top:10px"><button class="acc" id="cp">📋 Copiază</button><a class="btn" style="text-align:center;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent('Linkul tău Reverb: ' + url)}" target="_blank" rel="noopener">WhatsApp</a></div>`;
+    $('cp').onclick = async () => { try { await navigator.clipboard.writeText(url); $('cp').textContent = '✓ Copiat'; } catch { getSelection().selectAllChildren($('lk')); } };
+  }
+  $('pChurch').onchange = people;
+  $('nGo').onclick = async () => {
+    const name = $('nName').value.trim(); if (!name) return $('nName').focus();
+    $('nGo').disabled = true;
+    try { const r = await fn({ action: 'create', church_id: $('pChurch').value, display_name: name, role: $('nRole').value, department: $('nDept').value.trim() });
+      showLink(name, r.token); $('nName').value = ''; $('nDept').value = ''; people(); }
+    catch (e) { alert(e.message); } finally { $('nGo').disabled = false; }
+  };
+  $('people').onclick = async e => {
+    const b = e.target.closest('button'); if (!b) return; const row = b.closest('.person'), name = row.querySelector('b').textContent;
+    if (b.dataset.do === 'remove' && !confirm(`Îl scoți pe ${name} din biserică? Linkul lui nu mai merge.`)) return;
+    try { const r = await fn({ action: b.dataset.do, invite_id: row.dataset.id }); if (r.token) showLink(name, r.token); people(); } catch (err) { alert(err.message); }
+  };
+  $('out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') show('vDoor'); });
+  load();
+</script>
+</body>
+</html>
