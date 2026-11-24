@@ -1027,6 +1027,7 @@
           <div class="seg bgtabs"><button data-bt="bg" class="sel">Fundaluri</button><button data-bt="light" data-mod="lumini" title="💡 Scenele de lumini (MIDI), legate de program și de secțiuni">💡 Lumini</button><button data-bt="props" title="🏷 Props: logo, bandă, text fix, anunț. Stau pe ecran peste orice slide, până le oprești">🏷 Props</button></div><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
           <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează pe cântare</button>
           <label class="btn">＋ Imagine / video<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
+          <button id="bPull" class="btn" title="Ia fundalurile de pe alt Betleem din rețeaua bisericii (de ex. calculatorul principal); doar cele care lipsesc">⇩ De la alt calculator</button>
         </div>
         <div id="gallery"></div>
         <div id="propPanel" hidden>
@@ -4518,6 +4519,21 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   // backgrounds
   let media = null;
+  // ⇩ backgrounds from another Betleem on the church network
+  $('bPull').onclick = async () => {
+    const peers = await fetch('/api/peers').then(r => r.json()).catch(() => []);
+    if (!peers.length) return ask('Nu văd alt Betleem pornit în rețeaua bisericii. Pornește Betleem pe calculatorul principal (același Wi-Fi) și mai încearcă.', [], 'OK');
+    const names = peers.map((x, i) => `${i + 1}. ${x.name}${x.church ? ' · ' + x.church : ''}`).join('\n');
+    const r = await ask('De pe ce calculator iei fundalurile? (se copiază doar cele care lipsesc aici)\n' + names, [{ label: 'Numărul', value: '1' }], 'Ia fundalurile');
+    const peer = peers[(parseInt(r?.[0]) || 0) - 1]; if (!peer) return;
+    let st; try { st = await api('/api/media/pull', { method: 'POST', body: JSON.stringify({ url: peer.url }) }); } catch (e) { return toast(e.message); }
+    const tick = async () => {
+      st = await fetch('/api/media/pull').then(r => r.json()).catch(() => st);
+      if (st.running) { toast(`⇩ ${st.done} din ${st.total} fundaluri de la ${st.from}…`); return setTimeout(tick, 2500); }
+      loadMedia(); toast(st.error && !st.copied ? '⚠ ' + st.error : `⇩ Gata: ${st.copied} fundaluri noi de la ${st.from}` + (st.total ? '' : ' (le aveai deja pe toate)'));
+    };
+    tick();
+  };
   async function loadMedia() { media = await fetch('/api/media').then(r => r.json()).catch(() => []); renderGallery(); }
   function renderGallery() {
     if (!S) return;

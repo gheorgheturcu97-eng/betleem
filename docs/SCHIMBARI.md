@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.19 · fundalurile de pe calculatorul principal, pe toate calculatoarele
+- **Fundaluri → ⇩ De la alt calculator (nou).** Înainte: fiecare calculator își avea fundalurile lui; altele se puneau de
+  mână. Acum: alegi un Betleem pornit în rețeaua bisericii (de ex. Mac mini-ul principal) și se copiază aici doar
+  fundalurile care lipsesc (imagini și video), cu progres; cele șterse de tine nu revin.
+- **Mac mini:** am adus în Betleem cele 87 de fundaluri video din ProPresenter (ProContent: Cathedral, Valley,
+  Northern Lights…, fără countdown-uri).
+
 ## 2026-11-24 · 2026.11.24.18 · structura cântării în locul titlului, secțiunea schimbată din slide
 - **Bara de deasupra slide-urilor.** Înainte: titlul cântării apărea a doua oară (era deja în program) și exista o listă
   🎭 Look. Acum: la o cântare, în locul titlului stă structura ei, mică (Strofa 1 · Refren · Strofa 2…): tragi ca s-o

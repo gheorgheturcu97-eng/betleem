@@ -1851,6 +1851,16 @@ async function handle(req, res) {
     }
     if (p === '/api/bibles' && req.method === 'GET') return json(res, 200, bibleList());
     if (p === '/api/peers' && req.method === 'GET') return json(res, 200, peerList());
+    // ⇩ the backgrounds of another Betleem on the church network (the main computer): only the missing ones are copied here
+    if (p === '/api/media/pull') {
+      if (req.method === 'GET') return json(res, 200, { ...mediaPull });
+      if (req.viaDoor || !checkPin(req)) return json(res, 403, { error: 'Doar pe calculatorul bisericii, cu PIN' });
+      const m = JSON.parse(await body(req, 2000) || '{}');
+      const peer = peerList().find(x => x.url === m.url);   // only a Betleem seen on the network
+      if (!peer) return json(res, 400, { error: 'Nu mai văd acel calculator în rețea' });
+      if (!mediaPull.running) pullMedia(peer);
+      return json(res, 200, { ...mediaPull });
+    }
     if (p === '/api/update' && req.method === 'GET') return json(res, 200, { ...updater.state, repo: UPDATE_REPO, auto: UPDATES });
     if (p === '/api/update' && req.method === 'POST') {       // "Caută acum"
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
@@ -2349,6 +2359,29 @@ server.listen(PORT, '0.0.0.0', () => {
 // --- Other computers with Betleem on the same network (Wi-Fi, hotspot, cable) ---------------------
 // Every Betleem says "I am here" a few times a minute; the others list it, so a second computer
 // (tracks in front, lyrics in the back) can join the same program with one click.
+const mediaPull = { running: false, from: '', total: 0, done: 0, copied: 0, error: '' };
+async function pullMedia(peer) {
+  Object.assign(mediaPull, { running: true, from: peer.name, total: 0, done: 0, copied: 0, error: '' });
+  const { pipeline } = await import('node:stream/promises'), { Readable } = await import('node:stream');
+  const base = peer.url;
+  try {
+    const list = await fetch(base + '/api/media', { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+    const want = (Array.isArray(list) ? list : []).map(f => path.basename(String(f))).filter(f => f && TYPES[path.extname(f).toLowerCase()] && !(db.removedBg || []).includes(f));
+    const missing = want.filter(f => !fs.existsSync(path.join(MEDIA_DIR, f)));
+    mediaPull.total = missing.length;
+    for (const f of missing) {
+      const tmp = path.join(MEDIA_DIR, '.' + f + '.part');
+      try {
+        const r = await fetch(base + '/media/' + encodeURIComponent(f));
+        if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+        await pipeline(Readable.fromWeb(r.body), fs.createWriteStream(tmp));
+        fs.renameSync(tmp, path.join(MEDIA_DIR, f)); mediaPull.copied++;
+      } catch (e) { fs.rmSync(tmp, { force: true }); mediaPull.error = f + ': ' + e.message; }
+      mediaPull.done++;
+    }
+  } catch (e) { mediaPull.error = 'Nu răspunde ' + peer.name + ' (' + e.message + ')'; }
+  mediaPull.running = false; broadcast();
+}
 const DISCOVERY_PORT = 45454, instanceId = crypto.randomUUID();
 const peers = new Map();                              // id → { name, church, address, port, seen }
 const lanIPs = () => Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal);
