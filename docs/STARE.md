@@ -84,6 +84,10 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   mesajele `md` / `mdState` / `mdAsk`, doar transmise de hub, fără salvare). Aplicația iPhone: `apps/ios` (Capacitor 7, SPM,
   `www/index.html` = ușa care ține minte adresa și deschide `/m.html`; ATS permite rețeaua locală). Neverificată pe iPhone.
 
+- **Un singur QR pentru telefoane** (2026.11.24.11): Live → 📱 arată un cod spre /m.html; m.html are ecranul „Ce faci azi?”
+  (#who: app / musician → live.html?v=chords / lyrics → live.html / preacher → live.html?v=pred cu PIN), ținut minte în
+  localStorage `m.who`; ⇄ în m.html și live.html (m.html?alege=1) schimbă rolul. Verificat în Playwright (iPhone 13).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

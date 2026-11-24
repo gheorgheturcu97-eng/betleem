@@ -8,6 +8,15 @@
 <link rel="apple-touch-icon" href="/icon.svg">
 <link rel="stylesheet" href="/fonts/inter.css">
 <title>Betleem</title>
+<script>
+  // 🚪 one QR for everyone: the first time you choose who you are; next time you land there directly (m.html?alege=1 = choose again)
+  (function () { try {
+    const q = new URLSearchParams(location.search); if (q.has('alege')) { localStorage.removeItem('m.who'); return; }
+    const w = JSON.parse(localStorage.getItem('m.who') || 'null');
+    const to = { musician: '/live.html?v=chords', lyrics: '/live.html', preacher: '/live.html?v=pred' }[w];
+    if (to) location.replace(to);
+  } catch {} })();
+</script>
 <!-- 📱 The phone app: three tabs. 🗓 Planificare = the same page as on the laptop. ▶ Proiectez = the program and its slides,
      tap one to put it on the screens. 🎼 Pupitru = the music stand: the service list with keys, chord charts, your own key,
      numbers, next song, the beat. Everything comes from the church computer on the same Wi-Fi (or the door, from home). -->
@@ -84,6 +93,15 @@
   .secs button.armed{animation:pulse .5s infinite alternate} @keyframes pulse{to{opacity:.5}}
   .ctl .play.on{background:#2fb85f;color:#05200f}
   /* sheets */
+  /* 🚪 who are you? (first open) */
+  #who{position:fixed;inset:0;z-index:30;background:var(--bg);display:none;flex-direction:column;gap:12px;padding:calc(var(--top) + 26px) 18px calc(var(--bot) + 20px);overflow:auto}
+  #who.on{display:flex} #who h2{margin:0;font-size:26px} #who p{margin:0 0 6px;color:var(--mute)}
+  #who .opt{display:flex;align-items:center;gap:14px;text-align:left;padding:16px;border-radius:16px;background:var(--card);border:1px solid var(--line)}
+  #who .opt b{font-size:30px;width:42px;text-align:center;font-weight:400} #who .opt span{display:flex;flex-direction:column;gap:3px;font-weight:700;font-size:17px}
+  #who .opt small{font-weight:400;color:var(--mute);font-size:13.5px}
+  #who .ppin{display:none;gap:8px} #who .ppin.on{display:flex}
+  #who .ppin input{flex:1;height:50px;border-radius:12px;border:1px solid var(--line);background:#0f141b;color:var(--ink);font-size:22px;text-align:center;letter-spacing:.3em}
+  #who .ppin button{padding:0 18px;border-radius:12px;background:var(--blue);font-weight:700}
   .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
   .sheet.on{display:flex}
   .box{width:min(420px,100%);background:#1f242b;border-radius:18px;overflow:hidden}
@@ -99,6 +117,14 @@
 </style>
 </head>
 <body>
+<div id="who">
+  <h2>Bine ai venit 👋</h2><p>Ce faci azi? Alegi o dată, telefonul ține minte. Schimbi oricând cu ⇄.</p>
+  <button class="opt" data-w="app"><b>🎛</b><span>Echipa media și liderul de laudă<small>Planificare, Proiectez (schimbi slide-urile) și MD&amp;TRACK. Cere PIN-ul echipei.</small></span></button>
+  <button class="opt" data-w="musician"><b>🎸</b><span>Muzician<small>Programul și fiecare cântare cu acorduri, în tonul ales. Merge singur după ecran.</small></span></button>
+  <button class="opt" data-w="lyrics"><b>📖</b><span>Versuri (oricine)<small>Versurile de pe ecran și programul.</small></span></button>
+  <button class="opt" data-w="preacher"><b>🎤</b><span>Predicator<small>Schimbi singur slide-urile predicii. Cere PIN-ul predicatorului (îl vezi pe calculator, la 📱).</small></span></button>
+  <div class="ppin" id="whoPin"><input id="whoPinIn" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN predicator"><button id="whoPinOk">Intră</button></div>
+</div>
 <!-- 🗓 Planificare: the same page as on the laptop -->
 <section class="tab" id="tPlan"><iframe id="planFrame" title="Planificare"></iframe></section>
 
@@ -106,7 +132,7 @@
 <section class="tab" id="tLive">
   <header><span class="dot" id="dot"></span><h1 id="lTitle">Proiectez</h1>
     <div class="mseg" id="lMode"><button data-m="slides">▦ Slide-uri</button><button data-m="chords">♫ Acorduri</button></div>
-    <button class="ib" id="lPin" title="PIN">🔑</button></header>
+    <button class="ib" id="lPin" title="PIN">🔑</button><button class="ib who" title="Schimbă ce faci (muzician, versuri, predicator…)">⇄</button></header>
   <div class="live" id="lNow">—</div>
   <div class="chips" id="lItems"></div>
   <div class="scroll" id="lSlides"><div class="grid" id="lGrid"></div></div>
@@ -117,7 +143,7 @@
 
 <!-- 🎛 MD&TRACK: the song's sections as big buttons; tap one and the tracks go there (on the next bar) -->
 <section class="tab" id="tMd">
-  <header><span class="dot" id="dot2"></span><h1 id="mTitle">MD&amp;TRACK</h1><span class="mk" id="mKey"></span><button class="ib" id="mPin" title="PIN">🔑</button></header>
+  <header><span class="dot" id="dot2"></span><h1 id="mTitle">MD&amp;TRACK</h1><span class="mk" id="mKey"></span><button class="ib" id="mPin" title="PIN">🔑</button><button class="ib who" title="Schimbă ce faci (muzician, versuri, predicator…)">⇄</button></header>
   <div class="mtime"><b id="mBar">—</b><span id="mTime"></span><div class="mprog"><i id="mProg"></i></div></div>
   <div class="scroll"><div class="secs" id="mSecs"></div><p class="hint" id="mHint"></p></div>
   <div class="cbar"><label class="tog"><input type="checkbox" id="mNow"> Imediat (fără să aștepte măsura)</label></div>
@@ -143,6 +169,20 @@
   const store = { get: (k, d) => { try { const v = localStorage.getItem('m.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } }, set: (k, v) => { try { localStorage.setItem('m.' + k, JSON.stringify(v)); } catch {} } };
   let S = null, tab = store.get('tab', 'tLive'); if (!['tPlan', 'tLive', 'tMd'].includes(tab)) tab = 'tLive';
   stayAwake();
+
+  // ---------------- 🚪 who are you (one QR for everyone)
+  const WHO_TO = { musician: '/live.html?v=chords', lyrics: '/live.html', preacher: '/live.html?v=pred' };
+  if (!store.get('who', null)) $('who').classList.add('on');
+  document.querySelectorAll('#who .opt').forEach(b => b.onclick = () => {
+    const w = b.dataset.w;
+    if (w === 'preacher') { $('whoPin').classList.add('on'); $('whoPinIn').focus(); return; }
+    store.set('who', w);
+    if (w === 'app') { $('who').classList.remove('on'); history.replaceState(null, '', '/m.html'); show(tab); } else location.href = WHO_TO[w];
+  });
+  $('whoPinOk').onclick = () => { const p = $('whoPinIn').value.trim(); if (!p) return;
+    try { localStorage.setItem('bnc-pin', p); } catch {} store.set('who', 'preacher'); location.href = WHO_TO.preacher; };
+  $('whoPinIn').onkeydown = e => { if (e.key === 'Enter') $('whoPinOk').click(); };
+  document.querySelectorAll('.ib.who').forEach(b => b.onclick = () => { store.set('who', null); $('whoPin').classList.remove('on'); $('who').classList.add('on'); });
 
   // ---------------- tabs
   function show(t) {

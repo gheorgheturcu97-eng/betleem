@@ -658,6 +658,11 @@
   .ai-in .voice-btn{width:36px;height:36px;flex:none}
   .modal .glass.phones{width:min(640px,94vw);display:flex;flex-direction:column;gap:10px}
   .ph-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .ph-one{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:stretch} .ph .qr.big{width:240px;height:240px}
+  .ph-who{display:flex;flex-direction:column;gap:8px} .ph-who>div{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke)}
+  .ph-who small{color:var(--mute);font-size:12px} .ph-who .pin{font:700 20px ui-monospace,Menlo,monospace;letter-spacing:.15em;margin-top:4px}
+  .ph-who #phNewPin{align-self:flex-start;margin-top:4px}
+  @media (max-width:620px){.ph-one{grid-template-columns:1fr}}
   .ph{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:14px;border-radius:14px;background:rgba(255,255,255,.05);border:.5px solid var(--stroke)}
   .ph .qr{width:200px;height:200px;background:#fff;border-radius:12px;padding:6px} .ph .qr svg{width:100%;height:100%;display:block}
   .ph small{color:var(--mute);font-size:12px;line-height:1.4}
@@ -1264,16 +1269,18 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 </div></div>
 <div class="modal" id="phonesModal"><div class="glass phones">
   <div class="look-head"><b>📱 Pe telefon</b><span class="grow"></span><button id="phClose" class="icon" title="Închide">✕</button></div>
-  <p class="hint">Telefonul trebuie să fie în aceeași rețea Wi-Fi ca acest calculator. Scanezi cu camera și se deschide imediat, fără nicio aplicație.</p>
-  <div class="ph-row">
-    <div class="ph"><div class="qr" id="phQr1"></div><b>Muzicieni</b><small>Programul și fiecare cântare cu acorduri, în tonul ales. Merge singur după ecran.</small></div>
-    <div class="ph"><div class="qr" id="phQr4"></div><b>📱 Aplicația Betleem</b><small>Planificare, Proiectez (cu PIN) și Pupitru cu acorduri. Pe iPhone: Distribuie → Adaugă pe ecranul principal. <span id="phAddr"></span></small></div>
-    <div class="ph"><div class="qr" id="phQr2"></div><b>Echipă și oricine</b><small>Versurile de pe ecran și programul.</small></div>
-    <div class="ph" id="phPred"><div class="qr" id="phQr3"></div><b>🎤 Predicator</b><small>Schimbă singur slide-urile predicii (doar ale predicii). Tu le poți prelua oricând din bara de sus.</small>
-      <span class="pin" id="phPin"></span><button id="phNewPin" class="mini ghost" title="Codul vechi nu mai merge">↻ PIN nou</button></div>
+  <p class="hint">Telefonul trebuie să fie în aceeași rețea Wi-Fi ca acest calculator. Un singur cod pentru toți: scanezi cu camera, apoi alegi în telefon ce faci (echipa media, muzician, versuri sau predicator). Telefonul ține minte alegerea.</p>
+  <div class="ph-one">
+    <div class="ph"><div class="qr big" id="phQr4"></div><b>📱 Aplicația Betleem</b><small id="phAddr"></small></div>
+    <div class="ph-who">
+      <div><b>🎛 Echipa media</b><small>Planificare, Proiectez și MD&amp;TRACK, cu PIN-ul echipei.</small></div>
+      <div><b>🎸 Muzician</b><small>Programul și cântările cu acorduri, în tonul ales.</small></div>
+      <div><b>📖 Versuri</b><small>Pentru oricine: versurile de pe ecran și programul.</small></div>
+      <div id="phPred"><b>🎤 Predicator</b><small>Schimbă singur slide-urile predicii. Îi spui PIN-ul de mai jos; tu poți prelua oricând din bara de sus.</small>
+        <span class="pin" id="phPin"></span><button id="phNewPin" class="mini ghost" title="Codul vechi nu mai merge">↻ PIN nou</button></div>
+    </div>
   </div>
-  <p class="hint" id="phUrl"></p>
-  <p class="hint">Pe iPhone: în Safari → Partajează → <b>Adaugă pe ecranul principal</b> și arată ca o aplicație. Cine are PIN-ul de operator poate schimba și slide-urile din telefon.</p>
+  <p class="hint">Pe iPhone: în Safari → Partajează → <b>Adaugă pe ecranul principal</b> și arată ca o aplicație. Din telefon schimbi rolul oricând cu ⇄.</p>
 </div></div>
 <div class="modal" id="lightModal"><div class="glass canva">
   <div class="look-head"><b>💡 Scenă de lumini</b><span class="grow"></span><button id="ltClose" class="icon" title="Închide">✕</button></div>
@@ -2289,12 +2296,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     try { t = await fetch('/api/this').then(r => r.ok ? r.json() : null); if (t?.urls?.length) base = t.urls[0]; } catch {}
     const { default: qrcode } = await import('/vendor/qrcode.js');
     const draw = (el, link) => { const q = qrcode(0, 'M'); q.addData(link); q.make(); $(el).innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); };
-    draw('phQr1', base + '/live.html?v=chords'); draw('phQr2', base + '/live.html'); draw('phQr4', base + '/m.html'); $('phAddr').textContent = 'Adresa: ' + base;
+    draw('phQr4', base + '/m.html'); $('phAddr').innerHTML = 'Sau scrie în browser: <b>' + esc(base) + '/m.html</b>' + (/localhost|127\.0\.0\.1/.test(base) ? '<br>Calculatorul nu pare conectat la Wi-Fi.' : '');
     $('phPred').hidden = !t?.preacherPin;
-    if (t?.preacherPin) { draw('phQr3', base + '/live.html?v=pred#p=' + t.preacherPin); $('phPin').textContent = 'PIN ' + t.preacherPin; }
+    if (t?.preacherPin) $('phPin').textContent = 'PIN ' + t.preacherPin;
     $('phNewPin').onclick = async () => { const r = await fetch('/api/preacher/pin', { method: 'POST', headers: { 'x-pin': hub.pin?.() || '' } }).then(r => r.json()).catch(() => ({}));
-      if (r.preacherPin) { draw('phQr3', base + '/live.html?v=pred#p=' + r.preacherPin); $('phPin').textContent = 'PIN ' + r.preacherPin; toast('PIN nou pentru predicator. Codul vechi nu mai merge.'); } else toast(r.error || 'N-a mers'); };
-    $('phUrl').innerHTML = `Sau scrie în browser: <b>${esc(base)}/live.html</b>` + (/localhost|127\.0\.0\.1/.test(base) ? ' — calculatorul nu pare conectat la Wi-Fi.' : '');
+      if (r.preacherPin) { $('phPin').textContent = 'PIN ' + r.preacherPin; toast('PIN nou pentru predicator. Codul vechi nu mai merge.'); } else toast(r.error || 'N-a mers'); };
   };
   $('phClose').onclick = () => $('phonesModal').classList.remove('show');
   $('cvClose').onclick = () => $('canvaModal').classList.remove('show');

@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.11 · un singur QR pentru telefon
+- **📱 Pe telefon (Live).** Înainte: 4 coduri QR (Muzicieni, Aplicația, Echipă, Predicator). Acum: un singur cod, spre
+  aplicația Betleem (/m.html). Prima dată telefonul întreabă „Ce faci azi?”: 🎛 Echipa media (Planificare, Proiectez,
+  MD&TRACK), 🎸 Muzician (acorduri), 📖 Versuri, 🎤 Predicator (cere PIN-ul lui, afișat pe calculator lângă cod).
+  Telefonul ține minte alegerea; ⇄ din colțul de sus schimbă rolul. Linkurile vechi (live.html…) merg mai departe.
+
 ## 2026-11-24 · 2026.11.24.10 · MD&TRACK citibil cu multe track-uri, asistentul local mai rapid
 - **Rândurile track-urilor (MD&TRACK).** Înainte: cu 20+ track-uri, rândurile se striveau și numele se tăiau pe jumătate.
   Acum: peste 8 track-uri, fiecare are un rând curat (nume + M S); volumul e în mixerul de jos; restul se derulează.

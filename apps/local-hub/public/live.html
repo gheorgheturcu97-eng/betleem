@@ -75,7 +75,7 @@
 </style>
 </head>
 <body>
-<header><h1><span id="dot"></span><span id="title">Betleem</span></h1><span id="now" style="color:var(--mute);font-size:14px"></span></header>
+<header><h1><span id="dot"></span><span id="title">Betleem</span></h1><span id="now" style="color:var(--mute);font-size:14px;flex:1;text-align:right"></span><a id="whoBack" href="/m.html?alege=1" hidden title="Schimbă ce faci (muzician, versuri, predicator, echipa media)" style="margin-left:12px;font-size:20px;text-decoration:none;color:var(--mute)">⇄</a></header>
 <nav>
   <button data-v="plan">Planificare</button>
   <button data-v="chords">Acorduri</button>
@@ -101,6 +101,7 @@
   import { connect, esc, stayAwake } from '/client.js';
   import { stripChords, chordLineToHtml, sectionColor, originalKey, keyDistance, toSlides, arrange, parseSong, transpose, prefersFlats } from '/core/song.js';
   const $ = id => document.getElementById(id);
+  try { if (localStorage.getItem('m.who')) $('whoBack').hidden = false; } catch {}
   // musicians open this with ?v=chords (from the QR code in Live): chords, the program, and any song of it
   let view = new URLSearchParams(location.search).get('v') || 'lyrics', S = null, browse = -1, browseSlides = null;
   if (!['lyrics', 'chords', 'order', 'pred', 'next'].includes(view)) view = 'lyrics';
