@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-24 · 2026.11.24.18 · structura cântării în locul titlului, secțiunea schimbată din slide
+- **Bara de deasupra slide-urilor.** Înainte: titlul cântării apărea a doua oară (era deja în program) și exista o listă
+  🎭 Look. Acum: la o cântare, în locul titlului stă structura ei, mică (Strofa 1 · Refren · Strofa 2…): tragi ca s-o
+  reordonezi, ✕ scoate, ＋ adaugă, ↺ revine (și în modul Proiectez). Lista 🎭 Look a plecat de acolo; Look-urile sunt în ⚙ Ecrane.
+- **Secțiunea unui slide.** Înainte: doar din ✎ Editează. Acum: clic pe eticheta slide-ului (STROFA 1, REFREN…) și alegi
+  alta (Strofa 1–4, Pre-refren, Refren, Bridge, Intro, Final, Tag sau alt nume). ⌘Z anulează.
+
 ## 2026-11-24 · 2026.11.24.17 · cântările pe Mac mini (ProPresenter + alt Betleem)
 - **⇪ ProPresenter.** Înainte: citea tot din folderul ProPresenter, inclusiv anunțuri, teme, playlist-uri și
   countdown-uri, care ajungeau în bibliotecă drept „cântări”. Acum: citește doar bibliotecile de cântări (sare peste

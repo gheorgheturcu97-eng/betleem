@@ -142,6 +142,11 @@
 
   .slides-panel{flex:1;padding:14px 16px 16px;min-height:0}
   .slides-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .secpop{position:fixed;z-index:60;width:320px;padding:10px;border-radius:14px;display:flex;flex-direction:column;gap:6px}
+  .secpop[hidden]{display:none} .secpop small{color:var(--mute);font-size:11.5px}
+  .secpop .secs{display:flex;flex-wrap:wrap;gap:5px} .secpop .secs button{padding:5px 10px;border-radius:999px;font-size:12.5px;border:1px solid color-mix(in srgb,var(--sc,#888) 60%,transparent);background:color-mix(in srgb,var(--sc,#888) 18%,transparent)}
+  .secpop .secs button.on{background:var(--sc,#888);color:#111}
+  #slides .slide .lb{cursor:pointer} #slides .slide .lb:hover{filter:brightness(1.25);text-decoration:underline}
   .slides-head h3{margin:0;font-size:19px;font-weight:650}
   .slides-head h3{flex:1 1 200px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .slides-head{gap:8px}
@@ -228,6 +233,10 @@
   .lineup{order:10;flex-basis:100%;width:100%;min-width:0;display:flex;flex-direction:column;gap:6px;padding-top:4px}
   .lineup .tagbar,.lineup .arr{min-width:0} .lineup #arrAdd{max-width:64px}
   .lineup[hidden]{display:none}
+  /* a song: no second title (it is in the program); its structure takes that place, small, on the same line */
+  .slides-head.song #slidesTitle{display:none}
+  .slides-head.song .lineup{order:0;flex:1 1 280px;width:auto;flex-basis:280px;padding-top:0}
+  .slides-head.song .lineup .arr{gap:4px} .slides-head.song .lineup .arr>*{font-size:12px}
   .lineup .line{display:flex;align-items:center;gap:8px;min-width:0}
   .lineup .line>small{width:52px;flex:none;font-size:11px;color:var(--mute)}
   .lineup .tagbar,.lineup .arr{flex:1;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;order:0;flex-basis:auto}
@@ -861,7 +870,7 @@
   body.mode-proiectez .menubar,body.mode-proiectez .navtabs,
   body.mode-proiectez #bUndo,body.mode-proiectez #bRedo,body.mode-proiectez #layoutT,
   body.mode-proiectez #bKeys,body.mode-proiectez #aiBtn,body.mode-proiectez #addKind,body.mode-proiectez #bAddItem,
-  body.mode-proiectez #setlist .acts,body.mode-proiectez #tabs [data-t=web],body.mode-proiectez #tabs [data-t=edit],body.mode-proiectez #arrRow,
+  body.mode-proiectez #setlist .acts,body.mode-proiectez #tabs [data-t=web],body.mode-proiectez #tabs [data-t=edit],body.mode-proiectez #arrRow>.tool,
   body.mode-proiectez .slides-panel [data-t=dup],body.mode-proiectez .slides-panel [data-t=del],body.mode-proiectez .slides-panel [data-t=edit],
   body.mode-proiectez #bPin,body.mode-proiectez .svc input[type=datetime-local]{display:none!important}
   body.mode-proiectez #bNoText,body.mode-proiectez #bLogo,body.mode-proiectez #bCount{width:44px!important;height:52px!important;padding:0!important;font-size:18px!important;border-radius:16px!important}
@@ -999,7 +1008,6 @@
               <label class="check"><input type="checkbox" id="autoLoop"> buclă</label></span>
           </div>
           <div class="qlook" id="qLook" title="Aspectul versurilor pe ecranul din sală (se vede imediat)">
-            <select id="qLookSel" class="qlooksel" title="🎭 Look: tot aspectul ecranelor dintr-un clic (Serviciu, Închinare, Predică…)"></select>
             <span class="ql" title="Câte rânduri pe un slide, la cântarea aleasă"><small>Rânduri</small><button data-q="rows-">−</button><b id="qRows">4</b><button data-q="rows+">＋</button></span>
             <span class="ql" title="Mărimea textului pe ecranul din sală"><small>Text</small><button data-q="size-">A−</button><button data-q="size+">A＋</button></span>
             <select id="qFont" title="Fontul versurilor"></select>
@@ -1952,15 +1960,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (!S) return;
     const L = S.looks || [], on = S.lookOn;
     const opts = L.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
-    $('qLookSel').innerHTML = `<option value="">🎭 ${on ? '' : 'Look…'}</option>` + opts; $('qLookSel').value = on || '';
-    if (!on) $('qLookSel').options[0].textContent = '🎭 Look…'; else $('qLookSel').options[0].textContent = '🎭 —';
     $('lkList').innerHTML = L.map(l => `<span class="lk${l.id === on ? ' on' : ''}" data-id="${esc(l.id)}"><button class="go" title="Pune acest Look${l.stage ? ' (și scena)' : ''}${l.background != null ? ' (și fundalul)' : ''}${l.props ? ' (și Props)' : ''} · dublu-clic = redenumește">${esc(l.name)}</button><button class="x" title="Șterge Look-ul">✕</button></span>`).join('')
       || '<small style="color:var(--mute)">Niciun Look încă: aranjează ecranul, apoi „Salvează aspectul de acum”.</small>';
     const it = S.setlist[sel];
     $('lkItemRow').style.display = it ? '' : 'none';
     if (it) { $('lkItem').innerHTML = '<option value="">— rămâne cum e —</option>' + opts; $('lkItem').value = it.look || ''; }
   }
-  $('qLookSel').onchange = e => { if (e.target.value) { send({ type: 'applyLook', id: e.target.value }); toast('🎭 ' + e.target.selectedOptions[0].textContent); } };
   $('lkList').onclick = async e => {
     const c = e.target.closest('.lk'); if (!c) return; const id = c.dataset.id, l = (S.looks || []).find(x => x.id === id); if (!l) return;
     if (e.target.closest('.x')) { if (await ask(`Ștergi Look-ul „${l.name}”?`, [], 'Șterge')) send({ type: 'deleteLook', id }); return; }
@@ -2563,6 +2568,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   async function renderSlides() {
     const it = S.setlist[sel];
     $('arrRow').style.display = it && it.kind === 'song' ? 'contents' : 'none';
+    document.querySelector('.slides-head').classList.toggle('song', it?.kind === 'song');
     $('slidesTitle').textContent = it ? (it.title || KIND[it.kind]) : 'Alege ceva din program';
     if (!it && S.live.item === -2) {                 // a passage from the Bible tab is on screen: its verses here
       $('slidesTitle').textContent = S.live.title || 'Biblia';
@@ -2586,6 +2592,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     }
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
       const t = e.target.closest('button')?.dataset.t, i = +el.dataset.s;
+      if (it.kind === 'song' && e.target.closest('.lb') && slides[i]) return secPick(e.target.closest('.lb'), i, slides[i].label || '');
       pickedSlide = i; document.querySelectorAll('#slides .slide').forEach(x => x.classList.toggle('picked', x === el));
       if (t === 'del') return removeSlide(i);
       if (!t) return send({ type: 'go', item: sel, slide: i });
@@ -4171,6 +4178,24 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
 
   // ---- slide editor: text, section (Strofa/Refren…), font, size, position — for one slide, the song, or all songs
+  // 🏷 the section of a slide, changed from the slide itself: click its label (Strofa 1 → Refren…)
+  function secPick(lbEl, i, cur) {
+    let pop = $('secPop');
+    if (!pop) { pop = document.createElement('div'); pop.id = 'secPop'; pop.className = 'glass secpop'; document.body.appendChild(pop);
+      document.addEventListener('pointerdown', e => { if (!e.target.closest('#secPop')) pop.hidden = true; }, true); }
+    pop.innerHTML = '<small>Secțiunea slide-ului ' + (i + 1) + '</small><div class="secs">' + SECS.map(x => `<button data-v="${x}" class="${x === cur ? 'on' : ''}" style="--sc:${sectionColor(x)}">${x}</button>`).join('')
+      + '<button data-v="">✎ Alt nume…</button></div>';
+    const r = lbEl.getBoundingClientRect(); pop.hidden = false;
+    pop.style.left = Math.min(r.left, innerWidth - 330) + 'px'; pop.style.top = Math.min(r.bottom + 6, innerHeight - 200) + 'px';
+    pop.onclick = async e => {
+      const b = e.target.closest('button'); if (!b) return; pop.hidden = true;
+      let label = b.dataset.v;
+      if (!label) { const r2 = await ask('Numele secțiunii', [{ label: 'Secțiune', value: cur }], 'Pune'); label = r2?.[0]?.trim(); }
+      if (!label || label === cur) return;
+      send({ type: 'slideSection', item: sel, slide: i, label }); songCache.delete(S.setlist[sel]?.songId);
+      toast('Slide-ul ' + (i + 1) + ' e acum: ' + label, () => send({ type: 'undo' }));
+    };
+  }
   const SECS = ['Strofa 1', 'Strofa 2', 'Strofa 3', 'Strofa 4', 'Pre-refren', 'Refren', 'Refren 2', 'Bridge', 'Intro', 'Final', 'Tag'];
   const FULL_BOX = { x: 6, y: 6, w: 88, h: 88 };
   $('sFont').innerHTML = $('lFont').innerHTML;
