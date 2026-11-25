@@ -211,3 +211,4 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   Proiectez și MD & Track; miniaturi în `apps/web/bg/`, cărțile Bibliei în `apps/web/core/bibleref.js` (copie din hub).
   Liderii salvează cu `setItems`; Închinarea cu `reverb_plan_item` (migrarea 20261125140000, doar ton + ordine la cântări).
   Verificat cu Playwright (lider + muzician, telefon și desktop). **Neverificat:** pe Mac mini, cu programul sincronizat.
+- **Reverb.dmg** (`buildPackage` în `src/server.js`, `public/descarca.html`): ditto → plutil (nume Reverb) → codesign ad hoc --deep → hdiutil UDZO, cu scurtătură „Aplicații”. Se face doar pe Mac. **Neverificat pe Mac** (scris aici, pe Linux).

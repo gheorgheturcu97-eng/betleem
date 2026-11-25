@@ -30,14 +30,13 @@
   <p class="sub" id="sub">Aplicația pentru proiecție, planificare și track-uri, pentru Mac.</p>
   <div class="card" id="box"><p class="note">Se încarcă…</p></div>
   <div class="card" id="steps" hidden>
-    <b>Instalare (3 minute)</b>
+    <b>Instalare (2 minute, fără Terminal)</b>
     <ol>
-      <li>Deschide fișierul descărcat (dublu-clic). Apare <b>Betleem.app</b>.</li>
-      <li>Trage <b>Betleem.app</b> în <b>Aplicații</b>.</li>
-      <li>Deschide <b>Terminal</b> și scrie, pe rând (aplicația nu vine din App Store, asta îi spune lui macOS că o accepți):
-        <code>xattr -cr /Applications/Betleem.app</code>
-        <code>codesign --force --deep -s - /Applications/Betleem.app</code></li>
-      <li>Pornește Reverb. Dacă macOS tot o blochează: <b>Setări sistem → Confidențialitate și securitate → Deschide oricum</b>.</li>
+      <li>Deschide <b>Reverb.dmg</b> (dublu-clic). Se deschide o fereastră cu <b>Reverb</b> și <b>Aplicații</b>.</li>
+      <li>Trage <b>Reverb</b> peste <b>Aplicații</b>.</li>
+      <li>Deschide Reverb din Aplicații. Prima dată macOS spune că nu poate verifica dezvoltatorul: apasă <b>Gata</b>.</li>
+      <li>Deschide <b>Setări sistem → Confidențialitate și securitate</b>, coboară până la „Reverb a fost blocat” și apasă
+        <b>Deschide oricum</b> (îți cere parola Mac-ului). Doar o dată; de acum se deschide normal.</li>
       <li>Când întreabă de <b>rețeaua locală</b>, apasă <b>Permite</b> (ca să vadă telefoanele și ecranele).</li>
     </ol>
     <p class="note">La prima pornire, cântările vin deja în bibliotecă. Aplicația se actualizează singură. Datele stau în Documente/Betleem, pe calculatorul vostru.
@@ -55,7 +54,7 @@
     const mb = j.size ? Math.round(j.size / 1048576) + ' MB' : '';
     const ready = j.ready && !j.building;
     $('box').innerHTML = `<div class="facts"><span>🎵 ${j.songs || '…'} cântări incluse</span>${j.version ? `<span>versiunea ${esc(j.version)}</span>` : ''}${mb ? `<span>${mb}</span>` : ''}</div>
-      <a class="dl${ready ? '' : ' off'}" href="/api/descarca/Betleem-Mac.zip?t=${encodeURIComponent(t)}">${ready ? '⬇ Descarcă Reverb pentru Mac' : j.building || !j.error ? '⏳ Pachetul se pregătește…' : '⚠ Pachetul nu e gata'}</a>
+      <a class="dl${ready ? '' : ' off'}" href="/api/descarca/Reverb.dmg?t=${encodeURIComponent(t)}">${ready ? '⬇ Descarcă Reverb pentru Mac' : j.building || !j.error ? '⏳ Pachetul se pregătește…' : '⚠ Pachetul nu e gata'}</a>
       <p class="note">${ready ? 'Linkul e personal și expiră pe ' + new Date(j.expires).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }) + '.' : (j.error ? '<span class="err">' + esc(j.error) + '</span>' : 'Durează cam un minut. Pagina se reîncarcă singură.')}</p>`;
     $('steps').hidden = false;
     if (!ready && (j.building || !j.error)) setTimeout(load, 8000);

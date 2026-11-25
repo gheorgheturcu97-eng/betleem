@@ -2038,7 +2038,7 @@ async function handle(req, res) {
       return json(res, 200, { package: pkgInfo(), door: !!(db.security.door && db.security.publicUrl), bases,
         shares: db.shares.filter(x => Date.parse(x.expires) > Date.now()).map(x => ({ ...x })) });
     }
-    if (p === '/api/descarca' || p === '/api/descarca/Betleem-Mac.zip') {   // the leader who got a link (church Wi-Fi, Tailscale or the 🔒 door)
+    if (p === '/api/descarca' || p === '/api/descarca/Reverb.dmg' || p === '/api/descarca/Betleem-Mac.zip') {   // the leader who got a link (church Wi-Fi, Tailscale or the 🔒 door)
       const ip = who(req);
       if (locked(ip)) return json(res, 429, { error: 'Prea multe încercări. Mai încearcă peste câteva minute.' });
       const sh = shareOf(url.searchParams.get('t'));
@@ -2047,7 +2047,7 @@ async function handle(req, res) {
       if (!pkg.ready || !fs.existsSync(PKG_FILE)) { if (!pkg.building) buildPackage(); return json(res, 503, { error: 'Pachetul se pregătește. Încearcă din nou peste un minut.' }); }
       sh.downloads = (sh.downloads || 0) + 1; save();
       const st = fs.statSync(PKG_FILE);
-      res.writeHead(200, { 'content-type': 'application/zip', 'content-length': st.size, 'content-disposition': 'attachment; filename="Betleem-Mac.zip"', 'cache-control': 'no-store' });
+      res.writeHead(200, { 'content-type': 'application/x-apple-diskimage', 'content-length': st.size, 'content-disposition': 'attachment; filename="Reverb.dmg"', 'cache-control': 'no-store' });
       return fs.createReadStream(PKG_FILE).pipe(res);
     }
     if (p === '/api/security') {                            // 🔒 the leader, on this computer only
@@ -2292,13 +2292,17 @@ ready.catch(() => {});
 db.security ||= { door: false, publicUrl: '', backupDir: '' };
 const DOOR_PORT = PORT + 1;                          // = SEND_PORT
 const DOOR_PAGES = new Set(['/descarca.html', '/eu.html', '/live.html', '/client.js', '/core/song.js', '/fit.js', '/glass.js', '/glass.css', '/manifest.webmanifest', '/icon.svg']);
-const DOOR_API = new Set(['/api/eu', '/api/next', '/api/descarca', '/api/descarca/Betleem-Mac.zip']);
+const DOOR_API = new Set(['/api/eu', '/api/next', '/api/descarca', '/api/descarca/Betleem-Mac.zip', '/api/descarca/Reverb.dmg']);
 const ACCESS_LOG = path.join(DATA_DIR, 'acces-internet.log');
 // 📦 The package for other churches: a copy of THIS Mac's Betleem app (newest code) with the song library inside
 // (hub/starter/library.json: only songs, without track paths or Planning Center ids). Never in the public updates:
 // it leaves this Mac only through a personal link, which expires and can be cancelled.
+// Since 2026-11-25 it is a disk image (Reverb.dmg: drag Reverb into Applications), signed on this Mac (ad hoc), so the
+// new church opens it once with System Settings → Privacy & Security → Open Anyway, without any Terminal commands.
+// (Later, with an Apple Developer ID, the same step signs + notarizes it and macOS opens it with no question at all.)
 db.shares ||= [];
-const SHARE_DIR = path.join(DATA_DIR, 'descarca'), PKG_FILE = path.join(SHARE_DIR, 'Betleem-Mac.zip');
+const SHARE_DIR = path.join(DATA_DIR, 'descarca'), PKG_FILE = path.join(SHARE_DIR, 'Reverb.dmg');
+try { fs.rmSync(path.join(SHARE_DIR, 'Betleem-Mac.zip'), { force: true }); } catch {}   // the old zip package (before the disk image)
 const pkg = { building: false, ready: false, error: '', version: '', songs: 0, size: 0, at: '' };
 try { Object.assign(pkg, JSON.parse(fs.readFileSync(path.join(SHARE_DIR, 'pachet.json'), 'utf8')), { building: false }); pkg.ready = pkg.ready && fs.existsSync(PKG_FILE); } catch {}
 const shareOf = t => typeof t === 'string' && t.length >= 20 ? db.shares.find(x => safeEq(x.token, t) && Date.parse(x.expires) > Date.now()) : null;
@@ -2313,8 +2317,9 @@ function buildPackage() {
     // the app bundle this hub runs in: …/Betleem.app/Contents/MacOS/<exe>
     const bundle = path.resolve(process.execPath, '../../..');
     if (process.platform !== 'darwin' || !process.versions.electron || !bundle.endsWith('.app')) throw new Error('Pachetul se face doar din aplicația Betleem de pe Mac.');
-    const work = path.join(SHARE_DIR, 'lucru'), app = path.join(work, 'Betleem.app');
-    fs.rmSync(work, { recursive: true, force: true }); fs.mkdirSync(work, { recursive: true });
+    const work = path.join(SHARE_DIR, 'lucru'), stage = path.join(work, 'Reverb'), app = path.join(stage, 'Reverb.app');
+    fs.mkdirSync(stage, { recursive: true });
+    fs.rmSync(work, { recursive: true, force: true }); fs.mkdirSync(stage, { recursive: true });
     await run('ditto', [bundle, app]);
     const hubDst = path.join(app, 'Contents/Resources/app/hub');
     fs.rmSync(hubDst, { recursive: true, force: true });             // the newest code (this running hub), not the one from the installer
@@ -2322,9 +2327,16 @@ function buildPackage() {
     const songs = db.songs.map(x => Object.fromEntries(SHARE_SONG_KEYS.filter(k => x[k] != null).map(k => [k, x[k]])));
     fs.mkdirSync(path.join(hubDst, 'starter'), { recursive: true });
     fs.writeFileSync(path.join(hubDst, 'starter/library.json'), JSON.stringify({ songs }));
-    const tmp = PKG_FILE + '.tmp';
+    // the name on the Mac: Reverb (each church still sees its own name inside)
+    const plist = path.join(app, 'Contents/Info.plist');
+    for (const k of ['CFBundleName', 'CFBundleDisplayName']) await run('plutil', ['-replace', k, '-string', 'Reverb', plist]).catch(() => {});
+    await run('xattr', ['-cr', app]).catch(() => {});
+    await run('codesign', ['--force', '--deep', '--sign', '-', app]);           // one valid signature for the whole app (ad hoc)
+    await run('codesign', ['--verify', '--deep', '--strict', app]);
+    fs.symlinkSync('/Applications', path.join(stage, 'Aplicații'));            // drag Reverb here
+    const tmp = PKG_FILE.replace(/\.dmg$/, '.tmp.dmg');
     fs.rmSync(tmp, { force: true });
-    await run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', app, tmp]);
+    await run('hdiutil', ['create', '-volname', 'Reverb', '-srcfolder', stage, '-ov', '-fs', 'HFS+', '-format', 'UDZO', tmp]);
     fs.renameSync(tmp, PKG_FILE); fs.rmSync(work, { recursive: true, force: true });
     Object.assign(pkg, { ready: true, version: VERSION, songs: songs.length, size: fs.statSync(PKG_FILE).size, at: new Date().toISOString() });
   })().catch(e => { pkg.error = e.message; logError('pachetul pentru alte biserici', e); })

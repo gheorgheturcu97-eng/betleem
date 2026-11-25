@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · 2026.11.25.5 · 📦 Reverb pentru Mac ca DMG, fără Terminal
+- **Pachetul pentru alte biserici** (⚙ → Dă aplicația altor biserici). Înainte: Betleem-Mac.zip + două comenzi în
+  Terminal (xattr, codesign). Acum: **Reverb.dmg**, făcut și semnat (ad hoc) pe Mac-ul bisericii: dublu-clic, tragi
+  Reverb în Aplicații, apoi o singură dată Setări sistem → Confidențialitate și securitate → Deschide oricum. Aplicația
+  se numește Reverb pe Mac; înăuntru fiecare biserică își vede numele. Linkurile vechi (…/Betleem-Mac.zip) dau tot DMG-ul.
+- Pasul următor (când există cont Apple Developer): semnare Developer ID + notarizare, ca să se deschidă fără întrebare.
+
 ## 2026-11-25 · Reverb online · 🛠 pregătește serviciul de acasă (Proiectez + MD & Track)
 - **Proiectez din link.** Înainte: doar „Programul de azi”, de citit. Acum: „Pregătește de acasă”: alegi serviciul
   (următoarele 10), atingi un moment și îl pregătești: ordinea (↑ ↓ ✕), cântări noi, pasaje biblice („Ioan 3:16-18”
