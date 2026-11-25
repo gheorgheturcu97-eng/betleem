@@ -1,6 +1,18 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · 2026.11.25.4 · aspect calm și profesionist (aplicație + Reverb online)
+- **Aspectul aplicației** (Planificare, Proiectez, MD&TRACK, Setări, cele trei uși). Înainte: fundal cu pete colorate
+  (mov, turcoaz, portocaliu, roz), auriu strălucitor pe butoane, margini și chenare peste tot, butoane-pastilă, emoji ca
+  iconițe. Acum: fundal grafit liniștit, un singur albastru discret pentru ce e important, sticlă doar unde se suprapun
+  straturile, umbre fine în loc de chenare, iconițe desenate (SVG), Setările ca listă, serviciile din Planificare ca o
+  cronologie cu dată. Tot în `public/calm.css` (încărcat ultimul); nicio funcție mutată. Culoarea aleasă de biserică în
+  ⚙ → Aspect și funcții are în continuare prioritate. Modul zi și Modul rapid păstrează același aspect.
+- **Telefonul (m.html)**: bară de tab-uri translucidă, iconițe desenate, culori grafit. Acordurile rămân la fel.
+- **Reverb online (site-ul din link)**: reproiectat la fel: întâmpinarea bisericii compactă, „Anunță-mă când sunt
+  programat” ca indicație mică cu iconiță, zonele Planific / Proiectez / MD&Track ca file cu iconițe, serviciile grupate
+  pe luni ca o listă cu dată, ecranul „Bine ai venit” fără card. Înainte: carduri mari cu chenare și emoji.
+
 ## 2026-11-25 · 2026.11.25.3 · 🔔 notificări, ✎ cântări scrise și corectate din link
 - **„Ești programat”** stă acum sus, colorat și pulsând, pe toate zonele (pe telefon înaintea tab-urilor, pe laptop în
   stânga), cu „nou” la locurile neconfirmate. Înainte: un card obișnuit în Planific.

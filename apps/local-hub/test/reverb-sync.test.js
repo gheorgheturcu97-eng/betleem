@@ -32,7 +32,8 @@ test('people with a link take over the local volunteer with the same name (and h
   const dan = plan.volunteers.find(v => v.id === 'p-dan');
   assert.ok(dan.token && dan.positions.length === plan.departments.find(d => d.name === 'Media').positions.length);
   const sh = JSON.stringify(shared(plan));
-  assert.ok(!sh.includes('0712') && !sh.includes('"token"') && !sh.includes('"phone"'));
+  // (not a plain "0712" search: a random id can contain those digits)
+  assert.ok(!sh.includes('0712 000 000') && !sh.includes('"token"') && !sh.includes('"phone"'));
 });
 
 test('a merge from the cloud keeps the local phones and links', () => {
