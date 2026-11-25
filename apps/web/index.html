@@ -4,225 +4,299 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#12110F">
+<meta name="theme-color" content="#0b0b0c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Betleem">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <title>Betleem</title>
 <style>
-  /* Reverb online: the door (personal link → account) and, for coordinators, the people of the church and their links */
-  :root{--bg:#12110F;--bg2:#1B1A17;--fg:#F2EEE8;--mute:#A8A196;--line:rgba(255,255,255,.1);--acc:#3A5BD9;--sand:#C9B79C;--no:#ff8a7a;--ok:#7bd88f}
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Montserrat,system-ui,-apple-system,"Segoe UI",sans-serif}
-  main{max-width:720px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
-  header{display:flex;align-items:center;gap:12px;margin-bottom:22px} header img{width:44px;height:44px;border-radius:11px}
-  /* each church is welcomed with its own name; Reverb stays in the background: the wordmark pressed into liquid gloss */
-  .glossmark{position:fixed;left:50%;top:55%;width:min(92vw,760px);aspect-ratio:1683/325;transform:translate(-50%,-50%) rotate(-8deg);z-index:-1;pointer-events:none;
-    -webkit-mask:url(wordmark.svg) center/contain no-repeat;mask:url(wordmark.svg) center/contain no-repeat;opacity:.16;
-    background:linear-gradient(115deg,#5a5246 0%,#F2EEE8 18%,#8c8070 32%,#3A5BD9 50%,#F2EEE8 64%,#6b6256 80%,#F2EEE8 100%);background-size:300% 100%;animation:gloss 14s ease-in-out infinite alternate}
-  header .gloss{display:block;height:15px;aspect-ratio:1683/325;-webkit-mask:url(wordmark.svg) left/contain no-repeat;mask:url(wordmark.svg) left/contain no-repeat;opacity:.55;
-    background:linear-gradient(115deg,#6b6256 0%,#F2EEE8 22%,#9a8e7c 40%,#ffffff 50%,#9a8e7c 60%,#F2EEE8 78%,#6b6256 100%);background-size:300% 100%;animation:gloss 9s ease-in-out infinite alternate}
-  @keyframes gloss{to{background-position:100% 0}} @media (prefers-reduced-motion:reduce){.glossmark{animation:none}}
-  main{position:relative;z-index:0} body{isolation:isolate}
-  .welcome{display:flex;gap:16px;align-items:center} .welcome img{width:72px;height:72px;border-radius:18px;object-fit:contain;background:#fff;flex:none;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-  .logoset{display:inline-block;margin:0 0 10px;font-size:13px;color:var(--mute);cursor:pointer;text-decoration:underline}
-  .welcome small{display:block;color:var(--mute);font-size:14px;letter-spacing:.02em} .welcome h1{font-size:34px;margin:2px 0 4px}
-  .welcome .hi{color:var(--sand);margin:0 0 12px}
-  footer{display:flex;align-items:center;justify-content:center;gap:7px;color:var(--mute);font-size:12px;margin:26px 0 0;opacity:.75}
-  footer img{height:10px;width:auto}
-  header .sp{flex:1} button,.btn{font:600 15px Montserrat,sans-serif;border:0;border-radius:12px;padding:11px 16px;cursor:pointer;background:var(--bg2);color:var(--fg);border:1px solid var(--line)}
-  button.acc{background:var(--acc);border-color:transparent;color:#fff} button.ghost{background:none} button:disabled{opacity:.5}
-  .card{background:rgba(27,26,23,.66);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
-  h1{font:800 28px/1.15 Syne,Montserrat,sans-serif;margin:6px 0 8px} h2{font:700 18px Syne,Montserrat,sans-serif;margin:0 0 10px}
-  .mute{color:var(--mute)} .err{color:var(--no);font-weight:600} .ok{color:var(--ok)}
-  .chips{display:flex;flex-wrap:wrap;gap:8px} .chip{padding:5px 12px;border-radius:999px;background:#26241f;font-size:14px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .row>*{flex:1 1 140px}
-  input,select{font:15px Montserrat,sans-serif;background:#0d0c0b;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%}
-  .person{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)} .person:first-of-type{border-top:0}
-  .person .who{flex:1 1 220px;min-width:0} .person .who b{display:block} .person .who small{color:var(--mute)}
-  .person button{padding:8px 10px;font-size:13px}
-  .linkbox{margin-top:12px;padding:12px;border-radius:12px;background:#0d0c0b;border:1px dashed var(--sand);word-break:break-all;font-size:14px}
-  .deps{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center} .deps small{color:var(--mute);margin-right:4px}
-  .deps label{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#26241f;border:1px solid var(--line);cursor:pointer;font-size:14px}
-  .deps input{width:auto;margin:0;accent-color:var(--acc)} .deps label:has(input:checked){background:rgba(58,91,217,.25);border-color:var(--acc)}
-  .deps.lead label:has(input:checked){background:rgba(201,183,156,.25);border-color:var(--sand)}
-  .chip.f{cursor:pointer;border:1px solid transparent} .chip.f.on{border-color:var(--acc);background:rgba(58,91,217,.25)}
-  .edit{width:100%;padding:10px 0 4px} .edit .row{margin-top:8px}
-  .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:#26241f;margin:2px 4px 0 0} .tag.l{background:rgba(201,183,156,.3)}
-  /* ⭐ "Ești programat": the first thing you see, on every zone */
-  .mineCard{border:1px solid rgba(201,183,156,.55);background:linear-gradient(160deg,rgba(201,183,156,.20),rgba(58,91,217,.14) 60%,rgba(27,26,23,.7));box-shadow:0 10px 40px rgba(201,183,156,.12),inset 0 1px 0 rgba(255,255,255,.12)}
-  .mineHead{display:flex;align-items:center;gap:10px;margin-bottom:4px} .mineHead b{font:700 18px Syne,Montserrat,sans-serif} .mineHead small{margin-left:auto;color:var(--sand);font-size:13px}
-  .pulse{width:10px;height:10px;border-radius:50%;background:var(--sand);box-shadow:0 0 0 0 rgba(201,183,156,.7);animation:pulse 2s infinite}
-  @keyframes pulse{70%{box-shadow:0 0 0 10px rgba(201,183,156,0)}100%{box-shadow:0 0 0 0 rgba(201,183,156,0)}} @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
-  .mine.new .x b:after{content:"nou";margin-left:8px;padding:1px 7px;border-radius:999px;background:var(--sand);color:#1b1a17;font:700 10px Montserrat,sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
-  .bell{display:flex;align-items:center;gap:12px;padding:14px 16px} .bell>span{font-size:22px} .bell div{flex:1;min-width:0} .bell b{display:block;font-size:15px} .bell small{color:var(--mute);font-size:13px}
-  .bell button{flex:none;padding:9px 14px}
-  /* ✎ the song editor: text with chords on the left (top on a phone), how it will look on the right */
-  #vEdit{position:fixed;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-  .ed2{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr;overflow:auto} .edf{padding:12px 14px 0}
-  #eBody{width:100%;min-height:42vh;margin-top:8px;font:15px/1.45 ui-monospace,Menlo,monospace;background:#0d0c0b;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
-  #ePrev{border-top:1px solid var(--line);margin-top:12px} .vers{margin:10px 0 0;font-size:13px} .vers button{padding:4px 9px;font-size:12px;margin-left:6px}
-  @media (min-width:900px){.ed2{grid-template-rows:none;grid-template-columns:1fr 1fr;overflow:hidden} .edf{overflow:auto;padding:16px} #eBody{min-height:60vh} #ePrev{border-top:0;border-left:1px solid var(--line);margin-top:0}}
-  .sqh{display:flex;align-items:center;justify-content:space-between} .sqh button{padding:8px 12px;font-size:13px}
-  /* the three zones: tabs on a phone, a side column on a laptop */
-  .tabs button{display:flex;align-items:center;justify-content:center;gap:8px} .tabs button i{font-style:normal;font-size:18px}
-  .tabs button span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15} .tabs button small{display:none;font:500 12px Montserrat,sans-serif;color:var(--mute)}
-  .tabs button.on small{color:rgba(255,255,255,.8)}
-  a.btn.big{display:block;text-align:center;text-decoration:none;padding:16px;font-size:17px} a.btn.off{opacity:.4;pointer-events:none}
-  @media (max-width:520px){.tabs button{flex-direction:column;gap:2px;padding:10px 4px;font-size:13px} .tabs button span{align-items:center}}
-  @media (min-width:980px){
-    main{max-width:1180px;padding-left:28px;padding-right:28px}
-    #vHome:not([hidden]){display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;align-items:start}
-    .side{position:sticky;top:20px} .welcome{flex-direction:column;align-items:flex-start} .welcome h1{font-size:30px}
-    .tabs{flex-direction:column;position:static;background:none;padding:0;gap:6px}
-    .tabs button{justify-content:flex-start;padding:12px 14px;text-align:left} .tabs button small{display:block}
-    .zones .sect:first-child{margin-top:4px}
+  /* Reverb online — one quiet design system (2026-11-25).
+     Graphite surfaces, one blue accent, type does the hierarchy; glass only where layers meet (sticky nav, overlays, the "you serve" panel). */
+  :root{
+    --bg:#0b0b0c; --bg-raised:#121214; --surface:rgba(30,30,33,.62); --surface-solid:#17171a; --fill:rgba(255,255,255,.05); --fill-2:rgba(255,255,255,.08);
+    --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
+    --text:#f5f5f7; --text-2:#a1a1a6; --text-3:#6e6e73;
+    --accent:#4d7cff; --accent-soft:rgba(77,124,255,.14); --accent-text:#8fb0ff;
+    --ok:#32d074; --warn:#ffcc4d; --no:#ff6b5e;
+    --r-s:8px; --r-m:12px; --r-l:18px;
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
+    --shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 30px rgba(0,0,0,.35);
+    --blur:saturate(1.6) blur(20px);
+    --ease:cubic-bezier(.2,.7,.2,1);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,system-ui,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+    /* old names still used by the script */
+    --mute:var(--text-2); --fg:var(--text); --acc:var(--accent); --sand:var(--text-2); --bg2:var(--surface-solid);
   }
-  /* tabs: 🗓 Program · 🎵 Cântări · 👥 Oameni */
-  .tabs{display:flex;gap:6px;margin:0 0 14px;position:sticky;top:0;z-index:3;background:var(--bg);padding:8px 0}
-  .tabs button{flex:1;padding:12px 6px;font-size:15px} .tabs button.on{background:var(--acc);border-color:transparent;color:#fff}
-  /* 🗓 the program: quiet, clear, one look (2026-11-25) */
-  .sect{display:flex;align-items:baseline;justify-content:space-between;margin:22px 2px 10px} .sect h2{margin:0;font:700 13px Montserrat,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
-  .sect small{color:var(--mute);font-size:13px}
-  .svc{padding:0;overflow:hidden;margin-bottom:10px} .svc>summary{list-style:none;cursor:pointer;padding:14px 16px;display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center}
-  .svc>summary::-webkit-details-marker{display:none} .svc[open]>summary{border-bottom:1px solid var(--line)}
-  .dt{text-align:center;line-height:1;border-right:1px solid var(--line);padding-right:14px}
-  .dt small{display:block;font:600 11px Montserrat,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)} .dt b{display:block;font:700 26px Montserrat,sans-serif;margin:4px 0;font-variant-numeric:tabular-nums}
-  .ttl{min-width:0} .ttl b{display:block;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .ttl small{color:var(--mute);font-size:13px}
-  .fill{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
-  .bar{width:56px;height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden} .bar i{display:block;height:100%;background:var(--ok);border-radius:4px}
-  .svc .in{padding:4px 16px 16px;display:grid;gap:4px 28px} @media (min-width:640px){.svc .in{grid-template-columns:1fr 1fr}}
-  .svc h3{display:flex;align-items:center;justify-content:space-between;font:700 12px Montserrat,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:16px 0 4px}
-  .svc h3 small{font-weight:500;letter-spacing:0;text-transform:none}
-  .it{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)} .it:first-of-type{border-top:0}
-  .it .n{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;text-align:right} .it .x{min-width:0} .it .x b{font-weight:600}
-  .it .x small{display:block;color:var(--mute);font-size:12.5px;margin-top:1px} .it .m{color:var(--mute);font-size:12.5px;white-space:nowrap}
-  .it.song .x b{cursor:pointer} .it.song .x b:hover{text-decoration:underline}
-  .kind{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--sand)} .key{display:inline-block;margin-left:6px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.07);font:600 12px Montserrat,sans-serif;color:var(--fg)}
-  .ed{display:flex;gap:4px} .ed button{padding:5px 8px;font-size:12px;border-radius:8px}
-  .dep{display:flex;align-items:center;gap:8px;margin:14px 0 2px;font-weight:600;font-size:14px} .dep i{width:8px;height:8px;border-radius:50%} .dep small{margin-left:auto;color:var(--mute);font-weight:500;font-size:12px}
-  .slot{display:grid;grid-template-columns:minmax(84px,32%) 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px} .dep+.slot{border-top:0}
-  .slot .p{color:var(--mute)} .slot .w{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .slot .w.free{color:rgba(255,255,255,.28)}
-  .slot select{padding:7px 9px;font-size:14px;border-radius:9px} .slot select+.st{font-size:0;gap:0}   /* editing: only the coloured dot */
-  .st{display:inline-flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;color:var(--mute)} .st:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--sand)}
-  .st.confirmed:before{background:var(--ok)} .st.declined{color:var(--no)} .st.declined:before{background:var(--no)}
-  .svcbar{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
-  .svcbar .sp{flex:1} .svcbar button{padding:8px 12px;font-size:13px}
-  .mine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)} .mine:first-of-type{border-top:0}
-  .mine .x b{font-weight:600} .mine .x small{display:block;color:var(--mute);font-size:13px} .mine .act{display:flex;gap:6px;align-items:center}
-  .mine button{padding:8px 12px;font-size:13px} .mine button.yes{border-color:rgba(123,216,143,.5)} .mine button.no{border-color:rgba(255,138,122,.45)}
-  .warn{grid-column:1/-1;color:var(--sand);font-size:13px;margin:8px 0 0}
-  .addit{display:grid;grid-template-columns:auto 1fr auto;gap:6px;margin-top:8px} .addit select{width:auto}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .toolbar>*{flex:0 1 auto} .toolbar input{width:auto;flex:1 1 150px}
-  /* 🎵 the library: any song, to rehearse on the phone (not tied to the program) */
-  .sq{display:flex;gap:8px;margin-bottom:10px} .slist{max-height:56vh;overflow:auto;margin:0 -6px}
-  .srow{display:flex;align-items:center;gap:10px;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer} .srow:first-child{border-top:0}
-  .srow b{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .srow small{color:var(--mute)} .srow:active{background:#26241f}
-  #vSong{position:fixed;inset:0;z-index:5;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-  .stop{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)} .stop .t{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .stop button,.stop select{padding:8px 11px;font-size:14px;width:auto} .stop button.on{background:var(--acc);border-color:transparent;color:#fff}
-  .chart{flex:1;min-height:0;overflow:auto;padding:14px 14px 30px;font:16px/1.15 ui-monospace,Menlo,monospace;--chord:#ffb35c}
-  .chart .lbl{font:800 .8em Montserrat,sans-serif;letter-spacing:.06em;text-transform:uppercase;margin:1.1em 0 .3em} .chart>div:first-child .lbl{margin-top:0}
-  .chart .ln{display:flex;flex-wrap:wrap;margin:0 0 .25em} .chart .seg{display:inline-flex;flex-direction:column;white-space:pre}
-  .chart .seg b{color:var(--chord);font-weight:700;height:1.2em;line-height:1.2em} .chart .seg i{font-style:normal;line-height:1.2em}
-  .chart .only{color:var(--chord);font-weight:700} .chart.lyr{font-family:Montserrat,sans-serif}
-  .chart.fit-whole{padding:8px 10px;line-height:1.1} .chart.fit-whole .lbl{margin-top:.5em}
+  *{box-sizing:border-box} html{-webkit-text-size-adjust:100%}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+  body{background:radial-gradient(1200px 600px at 20% -10%,rgba(77,124,255,.07),transparent 60%),var(--bg);background-attachment:fixed;min-height:100vh}
+  main{max-width:760px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-left)) calc(48px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right))}
   [hidden]{display:none!important}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-s)}
+  svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+  /* type */
+  h1{font-size:26px;line-height:1.15;font-weight:650;letter-spacing:-.02em;margin:0}
+  h2{font-size:17px;line-height:1.3;font-weight:600;letter-spacing:-.01em;margin:0 0 var(--sp-2)}
+  h3{font-size:15px;font-weight:600;margin:0}
+  .label{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+  .mute{color:var(--text-2)} .err{color:var(--no);font-weight:500} .ok{color:var(--ok)}
+  small{font-size:13px}
+
+  /* controls */
+  button,.btn{font:500 14px/1.2 var(--font);border:0;border-radius:var(--r-m);padding:10px 14px;cursor:pointer;background:var(--fill-2);color:var(--text);
+    transition:background .15s var(--ease),opacity .15s,transform .1s;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;-webkit-tap-highlight-color:transparent}
+  button:hover,.btn:hover{background:rgba(255,255,255,.12)} button:active,.btn:active{transform:scale(.98)}
+  button.acc,.btn.acc{background:var(--accent);color:#fff} button.acc:hover,.btn.acc:hover{background:#5d89ff}
+  button.ghost{background:none;color:var(--text-2)} button.ghost:hover{background:var(--fill);color:var(--text)}
+  button:disabled{opacity:.45;cursor:default}
+  input,select,textarea{font:15px var(--font);background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line-2);border-radius:var(--r-m);padding:10px 12px;width:100%;transition:border-color .15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  input::placeholder,textarea::placeholder{color:var(--text-3)}
+  .row{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center} .row>*{flex:1 1 140px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px} .chip{padding:4px 10px;border-radius:999px;background:var(--fill);font-size:13px;color:var(--text-2)}
+  .chip.f{cursor:pointer;border:1px solid transparent} .chip.f.on{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+  .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--fill);margin:2px 4px 0 0;color:var(--text-2)} .tag.l{background:var(--accent-soft);color:var(--accent-text)}
+
+  /* surfaces: plain by default; .card only where a group needs a boundary */
+  .card{background:var(--surface);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-radius:var(--r-l);padding:var(--sp-4);margin-bottom:var(--sp-3);box-shadow:var(--shadow)}
+  .plain{background:none;box-shadow:none;padding:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .sect{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);margin:var(--sp-5) 0 var(--sp-2)}
+  .sect h2{margin:0} .sect small{color:var(--text-3)}
+  .linkbox{margin-top:var(--sp-3);padding:var(--sp-3);border-radius:var(--r-m);background:rgba(0,0,0,.35);word-break:break-all;font-size:14px}
+
+  /* top bar */
+  header{display:flex;align-items:center;gap:var(--sp-3);height:44px;margin-bottom:var(--sp-3)}
+  header .brand{height:12px;width:auto;opacity:.7} header .sp{flex:1}
+
+  /* the door (no account on this device yet) */
+  .door{min-height:62vh;display:flex;flex-direction:column;justify-content:center;max-width:440px;margin:0 auto;padding:var(--sp-5) 0}
+  .door .ic{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;margin-bottom:var(--sp-4)}
+  .door .ic svg{width:22px;height:22px}
+  .door h1{margin-bottom:var(--sp-2)} .door p{color:var(--text-2);margin:0 0 var(--sp-3);font-size:15.5px}
+  .door ol{margin:var(--sp-3) 0 0;padding:0;list-style:none;border-top:1px solid var(--line)} .door li{display:flex;gap:var(--sp-3);padding:var(--sp-3) 0;border-bottom:1px solid var(--line);color:var(--text-2);font-size:14px}
+  .door li b{flex:none;width:22px;height:22px;border-radius:50%;background:var(--fill-2);color:var(--text);font-size:12px;display:grid;place-items:center}
+  #vWait{color:var(--text-3);padding:var(--sp-6) 0;text-align:center}
+
+  /* welcome: church first, Reverb small */
+  .welcome{display:flex;gap:var(--sp-3);align-items:center;padding:var(--sp-2) 0 var(--sp-4)}
+  .welcome img{width:52px;height:52px;border-radius:14px;object-fit:contain;background:#fff;flex:none}
+  .welcome small{display:block;color:var(--text-3);font-size:13px} .welcome h1{margin:1px 0 2px}
+  .welcome .hi{margin:0;color:var(--text-2);font-size:14px}
+  .ctx{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:var(--sp-2)}
+  .ctx .chips{gap:2px 10px} .ctx .chip{background:none;padding:0;border-radius:0;font-size:13px;color:var(--text-3);line-height:1.45}
+  .logoset{display:inline-flex;align-items:center;gap:6px;margin-top:var(--sp-2);font-size:12.5px;color:var(--text-3);cursor:pointer} .logoset:hover{color:var(--text-2)}
+
+  /* "Ești programat" — the most important thing for a volunteer */
+  .mineCard{background:linear-gradient(180deg,rgba(77,124,255,.12),rgba(77,124,255,.04)),var(--surface);box-shadow:inset 0 0 0 1px rgba(77,124,255,.28),var(--shadow)}
+  .mineHead{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-1)} .mineHead b{font-size:15px;font-weight:600} .mineHead small{margin-left:auto;color:var(--accent-text);font-size:12.5px;font-weight:500}
+  .pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(77,124,255,.6);animation:pulse 2.4s infinite}
+  @keyframes pulse{70%{box-shadow:0 0 0 8px rgba(77,124,255,0)}100%{box-shadow:0 0 0 0 rgba(77,124,255,0)}}
+  .mine{display:grid;grid-template-columns:1fr auto;gap:var(--sp-3);align-items:center;padding:var(--sp-3) 0 var(--sp-1);border-top:1px solid var(--line)} .mine:first-of-type{border-top:0}
+  .mine .x b{font-weight:600} .mine .x small{display:block;color:var(--text-2);font-size:13px;margin-top:1px} .mine .act{display:flex;gap:6px;align-items:center}
+  .mine button{padding:8px 12px;font-size:13px} .mine button.yes{background:rgba(50,208,116,.16);color:#7ee3a6} .mine button.no{background:var(--fill)}
+  .mine.new .x b:after{content:"nou";margin-left:8px;padding:1px 6px;border-radius:6px;background:var(--accent);color:#fff;font-size:10.5px;font-weight:600;vertical-align:1px}
+
+  /* the notification hint: a quiet system hint, not a banner */
+  .bell{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-3) 0;margin-bottom:var(--sp-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .bell .bi{width:32px;height:32px;border-radius:9px;background:var(--fill-2);display:grid;place-items:center;color:var(--text);flex:none}
+  .bell div{flex:1;min-width:0} .bell b{display:block;font-size:14px;font-weight:600} .bell small{display:block;color:var(--text-2);font-size:13px;line-height:1.4;margin-top:1px}
+  .bell button{flex:none;padding:7px 12px;font-size:13px;align-self:center}
+
+  /* the three zones: a segmented control on a phone, a sidebar list on a laptop */
+  .tabs{display:flex;gap:2px;padding:3px;margin:var(--sp-2) 0 var(--sp-4);border-radius:var(--r-m);background:rgba(36,36,40,.72);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    position:sticky;top:max(8px,env(safe-area-inset-top));z-index:4;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+  .tabs button{flex:1;flex-direction:column;gap:3px;padding:8px 4px;background:none;border-radius:9px;color:var(--text-2);font-size:12px;font-weight:500}
+  .tabs button:hover{color:var(--text);background:var(--fill)}
+  .tabs button.on{background:var(--fill-2);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+  .tabs button.on svg{color:var(--accent-text)}
+  .tabs button span{display:flex;flex-direction:column;align-items:center;line-height:1.15} .tabs button b{font-weight:500} .tabs button small{display:none}
+
+  /* zones: open in the church app */
+  .zone{display:flex;align-items:center;gap:var(--sp-4)} .zone p{margin:0;color:var(--text-2);font-size:14px;flex:1}
+  a.btn.big{padding:11px 18px;font-size:15px;font-weight:600;flex:none} a.btn.off{opacity:.4;pointer-events:none}
+  .hubhint{font-size:13px!important;color:var(--text-3)!important}
+  @media (max-width:560px){.zone{flex-direction:column;align-items:stretch} a.btn.big{width:100%}}
+
+  /* 🗓 services: a timeline grouped by month, no card per service */
+  .month{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:var(--sp-4) 0 var(--sp-1);padding-left:2px}
+  .svc{border-top:1px solid var(--line)} .month+.svc{border-top:0}
+  .svc>summary{list-style:none;cursor:pointer;padding:var(--sp-3) var(--sp-2);margin:0 calc(-1 * var(--sp-2));border-radius:var(--r-m);display:grid;grid-template-columns:44px 1fr auto 14px;gap:var(--sp-3);align-items:center;transition:background .15s}
+  .svc>summary:hover{background:var(--fill)} .svc>summary::-webkit-details-marker{display:none}
+  .svc>summary .chev{color:var(--text-3);transition:transform .2s var(--ease)} .svc[open]>summary .chev{transform:rotate(90deg)}
+  .dt{text-align:center;line-height:1} .dt small{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3)}
+  .dt b{display:block;font-size:22px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:-.02em} .dt small+b+small{display:none}
+  .svc.today .dt small,.svc.today .dt b{color:var(--accent-text)}
+  .ttl{min-width:0} .ttl b{display:block;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .ttl small{color:var(--text-2);font-size:13px}
+  .fill{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
+  .bar{width:48px;height:3px;border-radius:3px;background:var(--fill-2);overflow:hidden} .bar i{display:block;height:100%;background:var(--ok);border-radius:3px}
+  .svc .in{padding:var(--sp-1) 0 var(--sp-4) 56px;display:grid;gap:0 var(--sp-6);animation:open .2s var(--ease)}
+  @keyframes open{from{opacity:0;transform:translateY(-4px)}}
+  @media (min-width:700px){.svc .in{grid-template-columns:1fr 1fr}} @media (max-width:520px){.svc .in{padding-left:0}}
+  .svc h3{display:flex;align-items:baseline;justify-content:space-between;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:var(--sp-3) 0 var(--sp-1)}
+  .svc h3 small{font-weight:500;letter-spacing:0;text-transform:none;font-size:12px}
+  .it{display:grid;grid-template-columns:20px 1fr auto;gap:var(--sp-2);align-items:center;padding:8px 0;border-top:1px solid var(--line)} .it:first-of-type{border-top:0}
+  .it .n{color:var(--text-3);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right} .it .x{min-width:0} .it .x b{font-weight:500}
+  .it .x small{display:block;color:var(--text-3);font-size:12px;margin-top:1px} .it .m{color:var(--text-3);font-size:12px;white-space:nowrap}
+  .it.song .x b{cursor:pointer} .it.song .x b:hover{color:var(--accent-text)}
+  .kind{font-size:12px;color:var(--text-3)} .key{display:inline-block;margin-left:6px;padding:0 5px;border-radius:5px;background:var(--fill-2);font-size:11.5px;font-weight:600;color:var(--text-2)}
+  .ed{display:flex;gap:2px} .ed button{padding:4px 7px;font-size:12px;border-radius:7px;background:none;color:var(--text-2)} .ed button:hover{background:var(--fill-2)}
+  .dep{display:flex;align-items:center;gap:var(--sp-2);margin:var(--sp-3) 0 2px;font-weight:500;font-size:13.5px} .dep i{width:6px;height:6px;border-radius:50%}
+  .dep small{margin-left:auto;color:var(--text-3);font-size:12px}
+  .slot{display:grid;grid-template-columns:minmax(84px,34%) 1fr auto;gap:var(--sp-2);align-items:center;padding:6px 0;font-size:14px}
+  .slot .p{color:var(--text-3);font-size:13px} .slot .w{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .slot select{padding:6px 8px;font-size:13.5px;border-radius:8px} .slot select+.st{font-size:0;gap:0}
+  .st{display:inline-flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;color:var(--text-3)} .st:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--warn)}
+  .st.confirmed{color:var(--text-2)} .st.confirmed:before{background:var(--ok)} .st.declined{color:var(--no)} .st.declined:before{background:var(--no)}
+  .svcbar{grid-column:1/-1;display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-top:var(--sp-3)}
+  .svcbar .sp{flex:1} .svcbar button{padding:7px 12px;font-size:13px}
+  .warn{grid-column:1/-1;color:var(--warn);font-size:12.5px;margin:var(--sp-2) 0 0}
+  .addit{display:grid;grid-template-columns:auto 1fr auto;gap:6px;margin-top:var(--sp-2)} .addit select{width:auto}
+  .toolbar{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center} .toolbar>*{flex:0 1 auto} .toolbar input{width:auto;flex:1 1 150px}
+  .composer{padding:var(--sp-3);border-radius:var(--r-l);background:var(--fill);margin-bottom:var(--sp-2)}
+  .hubline{display:flex;gap:var(--sp-3);align-items:center;margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--line);font-size:13px;color:var(--text-2)} .hubline span{flex:1}
+  .empty{padding:var(--sp-5) 0;color:var(--text-2);font-size:14px}
+
+  /* people (coordinators) */
+  .person{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) 0;border-top:1px solid var(--line)} .person:first-of-type{border-top:0}
+  .person .who{flex:1 1 220px;min-width:0} .person .who b{display:block;font-weight:500} .person .who small{color:var(--text-2)}
+  .person button{padding:7px 10px;font-size:13px}
+  .deps{display:flex;flex-wrap:wrap;gap:6px;margin-top:var(--sp-3);align-items:center} .deps small{color:var(--text-3);margin-right:4px}
+  .deps label{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:var(--fill);cursor:pointer;font-size:13.5px}
+  .deps input{width:auto;margin:0;accent-color:var(--accent)} .deps label:has(input:checked){background:var(--accent-soft);color:var(--text)}
+  .edit{width:100%;padding:var(--sp-2) 0 var(--sp-1)} .edit .row{margin-top:var(--sp-2)}
+
+  /* 🎵 songs */
+  .sqh{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)} .sqh button{padding:7px 12px;font-size:13px}
+  .sq{display:flex;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-2)} .slist{max-height:58vh;overflow:auto;margin:0 calc(-1 * var(--sp-2))}
+  .srow{display:flex;align-items:center;gap:var(--sp-3);padding:10px var(--sp-2);border-radius:var(--r-s);cursor:pointer;transition:background .12s} .srow:hover{background:var(--fill)}
+  .srow b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .srow small{color:var(--text-3)}
+  #vSong,#vEdit{position:fixed;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .stop{display:flex;align-items:center;gap:var(--sp-2);padding:10px max(12px,env(safe-area-inset-left));background:rgba(18,18,20,.8);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-bottom:1px solid var(--line)}
+  .stop .t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stop button,.stop select{padding:7px 11px;font-size:13.5px;width:auto} .stop button.on{background:var(--accent);color:#fff}
+  .chart{flex:1;min-height:0;overflow:auto;padding:var(--sp-4) var(--sp-4) var(--sp-6);font:16px/1.15 var(--mono);--chord:#ffb547}
+  .chart .lbl{font:600 .75em var(--font);letter-spacing:.06em;text-transform:uppercase;margin:1.1em 0 .3em} .chart>div:first-child .lbl{margin-top:0}
+  .chart .ln{display:flex;flex-wrap:wrap;margin:0 0 .25em} .chart .seg{display:inline-flex;flex-direction:column;white-space:pre}
+  .chart .seg b{color:var(--chord);font-weight:600;height:1.2em;line-height:1.2em} .chart .seg i{font-style:normal;line-height:1.2em}
+  .chart .only{color:var(--chord);font-weight:600} .chart.lyr{font-family:var(--font)}
+  .chart.fit-whole{padding:8px 10px;line-height:1.1} .chart.fit-whole .lbl{margin-top:.5em}
+  .ed2{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr;overflow:auto} .edf{padding:var(--sp-3) var(--sp-4) 0}
+  #eBody{min-height:42vh;margin-top:var(--sp-2);font:15px/1.5 var(--mono);resize:vertical}
+  #ePrev{border-top:1px solid var(--line);margin-top:var(--sp-3)} .vers{margin:var(--sp-3) 0 0;font-size:13px;color:var(--text-2)} .vers button{padding:4px 9px;font-size:12px;margin-left:6px}
+  @media (min-width:900px){.ed2{grid-template-rows:none;grid-template-columns:1fr 1fr;overflow:hidden} .edf{overflow:auto;padding:var(--sp-4)} #eBody{min-height:60vh} #ePrev{border-top:0;border-left:1px solid var(--line);margin-top:0}}
+
+  /* Reverb, quietly: a small mark at the end of the page */
+  footer{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--text-3);font-size:11.5px;margin:var(--sp-6) 0 0}
+  footer img{height:8px;width:auto;opacity:.6}
+
+  /* laptop and wider: a sidebar with the church and the zones, content on the right */
+  @media (min-width:980px){
+    main{max-width:1160px;padding-left:32px;padding-right:32px}
+    #vHome:not([hidden]){display:grid;grid-template-columns:272px minmax(0,1fr);gap:48px;align-items:start}
+    .side{position:sticky;top:24px}
+    .welcome{flex-direction:column;align-items:flex-start;gap:var(--sp-2)} .welcome h1{font-size:28px}
+    .tabs{flex-direction:column;position:static;background:none;padding:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;gap:2px;margin:var(--sp-4) 0}
+    .tabs button{flex-direction:row;justify-content:flex-start;gap:var(--sp-3);padding:9px 10px;font-size:14px}
+    .tabs button span{align-items:flex-start} .tabs button small{display:block;font-size:12px;color:var(--text-3);font-weight:400}
+    .tabs button.on{background:var(--fill-2);box-shadow:none}
+    .zones>div>.sect:first-child{margin-top:var(--sp-2)}
+    .bell{border-bottom:0}
+    .side .mine{grid-template-columns:1fr;gap:var(--sp-2)} .side .mine .act{justify-content:flex-start}
+  }
+  @media (min-width:1500px){main{max-width:1240px}}
+  @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <main>
-  <div class="glossmark" aria-hidden="true"></div>
-  <header><span class="gloss" role="img" aria-label="Reverb"></span><span class="sp"></span><button id="out" class="ghost" hidden>Ieși</button></header>
+  <header><img class="brand" src="wordmark.svg" alt="Reverb"><span class="sp"></span><button id="out" class="ghost" hidden>Ieși</button></header>
 
-  <section id="vWait" class="card"><p class="mute">Se încarcă…</p></section>
+  <section id="vWait">Se încarcă…</section>
 
-  <section id="vDoor" class="card" hidden>
+  <section id="vDoor" class="door" hidden>
+    <div class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></div>
     <h1>Bine ai venit</h1>
-    <p class="mute">Reverb se deschide cu <b>linkul tău personal</b>, primit de la coordonatorul bisericii (de obicei pe WhatsApp).
+    <p>Reverb se deschide cu <b>linkul tău personal</b>, primit de la coordonatorul bisericii (de obicei pe WhatsApp).
       Deschide-l o dată pe acest telefon sau calculator și rămâi conectat.</p>
+    <ol><li><b>1</b><span>Caută mesajul de la coordonator, de obicei pe WhatsApp.</span></li>
+      <li><b>2</b><span>Apasă linkul o singură dată, pe dispozitivul pe care vrei să folosești Reverb.</span></li>
+      <li><b>3</b><span>Data viitoare deschizi direct pagina: rămâi conectat.</span></li></ol>
     <p id="doorErr" class="err" hidden></p>
   </section>
 
   <section id="vHome" hidden>
    <aside class="side">
-    <div class="card">
-      <div class="welcome"><img id="logo" alt="" hidden><div><small>Bine ai venit în biserica</small><h1 id="church">…</h1><p class="hi" id="hello"></p></div></div>
-      <label class="logoset" id="logoSet" hidden>✎ Logoul bisericii<input type="file" accept="image/*" id="logoFile" hidden></label>
-      <div class="chips" id="myChurches"></div>
-      <div class="row" id="gChurchRow" hidden style="margin-top:12px"><select id="gChurch" aria-label="Biserica"></select></div>
-    </div>
-    <div class="card mineCard" id="gMineCard" hidden>
+    <div class="welcome"><img id="logo" alt="" hidden><div><small>Bine ai venit în biserica</small><h1 id="church">…</h1><p class="hi" id="hello"></p></div></div>
+    <div class="ctx"><div class="chips" id="myChurches"></div></div>
+    <label class="logoset" id="logoSet" hidden>Schimbă logoul bisericii<input type="file" accept="image/*" id="logoFile" hidden></label>
+    <div class="row" id="gChurchRow" hidden style="margin-top:12px"><select id="gChurch" aria-label="Biserica"></select></div>
+    <div class="card mineCard" id="gMineCard" hidden style="margin-top:16px">
       <div class="mineHead"><span class="pulse"></span><b>Ești programat</b><small id="gMineN"></small></div>
       <div id="gMine"></div>
     </div>
-    <div class="card bell" id="bell" hidden><span>🔔</span><div><b>Anunță-mă când sunt programat</b><small id="bellHint">Primești o notificare pe telefon.</small></div><button id="bellOn" class="acc">Pornește</button></div>
-    <nav class="tabs" id="tabs">
-      <button data-tab="vProg" class="on"><i>🗓</i><span><b>Planific</b><small>programul și echipa</small></span></button>
-      <button data-tab="vProj"><i>▶</i><span><b>Proiectez</b><small>slide-urile pe ecran</small></span></button>
-      <button data-tab="vMd"><i>🎛</i><span><b>MD &amp; Track</b><small>pupitru, cântări, track-uri</small></span></button>
-      <button data-tab="vPeople" hidden><i>👥</i><span><b>Oameni</b><small>linkurile echipei</small></span></button>
+    <div class="bell" id="bell" hidden><span class="bi"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></span><div><b>Notificări când ești programat</b><small id="bellHint">Afli imediat când un lider te pune pe program.</small></div><button id="bellOn" class="acc">Pornește</button></div>
+    <nav class="tabs" id="tabs" aria-label="Zone">
+      <button data-tab="vProg" class="on"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span><b>Planific</b><small>Programul și echipa</small></span></button>
+      <button data-tab="vProj"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M10.5 8.5v5l4-2.5z"/><path d="M8 20h8"/></svg><span><b>Proiectez</b><small>Slide-urile pe ecran</small></span></button>
+      <button data-tab="vMd"><svg class="i" viewBox="0 0 24 24"><path d="M6 4v16M12 4v16M18 4v16"/><rect x="4" y="13" width="4" height="3" rx="1"/><rect x="10" y="7" width="4" height="3" rx="1"/><rect x="16" y="11" width="4" height="3" rx="1"/></svg><span><b>MD &amp; Track</b><small>Pupitru, cântări, track-uri</small></span></button>
+      <button data-tab="vPeople" hidden><svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.7-3.2 3-5 5.5-5s4.8 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.2.1 4 1.6 4.6 4.3"/></svg><span><b>Oameni</b><small>Linkurile echipei</small></span></button>
     </nav>
    </aside>
    <div class="zones">
     <div id="vProg">
-      <div class="card" id="gTools" hidden>
-        <div class="toolbar"><input id="gDate" type="datetime-local" aria-label="Data și ora"><input id="gTitle" placeholder="Numele serviciului" maxlength="80"><button id="gAdd" class="acc">＋ Serviciu</button><button id="gSundays" title="Adaugă următoarele 8 duminici">＋ 8 duminici</button></div>
-        <div id="hubKeyBox" hidden style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
-          <div class="row"><span class="mute" style="flex:3 1 260px;font-size:14px">🔗 Programul de aici și Planificarea de pe calculatorul bisericii: unul singur. Fă o cheie și pune-o în aplicație (⚙ → Reverb online).</span><button id="hubKey">🔗 Leagă calculatorul bisericii</button></div>
+      <div class="sect"><h2>Servicii</h2><small id="gCount"></small></div>
+      <div class="composer" id="gTools" hidden>
+        <div class="toolbar"><input id="gDate" type="datetime-local" aria-label="Data și ora"><input id="gTitle" placeholder="Numele serviciului" maxlength="80"><button id="gAdd" class="acc">Adaugă</button><button id="gSundays" title="Adaugă următoarele 8 duminici">8 duminici</button></div>
+        <div id="hubKeyBox" hidden><div class="hubline"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span>Programul de aici și Planificarea de pe calculatorul bisericii sunt unul singur. Leagă calculatorul o dată (⚙ → Reverb online).</span><button id="hubKey">Leagă calculatorul</button></div>
           <div id="hubKeyOut" class="linkbox" hidden></div></div>
       </div>
-      <div class="sect"><h2>Servicii</h2><small id="gCount"></small></div>
-      <datalist id="songTitles"></datalist><div id="gList"><p class="mute">Se încarcă programul…</p></div>
-      <div><div class="sect"><h2>Zile în care nu pot</h2><small>liderii nu te pun în ele</small></div><div class="card">
-        <div class="chips" id="gAway"></div><div class="row" style="margin-top:10px"><input id="gAwayDay" type="date"><button id="gAwayAdd">＋ Adaugă ziua</button></div></div></div>
+      <datalist id="songTitles"></datalist><div id="gList"><p class="empty">Se încarcă programul…</p></div>
+      <div id="gAwayBox"><div class="sect"><h2>Zile în care nu pot</h2><small>Liderii nu te pun în ele</small></div>
+        <div class="chips" id="gAway"></div><div class="row" style="margin-top:10px;max-width:420px"><input id="gAwayDay" type="date" aria-label="Ziua"><button id="gAwayAdd" style="flex:0 0 auto">Adaugă ziua</button></div></div>
     </div>
-
 
     <div id="vProj" hidden>
       <div class="sect"><h2>Proiectez</h2></div>
-      <div class="card zone">
-        <p style="margin:0 0 12px">Slide-urile se schimbă din aplicația de la biserică: versurile, prezentările, predica.</p>
-        <a id="goLive" class="btn acc big">▶ Deschide Proiectez</a>
-        <p class="mute hubhint" style="margin:10px 0 0;font-size:14px"></p>
-      </div>
+      <div class="card zone"><p>Slide-urile se schimbă din aplicația de la biserică: versurile, prezentările, predica.</p>
+        <a id="goLive" class="btn acc big">Deschide Proiectez</a></div>
+      <p class="mute hubhint" style="margin:0 0 4px"></p>
       <div class="sect"><h2>Programul de azi</h2><small id="pjWhen"></small></div>
-      <div class="card"><div id="pjList"><p class="mute" style="margin:0">Niciun serviciu planificat.</p></div></div>
-      <div class="card" id="hubRow" hidden><p class="mute" style="margin:0 0 8px;font-size:14px">Adresa calculatorului bisericii (o pune singur când e legat; aici doar dacă vrei s-o schimbi):</p>
-        <div class="row"><input id="hubUrl" placeholder="http://192.168.0.199:4545" inputmode="url"><button id="hubSave">Salvează</button></div></div>
+      <div id="pjList"><p class="empty">Niciun serviciu planificat.</p></div>
+      <div id="hubRow" hidden style="margin-top:24px"><p class="mute" style="margin:0 0 8px;font-size:13px">Adresa calculatorului bisericii (o trimite singur când e legat; aici doar dacă vrei s-o schimbi)</p>
+        <div class="row" style="max-width:520px"><input id="hubUrl" placeholder="http://192.168.0.199:4545" inputmode="url"><button id="hubSave" style="flex:0 0 auto">Salvează</button></div></div>
     </div>
     <div id="vMd" hidden>
       <div class="sect"><h2>MD &amp; Track</h2></div>
-      <div class="card zone">
-        <p style="margin:0 0 12px">Pupitrul cu acorduri, track-urile, click-ul și pad-ul, din aplicația de la biserică.</p>
-        <a id="goMd" class="btn acc big">🎛 Deschide MD &amp; Track</a>
-        <p class="mute hubhint" style="margin:10px 0 0;font-size:14px"></p>
+      <div class="card zone"><p>Pupitrul cu acorduri, track-urile, click-ul și pad-ul, din aplicația de la biserică.</p>
+        <a id="goMd" class="btn acc big">Deschide MD &amp; Track</a></div>
+      <p class="mute hubhint" style="margin:0 0 4px"></p>
+      <div id="vSongs">
+        <div class="sect sqh"><h2>Repetă acasă</h2><button id="sNew" hidden>Cântare nouă</button></div>
+        <p class="mute" style="margin:0;font-size:14px">Orice cântare din bibliotecă, cu acorduri. Nu o pune pe program.</p>
+        <div class="sq"><input id="sFind" type="search" placeholder="Caută titlu sau autor" autocomplete="off"></div>
+        <div class="slist" id="sList"></div>
       </div>
-      <div class="sect"><h2>Repetă acasă</h2><small>orice cântare, cu acorduri</small></div>
-    <div class="card" id="vSongs">
-      <div class="sqh"><h2>Cântări</h2><button id="sNew" hidden>＋ Cântare nouă</button></div>
-      <p class="mute" style="margin-top:0">Deschide orice cântare din bibliotecă, ca să repeți. Nu o pune pe program.</p>
-      <div class="sq"><input id="sFind" type="search" placeholder="Caută titlu sau autor…" autocomplete="off"></div>
-      <div class="slist" id="sList"></div>
     </div>
-    </div>
-    <div class="card" id="vPeople" hidden>
-      <h2>Oamenii bisericii și linkurile lor</h2>
-      <p class="mute" style="margin-top:0">Fiecare om primește un link personal. „↻ Link nou” oprește linkul vechi și îl scoate de pe toate dispozitivele (telefon pierdut). „Scoate” îl scoate din biserică.</p>
-      <div class="row" style="margin-bottom:10px">
-        <select id="pChurch"></select>
-      </div>
+    <div id="vPeople" hidden>
+      <div class="sect"><h2>Oamenii bisericii și linkurile lor</h2></div>
+      <p class="mute" style="margin:0 0 12px;font-size:14px">Fiecare om primește un link personal. „Link nou” oprește linkul vechi și îl scoate de pe toate dispozitivele (telefon pierdut). „Scoate” îl scoate din biserică.</p>
+      <div class="card">
+      <div class="row" style="margin-bottom:10px"><select id="pChurch"></select></div>
       <div class="row">
         <input id="nName" placeholder="Numele (ex. Andrei Popescu)" maxlength="80">
         <select id="nRole"><option value="member">Membru</option><option value="leader">Lider</option><option value="coordinator">Coordonator</option></select>
-        <button id="nGo" class="acc">＋ Link nou</button>
+        <button id="nGo" class="acc">Link nou</button>
       </div>
       <div class="deps" id="nDeps"></div>
       <div class="deps" id="nLeads" hidden></div>
       <div id="newLink" class="linkbox" hidden></div>
+      </div>
       <div class="chips" id="filter" style="margin-top:14px"></div>
       <div id="people" style="margin-top:6px"></div>
     </div>
@@ -249,7 +323,7 @@ Refren:
       <div class="chart" id="ePrev"></div>
     </div>
   </section>
-  <footer>powered by <img src="wordmark.svg" alt="Reverb"> app</footer>
+  <footer>powered by <img src="wordmark.svg" alt="Reverb"></footer>
 </main>
 
 <script type="module">
@@ -352,7 +426,7 @@ Refren:
     const url = myLink(token);
     $('newLink').hidden = false;
     $('newLink').innerHTML = `Linkul lui <b>${esc(name || '')}</b> (trimite-l doar lui, pe WhatsApp):<br><span id="lk">${esc(url)}</span>
-      <div class="row" style="margin-top:10px"><button class="acc" id="cp">📋 Copiază</button><a class="btn" style="text-align:center;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent('Linkul tău Reverb: ' + url)}" target="_blank" rel="noopener">WhatsApp</a></div>`;
+      <div class="row" style="margin-top:10px"><button class="acc" id="cp">Copiază</button><a class="btn" style="text-align:center;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent('Linkul tău Reverb: ' + url)}" target="_blank" rel="noopener">WhatsApp</a></div>`;
     $('cp').onclick = async () => { try { await navigator.clipboard.writeText(url); $('cp').textContent = '✓ Copiat'; } catch { getSelection().selectAllChildren($('lk')); } };
   }
   $('pChurch').onchange = people;
@@ -390,7 +464,7 @@ Refren:
     const hub = c?.hub_url || '';
     for (const [id, tab] of [['goLive', 'tLive'], ['goMd', 'tMd']]) { $(id).classList.toggle('off', !hub); if (hub) $(id).href = hub + '/m.html?tab=' + tab; else $(id).removeAttribute('href'); }
     const hint = hub ? 'Se deschide doar pe Wi-Fi-ul bisericii, unde e calculatorul.'
-      : (c?.role === 'coordinator' ? 'Încă nu știu unde e calculatorul bisericii: leagă-l din 🗓 Planific → „🔗 Leagă calculatorul bisericii” (își trimite singur adresa).'
+      : (c?.role === 'coordinator' ? 'Încă nu știu unde e calculatorul bisericii: leagă-l din Planific → „Leagă calculatorul” (își trimite singur adresa).'
         : 'Coordonatorul trebuie să lege întâi calculatorul bisericii.');
     document.querySelectorAll('.hubhint').forEach(x => x.textContent = hint);
     $('hubRow').hidden = c?.role !== 'coordinator'; $('hubUrl').value = hub;
@@ -424,9 +498,9 @@ Refren:
     try {
       const { key } = await fn({ action: 'hubKey', church_id: cur().church_id });
       $('hubKeyOut').hidden = false;
-      $('hubKeyOut').innerHTML = `Cheia (o singură dată; pune-o în aplicația de la biserică: ⚙ → 🔗 Reverb online):<br><b id="hk">${esc(key)}</b>
-        <div class="row" style="margin-top:10px"><button class="acc" id="hkCopy">📋 Copiază</button></div>`;
-      $('hkCopy').onclick = async () => { try { await navigator.clipboard.writeText(key); $('hkCopy').textContent = '✓ Copiată'; } catch { getSelection().selectAllChildren($('hk')); } };
+      $('hubKeyOut').innerHTML = `<span class="mute">Cheia, o singură dată. Pune-o în aplicația de la biserică: ⚙ → Reverb online.</span><br><b id="hk" style="font-family:var(--mono);font-weight:500">${esc(key)}</b>
+        <div class="row" style="margin-top:10px"><button class="acc" id="hkCopy" style="flex:0 0 auto">Copiază</button></div>`;
+      $('hkCopy').onclick = async () => { try { await navigator.clipboard.writeText(key); $('hkCopy').textContent = 'Copiată'; } catch { getSelection().selectAllChildren($('hk')); } };
     } catch (e) { alert(e.message); }
   };
   // ▶ Proiectez: the program of the next service, in order (read only)
@@ -435,7 +509,7 @@ Refren:
     $('pjWhen').textContent = s ? `${day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })} · ${fmtTime(s.date)}` : '';
     $('pjList').innerHTML = s?.items?.length ? s.items.map((it, i) => `<div class="it${it.kind === 'song' ? ' song' : ''}"><span class="n">${i + 1}</span>
       <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<small><span class="kind">${esc(KNAME[it.kind] || '')}</span></small></div>
-      <span class="m">${it.minutes ? it.minutes + ' min' : ''}</span></div>`).join('') : `<p class="mute" style="margin:0">${s ? 'Programul nu e scris încă.' : 'Niciun serviciu planificat.'}</p>`;
+      <span class="m">${it.minutes ? it.minutes + ' min' : ''}</span></div>`).join('') : `<p class="empty">${s ? 'Programul nu e scris încă.' : 'Niciun serviciu planificat.'}</p>`;
   }
   $('pjList').onclick = e => { const b = e.target.closest('[data-song]'); if (b) openSong(b.dataset.song, b.dataset.title); };
 
@@ -471,7 +545,7 @@ Refren:
       const raw = Uint8Array.from(atob(key.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - key.length % 4) % 4)), c => c.charCodeAt(0));
       const sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw });
       await save(sub);
-      $('bell').innerHTML = '<span>🔔</span><div><b>Notificările sunt pornite</b><small>Afli imediat când ești programat.</small></div>';
+      $('bell').innerHTML = '<span class="bi" style="color:var(--ok)">✓</span><div><b>Notificările sunt pornite</b><small>Afli imediat când ești programat.</small></div>';
       setTimeout(() => { $('bell').hidden = true; }, 4000);
       for (const c of churches) notifyScan(c.church_id);            // places you already have: told now, once
     } catch (e) { alert(e.message || 'N-a mers.'); $('bellOn').disabled = false; }
@@ -601,12 +675,14 @@ Refren:
       <div class="act">${a.status === 'pending' ? '' : stat(a)}<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>Nu pot</button></div></div>`).join('');
     // the services
     $('gCount').textContent = list.length ? `${list.length} ${list.length === 1 ? 'serviciu' : 'servicii'}` : '';
-    $('gList').innerHTML = list.map(s => serviceCard(s, lead)).join('')
-      || `<div class="card"><p class="mute" style="margin:0">Încă nu e niciun serviciu planificat.${lead ? ' Apasă „＋ Următoarele 8 duminici”.' : ''}</p></div>`;
+    let lastMonth = '';
+    $('gList').innerHTML = list.map(s => { const mo = day(s.date).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+      const head = mo !== lastMonth ? `<div class="month">${esc(mo)}</div>` : ''; lastMonth = mo; return head + serviceCard(s, lead); }).join('')
+      || `<p class="empty">Încă nu e niciun serviciu planificat.${lead ? ' Adaugă unul mai sus sau apasă „8 duminici”.' : ''}</p>`;
     // my days
     const v = doc.volunteers.find(x => x.id === G.me), away = (v?.away || []).filter(d => d >= today.slice(0, 10));
     $('gAway').innerHTML = away.map(d => `<span class="chip">${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))} <a href="#" data-unaway="${d}" style="color:var(--no);text-decoration:none">✕</a></span>`).join('') || '<span class="mute">Nicio zi blocată.</span>';
-    $('gAway').closest('.card').parentElement.hidden = !G.me;
+    $('gAwayBox').hidden = !G.me;
     drawToday();
   }
   function serviceCard(s, lead) {
@@ -621,7 +697,7 @@ Refren:
       ${edit ? `<span class="ed"><button data-mv="-1" data-i="${i}" data-s="${s.id}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" data-s="${s.id}" title="Mai jos">↓</button><button data-rm="${i}" data-s="${s.id}" title="Scoate">✕</button></span>` : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`).join('')
       || '<p class="mute" style="margin:6px 0;font-size:14px">Programul nu e scris încă.</p>';
     const add = edit ? `<div class="addit"><select id="k_${s.id}" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
-      <input id="t_${s.id}" list="songTitles" placeholder="Titlul"><button data-additem="${s.id}">＋</button></div>` : '';
+      <input id="t_${s.id}" list="songTitles" placeholder="Titlul"><button data-additem="${s.id}">Adaugă</button></div>` : '';
     const team = doc.departments.map(dep => {
       const slots = dep.positions.flatMap(p => Array.from({ length: p.needed }, (_, i) => ({ p, k: `${p.id}#${i}` })));
       const n = slots.filter(x => asg[x.k]).length; if (!edit && !n) return '';
@@ -635,14 +711,15 @@ Refren:
       return `<div class="dep"><i style="background:${esc(dep.color)}"></i>${esc(dep.name)}<small>${n}/${slots.length}</small></div>${rows}`;
     }).join('') || '<p class="mute" style="margin:6px 0;font-size:14px">Echipa nu e făcută încă.</p>';
     const warn = lead ? serviceWarnings(doc, s).filter(w => !/neocupate/.test(w)) : [];
-    return `<details class="card svc" data-svc="${s.id}"${open ? ' open' : ''}><summary>
+    const isToday = d.toDateString() === new Date().toDateString();
+    return `<details class="svc${isToday ? ' today' : ''}" data-svc="${s.id}"${open ? ' open' : ''}><summary>
       <span class="dt"><small>${esc(d.toLocaleDateString('ro-RO', { weekday: 'short' }).replace('.', ''))}</small><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString('ro-RO', { month: 'short' }).replace('.', ''))}</small></span>
       <span class="ttl"><b>${esc(s.title)}</b><small>${esc(meta)}</small></span>
-      <span class="fill">${slotsAll.length ? `${filled}/${slotsAll.length}<span class="bar"><i style="width:${Math.round(100 * ok / slotsAll.length)}%"></i></span>` : ''}</span></summary>
+      <span class="fill">${slotsAll.length ? `${filled}/${slotsAll.length}<span class="bar"><i style="width:${Math.round(100 * ok / slotsAll.length)}%"></i></span>` : ''}</span><svg class="i chev" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M9 6l6 6-6 6"/></svg></summary>
       <div class="in"><div><h3>Programul${mins ? `<small>${mins} min</small>` : ''}</h3>${prog}${add}</div><div><h3>Echipa${slotsAll.length ? `<small>${ok} confirmați din ${slotsAll.length}</small>` : ''}</h3>${team}</div>
       ${warn.length ? `<p class="warn">${warn.map(esc).join('<br>')}</p>` : ''}
       ${lead ? `<div class="svcbar">${edit ? `<input id="n_${s.id}" value="${esc(s.title)}" maxlength="80" style="flex:1 1 160px"><button data-rename="${s.id}">Salvează numele</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge</button><span class="sp"></span>` : '<span class="sp"></span>'}
-        <button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : '✎ Editează'}</button></div>` : ''}</div></details>`;
+        <button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : 'Editează'}</button></div>` : ''}</div></details>`;
   }
   const stat = a => `<span class="st ${a.status}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : 'În așteptare'}</span>`;
 
