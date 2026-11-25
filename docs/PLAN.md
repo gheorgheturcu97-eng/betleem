@@ -40,6 +40,22 @@ Decizii:
 > Prompt 1c: „Pasul 1, pad-uri de calitate din folderul <cale> și folderul unic de track-uri.”
 > Prompt 1d: „Pasul 1, îmbinări de secțiuni între cântări, făcute de asistent.”
 
+### Pasul 1+. MD & Track ca DAW de worship (scriptul din 2026-11-25; auditul e în documentul „Reverb · MD & Track”, tabul „Audit și plan DAW”)
+Fluxul: IMPORT → ANALIZĂ → ARANJARE → SONG MAP → REPETIȚIE → LIVE. O etapă începe doar când cea dinainte e stabilă pe
+Mac mini. Ce schimbă sunetul vine oprit („Motor nou (probă)”) până trece o duminică de probă.
+- [x] E1 Audit și diagnoză (test de sincronizare: 8 track-uri, Chromium).
+- [x] E2a Pornire simultană + ținere în pas prin viteză (music.js `alignAt`/`keepInStep`, test/music-sync.test.js). Neverificat pe placă.
+- [ ] E2b Motor cu un singur ceas (AudioWorklet, track-uri decodate în RAM, tempo + ton în motor). Decizie: RAM-ul Mac mini.
+- [ ] E3 Metronom pe ceasul motorului, hartă de tempo.
+- [ ] E4 Song Map (`songmap.js`): bară/beat, încredere, sursă, blocat; cue-urile vechi convertite.
+- [ ] E5 Arrangement Workspace: snap bară/beat, loop pe secțiune, undo/redo, split/merge secțiuni, grupuri de track-uri.
+- [ ] E6 Analiza într-un Worker, cu cache pe disc (peaks, BPM, structură); ghid + cue → propunere cu încredere, confirmată de om.
+- [ ] E7 Versurile urmează Song Map-ul.
+- [ ] E8 Biblioteca de pe NAS: index, scanare incrementală, potrivire titlu/BPM/ton/durată.
+- [ ] E9 Comenzi vocale: cuvânt-declanșator, aliasuri, microfonul MD de pe placă.
+- [ ] E10 MIDI: intrări, MIDI Learn pentru transport/secțiuni/click/loop.
+- [ ] E11 Rutare cu bus-uri și grupuri; validare pe aparatura reală.
+
 ## Pasul 2. Lumini (concertul de colinde)
 Decizii:
 - Fără o a patra zonă. Un tab **„Fundaluri | Lumini”** cu scene (Închinare, Predică, Aprins), cu trecere lină între

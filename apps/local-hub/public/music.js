@@ -239,7 +239,7 @@ export function tapper() {
 
 /**
  * Multitrack player: every stem is its own <audio>, all routed through Web Audio (volume, pan, mute, solo, meter).
- * They start together and are kept in step with the first stem (drift under ~40 ms is corrected).
+ * They start together (all seeked and ready first) and are kept in step with the first stem by nudging their speed.
  */
 export class Multitrack {
   constructor() { this.ctx = null; this.ch = []; this.playing = false; this.onTime = () => {}; this.onEnd = () => {}; this.vol = 1; }
@@ -341,19 +341,43 @@ export class Multitrack {
   async play() {
     if (!this.ch.length) return;
     this.init(); await this.ctx.resume();
-    const t = this.time;
-    this.ch.forEach(c => { c.el.currentTime = t; });
+    await this.alignAt(this.time);                   // every stem at the same moment and ready, then all start together
     await Promise.all(this.ch.map(c => c.el.play().catch(() => {})));
-    this.playing = true;
+    this.playing = true; this.stats = { seeks: 0, worst: 0 };
     clearInterval(this.sync);
-    this.sync = setInterval(() => {                 // keep every stem with the first one
-      const ref = this.ch[0]?.el; if (!ref || ref.paused) return;
-      for (const c of this.ch.slice(1)) if (!c.el.paused && Math.abs(c.el.currentTime - ref.currentTime) > 0.04) c.el.currentTime = ref.currentTime;
-    }, 500);
+    this.sync = setInterval(() => this.keepInStep(), 100);
     const tick = () => { if (!this.playing) return; this.onTime(this.time); this.raf = requestAnimationFrame(tick); };
     tick();
   }
-  pause() { this.playing = false; clearInterval(this.sync); cancelAnimationFrame(this.raf); this.ch.forEach(c => c.el.pause()); this.onTime(this.time); }
+  /** Put every stem at `t` and wait until each one has found it (or 1.5 s), so they start on the same sample window. */
+  async alignAt(t) {
+    await Promise.all(this.ch.map(c => new Promise(ok => {
+      const el = c.el; el.playbackRate = this.rate;
+      if (Math.abs(el.currentTime - t) < 0.001 && el.readyState >= 3) return ok();
+      const done = () => { clearTimeout(to); el.removeEventListener('seeked', done); ok(); }, to = setTimeout(done, 1500);
+      el.addEventListener('seeked', done); try { el.currentTime = t; } catch { done(); }
+    })));
+  }
+  /**
+   * Keep every stem with the first one (2026-11-26). Before: a hard jump whenever a stem was > 40 ms off, checked every
+   * 0.5 s: a stem could sit up to 40 ms late (a flam you hear) and each jump was a small click; with the tempo changed the
+   * stems' own time-stretchers drift apart, so it jumped about once a second. Now: every 0.1 s each stem's speed is
+   * nudged (at most ±2 %, the pitch stays) so it glides back within a few ms; only a stem more than 150 ms away jumps.
+   */
+  keepInStep() {
+    const ref = this.ch[0]?.el; if (!ref || ref.paused) return;
+    const rt = ref.currentTime;
+    for (const c of this.ch.slice(1)) {
+      const el = c.el; if (el.paused || el.ended) continue;
+      const err = el.currentTime - rt;                // > 0: this stem is ahead
+      if (this.stats && Math.abs(err) > this.stats.worst) this.stats.worst = Math.abs(err);
+      if (Math.abs(err) > 0.15) { el.playbackRate = this.rate; try { el.currentTime = rt; } catch {} if (this.stats) this.stats.seeks++; continue; }
+      const nudge = Math.abs(err) < 0.003 ? 0 : Math.max(-0.02, Math.min(0.02, -err * 0.6));
+      const want = this.rate * (1 + nudge);
+      if (Math.abs(el.playbackRate - want) > 1e-5) el.playbackRate = want;
+    }
+  }
+  pause() { this.playing = false; clearInterval(this.sync); cancelAnimationFrame(this.raf); this.ch.forEach(c => { c.el.pause(); c.el.playbackRate = this.rate; }); this.onTime(this.time); }
   stop(quiet) { this.pause(); this.seek(0, quiet); }
   seek(t, quiet) { t = Math.max(0, Math.min(t, this.duration || 0)); this.ch.forEach(c => { try { c.el.currentTime = t; } catch {} }); if (!quiet) this.onTime(t); }
   /** Jump without a click in the sound: a very short fade out, the jump, a short fade in. */

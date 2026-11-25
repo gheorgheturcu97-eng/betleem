@@ -212,3 +212,4 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   Liderii salvează cu `setItems`; Închinarea cu `reverb_plan_item` (migrarea 20261125140000, doar ton + ordine la cântări).
   Verificat cu Playwright (lider + muzician, telefon și desktop). **Neverificat:** pe Mac mini, cu programul sincronizat.
 - **Reverb.dmg** (`buildPackage` în `src/server.js`, `public/descarca.html`): ditto → plutil (nume Reverb) → codesign ad hoc --deep → hdiutil UDZO, cu scurtătură „Aplicații”. Se face doar pe Mac. **Neverificat pe Mac** (scris aici, pe Linux).
+- **Sincronizarea stem-urilor** (`public/music.js` `alignAt`, `keepInStep`): pornire aliniată, corecție prin viteză (±2 %), salt doar peste 150 ms. Test: `test/music-sync.test.js`; măsurat în Chromium fără placă. **Neverificat pe Mac mini.**

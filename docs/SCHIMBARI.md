@@ -1,6 +1,15 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · 2026.11.25.7 · MD & Track: track-urile pornesc și rămân împreună
+- **Pornirea.** Înainte: `play()` pornea stem-urile fără să aștepte să fie toate la aceeași poziție (33–51 ms
+  diferență; la prima redare după încărcare un stem putea porni din altă parte). Acum: toate sunt duse la aceeași
+  poziție și așteptate, apoi pornesc odată.
+- **Ținerea în pas.** Înainte: la 0,5 s, un stem mai departe de 40 ms sărea (un mic click); la tempo schimbat
+  (1,15) diferența ajungea la 0,5 s, cu ~12 sărituri în 20 s. Acum: la 0,1 s viteza fiecărui stem e ajustată fin
+  (±2 %, tonul rămâne); sare doar peste 150 ms. Măsurat: 0 sărituri, de obicei sub 35 ms. Neverificat pe placă.
+- Auditul complet și planul pe etape: documentul „Reverb · MD & Track”, tabul „Audit și plan DAW”; docs/PLAN.md Pasul 1+.
+
 ## 2026-11-25 · Reverb online · ✦ agentul care programează echipa
 - **Planific din link (lideri).** Înainte: liderul punea fiecare om de mână, loc cu loc. Acum: **✦ Programează echipa**
   (sus, lângă „8 duminici”) completează locurile libere din următoarele 5 săptămâni, iar **✦ Completează echipa** pe
