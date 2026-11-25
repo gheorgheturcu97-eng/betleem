@@ -60,6 +60,13 @@
   .mine.new .x b:after{content:"nou";margin-left:8px;padding:1px 7px;border-radius:999px;background:var(--sand);color:#1b1a17;font:700 10px Montserrat,sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
   .bell{display:flex;align-items:center;gap:12px;padding:14px 16px} .bell>span{font-size:22px} .bell div{flex:1;min-width:0} .bell b{display:block;font-size:15px} .bell small{color:var(--mute);font-size:13px}
   .bell button{flex:none;padding:9px 14px}
+  /* ✎ the song editor: text with chords on the left (top on a phone), how it will look on the right */
+  #vEdit{position:fixed;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .ed2{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr;overflow:auto} .edf{padding:12px 14px 0}
+  #eBody{width:100%;min-height:42vh;margin-top:8px;font:15px/1.45 ui-monospace,Menlo,monospace;background:#0d0c0b;color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
+  #ePrev{border-top:1px solid var(--line);margin-top:12px} .vers{margin:10px 0 0;font-size:13px} .vers button{padding:4px 9px;font-size:12px;margin-left:6px}
+  @media (min-width:900px){.ed2{grid-template-rows:none;grid-template-columns:1fr 1fr;overflow:hidden} .edf{overflow:auto;padding:16px} #eBody{min-height:60vh} #ePrev{border-top:0;border-left:1px solid var(--line);margin-top:0}}
+  .sqh{display:flex;align-items:center;justify-content:space-between} .sqh button{padding:8px 12px;font-size:13px}
   /* the three zones: tabs on a phone, a side column on a laptop */
   .tabs button{display:flex;align-items:center;justify-content:center;gap:8px} .tabs button i{font-style:normal;font-size:18px}
   .tabs button span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15} .tabs button small{display:none;font:500 12px Montserrat,sans-serif;color:var(--mute)}
@@ -196,7 +203,7 @@
       </div>
       <div class="sect"><h2>Repetă acasă</h2><small>orice cântare, cu acorduri</small></div>
     <div class="card" id="vSongs">
-      <h2>Cântări</h2>
+      <div class="sqh"><h2>Cântări</h2><button id="sNew" hidden>＋ Cântare nouă</button></div>
       <p class="mute" style="margin-top:0">Deschide orice cântare din bibliotecă, ca să repeți. Nu o pune pe program.</p>
       <div class="sq"><input id="sFind" type="search" placeholder="Caută titlu sau autor…" autocomplete="off"></div>
       <div class="slist" id="sList"></div>
@@ -223,8 +230,24 @@
   </section>
   <section id="vSong" hidden>
     <div class="stop"><button id="sBack">←</button><span class="t" id="sTitle"></span>
-      <select id="sKey" title="Tonul"></select><button id="sChords" class="on" title="Acorduri da/nu">Acorduri</button><button id="sFit" class="on" title="Toată piesa pe ecran / derulez">⤢</button></div>
+      <select id="sKey" title="Tonul"></select><button id="sChords" class="on" title="Acorduri da/nu">Acorduri</button><button id="sFit" class="on" title="Toată piesa pe ecran / derulez">⤢</button><button id="sEdit" title="Corectează textul și acordurile" hidden>✎</button></div>
     <div class="chart" id="sChart"></div>
+  </section>
+  <section id="vEdit" hidden>
+    <div class="stop"><button id="eBack" title="Renunță">✕</button><span class="t" id="eHead">Cântare nouă</span><button id="eSave" class="on">Salvează</button></div>
+    <div class="ed2">
+      <div class="edf">
+        <div class="row"><input id="eTitle" placeholder="Titlul" maxlength="200"><input id="eKey" placeholder="Ton (ex. G)" maxlength="8" style="flex:0 1 110px"><input id="eAuthor" placeholder="Autor (opțional)" maxlength="200"></div>
+        <textarea id="eBody" spellcheck="false" placeholder="Strofa 1:
+E o [G]nouă [D]zi, [A]soarele [Bm]răsare
+
+Refren:
+[G]Slavă [D]Ție…"></textarea>
+        <p class="mute" style="font-size:13px;margin:6px 0 0">Acordul stă între paranteze drepte, chiar înaintea silabei: <code>[G]Slavă [D]Ție</code>. Fiecare secțiune începe cu numele ei pe un rând (Strofa 1:, Refren:, Bridge:).</p>
+        <div id="eVers" class="vers"></div>
+      </div>
+      <div class="chart" id="ePrev"></div>
+    </div>
   </section>
   <footer>powered by <img src="wordmark.svg" alt="Reverb"> app</footer>
 </main>
@@ -454,6 +477,49 @@
     } catch (e) { alert(e.message || 'N-a mers.'); $('bellOn').disabled = false; }
   };
 
+
+  // ✎ writing and correcting songs: leaders, coordinators and the worship team (Închinare) of the song's church.
+  //    Every change keeps the previous text online (it can be put back), and reaches the church computer's library.
+  const canEditSongs = c => churches.some(x => x.church_id === c && (['leader', 'coordinator'].includes(x.role) || (x.departments || []).includes('Închinare')));
+  const editChurch = () => (canEditSongs(cur()?.church_id) ? cur().church_id : churches.find(x => canEditSongs(x.church_id))?.church_id);
+  let edit_ = null;
+  function preview() {
+    const body = $('eBody').value, el = $('ePrev');
+    el.innerHTML = toSlides(arrange(parseSong(body), null), 4).map((sl, i, a) => `<div>${sl.label && sl.label !== a[i - 1]?.label ? `<div class="lbl" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : ''}${sl.lines.map(l =>
+      /\[/.test(l) && !stripChords(l).trim() ? `<div class="only">${esc(l.replace(/[\[\]]/g, ' '))}</div>` : `<div class="ln">${chordLineToHtml(l, esc)}</div>`).join('')}</div>`).join('') || '<p class="mute">Aici vezi cum arată.</p>';
+  }
+  async function openEditor(song) {
+    edit_ = song || { church_id: editChurch() };
+    $('eHead').textContent = song ? 'Corectează' : 'Cântare nouă';
+    $('eTitle').value = song?.title || ''; $('eKey').value = song?.key || ''; $('eAuthor').value = song?.author || ''; $('eBody').value = song?.body || '';
+    $('eVers').innerHTML = ''; $('vEdit').hidden = false; document.body.style.overflow = 'hidden'; preview();
+    if (song?.id) {
+      const { data } = await sb.from('song_versions').select('id, title, key, body, at').eq('song_id', song.id).order('id', { ascending: false }).limit(5);
+      if (data?.length) $('eVers').innerHTML = '<b>Variante de dinainte:</b>' + data.map(v => `<div style="margin-top:6px">${esc(new Date(v.at).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}<button data-v="${v.id}">Pune înapoi</button></div>`).join('');
+      $('eVers').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; const v = data.find(x => String(x.id) === b.dataset.v);
+        $('eBody').value = v.body || ''; $('eTitle').value = v.title || ''; $('eKey').value = v.key || ''; preview(); };
+    }
+  }
+  $('eBody').oninput = () => preview();
+  $('sEdit').onclick = () => openEditor(cur_);
+  $('sNew').onclick = () => openEditor(null);
+  $('eBack').onclick = () => { if ($('eBody').value !== (edit_?.body || '') && !confirm('Renunți la schimbări?')) return; $('vEdit').hidden = true; if ($('vSong').hidden) document.body.style.overflow = ''; };
+  $('eSave').onclick = async () => {
+    const title = $('eTitle').value.trim(), body = $('eBody').value.replace(/\r/g, '').trim();
+    if (!title) return $('eTitle').focus(); if (!body) return $('eBody').focus();
+    const row = { title, key: $('eKey').value.trim() || null, author: $('eAuthor').value.trim() || null, body, updated_by: me.id, updated_at: new Date().toISOString() };
+    $('eSave').disabled = true;
+    const q = edit_.id ? sb.from('songs').update(row).eq('id', edit_.id).select('id, church_id, local_id, title, author, key, body, arrangement').single()
+      : sb.from('songs').insert({ ...row, church_id: edit_.church_id, local_id: 'web-' + crypto.randomUUID() }).select('id, church_id, local_id, title, author, key, body, arrangement').single();
+    const { data, error } = await q; $('eSave').disabled = false;
+    if (error || !data) return alert('N-am putut salva. ' + (error?.message?.includes('row-level') ? 'Doar liderii și echipa de închinare pot scrie cântări.' : 'Verifică internetul.'));
+    $('vEdit').hidden = true;
+    const i = lib.findIndex(x => x.id === data.id); const item = { id: data.id, local_id: data.local_id, title: data.title, author: data.author, key: data.key };
+    if (i >= 0) lib[i] = item; else lib.push(item); lib.sort((a, b) => a.title.localeCompare(b.title, 'ro')); listSongs();
+    if (!$('vSong').hidden && cur_?.id === data.id) { cur_ = data; $('sTitle').textContent = data.title; drawSong(); }
+    else openSong(null, null, data.id);
+  };
+
   // 5) 🗓 the program: the same document and operations as Planificare in the app (core/plan.js), kept in Reverb online.
   //    Everyone reads it (no phones in it). Leaders change it (the whole document, with a version check: if someone else
   //    saved meanwhile, the change is applied again on the newest one). Members answer their places and block days
@@ -628,7 +694,7 @@
       const { data, error } = await sb.from('songs').select('id, local_id, title, author, key').order('title').range(from, from + 999);
       if (error || !data?.length) break; lib.push(...data); if (data.length < 1000) break;
     }
-    listSongs();
+    listSongs(); $('sNew').hidden = !churches.some(x => canEditSongs(x.church_id));
     $('songTitles').innerHTML = lib.map(x => `<option value="${esc(x.title)}">`).join('');
   }
   function listSongs() {
@@ -640,13 +706,14 @@
   $('sList').onclick = e => { const r = e.target.closest('.srow'); if (r) openSong(null, null, r.dataset.id); };
   // a song by its row, or by the program's song id (the id in the desktop library), or by its title
   async function openSong(localId, title, rowId) {
-    let q = sb.from('songs').select('id, title, author, key, body, arrangement');
+    let q = sb.from('songs').select('id, church_id, local_id, title, author, key, body, arrangement');
     const hit = rowId ? { id: rowId } : lib.find(x => localId && x.local_id === localId) || lib.find(x => title && x.title.toLowerCase() === String(title).toLowerCase());
     if (!hit) return alert('Cântarea nu e în biblioteca online.');
     const { data, error } = await q.eq('id', hit.id).single();
     if (error || !data) return alert('Nu pot deschide cântarea. Verifică internetul.');
     cur_ = data; want = originalKey(cur_.key, cur_.body) || '';
     $('sKey').innerHTML = want ? KEYS.filter(k => k.endsWith('m') === want.endsWith('m')).map(k => `<option${k === want ? ' selected' : ''}>${k}</option>`).join('') : '<option>—</option>';
+    $('sEdit').hidden = !canEditSongs(cur_.church_id);
     $('sKey').disabled = !want; $('sTitle').textContent = cur_.title; $('vSong').hidden = false; document.body.style.overflow = 'hidden';
     history.pushState({ song: 1 }, ''); drawSong();
   }

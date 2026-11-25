@@ -83,7 +83,7 @@ export function mergePlan(plan, base, cloud, { liveId, newToken }) {
 export const shared = plan => ({ services: plan.services, departments: plan.departments, volunteers: plan.volunteers.map(pub) });
 
 /** The runner: keeps the key and the agreed copy in a private file (0600), syncs every minute and soon after a change. */
-export function createReverbSync({ file, fs, getPlan, applied, liveId, newToken, hubUrl, log = () => {}, fetchImpl = fetch, every = 60000 }) {
+export function createReverbSync({ file, fs, getPlan, applied, liveId, newToken, hubUrl, songs = null, log = () => {}, fetchImpl = fetch, every = 60000 }) {
   let st = {}; try { st = JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
   let timer = null, soon = null, running = false, again = false, saidHello = '';
   const status = { state: st.key ? 'linked' : 'off', church: st.church || null, lastSync: st.lastSync || null, error: '' };
@@ -118,6 +118,7 @@ export function createReverbSync({ file, fs, getPlan, applied, liveId, newToken,
         if (p.conflict) continue;                                 // someone saved online meanwhile: once more, on the newest
         st.base = agreed; st.version = p.version; break;
       }
+      if (songs) await syncSongs();
       st.lastSync = new Date().toISOString(); Object.assign(status, { state: 'linked', lastSync: st.lastSync, error: '' });
     } catch (e) {
       status.error = e.message;
@@ -125,6 +126,25 @@ export function createReverbSync({ file, fs, getPlan, applied, liveId, newToken,
       log('reverb: ' + e.message);
     } finally { keep(); running = false; if (again) { again = false; setTimeout(syncNow, 500); } }
     return status;
+  }
+  // 🎵 songs written or corrected from a link come into the library here; songs changed here go up (newest wins)
+  async function syncSongs() {
+    const lib = songs.list(); let changed = 0;
+    for (let page = 0; page < 20; page++) {
+      const r = await call('songsPull', { since: st.songsSince || '' });
+      for (const c of r.songs || []) {
+        changed += songs.apply(c) ? 1 : 0;
+        if (!st.songsSince || Date.parse(c.updated_at) > Date.parse(st.songsSince)) st.songsSince = c.updated_at;
+      }
+      if ((r.songs || []).length < 300) break;
+    }
+    if (changed) songs.saved(changed);
+    const since = Date.parse(st.songsPushed || 0) || 0, startedAt = new Date().toISOString();
+    const up = lib.filter(x => x?.id && x?.title && (Date.parse(x.updatedAt || x.createdAt || 0) || 1) > since)
+      .map(x => ({ local_id: x.id, title: x.title, author: x.author || '', key: x.key || '', bpm: x.bpm || null, body: x.body || '',
+        arrangement: Array.isArray(x.arrangement) ? x.arrangement : null, tags: x.tags || [], updatedAt: x.updatedAt || x.createdAt || '2000-01-01T00:00:00Z' }));
+    for (let i = 0; i < up.length; i += 120) await call('songsPush', { songs: up.slice(i, i + 120) });
+    st.songsPushed = startedAt;
   }
   function start() { clearInterval(timer); if (st.key) { timer = setInterval(syncNow, every); timer.unref?.(); setTimeout(syncNow, 1500); } }
   return {

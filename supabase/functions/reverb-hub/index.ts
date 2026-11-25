@@ -77,6 +77,30 @@ Deno.serve(async req => {
         headers: { 'content-type': 'application/json', apikey: SECRET, authorization: 'Bearer ' + SECRET }, body: JSON.stringify({ action: 'scan', church_id: church }) }).catch(() => {});
       return out(200, { version: data[0].version });
     }
+    // 🎵 the song library: what changed online (written or corrected from a link) comes to the computer, and back
+    if (m.action === 'songsPull') {
+      const since = typeof m.since === 'string' && m.since ? m.since : '1970-01-01T00:00:00Z';
+      const { data } = await admin.from('songs').select('local_id, title, author, key, bpm, body, arrangement, tags, updated_at')
+        .eq('church_id', church).gt('updated_at', since).order('updated_at').limit(300);
+      return out(200, { songs: data || [] });
+    }
+    if (m.action === 'songsPush') {
+      const str = (v: unknown, n: number) => (v == null ? null : String(v).slice(0, n));
+      // deno-lint-ignore no-explicit-any
+      const list = (Array.isArray(m.songs) ? m.songs : []).slice(0, 150).filter((x: any) => x?.local_id && x?.title);
+      if (!list.length) return out(200, { saved: 0 });
+      const { data: have } = await admin.from('songs').select('local_id, updated_at').eq('church_id', church).in('local_id', list.map((x: { local_id: unknown }) => String(x.local_id)));
+      const newer = new Map((have || []).map(h => [h.local_id, h.updated_at]));
+      // deno-lint-ignore no-explicit-any
+      const rows = list.filter((x: any) => !newer.has(String(x.local_id)) || Date.parse(String(newer.get(String(x.local_id)))) < (Date.parse(x.updatedAt) || 0)).map((x: any) => ({
+        church_id: church, local_id: str(x.local_id, 80), title: str(x.title, 200)!, author: str(x.author, 200) || null, key: str(x.key, 8) || null,
+        bpm: Number(x.bpm) > 0 && Number(x.bpm) < 400 ? Number(x.bpm) : null, body: str(x.body, 40000) || '',
+        arrangement: Array.isArray(x.arrangement) ? x.arrangement.slice(0, 60).map((a: unknown) => String(a).slice(0, 20)) : null,
+        tags: Array.isArray(x.tags) ? x.tags.slice(0, 12).map((a: unknown) => String(a).slice(0, 40)) : [],
+        updated_at: x.updatedAt && !isNaN(Date.parse(x.updatedAt)) ? x.updatedAt : new Date().toISOString() }));
+      if (rows.length) { const { error } = await admin.from('songs').upsert(rows, { onConflict: 'church_id,local_id' }); if (error) throw new Error(error.message); }
+      return out(200, { saved: rows.length });
+    }
     return out(400, { error: 'Acțiune necunoscută' });
   } catch (e) {
     console.error('reverb-hub', (e as Error).message);

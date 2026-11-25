@@ -143,7 +143,7 @@ export function logError(where, err) {
   console.error(where, err);
 }
 let saveTimer = null;
-let reverbQuiet = false;            // a save made by the Reverb online sync itself does not start another sync
+let reverbQuiet = false, reverbBackupAt = 0;            // a save made by the Reverb online sync itself does not start another sync
 function save() {
   if (!reverbQuiet) reverb?.changed();
   clearTimeout(saveTimer);
@@ -2412,6 +2412,20 @@ var reverb = createReverbSync({
     const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
   },
   newToken, hubUrl: () => { const ip = lanIPs()[0]?.address; return ip ? `http://${ip}:${PORT}` : ''; },
+  songs: {                                            // the song library: written / corrected from a link ⇄ here
+    list: () => db.songs,
+    apply: c => {
+      const t = String(c.title || '').slice(0, 120), body = String(c.body || '');
+      let song = db.songs.find(x => x.id === c.local_id);
+      if (!song) { db.songs.push({ id: String(c.local_id).slice(0, 80), title: t, author: c.author || '', key: c.key || '', body,
+        ...(Array.isArray(c.arrangement) ? { arrangement: c.arrangement } : {}), ...(c.tags?.length ? { tags: c.tags } : {}), createdAt: c.updated_at, updatedAt: c.updated_at }); return true; }
+      if (Date.parse(c.updated_at) <= Date.parse(song.updatedAt || 0)) return false;          // changed here later: ours stays (and goes up)
+      if (song.body === body && song.title === t && (song.key || '') === (c.key || '')) return false;
+      if (Date.now() - (reverbBackupAt || 0) > 3600e3) { reverbBackupAt = Date.now(); libraryBackup(); }   // a copy before songs change from outside (at most hourly)
+      Object.assign(song, { title: t, body, key: c.key || song.key || '', updatedAt: c.updated_at }); return true;
+    },
+    saved: () => { reverbQuiet = true; save(); reverbQuiet = false; broadcast(); },
+  },
   log: m => console.log(m),
 });
 if (process.env.REVERB_SYNC !== '0') reverb.start();

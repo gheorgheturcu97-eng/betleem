@@ -81,3 +81,31 @@ test('the runner: first link sends the local program up, then brings back what w
   assert.ok(calls.includes('hello'));
   r.unlink(); clearInterval();
 });
+
+test('songs: a chord fixed on a phone comes into the library; a song written here goes up', async () => {
+  const files = {}, fsx = { readFileSync: f => { if (!(f in files)) throw new Error('none'); return files[f]; }, writeFileSync: (f, d) => { files[f] = d; } };
+  const cloudSongs = [{ local_id: 's1', title: 'Cântare', key: 'G', body: '[G]Slavă [D]Ție', updated_at: '2026-11-24T10:00:00.000Z' }];
+  const pushed = [];
+  const fetchImpl = async (url, o) => {
+    const m = JSON.parse(o.body), res = b => ({ status: 200, ok: true, json: async () => b });
+    if (m.action === 'pull') return res({ church: { id: 'c', name: 'B' }, doc: { services: [], departments: [], volunteers: [] }, version: 1, people: [] });
+    if (m.action === 'push') return res({ version: 2 });
+    if (m.action === 'songsPull') return res({ songs: cloudSongs.filter(x => !m.since || x.updated_at > m.since) });
+    if (m.action === 'songsPush') { pushed.push(...m.songs); return res({ saved: m.songs.length }); }
+    return res({ ok: true });
+  };
+  const lib = [{ id: 's1', title: 'Cântare', key: 'G', body: '[G]Slavă [C]Ție', updatedAt: '2026-11-20T10:00:00.000Z' },
+    { id: 's2', title: 'Nouă aici', body: 'text', updatedAt: '2026-11-24T09:00:00.000Z' }];
+  let saved = 0;
+  const songs = { list: () => lib, saved: () => saved++, apply: c => { const s = lib.find(x => x.id === c.local_id);
+    if (s && Date.parse(c.updated_at) > Date.parse(s.updatedAt)) { s.body = c.body; s.updatedAt = c.updated_at; return true; } return false; } };
+  const plan = defaultPlan();
+  const r = createReverbSync({ file: '/y', fs: fsx, getPlan: () => plan, liveId: () => null, applied: () => {}, newToken, hubUrl: () => '', songs, fetchImpl, every: 1e9 });
+  await r.link('K'.repeat(30), 'local');
+  assert.equal(lib[0].body, '[G]Slavă [D]Ție');
+  assert.ok(pushed.some(x => x.local_id === 's2'));
+  assert.equal(saved, 1);
+  pushed.length = 0; await r.syncNow();
+  assert.ok(!pushed.length, 'nothing new: nothing sent again');
+  r.unlink();
+});

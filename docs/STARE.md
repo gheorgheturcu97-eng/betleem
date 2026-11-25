@@ -200,3 +200,6 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   `/api/reverb`, ⚙ → 🔗 Reverb online în control.html; online: `supabase/functions/reverb-hub`, `hub_devices`. Teste:
   `test/reverb-sync.test.js` (70 trec). Pagina linkului: zonele 🗓 Planific / ▶ Proiectez / 🎛 MD & Track / 👥 Oameni,
   pe laptop în două coloane.
+- **🔔 + ✎ (2026.11.25.3):** Web Push (`apps/web/sw.js`, `reverb-notify`, `push_subs`, `push_sent`, cheile în `app_secrets`);
+  editor de cântări în link (`#vEdit`, RLS `private.can_edit_songs`, `song_versions` cu trigger); sincronizarea cântărilor
+  în `src/reverb-sync.js` (`songsPull` / `songsPush` în `reverb-hub`). Teste: 72 trec.

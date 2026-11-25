@@ -1,6 +1,19 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · 2026.11.25.3 · 🔔 notificări, ✎ cântări scrise și corectate din link
+- **„Ești programat”** stă acum sus, colorat și pulsând, pe toate zonele (pe telefon înaintea tab-urilor, pe laptop în
+  stânga), cu „nou” la locurile neconfirmate. Înainte: un card obișnuit în Planific.
+- **🔔 Notificare când ești programat.** Înainte: nimic. Acum: „Anunță-mă când sunt programat” → Pornește. Când un lider
+  te pune pe un loc (din link sau din Planificarea de la biserică) primești pe telefon „Ai fost programat · Vocal ·
+  duminică 29 noiembrie, 10:00”; apăsând, se deschide programul. Pe iPhone merge după „Adaugă pe ecranul principal”.
+  (Web Push: `sw.js`, funcția `reverb-notify`, tabelele `push_subs` / `push_sent`.)
+- **✎ Cântări din link.** Înainte: doar citire. Acum: liderii, coordonatorii și echipa de Închinare a bisericii scriu
+  cântări noi (text și acorduri, cu previzualizare) și corectează acordurile direct din cântare (✎). Fiecare schimbare
+  păstrează varianta de dinainte („Pune înapoi”). Ce se scrie sau se corectează online intră singur în biblioteca de pe
+  calculatorul bisericii, iar cântările de pe calculator urcă online (cea mai nouă variantă câștigă; o copie a
+  bibliotecii se face înainte, cel mult o dată pe oră).
+
 ## 2026-11-25 · 2026.11.25.2 · 🔗 Planificarea de la biserică ⇄ linkurile oamenilor; linkul cu cele 3 zone
 - **Un singur program.** Înainte: ce se planifica pe link nu apărea în Planificarea de pe calculatorul bisericii (și invers).
   Acum: după ce legi calculatorul o dată (⚙ → 🔗 Reverb online, cu cheia din link → Planific → „🔗 Leagă calculatorul
