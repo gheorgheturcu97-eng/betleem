@@ -52,6 +52,14 @@
   .chip.f{cursor:pointer;border:1px solid transparent} .chip.f.on{border-color:var(--acc);background:rgba(58,91,217,.25)}
   .edit{width:100%;padding:10px 0 4px} .edit .row{margin-top:8px}
   .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:#26241f;margin:2px 4px 0 0} .tag.l{background:rgba(201,183,156,.3)}
+  /* ⭐ "Ești programat": the first thing you see, on every zone */
+  .mineCard{border:1px solid rgba(201,183,156,.55);background:linear-gradient(160deg,rgba(201,183,156,.20),rgba(58,91,217,.14) 60%,rgba(27,26,23,.7));box-shadow:0 10px 40px rgba(201,183,156,.12),inset 0 1px 0 rgba(255,255,255,.12)}
+  .mineHead{display:flex;align-items:center;gap:10px;margin-bottom:4px} .mineHead b{font:700 18px Syne,Montserrat,sans-serif} .mineHead small{margin-left:auto;color:var(--sand);font-size:13px}
+  .pulse{width:10px;height:10px;border-radius:50%;background:var(--sand);box-shadow:0 0 0 0 rgba(201,183,156,.7);animation:pulse 2s infinite}
+  @keyframes pulse{70%{box-shadow:0 0 0 10px rgba(201,183,156,0)}100%{box-shadow:0 0 0 0 rgba(201,183,156,0)}} @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+  .mine.new .x b:after{content:"nou";margin-left:8px;padding:1px 7px;border-radius:999px;background:var(--sand);color:#1b1a17;font:700 10px Montserrat,sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+  .bell{display:flex;align-items:center;gap:12px;padding:14px 16px} .bell>span{font-size:22px} .bell div{flex:1;min-width:0} .bell b{display:block;font-size:15px} .bell small{color:var(--mute);font-size:13px}
+  .bell button{flex:none;padding:9px 14px}
   /* the three zones: tabs on a phone, a side column on a laptop */
   .tabs button{display:flex;align-items:center;justify-content:center;gap:8px} .tabs button i{font-style:normal;font-size:18px}
   .tabs button span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15} .tabs button small{display:none;font:500 12px Montserrat,sans-serif;color:var(--mute)}
@@ -140,6 +148,11 @@
       <div class="chips" id="myChurches"></div>
       <div class="row" id="gChurchRow" hidden style="margin-top:12px"><select id="gChurch" aria-label="Biserica"></select></div>
     </div>
+    <div class="card mineCard" id="gMineCard" hidden>
+      <div class="mineHead"><span class="pulse"></span><b>Ești programat</b><small id="gMineN"></small></div>
+      <div id="gMine"></div>
+    </div>
+    <div class="card bell" id="bell" hidden><span>🔔</span><div><b>Anunță-mă când sunt programat</b><small id="bellHint">Primești o notificare pe telefon.</small></div><button id="bellOn" class="acc">Pornește</button></div>
     <nav class="tabs" id="tabs">
       <button data-tab="vProg" class="on"><i>🗓</i><span><b>Planific</b><small>programul și echipa</small></span></button>
       <button data-tab="vProj"><i>▶</i><span><b>Proiectez</b><small>slide-urile pe ecran</small></span></button>
@@ -149,7 +162,6 @@
    </aside>
    <div class="zones">
     <div id="vProg">
-      <div id="gMineCard" hidden><div class="sect"><h2>Unde slujesc eu</h2></div><div class="card"><div id="gMine"></div></div></div>
       <div class="card" id="gTools" hidden>
         <div class="toolbar"><input id="gDate" type="datetime-local" aria-label="Data și ora"><input id="gTitle" placeholder="Numele serviciului" maxlength="80"><button id="gAdd" class="acc">＋ Serviciu</button><button id="gSundays" title="Adaugă următoarele 8 duminici">＋ 8 duminici</button></div>
         <div id="hubKeyBox" hidden style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
@@ -269,7 +281,7 @@
     $('tabs').querySelector('[data-tab="vPeople"]').hidden = !coord.length;
     $('gChurch').innerHTML = churches.map(c => `<option value="${c.church_id}">${esc(c.name)}</option>`).join('');
     $('gChurchRow').hidden = churches.length < 2;
-    show('vHome'); tabTo('vProg'); if (coord.length) people(); songs(); if (churches.length) program();
+    show('vHome'); tabTo(['vProg', 'vProj', 'vMd'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'vProg'); bell(); if (coord.length) people(); songs(); if (churches.length) program();
   }
 
   // 3) coordinators: the people and their links
@@ -404,6 +416,44 @@
   }
   $('pjList').onclick = e => { const b = e.target.closest('[data-song]'); if (b) openSong(b.dataset.song, b.dataset.title); };
 
+
+  // 🔔 notifications: this phone says "yes" once; the server tells the person when a leader places him (here or at church)
+  const notifyCall = async body => { const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/reverb-notify', { method: 'POST', headers: { 'content-type': 'application/json', apikey: SUPABASE_KEY,
+      ...(session ? { authorization: 'Bearer ' + session.access_token } : {}) }, body: JSON.stringify(body) }); return r.json().catch(() => ({})); };
+  const notifyScan = church => notifyCall({ action: 'scan', church_id: church }).catch(() => {});
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  let swReg = null;
+  async function bell() {
+    if (!('serviceWorker' in navigator)) return;
+    try { swReg = await navigator.serviceWorker.register('sw.js'); } catch { return; }
+    const can = 'PushManager' in window && 'Notification' in window;
+    const sub = can && Notification.permission === 'granted' ? await swReg.pushManager.getSubscription() : null;
+    if (sub) { save(sub); return; }                                 // already on: keep it with this account
+    $('bell').hidden = false;
+    if (!can && iOS && !standalone) { $('bellHint').textContent = 'Pe iPhone: apasă Partajează ↑ → „Adaugă pe ecranul principal”, deschide Reverb de acolo și apasă aici.'; $('bellOn').hidden = true; }
+    else if (!can) { $('bellHint').textContent = 'Browserul acesta nu poate primi notificări.'; $('bellOn').hidden = true; }
+    else if (Notification.permission === 'denied') { $('bellHint').textContent = 'Notificările sunt oprite pentru această pagină din setările telefonului.'; $('bellOn').hidden = true; }
+  }
+  async function save(sub) {
+    const j = sub.toJSON();
+    await sb.from('push_subs').upsert({ endpoint: j.endpoint, user_id: me.id, keys: j.keys });
+  }
+  $('bellOn').onclick = async () => {
+    $('bellOn').disabled = true;
+    try {
+      if (await Notification.requestPermission() !== 'granted') throw new Error('Nu ai permis notificările.');
+      const { key } = await notifyCall({ action: 'key' });
+      const raw = Uint8Array.from(atob(key.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - key.length % 4) % 4)), c => c.charCodeAt(0));
+      const sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw });
+      await save(sub);
+      $('bell').innerHTML = '<span>🔔</span><div><b>Notificările sunt pornite</b><small>Afli imediat când ești programat.</small></div>';
+      setTimeout(() => { $('bell').hidden = true; }, 4000);
+      for (const c of churches) notifyScan(c.church_id);            // places you already have: told now, once
+    } catch (e) { alert(e.message || 'N-a mers.'); $('bellOn').disabled = false; }
+  };
+
   // 5) 🗓 the program: the same document and operations as Planificare in the app (core/plan.js), kept in Reverb online.
   //    Everyone reads it (no phones in it). Leaders change it (the whole document, with a version check: if someone else
   //    saved meanwhile, the change is applied again on the newest one). Members answer their places and block days
@@ -462,7 +512,7 @@
       if (!error && data?.length) {
         G.doc = doc; G.version = data[0].version;
         sb.from('plan_ops').insert({ church_id: c.church_id, op, user_id: me.id }).then(() => {});
-        drawProgram(); return true;
+        drawProgram(); if (/^(assign|addSundays|addService|setItems)$/.test(op.op)) notifyScan(c.church_id); return true;
       }
     }
     alert('Altcineva a schimbat programul în același timp. Mai încearcă o dată.'); program(); return false;
@@ -479,7 +529,9 @@
       mine.push({ s, k, a, what: p ? p.name : 'Slujești' });
     }
     $('gMineCard').hidden = !mine.length;
-    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small></div>
+    const open = mine.filter(x => x.a.status === 'pending').length;
+    $('gMineN').textContent = open ? `${open} de confirmat` : `${mine.length} ${mine.length === 1 ? 'loc' : 'locuri'} · confirmat`;
+    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine${a.status === 'pending' ? ' new' : ''}"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small></div>
       <div class="act">${a.status === 'pending' ? '' : stat(a)}<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>Nu pot</button></div></div>`).join('');
     // the services
     $('gCount').textContent = list.length ? `${list.length} ${list.length === 1 ? 'serviciu' : 'servicii'}` : '';

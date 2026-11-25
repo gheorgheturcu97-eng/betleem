@@ -72,6 +72,9 @@ Deno.serve(async req => {
       if (error) throw new Error(error.message);
       if (!data?.length) return out(409, { conflict: true });
       await admin.from('plan_ops').insert({ church_id: church, op: { op: 'hubSync', version: data[0].version } });
+      // 🔔 people newly placed from the church computer get their notification too
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/reverb-notify`, { method: 'POST', signal: AbortSignal.timeout(15000),
+        headers: { 'content-type': 'application/json', apikey: SECRET, authorization: 'Bearer ' + SECRET }, body: JSON.stringify({ action: 'scan', church_id: church }) }).catch(() => {});
       return out(200, { version: data[0].version });
     }
     return out(400, { error: 'Acțiune necunoscută' });
