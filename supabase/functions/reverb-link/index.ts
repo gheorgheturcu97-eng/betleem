@@ -95,6 +95,15 @@ Deno.serve(async req => {
       if (!(await canManage(me.id, church))) return out(403, { error: 'Doar coordonatorul bisericii face linkuri.' });
       return out(200, await makeInvite(church, me.id, { ...m, person_id: null }));   // a new person: his id is made here, never sent by a page
     }
+    if (m.action === 'hubKey') {                     // 🔗 a key for the church computer (pasted once into the app); the old ones stop working
+      const church = String(m.church_id || '');
+      if (!(await canManage(me.id, church))) return out(403, { error: 'Doar coordonatorul leagă calculatorul bisericii.' });
+      await admin.from('hub_devices').update({ revoked_at: new Date().toISOString() }).eq('church_id', church).is('revoked_at', null);
+      const key = newToken() + newToken().slice(0, 8);
+      const { error } = await admin.from('hub_devices').insert({ church_id: church, token_hash: await sha256(key), name: String(m.name || 'Calculatorul bisericii').slice(0, 60), created_by: me.id });
+      if (error) throw new Error(error.message);
+      return out(200, { key });
+    }
     if (m.action === 'update') {                     // role and departments, from the coordinator's page (link stays the same)
       const { data: inv } = await admin.from('invites').select('*').eq('id', String(m.invite_id || '')).maybeSingle();
       if (!inv || !(await canManage(me.id, inv.church_id))) return out(403, { error: 'Nu poți schimba această persoană.' });

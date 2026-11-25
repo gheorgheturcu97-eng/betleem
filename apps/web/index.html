@@ -52,8 +52,20 @@
   .chip.f{cursor:pointer;border:1px solid transparent} .chip.f.on{border-color:var(--acc);background:rgba(58,91,217,.25)}
   .edit{width:100%;padding:10px 0 4px} .edit .row{margin-top:8px}
   .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:#26241f;margin:2px 4px 0 0} .tag.l{background:rgba(201,183,156,.3)}
-  .launch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} .launch>*{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px;text-align:center;text-decoration:none;font-size:24px}
-  .launch b{font-size:15px} .launch small{font:12px Montserrat,sans-serif;color:var(--mute)} .launch a.off{opacity:.45;pointer-events:none}
+  /* the three zones: tabs on a phone, a side column on a laptop */
+  .tabs button{display:flex;align-items:center;justify-content:center;gap:8px} .tabs button i{font-style:normal;font-size:18px}
+  .tabs button span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15} .tabs button small{display:none;font:500 12px Montserrat,sans-serif;color:var(--mute)}
+  .tabs button.on small{color:rgba(255,255,255,.8)}
+  a.btn.big{display:block;text-align:center;text-decoration:none;padding:16px;font-size:17px} a.btn.off{opacity:.4;pointer-events:none}
+  @media (max-width:520px){.tabs button{flex-direction:column;gap:2px;padding:10px 4px;font-size:13px} .tabs button span{align-items:center}}
+  @media (min-width:980px){
+    main{max-width:1180px;padding-left:28px;padding-right:28px}
+    #vHome:not([hidden]){display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;align-items:start}
+    .side{position:sticky;top:20px} .welcome{flex-direction:column;align-items:flex-start} .welcome h1{font-size:30px}
+    .tabs{flex-direction:column;position:static;background:none;padding:0;gap:6px}
+    .tabs button{justify-content:flex-start;padding:12px 14px;text-align:left} .tabs button small{display:block}
+    .zones .sect:first-child{margin-top:4px}
+  }
   /* tabs: 🗓 Program · 🎵 Cântări · 👥 Oameni */
   .tabs{display:flex;gap:6px;margin:0 0 14px;position:sticky;top:0;z-index:3;background:var(--bg);padding:8px 0}
   .tabs button{flex:1;padding:12px 6px;font-size:15px} .tabs button.on{background:var(--acc);border-color:transparent;color:#fff}
@@ -121,26 +133,28 @@
   </section>
 
   <section id="vHome" hidden>
+   <aside class="side">
     <div class="card">
       <div class="welcome"><img id="logo" alt="" hidden><div><small>Bine ai venit în biserica</small><h1 id="church">…</h1><p class="hi" id="hello"></p></div></div>
       <label class="logoset" id="logoSet" hidden>✎ Logoul bisericii<input type="file" accept="image/*" id="logoFile" hidden></label>
       <div class="chips" id="myChurches"></div>
+      <div class="row" id="gChurchRow" hidden style="margin-top:12px"><select id="gChurch" aria-label="Biserica"></select></div>
     </div>
-    <div class="card" id="go">
-      <h2>Ce faci azi?</h2>
-      <div class="launch"><button data-go="plan">🗓<b>Planific</b><small>programul, de oriunde</small></button>
-        <a id="goLive" class="btn">▶<b>Proiectez</b><small>schimbi slide-urile</small></a>
-        <a id="goMd" class="btn">🎛<b>MD &amp; Track</b><small>pupitrul și track-urile</small></a></div>
-      <p class="mute" id="goHint" style="margin:10px 0 0;font-size:14px">Proiectez și MD &amp; Track merg doar pe Wi-Fi-ul bisericii, unde e calculatorul.</p>
-      <div class="row" id="hubRow" hidden style="margin-top:10px"><input id="hubUrl" placeholder="Adresa calculatorului (ex. http://192.168.0.199:4545)" inputmode="url"><button id="hubSave">Salvează</button></div>
-    </div>
-    <nav class="tabs" id="tabs"><button data-tab="vProg" class="on">🗓 Program</button><button data-tab="vSongs">🎵 Cântări</button><button data-tab="vPeople" hidden>👥 Oameni</button></nav>
-
+    <nav class="tabs" id="tabs">
+      <button data-tab="vProg" class="on"><i>🗓</i><span><b>Planific</b><small>programul și echipa</small></span></button>
+      <button data-tab="vProj"><i>▶</i><span><b>Proiectez</b><small>slide-urile pe ecran</small></span></button>
+      <button data-tab="vMd"><i>🎛</i><span><b>MD &amp; Track</b><small>pupitru, cântări, track-uri</small></span></button>
+      <button data-tab="vPeople" hidden><i>👥</i><span><b>Oameni</b><small>linkurile echipei</small></span></button>
+    </nav>
+   </aside>
+   <div class="zones">
     <div id="vProg">
-      <div class="row" id="gChurchRow" hidden style="margin-bottom:12px"><select id="gChurch"></select></div>
       <div id="gMineCard" hidden><div class="sect"><h2>Unde slujesc eu</h2></div><div class="card"><div id="gMine"></div></div></div>
       <div class="card" id="gTools" hidden>
         <div class="toolbar"><input id="gDate" type="datetime-local" aria-label="Data și ora"><input id="gTitle" placeholder="Numele serviciului" maxlength="80"><button id="gAdd" class="acc">＋ Serviciu</button><button id="gSundays" title="Adaugă următoarele 8 duminici">＋ 8 duminici</button></div>
+        <div id="hubKeyBox" hidden style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+          <div class="row"><span class="mute" style="flex:3 1 260px;font-size:14px">🔗 Programul de aici și Planificarea de pe calculatorul bisericii: unul singur. Fă o cheie și pune-o în aplicație (⚙ → Reverb online).</span><button id="hubKey">🔗 Leagă calculatorul bisericii</button></div>
+          <div id="hubKeyOut" class="linkbox" hidden></div></div>
       </div>
       <div class="sect"><h2>Servicii</h2><small id="gCount"></small></div>
       <datalist id="songTitles"></datalist><div id="gList"><p class="mute">Se încarcă programul…</p></div>
@@ -149,11 +163,32 @@
     </div>
 
 
-    <div class="card" id="vSongs" hidden>
-      <h2>🎵 Cântări</h2>
+    <div id="vProj" hidden>
+      <div class="sect"><h2>Proiectez</h2></div>
+      <div class="card zone">
+        <p style="margin:0 0 12px">Slide-urile se schimbă din aplicația de la biserică: versurile, prezentările, predica.</p>
+        <a id="goLive" class="btn acc big">▶ Deschide Proiectez</a>
+        <p class="mute hubhint" style="margin:10px 0 0;font-size:14px"></p>
+      </div>
+      <div class="sect"><h2>Programul de azi</h2><small id="pjWhen"></small></div>
+      <div class="card"><div id="pjList"><p class="mute" style="margin:0">Niciun serviciu planificat.</p></div></div>
+      <div class="card" id="hubRow" hidden><p class="mute" style="margin:0 0 8px;font-size:14px">Adresa calculatorului bisericii (o pune singur când e legat; aici doar dacă vrei s-o schimbi):</p>
+        <div class="row"><input id="hubUrl" placeholder="http://192.168.0.199:4545" inputmode="url"><button id="hubSave">Salvează</button></div></div>
+    </div>
+    <div id="vMd" hidden>
+      <div class="sect"><h2>MD &amp; Track</h2></div>
+      <div class="card zone">
+        <p style="margin:0 0 12px">Pupitrul cu acorduri, track-urile, click-ul și pad-ul, din aplicația de la biserică.</p>
+        <a id="goMd" class="btn acc big">🎛 Deschide MD &amp; Track</a>
+        <p class="mute hubhint" style="margin:10px 0 0;font-size:14px"></p>
+      </div>
+      <div class="sect"><h2>Repetă acasă</h2><small>orice cântare, cu acorduri</small></div>
+    <div class="card" id="vSongs">
+      <h2>Cântări</h2>
       <p class="mute" style="margin-top:0">Deschide orice cântare din bibliotecă, ca să repeți. Nu o pune pe program.</p>
       <div class="sq"><input id="sFind" type="search" placeholder="Caută titlu sau autor…" autocomplete="off"></div>
       <div class="slist" id="sList"></div>
+    </div>
     </div>
     <div class="card" id="vPeople" hidden>
       <h2>Oamenii bisericii și linkurile lor</h2>
@@ -172,6 +207,7 @@
       <div class="chips" id="filter" style="margin-top:14px"></div>
       <div id="people" style="margin-top:6px"></div>
     </div>
+   </div>
   </section>
   <section id="vSong" hidden>
     <div class="stop"><button id="sBack">←</button><span class="t" id="sTitle"></span>
@@ -312,17 +348,18 @@
   // 3b) tabs and the three parts of the app
   function tabTo(t) {
     for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.tab === t);
-    for (const v of ['vProg', 'vSongs', 'vPeople']) $(v).hidden = v !== t;
+    for (const v of ['vProg', 'vProj', 'vMd', 'vPeople']) $(v).hidden = v !== t;
   }
-  $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) tabTo(b.dataset.tab); };
-  $('go').querySelector('[data-go="plan"]').onclick = () => { tabTo('vProg'); $('tabs').scrollIntoView({ behavior: 'smooth' }); };
+  $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; tabTo(b.dataset.tab); if (innerWidth < 980 && $('tabs').getBoundingClientRect().top < 0) $('tabs').scrollIntoView(); };
   function launcher(c) {           // Proiectez / MD&TRACK live on the church computer: only on the church Wi-Fi
     const hub = c?.hub_url || '';
     for (const [id, tab] of [['goLive', 'tLive'], ['goMd', 'tMd']]) { $(id).classList.toggle('off', !hub); if (hub) $(id).href = hub + '/m.html?tab=' + tab; else $(id).removeAttribute('href'); }
-    $('goHint').textContent = hub ? 'Proiectez și MD & Track merg doar pe Wi-Fi-ul bisericii, unde e calculatorul.'
-      : (c?.role === 'coordinator' ? 'Scrie adresa calculatorului de la biserică (o vezi în Reverb, la 📱 Pe telefon). Apoi Proiectez și MD & Track se deschid de aici, pe Wi-Fi-ul bisericii.'
-        : 'Proiectez și MD & Track: coordonatorul trebuie să pună întâi adresa calculatorului de la biserică.');
+    const hint = hub ? 'Se deschide doar pe Wi-Fi-ul bisericii, unde e calculatorul.'
+      : (c?.role === 'coordinator' ? 'Încă nu știu unde e calculatorul bisericii: leagă-l din 🗓 Planific → „🔗 Leagă calculatorul bisericii” (își trimite singur adresa).'
+        : 'Coordonatorul trebuie să lege întâi calculatorul bisericii.');
+    document.querySelectorAll('.hubhint').forEach(x => x.textContent = hint);
     $('hubRow').hidden = c?.role !== 'coordinator'; $('hubUrl').value = hub;
+    $('hubKeyBox').hidden = c?.role !== 'coordinator';
   }
   $('hubSave').onclick = async () => {
     const c = cur(); let v = $('hubUrl').value.trim().replace(/\/+$/, '').replace(/\/(m|app|control)\.html.*$/, '');
@@ -344,6 +381,28 @@
     if (error) return alert('N-am putut salva logoul.');
     c.logo_url = url; $('logo').src = url; $('logo').hidden = false;
   };
+
+
+  // 🔗 the church computer: a key made here (coordinator), pasted once into the app (⚙ → Reverb online)
+  $('hubKey').onclick = async () => {
+    if (!confirm('Fac o cheie nouă pentru calculatorul bisericii? Cheia veche (dacă era) nu mai merge.')) return;
+    try {
+      const { key } = await fn({ action: 'hubKey', church_id: cur().church_id });
+      $('hubKeyOut').hidden = false;
+      $('hubKeyOut').innerHTML = `Cheia (o singură dată; pune-o în aplicația de la biserică: ⚙ → 🔗 Reverb online):<br><b id="hk">${esc(key)}</b>
+        <div class="row" style="margin-top:10px"><button class="acc" id="hkCopy">📋 Copiază</button></div>`;
+      $('hkCopy').onclick = async () => { try { await navigator.clipboard.writeText(key); $('hkCopy').textContent = '✓ Copiată'; } catch { getSelection().selectAllChildren($('hk')); } };
+    } catch (e) { alert(e.message); }
+  };
+  // ▶ Proiectez: the program of the next service, in order (read only)
+  function drawToday() {
+    const s = (G.doc?.services || []).find(x => x.date >= new Date(Date.now() - 6 * 3600e3).toISOString());
+    $('pjWhen').textContent = s ? `${day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })} · ${fmtTime(s.date)}` : '';
+    $('pjList').innerHTML = s?.items?.length ? s.items.map((it, i) => `<div class="it${it.kind === 'song' ? ' song' : ''}"><span class="n">${i + 1}</span>
+      <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<small><span class="kind">${esc(KNAME[it.kind] || '')}</span></small></div>
+      <span class="m">${it.minutes ? it.minutes + ' min' : ''}</span></div>`).join('') : `<p class="mute" style="margin:0">${s ? 'Programul nu e scris încă.' : 'Niciun serviciu planificat.'}</p>`;
+  }
+  $('pjList').onclick = e => { const b = e.target.closest('[data-song]'); if (b) openSong(b.dataset.song, b.dataset.title); };
 
   // 5) 🗓 the program: the same document and operations as Planificare in the app (core/plan.js), kept in Reverb online.
   //    Everyone reads it (no phones in it). Leaders change it (the whole document, with a version check: if someone else
@@ -430,6 +489,7 @@
     const v = doc.volunteers.find(x => x.id === G.me), away = (v?.away || []).filter(d => d >= today.slice(0, 10));
     $('gAway').innerHTML = away.map(d => `<span class="chip">${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))} <a href="#" data-unaway="${d}" style="color:var(--no);text-decoration:none">✕</a></span>`).join('') || '<span class="mute">Nicio zi blocată.</span>';
     $('gAway').closest('.card').parentElement.hidden = !G.me;
+    drawToday();
   }
   function serviceCard(s, lead) {
     const doc = G.doc, d = day(s.date), open = G.open.has(s.id), edit = lead && G.edit.has(s.id);

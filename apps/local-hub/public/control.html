@@ -1273,6 +1273,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <button data-s="audio"><i>🎛</i><b>Rutare audio</b><span>Ieșirile plăcii de sunet, click, pad, microfonul MD</span></button>
     <button data-s="brand"><i>🎨</i><b>Aspect și funcții</b><span>Culoarea bisericii și ce module folosiți (restul se ascund)</span></button>
     <button data-s="share"><i>📦</i><b>Dă aplicația altor biserici</b><span>Linkuri personale pentru liderii din zonă: aplicația de Mac cu toate cântările, de pe acest Mac</span></button>
+    <button data-s="reverb"><i>🔗</i><b>Reverb online</b><span id="reverbState">Leagă Planificarea de aici cu programul din linkurile oamenilor</span></button>
     <button data-s="nopin"><i>🔓</i><b>Fără PIN</b><span id="noPinState">Oricine e pe Wi-Fi-ul bisericii intră fără PIN (Planificare, Proiectez, MD&amp;TRACK)</span></button>
     <button data-s="sec"><i>🔒</i><b>Acces de acasă și backup</b><span>Voluntarii își văd programarea de acasă; copii zilnice pe NAS</span></button>
   </div>
@@ -2786,6 +2787,32 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (c?.logo) { $('doorsLogo').src = '/media/' + encodeURIComponent(c.logo); $('doorsLogo').hidden = false; $('doorsStar').hidden = true; }
     $('doors').hidden = false;
   }
+
+  // 🔗 Reverb online: the program planned from the links (phones, laptops) and Planificarea of this computer, one program
+  const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 1 ? 'acum' : m < 60 ? `acum ${m} min` : `la ${new Date(iso).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}`; };
+  async function reverbState() {
+    let r; try { r = await api('/api/reverb'); } catch { return null; }
+    $('reverbState').textContent = !r.linked ? 'Leagă Planificarea de aici cu programul din linkurile oamenilor'
+      : r.state === 'bad-key' ? '⚠ Cheia nu mai e valabilă: fă una nouă în Reverb online'
+      : `Legat la ${r.church?.name || 'Reverb online'} · ${r.lastSync ? 'sincronizat ' + ago(r.lastSync) : 'se sincronizează…'}${r.error ? ' · ' + r.error : ''}`;
+    return r;
+  }
+  async function openReverb() {
+    const r = await reverbState(); if (!r) return toast('Nu pot vorbi cu aplicația');
+    if (r.linked && r.state !== 'bad-key') {
+      const v = await ask(`🔗 Legat la ${r.church?.name || 'Reverb online'}. Programul de aici și cel din linkuri sunt unul singur: ce schimbi aici apare pe telefoane în câteva secunde, ce se planifică pe telefoane apare aici în cel mult un minut. Telefoanele voluntarilor nu pleacă de pe acest calculator.`,
+        [{ type: 'checkbox', label: 'Dezleagă acest calculator (programul rămâne aici)', value: false }], 'Sincronizează acum');
+      if (!v) return;
+      const x = await api('/api/reverb', { method: 'POST', body: JSON.stringify(v[0] ? { off: true } : {}) });
+      toast(v[0] ? 'Calculatorul nu mai e legat' : x.error ? '⚠ ' + x.error : '✓ Sincronizat'); return reverbState();
+    }
+    const v = await ask('🔗 Leagă acest calculator de Reverb online. În Reverb online (linkul tău de coordonator) → 🗓 Planific → „🔗 Leagă calculatorul bisericii”: copiază cheia și pune-o aici. O singură dată.',
+      [{ label: 'Cheia calculatorului', placeholder: 'lipește cheia aici' }], 'Leagă');
+    if (!v?.[0]?.trim()) return;
+    const x = await api('/api/reverb', { method: 'POST', body: JSON.stringify({ key: v[0].trim() }) });
+    toast(x.error ? '⚠ ' + x.error : x.state === 'bad-key' ? '⚠ Cheia nu e bună' : `✓ Legat la ${x.church?.name || 'Reverb online'}`); reverbState();
+  }
+  setTimeout(reverbState, 3000);
   document.querySelectorAll('#doors [data-m]').forEach(b => b.onclick = () => setMode(b.dataset.m, $('doorKeep').checked));
   $('modeChip').onclick = showDoors;
   setTimeout(() => {                                  // after everything below is ready
@@ -2845,6 +2872,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (x === 'ai') $('aiSet').click(); else if (x === 'pcs') openPcs(); else if (x === 'bible') $('bibImport').click();
     else if (x === 'phones') $('bPhones').click(); else if (x === 'audio') { showView('music'); $('audioOut').click(); }
     else if (x === 'lite') setLite(!document.documentElement.classList.contains('lite'));
+    else if (x === 'reverb') openReverb();
     else if (x === 'nopin') { const on = !S?.noPin;
       (async () => {
         if (on && !(await ask('🔓 Scot PIN-urile? Oricine e pe Wi-Fi-ul bisericii va putea schimba ecranele și track-urile și va vedea Planificarea (cu telefoanele voluntarilor). De pe internet tot nu se poate intra. Le pui la loc tot de aici.', [], 'Scoate PIN-urile'))) return;

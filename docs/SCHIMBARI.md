@@ -1,6 +1,20 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · 2026.11.25.2 · 🔗 Planificarea de la biserică ⇄ linkurile oamenilor; linkul cu cele 3 zone
+- **Un singur program.** Înainte: ce se planifica pe link nu apărea în Planificarea de pe calculatorul bisericii (și invers).
+  Acum: după ce legi calculatorul o dată (⚙ → 🔗 Reverb online, cu cheia din link → Planific → „🔗 Leagă calculatorul
+  bisericii”), e un singur program: ce schimbi pe calculator apare pe telefoane în câteva secunde, ce se planifică pe
+  telefon apare pe calculator în cel mult un minut. Dacă amândoi schimbă același serviciu: câștigă telefonul, în afară
+  de programul de pe ecrane (acolo câștigă calculatorul). Oamenii cu link devin voluntarii bisericii (cu același nume
+  își păstrează locurile). **Telefoanele, e-mailurile și linkurile voluntarilor nu pleacă de pe calculator.** Fără
+  internet nu se schimbă nimic. Calculatorul își trimite singur adresa (pentru Proiectez / MD & Track din link).
+  Cod: `src/reverb-sync.js` (+ teste), `/api/reverb`; online: funcția `reverb-hub`, tabelul `hub_devices`.
+- **Linkul: cele 3 zone.** Înainte: tab-uri Program / Cântări / Oameni + „Ce faci azi?”. Acum: 🗓 Planific (programul și
+  echipa), ▶ Proiectez (deschide Proiectez pe Wi-Fi-ul bisericii + programul de azi în ordine), 🎛 MD & Track (deschide
+  MD&TRACK + toate cântările, ca să repeți acasă), 👥 Oameni (coordonatori). Pe telefon: tab-uri sus; pe laptop: coloană
+  în stânga cu biserica și zonele, conținutul în dreapta.
+
 ## 2026-11-25 · Reverb online · Planific curat și profesionist
 - Înainte: fiecare serviciu avea toate butoanele și listele de oameni deschise, cu iconițe peste tot.
   Acum: lista e calmă: data, numele, ora, câte cântări, câți oameni pe câte locuri (cu bară de confirmări). Deschis:

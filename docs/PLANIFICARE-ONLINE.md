@@ -96,7 +96,14 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
   Departamentele programului vin din `departments` (poziții implicite: Închinare, Media, Copii, Asimilare, Tineret).
   `churches.hub_url` (doar adrese din rețeaua locală) → Proiectez / MD & Track din link; `churches.logo_url` = logoul.
   Migrări: `20261124233000_reverb_program_online.sql`, `20261125090000…`, `20261125091000…`. Verificat cu Playwright.
-- ⏳ Pasul 3b: legătura cu Planificarea de pe calculatorul bisericii (Mac mini trage / trimite programul).
+- ✅ **Pasul 3b (2026-11-25): legătura cu calculatorul bisericii.** Cheie per calculator (`hub_devices`, doar amprenta;
+  o face coordonatorul: `reverb-link` → `hubKey`; cheia veche se oprește). Calculatorul: `src/reverb-sync.js` — la 1 minut
+  și la 3 s după o schimbare: `reverb-hub` pull → îmbinare în trei (servicii / departamente / oameni, față de copia pe care
+  au căzut ultima dată de acord) → push cu verificare de versiune. Prima dată: departamentele cu același nume se unesc,
+  oamenii cu link preiau voluntarul local cu același nume. Doar `services`, `departments`, `volunteers` (fără telefon,
+  e-mail, link) călătoresc; ședințele, sarcinile, jurnalele rămân pe calculator. Cheia + copia comună:
+  `Documents/Betleem/reverb-online.json` (0600). Verificat cap-coadă (calculator de probă ⇄ pagina linkului).
+- De aplicat (a așteptat confirmarea): `20261125110000_reverb_person_id_default.sql` (person_id automat la orice link nou).
 - ⏳ **Feedback după slujire** (cerut 2026-11-24): cine a fost programat la un serviciu primește după serviciu o
   notificare „Cum a fost?” și scrie un feedback (ce a mers, ce nu); îl citesc coordonatorul și liderul departamentului.
   Vine după Pasul 3 (are nevoie de programările online); notificarea = pe pagina Reverb (și push dacă e instalată pe telefon).

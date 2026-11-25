@@ -21,6 +21,7 @@ import * as propres from './propresenter.js';
 import { parseAls } from './ableton.js';
 import { feedbackProposal, runAssistant, askAI } from './ai.js';
 import { defaultPlan, applyPlanOp, serviceWarnings, newToken, focusByMonth } from './plan.js';
+import { createReverbSync } from './reverb-sync.js';
 import * as pco from './pco.js';
 import { createCanva } from './canva.js';
 import { createUpdater, newer } from './updater.js';
@@ -142,7 +143,9 @@ export function logError(where, err) {
   console.error(where, err);
 }
 let saveTimer = null;
+let reverbQuiet = false;            // a save made by the Reverb online sync itself does not start another sync
 function save() {
+  if (!reverbQuiet) reverb?.changed();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     const tmp = DB_FILE + '.tmp';
@@ -2006,6 +2009,17 @@ async function handle(req, res) {
           tasks: plan.tasks.filter(tk => tk.meeting === mt.id).map(tk => ({ text: tk.text, who: name(tk.who), due: tk.due, done: tk.done })) })) : [] });
     }
     // 📦 give Betleem (with the song library) to the churches around: personal links made by the leader on this Mac
+    if (p === '/api/reverb') {                              // 🔗 Reverb online: link this computer (leader, on the church network)
+      if (req.viaDoor || !checkLeader(req)) return json(res, 403, { error: 'Doar liderul, pe calculatorul bisericii.' });
+      if (req.method === 'POST') {
+        const m = JSON.parse(await body(req, 2000) || '{}');
+        if (m.off) return json(res, 200, reverb.unlink());
+        if (m.key) { const k = String(m.key).trim(); if (!/^[A-Za-z0-9_-]{24,80}$/.test(k)) return json(res, 400, { error: 'Cheia nu arată bine. Copiaz-o din nou din Reverb online.' });
+          await reverb.link(k, activeChurch().id); }
+        else await reverb.syncNow();
+      }
+      return json(res, 200, reverb.status());
+    }
     if (p === '/api/shares') {                              // the leader, on this computer: the links and the package
       if (req.viaDoor || !checkLeader(req)) return json(res, 403, { error: 'Doar liderul, pe calculatorul bisericii.' });
       if (req.method === 'POST') {
@@ -2385,6 +2399,22 @@ async function pullMedia(peer) {
 const DISCOVERY_PORT = 45454, instanceId = crypto.randomUUID();
 const peers = new Map();                              // id → { name, church, address, port, seen }
 const lanIPs = () => Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal);
+
+// 🔗 Reverb online ⇄ Planificarea (src/reverb-sync.js): linked once with a key from the web page; only the program travels
+var reverb = createReverbSync({
+  file: path.join(DATA_DIR, 'reverb-online.json'), fs,
+  getPlan: id => (activeChurch().id === id ? db.plan : db.churchData?.[id]?.plan) || null,
+  liveId: id => (activeChurch().id === id ? db.service?.planId : db.churchData?.[id]?.service?.planId) || null,
+  applied: (changed, id) => {
+    if (!changed) return;
+    if (activeChurch().id === id) planToLive();
+    reverbQuiet = true; save(); reverbQuiet = false; broadcast();
+    const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);
+  },
+  newToken, hubUrl: () => { const ip = lanIPs()[0]?.address; return ip ? `http://${ip}:${PORT}` : ''; },
+  log: m => console.log(m),
+});
+if (process.env.REVERB_SYNC !== '0') reverb.start();
 if (process.env.DISCOVERY !== '0') (async () => {
   try {
     const dgram = await import('node:dgram');

@@ -196,3 +196,7 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - **Reverb online `apps/web/index.html`:** tab-uri 🗓 Program / 🎵 Cântări / 👥 Oameni; „Ce faci azi?” (Planific; Proiectez și
   MD & Track spre `churches.hub_url`, doar pe Wi-Fi-ul bisericii); logoul bisericii (`churches.logo_url`); Program cu
   `core/plan.js` (copie din `src/plan.js`). Detalii: docs/PLANIFICARE-ONLINE.md. Verificat cu biserici de probă (șterse).
+- **🔗 Reverb online ⇄ Planificarea** (2026.11.25.2): `src/reverb-sync.js` (merge3, adoptPeople, alignDepartments, runner),
+  `/api/reverb`, ⚙ → 🔗 Reverb online în control.html; online: `supabase/functions/reverb-hub`, `hub_devices`. Teste:
+  `test/reverb-sync.test.js` (70 trec). Pagina linkului: zonele 🗓 Planific / ▶ Proiectez / 🎛 MD & Track / 👥 Oameni,
+  pe laptop în două coloane.
