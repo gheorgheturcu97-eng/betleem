@@ -188,3 +188,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - Pe Mac, aplicația trebuie reinstalată din Betleem-mac-nou.zip (pentru permisiunea Keynote).
 - PowerPoint-ul VITAL nu a fost primit pentru test.
 - Clic dreapta în Echipe și în Grila lunară. Meniurile native ale sistemului (acum meniurile sunt în aplicație).
+
+## 2026-11-25 (2026.11.25.1 + Reverb online)
+- **Numele bisericii în față, Reverb discret:** `public/reverb-mark.css` (`.rv-mark` fundal lucios, `.rv` „powered by”) în
+  control.html, planning.html, m.html; ușile: „Bine ai venit în biserica X”; titlul = numele bisericii. Verificat (Playwright).
+- **QR fără Predicator** (m.html); `m.html?tab=tLive|tMd|tPlan` intră direct (folosit din linkul personal).
+- **Reverb online `apps/web/index.html`:** tab-uri 🗓 Program / 🎵 Cântări / 👥 Oameni; „Ce faci azi?” (Planific; Proiectez și
+  MD & Track spre `churches.hub_url`, doar pe Wi-Fi-ul bisericii); logoul bisericii (`churches.logo_url`); Program cu
+  `core/plan.js` (copie din `src/plan.js`). Detalii: docs/PLANIFICARE-ONLINE.md. Verificat cu biserici de probă (șterse).
