@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · Reverb online · 🛠 pregătește serviciul de acasă (Proiectez + MD & Track)
+- **Proiectez din link.** Înainte: doar „Programul de azi”, de citit. Acum: „Pregătește de acasă”: alegi serviciul
+  (următoarele 10), atingi un moment și îl pregătești: ordinea (↑ ↓ ✕), cântări noi, pasaje biblice („Ioan 3:16-18”
+  → carte, capitol, versete), cine conduce, minute, notă pentru echipă și **fundalul** (cele 19 fundaluri Reverb).
+  Ajunge singur pe calculatorul bisericii în cel mult un minut; duminică operatorul doar deschide programul.
+- **MD & Track din link.** Înainte: doar „Repetă acasă”. Acum: „Pregătește pentru trupă”: pentru fiecare cântare din
+  program, **tonul** și **ordinea părților** (strofe, refren, bridge), cu acordurile transpuse văzute în dreapta.
+  Liderii pot tot; echipa de Închinare (fără să fie lideri) poate doar tonul și ordinea (funcția `reverb_plan_item`).
+- Prezentările, pozele, video-urile și track-urile se pun încă la biserică (urmează încărcarea lor de acasă).
+
 ## 2026-11-25 · 2026.11.25.4 · aspect calm și profesionist (aplicație + Reverb online)
 - **Aspectul aplicației** (Planificare, Proiectez, MD&TRACK, Setări, cele trei uși). Înainte: fundal cu pete colorate
   (mov, turcoaz, portocaliu, roz), auriu strălucitor pe butoane, margini și chenare peste tot, butoane-pastilă, emoji ca

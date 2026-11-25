@@ -207,3 +207,7 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 ## Aspect (2026-11-25, 2026.11.25.4)
 - `apps/local-hub/public/calm.css`: stratul de aspect calm (grafit, accent albastru #4d7cff, fără aurora, iconițe SVG `svg.ic`), încărcat după `glass.css` în control.html și planning.html. Verificat cu capturi (ușile, Proiectez, Setări, Planificare, zi, telefon).
 - `apps/web/index.html`: același limbaj (tokens în `:root`), verificat telefon / tabletă / desktop.
+- **Pregătește de acasă** (`apps/web/index.html`, `drawToday`/`openItem`): editorul unui moment din program, același pentru
+  Proiectez și MD & Track; miniaturi în `apps/web/bg/`, cărțile Bibliei în `apps/web/core/bibleref.js` (copie din hub).
+  Liderii salvează cu `setItems`; Închinarea cu `reverb_plan_item` (migrarea 20261125140000, doar ton + ordine la cântări).
+  Verificat cu Playwright (lider + muzician, telefon și desktop). **Neverificat:** pe Mac mini, cu programul sincronizat.
