@@ -48,6 +48,7 @@ async function makeInvite(church: string, by: string | null, x: Record<string, u
   };
   const { data, error } = await admin.from('invites').insert(row).select('id').single();
   if (error) throw new Error(error.message);
+  if (!row.person_id) await admin.from('invites').update({ person_id: data.id }).eq('id', data.id);   // the person in the program: kept on ↻ Link nou
   return { id: data.id, token, expires_at: row.expires_at };
 }
 
@@ -73,11 +74,11 @@ Deno.serve(async req => {
         await admin.from('invites').update({ user_id: uid }).eq('id', inv.id);
       }
       await admin.from('members').upsert({ church_id: inv.church_id, user_id: uid, role: inv.role, departments: inv.departments || [], leads: inv.leads || [],
-        person_id: inv.person_id, display_name: inv.display_name }, { onConflict: 'church_id,user_id' });
+        person_id: inv.person_id || inv.id, display_name: inv.display_name }, { onConflict: 'church_id,user_id' });
       for (const x of Array.isArray(inv.also) ? inv.also : []) {   // the same person in other churches (one link, one account)
         if (!x?.church_id) continue;
         await admin.from('members').upsert({ church_id: x.church_id, user_id: uid, role: ROLES.includes(x.role) ? x.role : 'member',
-          departments: list(x.departments), leads: x.role === 'leader' ? list(x.leads) : [], display_name: inv.display_name },
+          departments: list(x.departments), leads: x.role === 'leader' ? list(x.leads) : [], person_id: inv.person_id || inv.id, display_name: inv.display_name },
           { onConflict: 'church_id,user_id', ignoreDuplicates: true });
       }
       const { data: link, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
@@ -92,7 +93,7 @@ Deno.serve(async req => {
     if (m.action === 'create') {
       const church = String(m.church_id || '');
       if (!(await canManage(me.id, church))) return out(403, { error: 'Doar coordonatorul bisericii face linkuri.' });
-      return out(200, await makeInvite(church, me.id, m));
+      return out(200, await makeInvite(church, me.id, { ...m, person_id: null }));   // a new person: his id is made here, never sent by a page
     }
     if (m.action === 'update') {                     // role and departments, from the coordinator's page (link stays the same)
       const { data: inv } = await admin.from('invites').select('*').eq('id', String(m.invite_id || '')).maybeSingle();

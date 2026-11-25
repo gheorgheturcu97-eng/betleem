@@ -88,7 +88,15 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
   liderul doar ale departamentelor pe care le conduce (`private.leads_any`). Pagina: bife pentru departamente, ✎ pe
   fiecare om (rol + departamente + ce conduce), filtru pe departament. Verificat cu Playwright pe o biserică de probă.
 - ✅ Râul Vieții: departamentele Închinare și Tineret (2026-11-24).
-- ⏳ Pasul 3: Planificarea online (citire pentru membri, scriere pentru lideri).
+- ✅ **Pasul 3a (2026-11-25): 🗓 Program în Reverb online.** `plans.doc` = același document ca `src/plan.js` (fără telefoane,
+  linkuri, e-mailuri); `apps/web/core/plan.js` e o copie a lui `src/plan.js` (acum fără importuri Node). Liderii scriu tot
+  documentul cu verificare de versiune (dacă altcineva a salvat între timp, operația se aplică din nou pe cea nouă).
+  Membrii: doar `reverb_plan_answer` (✓/✕ pe locul lor) și `reverb_plan_away` (zilele lor). Fiecare om are `person_id`
+  (rămâne la ↻ Link nou, același în toate bisericile lui); `reverb_people` = numele și departamentele, fără telefoane.
+  Departamentele programului vin din `departments` (poziții implicite: Închinare, Media, Copii, Asimilare, Tineret).
+  `churches.hub_url` (doar adrese din rețeaua locală) → Proiectez / MD & Track din link; `churches.logo_url` = logoul.
+  Migrări: `20261124233000_reverb_program_online.sql`, `20261125090000…`, `20261125091000…`. Verificat cu Playwright.
+- ⏳ Pasul 3b: legătura cu Planificarea de pe calculatorul bisericii (Mac mini trage / trimite programul).
 - ⏳ **Feedback după slujire** (cerut 2026-11-24): cine a fost programat la un serviciu primește după serviciu o
   notificare „Cum a fost?” și scrie un feedback (ce a mers, ce nu); îl citesc coordonatorul și liderul departamentului.
   Vine după Pasul 3 (are nevoie de programările online); notificarea = pe pagina Reverb (și push dacă e instalată pe telefon).

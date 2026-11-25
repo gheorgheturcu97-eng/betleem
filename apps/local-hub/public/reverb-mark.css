@@ -1,0 +1,14 @@
+/* Reverb, pressed into liquid gloss: each church is named and welcomed by its own name; Reverb stays in the background
+   (a faint glossy wordmark behind the work) and small ("powered by Reverb"). Shared by Proiectez, Planificare and the phone app. */
+.rv-mark{position:fixed;left:50%;top:56%;width:min(78vw,1100px);aspect-ratio:1683/325;transform:translate(-50%,-50%) rotate(-6deg);
+  z-index:-1;pointer-events:none;opacity:.06;
+  -webkit-mask:url(/wordmark.svg) center/contain no-repeat;mask:url(/wordmark.svg) center/contain no-repeat;
+  background:linear-gradient(115deg,#5a5246 0%,#F2EEE8 20%,#8c8070 35%,#5aa0ff 50%,#F2EEE8 65%,#6b6256 80%,#F2EEE8 100%);
+  background-size:300% 100%;animation:rvgloss 16s ease-in-out infinite alternate}
+.rv{display:inline-block;height:8px;aspect-ratio:1683/325;vertical-align:middle;
+  -webkit-mask:url(/wordmark.svg) left/contain no-repeat;mask:url(/wordmark.svg) left/contain no-repeat;
+  background:linear-gradient(115deg,#7a7060 0%,#F2EEE8 22%,#a3978a 40%,#fff 50%,#a3978a 60%,#F2EEE8 78%,#7a7060 100%);
+  background-size:300% 100%;animation:rvgloss 9s ease-in-out infinite alternate}
+@keyframes rvgloss{to{background-position:100% 0}}
+@media (prefers-reduced-motion:reduce){.rv,.rv-mark{animation:none}}
+html.light .rv-mark,[data-theme=light] .rv-mark{opacity:.05;filter:invert(1)}

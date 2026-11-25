@@ -2,14 +2,14 @@
 // volunteers, and who serves where. One plan per church. Personal data (phones) is only
 // served over HTTP to leaders, never broadcast to the screens or phones.
 
-import crypto from 'node:crypto';
-
-const id = () => crypto.randomUUID();
+// No Node-only imports: the same file runs in the browser too (Reverb online copies it to apps/web/core/plan.js).
+const id = () => globalThis.crypto.randomUUID();
 const KINDS = ['song', 'sermon', 'prayer', 'announcement', 'reading', 'other', 'media', 'bible'];
 const STATUS = ['pending', 'confirmed', 'declined'];
 const YSTATUS = ['realizat', 'in_curs', 'planificat', 'propunere', 'de_confirmat'];
 /** A personal link for each volunteer (no password): long, random, can be replaced to cancel the old one. */
-export const newToken = () => crypto.randomBytes(18).toString('base64url');
+export const newToken = () => btoa(String.fromCharCode(...globalThis.crypto.getRandomValues(new Uint8Array(18))))
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const ym = iso => String(iso).slice(0, 7);
 /** Why this person cannot serve in this service (blocked day, monthly limit), or '' if they can. */
 export function cannotServe(plan, s, volunteerId, exceptKey) {

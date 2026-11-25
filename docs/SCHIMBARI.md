@@ -1,6 +1,25 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · 2026.11.25.1 · numele bisericii în față, Reverb discret; QR fără Predicator
+- **Numele.** Înainte: aplicația se prezenta „Reverb”, cu numele bisericii mic. Acum: fiecare biserică e întâmpinată cu
+  numele ei („Bine ai venit în biserica Betleem”, cu logoul ei dacă îl are); Reverb rămâne discret: „powered by Reverb”
+  sub numele bisericii și logoul Reverb lucios, abia vizibil, în fundal (Proiectez, Planificare, aplicația de telefon, ușile).
+  Titlul ferestrei = numele bisericii. (`public/reverb-mark.css`.)
+- **QR „Ce faci azi?”** Înainte: Echipă / Muzician / Versuri / 🎤 Predicator. Acum: fără Predicator: predicatorul schimbă
+  slide-urile din Proiectez (cine îl alesese ajunge direct acolo). Muzician și Versuri rămân până primesc toți linkul.
+- **Din linkul personal în aplicația de la biserică.** `m.html?tab=tLive|tMd|tPlan` deschide direct acea parte.
+
+## 2026-11-25 · Reverb online (pagina linkului, fără actualizare de aplicație)
+- **🗓 Program.** Înainte: linkul arăta doar biserica și cântările. Acum: tab-ul Program: serviciile care vin, ce se cântă,
+  cine slujește; „Unde slujesc eu” cu ✓ Pot / ✕ Nu pot; „Zile în care nu pot”. Liderii și coordonatorii planifică de
+  acolo: ＋ 8 duminici / ＋ serviciu, momente și cântări (din bibliotecă), oameni pe poziții, redenumește / șterge.
+  Același `plan.js` ca Planificarea din aplicație. **Încă nu se leagă cu Planificarea de pe calculatorul bisericii** (pasul următor).
+- **Ce faci azi?** Planific (de oriunde) · Proiectez · MD & Track (deschid aplicația de la biserică, doar pe Wi-Fi-ul ei;
+  coordonatorul scrie o dată adresa calculatorului).
+- **Întâmpinarea:** numele și logoul bisericii (coordonatorul pune logoul), Reverb mic sus și „powered by Reverb” jos,
+  logoul Reverb lucios în fundal.
+
 ## 2026-11-24 · Reverb online · cântările pe telefon (fără actualizare de aplicație)
 - **🎵 Cântări în Reverb online.** Înainte: pe telefon vedeai doar cântările de pe programul de azi, și doar pe Wi-Fi-ul
   bisericii. Acum: oricine are link Reverb din Rețeaua Betleem deschide **orice cântare** din biblioteca Betleem (628),

@@ -11,7 +11,8 @@
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/fonts/inter.css">
-<title>Reverb – Planificare</title>
+<title>Planificare</title>
+<link rel="stylesheet" href="/reverb-mark.css">
 <style>
   :root{
     --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
@@ -252,12 +253,14 @@
   .pco-list .pl input{width:auto;margin:0} .pco-list .d{color:var(--mute);font-size:12.5px} .pco-list .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .pco-list .m{color:var(--mute);font-size:12px}
   @media (max-width:600px){ .pco-list .pl{grid-template-columns:auto 1fr} .pco-list .d,.pco-list .m{grid-column:2} }
   /* Reverb: the logo instead of the old star (a church's own logo still replaces it, when set) */
+  header .brand .star{display:none!important} .brand small.pw{display:flex!important;align-items:center;gap:5px;font-size:10px;opacity:.75}
   .brand .star,.doors-brand .star{background:url(/wordmark.svg) left center/contain no-repeat!important;color:transparent!important;font-size:0!important;box-shadow:none!important;border-radius:0!important;width:92px!important;height:18px!important}
   .doors-brand .star{width:200px!important;height:39px!important}
 </style>
 <link rel="stylesheet" href="/glass.css">
 </head>
 <body>
+<div class="rv-mark" aria-hidden="true"></div>
 <div class="aurora"><i></i><i></i><i></i></div>
 <div class="app">
   <header class="top glass">
@@ -276,7 +279,7 @@
   <section class="teambar glass" id="teamBar">
     <button class="tlogo" id="tLogo" title="Logo-ul echipei (apasă ca să-l schimbi)"><span>✦</span></button>
     <div class="tinfo">
-      <small>Reverb · <b id="tChurch"></b></small>
+      <small><b id="tChurch"></b> · powered by <i class="rv" aria-label="Reverb"></i></small>
       <p id="tVision" class="tvision"></p>
     </div>
     <button id="tEdit" class="ghost" title="Scrie viziunea echipei și pune logo-ul">✎ Viziune și logo</button>
@@ -456,7 +459,7 @@
     $('lpOk').onclick = () => { hub.send({ type: 'churchProfile', vision: $('lpVision').value, logo }); $('modal').classList.remove('show'); toast('Salvat'); };
   }
   $('tEdit').onclick = editTeam; $('tLogo').onclick = editTeam;
-  const hub = connect(s => { backdrop(s.live?.background); const c = s.church; if (c) { $('church').innerHTML = esc(c.name) + `<small>${esc(c.city || '')}</small>`; renderTeam(c); } },
+  const hub = connect(s => { backdrop(s.live?.background); const c = s.church; if (c) { $('church').innerHTML = esc(c.name) + '<small class="pw">powered by <i class="rv" aria-label="Reverb"></i></small>'; document.title = c.name + ' · Planificare'; renderTeam(c); } },
     e => {
       if (e.role) { $('signin').classList.toggle('show', e.role !== 'leader'); if (e.role === 'leader' && !P) load(); }
       if (e.type === 'login') { if (e.ok && e.role === 'leader') { load(); toast('Bine ai venit!'); } else toast(e.ok ? 'PIN-ul acesta e de operator. Pentru planificare trebuie PIN-ul de lider.' : 'PIN greșit'); }

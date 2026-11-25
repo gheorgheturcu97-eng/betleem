@@ -8,12 +8,16 @@
 <link rel="apple-touch-icon" href="/icon.svg">
 <link rel="stylesheet" href="/fonts/inter.css">
 <title>Reverb</title>
+<link rel="stylesheet" href="/reverb-mark.css">
 <script>
   // 🚪 one QR for everyone: the first time you choose who you are; next time you land there directly (m.html?alege=1 = choose again)
   (function () { try {
     const q = new URLSearchParams(location.search); if (q.has('alege')) { localStorage.removeItem('m.who'); return; }
-    const w = JSON.parse(localStorage.getItem('m.who') || 'null');
-    const to = { musician: '/live.html?v=chords', lyrics: '/live.html', preacher: '/live.html?v=pred' }[w];
+    // ?tab=… comes from the personal link (Reverb online → Proiectez / MD&TRACK): straight into the team app
+    if (/^t(Plan|Live|Md)$/.test(q.get('tab') || '')) { localStorage.setItem('m.who', '"app"'); localStorage.setItem('m.tab', JSON.stringify(q.get('tab'))); return; }
+    let w = JSON.parse(localStorage.getItem('m.who') || 'null');
+    if (w === 'preacher') { w = 'app'; localStorage.setItem('m.who', '"app"'); localStorage.setItem('m.tab', '"tLive"'); }   // the preacher now changes slides in Proiectez
+    const to = { musician: '/live.html?v=chords', lyrics: '/live.html' }[w];
     if (to) location.replace(to);
   } catch {} })();
 </script>
@@ -124,13 +128,12 @@
 </style>
 </head>
 <body>
+<div class="rv-mark" aria-hidden="true"></div>
 <div id="who">
   <h2>Bine ai venit 👋</h2><p>Ce faci azi? Alegi o dată, telefonul ține minte. Schimbi oricând cu ⇄.</p>
-  <button class="opt" data-w="app"><b>🎛</b><span>Echipa media și liderul de laudă<small>Planificare, Proiectez (schimbi slide-urile) și MD&amp;TRACK. Cere PIN-ul echipei; Planificarea, pe cel de lider.</small></span></button>
+  <button class="opt" data-w="app"><b>🎛</b><span>Echipa media și liderul de laudă<small>Planificare, Proiectez (schimbi slide-urile, și predicatorul) și MD&amp;TRACK. Cere PIN-ul echipei; Planificarea, pe cel de lider.</small></span></button>
   <button class="opt" data-w="musician"><b>🎸</b><span>Muzician<small>Programul și fiecare cântare cu acorduri, în tonul ales. Merge singur după ecran.</small></span></button>
   <button class="opt" data-w="lyrics"><b>📖</b><span>Versuri (oricine)<small>Versurile de pe ecran și programul.</small></span></button>
-  <button class="opt" data-w="preacher"><b>🎤</b><span>Predicator<small>Schimbi singur slide-urile predicii. Cere PIN-ul predicatorului (îl vezi pe calculator, la 📱).</small></span></button>
-  <div class="ppin" id="whoPin"><input id="whoPinIn" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN predicator"><button id="whoPinOk">Intră</button></div>
 </div>
 <!-- 🗓 Planificare: the same page as on the laptop -->
 <section class="tab" id="tPlan"><iframe id="planFrame" title="Planificare"></iframe></section>
@@ -139,7 +142,7 @@
 <section class="tab" id="tLive">
   <header><span class="dot" id="dot"></span><h1 id="lTitle">Proiectez</h1>
     <div class="mseg" id="lMode"><button data-m="slides">▦ Slide-uri</button><button data-m="chords">♫ Acorduri</button></div>
-    <button class="ib" id="lPin" title="PIN">🔑</button><button class="ib who" title="Schimbă ce faci (muzician, versuri, predicator…)">⇄</button></header>
+    <button class="ib" id="lPin" title="PIN">🔑</button><button class="ib who" title="Schimbă ce faci (echipă, muzician, versuri)">⇄</button></header>
   <div class="live" id="lNow">—</div>
   <div class="chips" id="lItems"></div>
   <div class="scroll" id="lSlides"><div class="grid" id="lGrid"></div></div>
@@ -150,7 +153,7 @@
 
 <!-- 🎛 MD&TRACK: the song's sections as big buttons; tap one and the tracks go there (on the next bar) -->
 <section class="tab" id="tMd">
-  <header><span class="dot" id="dot2"></span><h1 id="mTitle">MD&amp;TRACK</h1><span class="mk" id="mKey"></span><button class="ib" id="mPin" title="PIN">🔑</button><button class="ib who" title="Schimbă ce faci (muzician, versuri, predicator…)">⇄</button></header>
+  <header><span class="dot" id="dot2"></span><h1 id="mTitle">MD&amp;TRACK</h1><span class="mk" id="mKey"></span><button class="ib" id="mPin" title="PIN">🔑</button><button class="ib who" title="Schimbă ce faci (echipă, muzician, versuri)">⇄</button></header>
   <div class="mtime"><b id="mBar">—</b><span id="mTime"></span><div class="mprog"><i id="mProg"></i></div></div>
   <div class="scroll"><div class="secs" id="mSecs"></div><p class="hint" id="mHint"></p></div>
   <div class="cbar"><label class="tog"><input type="checkbox" id="mNow"> Imediat (fără să aștepte măsura)</label></div>
@@ -180,20 +183,14 @@
   stayAwake();
 
   // ---------------- 🚪 who are you (one QR for everyone)
-  const WHO_TO = { musician: '/live.html?v=chords', lyrics: '/live.html', preacher: '/live.html?v=pred' };
+  const WHO_TO = { musician: '/live.html?v=chords', lyrics: '/live.html' };
   if (!store.get('who', null)) $('who').classList.add('on');
   document.querySelectorAll('#who .opt').forEach(b => b.onclick = () => {
     const w = b.dataset.w;
-    // 🔓 with "Fără PIN" on the computer, the preacher goes straight in (no PIN to ask for)
-    if (w === 'preacher' && !S?.noPin) { $('whoPin').classList.add('on'); $('whoPinIn').focus(); $('whoPin').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
     store.set('who', w);
     if (w === 'app') { $('who').classList.remove('on'); history.replaceState(null, '', '/m.html'); show(tab); } else location.href = WHO_TO[w];
   });
-  $('whoPinOk').onclick = () => { const p = $('whoPinIn').value.trim();
-    if (p) try { localStorage.setItem('bnc-pin', p); } catch {}   // empty: the sermon page asks for it again
-    store.set('who', 'preacher'); location.href = WHO_TO.preacher; };
-  $('whoPinIn').onkeydown = e => { if (e.key === 'Enter') $('whoPinOk').click(); };
-  document.querySelectorAll('.ib.who').forEach(b => b.onclick = () => { store.set('who', null); $('whoPin').classList.remove('on'); $('who').classList.add('on'); });
+  document.querySelectorAll('.ib.who').forEach(b => b.onclick = () => { store.set('who', null); $('who').classList.add('on'); });
 
   // ---------------- tabs
   function show(t) {
@@ -206,7 +203,7 @@
   }
   document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.t));
   const can = () => hub.role === 'operator' || hub.role === 'leader';
-  const hub = connect(s => { S = s; render(); }, e => {
+  const hub = connect(s => { S = s; if (s?.church?.name) document.title = s.church.name; render(); }, e => {
     if (e.type === 'online' || e.type === 'offline') for (const d of ['dot', 'dot2']) $(d).classList.toggle('on', e.type === 'online');
     if (e.type === 'login') { if (e.ok) { $('pinSheet').classList.remove('on'); hub.send({ type: 'mdAsk' }); } else $('pin').value = ''; }
     if (e.type === 'mdState') { MD = e.md; renderMd(); }

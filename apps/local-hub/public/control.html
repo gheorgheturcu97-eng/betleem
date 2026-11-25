@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="/fonts/inter.css">
 <link rel="stylesheet" href="/fonts/display/display.css">
 <title>Reverb</title>
+<link rel="stylesheet" href="/reverb-mark.css">
 <style>
   :root{
     --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
@@ -835,6 +836,13 @@
   /* ---------- the three doors: Pregătesc / Proiectez / Cânt */
   .doors{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(1200px 700px at 30% 20%,rgba(255,191,47,.14),transparent 60%),radial-gradient(900px 600px at 80% 90%,rgba(90,160,255,.14),transparent 60%),rgba(8,9,12,.82);backdrop-filter:blur(26px) saturate(1.4);-webkit-backdrop-filter:blur(26px) saturate(1.4)}
   .doors[hidden]{display:none}
+  /* each church welcomed by its own name; Reverb small, the wordmark pressed into liquid gloss (2026-11-25) */
+  .brand .star{display:none!important} .brand .who small.pw{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:500;opacity:.75;letter-spacing:.02em}
+  .doors-mark{position:absolute;left:50%;bottom:6vh;width:min(70vw,900px);aspect-ratio:1683/325;transform:translateX(-50%);pointer-events:none;opacity:.09;
+    -webkit-mask:url(/wordmark.svg) center/contain no-repeat;mask:url(/wordmark.svg) center/contain no-repeat;
+    background:linear-gradient(115deg,#5a5246 0%,#F2EEE8 20%,#8c8070 35%,#5aa0ff 50%,#F2EEE8 65%,#6b6256 80%,#F2EEE8 100%);background-size:300% 100%;animation:rvgloss 14s ease-in-out infinite alternate}
+  #doorsStar[hidden]{display:none!important} .doors-brand b{font-size:34px!important;line-height:1.1}
+  .doors-brand small.pw{display:flex;align-items:center;gap:6px;font-size:12px;margin-top:4px} .doors-brand .rv{height:10px}
   .doors-in{width:min(1040px,94vw);display:flex;flex-direction:column;align-items:center;gap:22px}
   .doors-brand{display:flex;align-items:center;gap:14px} .doors-brand img{width:56px;height:56px;border-radius:14px;object-fit:contain;background:#fff}
   .doors-brand .star{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-size:26px;background:linear-gradient(135deg,#ffd76a,#f5a300);color:#1a1200}
@@ -907,6 +915,7 @@
 <link rel="stylesheet" href="/glass.css">
 </head>
 <body>
+<div class="rv-mark" aria-hidden="true"></div>
 <div class="aurora"><i></i><i></i><i></i><i></i></div>
 
 <div class="app">
@@ -919,7 +928,7 @@
   <header class="top glass">
     <button class="brand" id="churchBtn" title="Schimbă biserica">
       <span class="star">✦</span>
-      <span class="who"><b id="churchName">Reverb</b><small id="churchCity"></small></span>
+      <span class="who"><b id="churchName">Reverb</b><small class="pw">powered by <i class="rv" aria-label="Reverb"></i></small><small id="churchCity" hidden></small></span>
       <span class="caret">▾</span>
     </button>
     <span id="dot" title="Conexiune"></span>
@@ -1220,8 +1229,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   </div>
 </div></div>
 <div class="doors" id="doors" hidden>
+  <div class="doors-mark" aria-hidden="true"></div>
   <div class="doors-in">
-    <div class="doors-brand"><img id="doorsLogo" alt="" hidden><span class="star" id="doorsStar">✦</span><div><b id="doorsChurch"></b><small>Ce faci astăzi?</small></div></div>
+    <div class="doors-brand"><img id="doorsLogo" alt="" hidden><span class="star" id="doorsStar" hidden>✦</span><div><small>Bine ai venit în biserica</small><b id="doorsChurch"></b><small>Ce faci astăzi?</small></div></div>
     <div class="door-row">
       <button class="door" data-m="pregatesc"><i>🗓</i><b>Planificare</b><span>Programul serviciului, cântările, echipele, categoriile. Pentru lideri, în timpul săptămânii.</span></button>
       <button class="door acc" data-m="proiectez"><i>▶</i><b>Proiectez</b><span>Duminică, la proiector: versurile, prezentările și fundalurile. Doar butoanele de care ai nevoie.</span></button>
@@ -1569,7 +1579,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   addEventListener('click', e => { if (!menu.contains(e.target)) menu.classList.remove('show'); });
   function renderChurches() {
     if (!S?.church) return;
-    $('churchName').textContent = S.church.name;
+    $('churchName').textContent = S.church.name; document.title = S.church.name; $('doorsChurch').textContent = S.church.name;
     {                                                // the church's own logo in the corner
       const st = document.querySelector('#churchBtn .star, #churchBtn .blogo');
       const want = S.church.logo ? `<img class="blogo" src="/media/${encodeURIComponent(S.church.logo)}" alt="">` : '<span class="star">✦</span>';
@@ -2772,7 +2782,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (m === 'proiectez' && $('tabs').querySelector('.sel')?.dataset.t !== 'lib' && $('tabs').querySelector('.sel')?.dataset.t !== 'bible') $('tabs').querySelector('[data-t=lib]').click();
   }
   function showDoors() {
-    const c = S?.church; $('doorsChurch').textContent = c?.name ? 'Echipa ' + c.name : '';
+    const c = S?.church; $('doorsChurch').textContent = c?.name || '';
     if (c?.logo) { $('doorsLogo').src = '/media/' + encodeURIComponent(c.logo); $('doorsLogo').hidden = false; $('doorsStar').hidden = true; }
     $('doors').hidden = false;
   }

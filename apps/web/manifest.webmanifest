@@ -1,2 +1,2 @@
-{ "name": "Reverb", "short_name": "Reverb", "start_url": "./", "display": "standalone", "background_color": "#12110F", "theme_color": "#12110F",
+{ "name": "Betleem · Reverb", "short_name": "Betleem", "start_url": "./", "display": "standalone", "background_color": "#12110F", "theme_color": "#12110F",
   "icons": [{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }, { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }

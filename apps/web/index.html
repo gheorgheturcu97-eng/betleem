@@ -6,23 +6,36 @@
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#12110F">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Reverb">
+<meta name="apple-mobile-web-app-title" content="Betleem">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-<title>Reverb</title>
+<title>Betleem</title>
 <style>
   /* Reverb online: the door (personal link → account) and, for coordinators, the people of the church and their links */
   :root{--bg:#12110F;--bg2:#1B1A17;--fg:#F2EEE8;--mute:#A8A196;--line:rgba(255,255,255,.1);--acc:#3A5BD9;--sand:#C9B79C;--no:#ff8a7a;--ok:#7bd88f}
   *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Montserrat,system-ui,-apple-system,"Segoe UI",sans-serif}
   main{max-width:720px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
   header{display:flex;align-items:center;gap:12px;margin-bottom:22px} header img{width:44px;height:44px;border-radius:11px}
-  header .wm{display:block;height:26px;width:auto;margin-bottom:6px} header small{display:block;color:var(--mute);font-size:13px}
+  /* each church is welcomed with its own name; Reverb stays in the background: the wordmark pressed into liquid gloss */
+  .glossmark{position:fixed;left:50%;top:55%;width:min(92vw,760px);aspect-ratio:1683/325;transform:translate(-50%,-50%) rotate(-8deg);z-index:-1;pointer-events:none;
+    -webkit-mask:url(wordmark.svg) center/contain no-repeat;mask:url(wordmark.svg) center/contain no-repeat;opacity:.16;
+    background:linear-gradient(115deg,#5a5246 0%,#F2EEE8 18%,#8c8070 32%,#3A5BD9 50%,#F2EEE8 64%,#6b6256 80%,#F2EEE8 100%);background-size:300% 100%;animation:gloss 14s ease-in-out infinite alternate}
+  header .gloss{display:block;height:15px;aspect-ratio:1683/325;-webkit-mask:url(wordmark.svg) left/contain no-repeat;mask:url(wordmark.svg) left/contain no-repeat;opacity:.55;
+    background:linear-gradient(115deg,#6b6256 0%,#F2EEE8 22%,#9a8e7c 40%,#ffffff 50%,#9a8e7c 60%,#F2EEE8 78%,#6b6256 100%);background-size:300% 100%;animation:gloss 9s ease-in-out infinite alternate}
+  @keyframes gloss{to{background-position:100% 0}} @media (prefers-reduced-motion:reduce){.glossmark{animation:none}}
+  main{position:relative;z-index:0} body{isolation:isolate}
+  .welcome{display:flex;gap:16px;align-items:center} .welcome img{width:72px;height:72px;border-radius:18px;object-fit:contain;background:#fff;flex:none;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .logoset{display:inline-block;margin:0 0 10px;font-size:13px;color:var(--mute);cursor:pointer;text-decoration:underline}
+  .welcome small{display:block;color:var(--mute);font-size:14px;letter-spacing:.02em} .welcome h1{font-size:34px;margin:2px 0 4px}
+  .welcome .hi{color:var(--sand);margin:0 0 12px}
+  footer{display:flex;align-items:center;justify-content:center;gap:7px;color:var(--mute);font-size:12px;margin:26px 0 0;opacity:.75}
+  footer img{height:10px;width:auto}
   header .sp{flex:1} button,.btn{font:600 15px Montserrat,sans-serif;border:0;border-radius:12px;padding:11px 16px;cursor:pointer;background:var(--bg2);color:var(--fg);border:1px solid var(--line)}
   button.acc{background:var(--acc);border-color:transparent;color:#fff} button.ghost{background:none} button:disabled{opacity:.5}
-  .card{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+  .card{background:rgba(27,26,23,.66);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
   h1{font:800 28px/1.15 Syne,Montserrat,sans-serif;margin:6px 0 8px} h2{font:700 18px Syne,Montserrat,sans-serif;margin:0 0 10px}
   .mute{color:var(--mute)} .err{color:var(--no);font-weight:600} .ok{color:var(--ok)}
   .chips{display:flex;flex-wrap:wrap;gap:8px} .chip{padding:5px 12px;border-radius:999px;background:#26241f;font-size:14px}
@@ -39,6 +52,25 @@
   .chip.f{cursor:pointer;border:1px solid transparent} .chip.f.on{border-color:var(--acc);background:rgba(58,91,217,.25)}
   .edit{width:100%;padding:10px 0 4px} .edit .row{margin-top:8px}
   .tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:#26241f;margin:2px 4px 0 0} .tag.l{background:rgba(201,183,156,.3)}
+  .launch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} .launch>*{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 6px;text-align:center;text-decoration:none;font-size:24px}
+  .launch b{font-size:15px} .launch small{font:12px Montserrat,sans-serif;color:var(--mute)} .launch a.off{opacity:.45;pointer-events:none}
+  /* tabs: 🗓 Program · 🎵 Cântări · 👥 Oameni */
+  .tabs{display:flex;gap:6px;margin:0 0 14px;position:sticky;top:0;z-index:3;background:var(--bg);padding:8px 0}
+  .tabs button{flex:1;padding:12px 6px;font-size:15px} .tabs button.on{background:var(--acc);border-color:transparent;color:#fff}
+  /* 🗓 the program */
+  .svc{padding:0;overflow:hidden} .svc>summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;gap:12px;align-items:center}
+  .svc>summary::-webkit-details-marker{display:none} .svc>summary .d{min-width:54px;text-align:center;line-height:1.1}
+  .svc>summary .d b{display:block;font:800 24px Syne,Montserrat,sans-serif} .svc>summary .d small{color:var(--mute);font-size:12px;text-transform:uppercase}
+  .svc>summary .t{flex:1;min-width:0} .svc>summary .t b{display:block} .svc>summary .t small{color:var(--mute)}
+  .svc .in{padding:0 18px 18px;border-top:1px solid var(--line)} .svc h3{font:700 14px Montserrat,sans-serif;color:var(--sand);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px}
+  .it{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)} .it:first-of-type{border-top:0}
+  .it .k{width:24px;text-align:center} .it .x{flex:1;min-width:0} .it .x small{color:var(--mute)} .it.song .x b{text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);cursor:pointer}
+  .it button{padding:6px 9px;font-size:13px}
+  .slot{display:flex;gap:10px;align-items:center;padding:6px 0} .slot .p{flex:0 0 42%;color:var(--mute);font-size:14px} .slot .w{flex:1;min-width:0}
+  .slot select{padding:8px 10px;font-size:14px} .st{font-size:13px;white-space:nowrap} .st.confirmed{color:var(--ok)} .st.declined{color:var(--no)} .st.pending{color:var(--sand)}
+  .mine{display:flex;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)} .mine:first-of-type{border-top:0} .mine .x{flex:1;min-width:0}
+  .mine button{padding:9px 12px} .mine button.yes{background:rgba(123,216,143,.18)} .mine button.no{background:rgba(255,138,122,.15)}
+  .warn{color:var(--sand);font-size:13px;margin-top:8px}
   /* 🎵 the library: any song, to rehearse on the phone (not tied to the program) */
   .sq{display:flex;gap:8px;margin-bottom:10px} .slist{max-height:56vh;overflow:auto;margin:0 -6px}
   .srow{display:flex;align-items:center;gap:10px;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer} .srow:first-child{border-top:0}
@@ -57,7 +89,8 @@
 </head>
 <body>
 <main>
-  <header><div><img src="wordmark.svg" class="wm" alt="Reverb"><small id="sub">Închinarea care răsună</small></div><span class="sp"></span><button id="out" class="ghost" hidden>Ieși</button></header>
+  <div class="glossmark" aria-hidden="true"></div>
+  <header><span class="gloss" role="img" aria-label="Reverb"></span><span class="sp"></span><button id="out" class="ghost" hidden>Ieși</button></header>
 
   <section id="vWait" class="card"><p class="mute">Se încarcă…</p></section>
 
@@ -70,9 +103,31 @@
 
   <section id="vHome" hidden>
     <div class="card">
-      <h1 id="hello">Salut</h1>
+      <div class="welcome"><img id="logo" alt="" hidden><div><small>Bine ai venit în biserica</small><h1 id="church">…</h1><p class="hi" id="hello"></p></div></div>
+      <label class="logoset" id="logoSet" hidden>✎ Logoul bisericii<input type="file" accept="image/*" id="logoFile" hidden></label>
       <div class="chips" id="myChurches"></div>
-      <p class="mute" style="margin:12px 0 0">Planificarea online vine aici în pasul următor. Până atunci, programul se face în Reverb la biserică.</p>
+    </div>
+    <div class="card" id="go">
+      <h2>Ce faci azi?</h2>
+      <div class="launch"><button data-go="plan">🗓<b>Planific</b><small>programul, de oriunde</small></button>
+        <a id="goLive" class="btn">▶<b>Proiectez</b><small>schimbi slide-urile</small></a>
+        <a id="goMd" class="btn">🎛<b>MD &amp; Track</b><small>pupitrul și track-urile</small></a></div>
+      <p class="mute" id="goHint" style="margin:10px 0 0;font-size:14px">Proiectez și MD &amp; Track merg doar pe Wi-Fi-ul bisericii, unde e calculatorul.</p>
+      <div class="row" id="hubRow" hidden style="margin-top:10px"><input id="hubUrl" placeholder="Adresa calculatorului (ex. http://192.168.0.199:4545)" inputmode="url"><button id="hubSave">Salvează</button></div>
+    </div>
+    <nav class="tabs" id="tabs"><button data-tab="vProg" class="on">🗓 Program</button><button data-tab="vSongs">🎵 Cântări</button><button data-tab="vPeople" hidden>👥 Oameni</button></nav>
+
+    <div id="vProg">
+      <div class="row" id="gChurchRow" hidden style="margin-bottom:12px"><select id="gChurch"></select></div>
+      <div class="card" id="gMineCard" hidden><h2>Unde slujesc eu</h2><div id="gMine"></div></div>
+      <div class="card" id="gTools" hidden>
+        <h2>Planifică</h2>
+        <div class="row"><button id="gSundays">＋ Următoarele 8 duminici</button></div>
+        <div class="row" style="margin-top:8px"><input id="gDate" type="datetime-local"><input id="gTitle" placeholder="Numele (ex. Seară de rugăciune)" maxlength="80"><button id="gAdd" class="acc">＋ Serviciu</button></div>
+      </div>
+      <datalist id="songTitles"></datalist><div id="gList"><p class="mute">Se încarcă programul…</p></div>
+      <div class="card"><h2>Zile în care nu pot</h2><p class="mute" style="margin-top:0">Liderii nu te pun în zilele astea.</p>
+        <div class="chips" id="gAway"></div><div class="row" style="margin-top:10px"><input id="gAwayDay" type="date"><button id="gAwayAdd">＋ Adaugă ziua</button></div></div>
     </div>
 
 
@@ -105,6 +160,7 @@
       <select id="sKey" title="Tonul"></select><button id="sChords" class="on" title="Acorduri da/nu">Acorduri</button><button id="sFit" class="on" title="Toată piesa pe ecran / derulez">⤢</button></div>
     <div class="chart" id="sChart"></div>
   </section>
+  <footer>powered by <img src="wordmark.svg" alt="Reverb"> app</footer>
 </main>
 
 <script type="module">
@@ -112,6 +168,7 @@
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
   import { parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
+  import { applyPlanOp, serviceWarnings } from './core/plan.js';
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'reverb-session' } });
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -145,18 +202,20 @@
     me = session.user; $('out').hidden = false;
     const { data: ms } = await sb.from('members').select('church_id, role, display_name, departments, leads').eq('user_id', me.id);
     const ids = (ms || []).map(m => m.church_id);
-    const { data: cs } = ids.length ? await sb.from('churches').select('id, name, city').in('id', ids) : { data: [] };
+    const { data: cs } = ids.length ? await sb.from('churches').select('id, name, city, hub_url, logo_url').in('id', ids) : { data: [] };
     churches = (ms || []).map(m => ({ ...m, ...(cs || []).find(c => c.id === m.church_id) }));
     const name = churches.find(c => c.display_name)?.display_name || me.user_metadata?.name || '';
-    $('hello').textContent = name ? 'Salut, ' + name.split(' ')[0] + '!' : 'Salut!';
-    $('sub').textContent = churches.map(c => c.name).join(' · ') || 'Reverb';
+    G.first = name ? name.split(' ')[0] : '';
+    $('hello').textContent = G.first ? `Salut, ${G.first}!` : '';
     $('myChurches').innerHTML = churches.map(c => `<span class="chip">${esc(c.name)}${c.city && c.city !== c.name ? ' · ' + esc(c.city) : ''} — ${ROLE[c.role]}${c.leads?.length ? ' ' + esc(c.leads.join(', ')) : ''}${c.departments?.length ? ' · ' + esc(c.departments.join(', ')) : ''}</span>`).join('')
       || '<span class="mute">Nu ești încă în nicio biserică.</span>';
     const coord = churches.filter(c => c.role === 'coordinator');
-    $('vPeople').hidden = !coord.length;
     $('pChurch').innerHTML = coord.map(c => `<option value="${c.church_id}">${esc(c.name)}</option>`).join('');
     $('pChurch').parentElement.hidden = coord.length < 2;
-    show('vHome'); if (coord.length) people(); songs();
+    $('tabs').querySelector('[data-tab="vPeople"]').hidden = !coord.length;
+    $('gChurch').innerHTML = churches.map(c => `<option value="${c.church_id}">${esc(c.name)}</option>`).join('');
+    $('gChurchRow').hidden = churches.length < 2;
+    show('vHome'); tabTo('vProg'); if (coord.length) people(); songs(); if (churches.length) program();
   }
 
   // 3) coordinators: the people and their links
@@ -231,17 +290,205 @@
     try { const r = await fn({ action: b.dataset.do, invite_id: row.dataset.id }); if (r.token) showLink(name, r.token); people(); } catch (err) { alert(err.message); }
   };
 
+
+  // 3b) tabs and the three parts of the app
+  function tabTo(t) {
+    for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.tab === t);
+    for (const v of ['vProg', 'vSongs', 'vPeople']) $(v).hidden = v !== t;
+  }
+  $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) tabTo(b.dataset.tab); };
+  $('go').querySelector('[data-go="plan"]').onclick = () => { tabTo('vProg'); $('tabs').scrollIntoView({ behavior: 'smooth' }); };
+  function launcher(c) {           // Proiectez / MD&TRACK live on the church computer: only on the church Wi-Fi
+    const hub = c?.hub_url || '';
+    for (const [id, tab] of [['goLive', 'tLive'], ['goMd', 'tMd']]) { $(id).classList.toggle('off', !hub); if (hub) $(id).href = hub + '/m.html?tab=' + tab; else $(id).removeAttribute('href'); }
+    $('goHint').textContent = hub ? 'Proiectez și MD & Track merg doar pe Wi-Fi-ul bisericii, unde e calculatorul.'
+      : (c?.role === 'coordinator' ? 'Scrie adresa calculatorului de la biserică (o vezi în Reverb, la 📱 Pe telefon). Apoi Proiectez și MD & Track se deschid de aici, pe Wi-Fi-ul bisericii.'
+        : 'Proiectez și MD & Track: coordonatorul trebuie să pună întâi adresa calculatorului de la biserică.');
+    $('hubRow').hidden = c?.role !== 'coordinator'; $('hubUrl').value = hub;
+  }
+  $('hubSave').onclick = async () => {
+    const c = cur(); let v = $('hubUrl').value.trim().replace(/\/+$/, '').replace(/\/(m|app|control)\.html.*$/, '');
+    if (v && !/^http:\/\//.test(v)) v = 'http://' + v;
+    const { error } = await sb.from('churches').update({ hub_url: v || null }).eq('id', c.church_id);
+    if (error) return alert('Adresa trebuie să fie a rețelei bisericii, de forma http://192.168.0.199:4545');
+    c.hub_url = v || null; launcher(c); $('hubSave').textContent = '✓ Salvat';
+  };
+
+
+  // the church's own logo (coordinator): made small here (256 px) and kept with the church
+  $('logoFile').onchange = async () => {
+    const f = $('logoFile').files[0]; if (!f) return;
+    const img = await createImageBitmap(f), k = Math.min(1, 256 / Math.max(img.width, img.height));
+    const cv = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * k), height: Math.round(img.height * k) });
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    const url = cv.toDataURL('image/png'), c = cur();
+    const { error } = await sb.from('churches').update({ logo_url: url }).eq('id', c.church_id);
+    if (error) return alert('N-am putut salva logoul.');
+    c.logo_url = url; $('logo').src = url; $('logo').hidden = false;
+  };
+
+  // 5) 🗓 the program: the same document and operations as Planificare in the app (core/plan.js), kept in Reverb online.
+  //    Everyone reads it (no phones in it). Leaders change it (the whole document, with a version check: if someone else
+  //    saved meanwhile, the change is applied again on the newest one). Members answer their places and block days
+  //    through two database functions that only touch their own places.
+  const KIND = { song: '🎵', sermon: '🎤', prayer: '🙏', announcement: '📣', reading: '📖', bible: '📖', media: '🎬', other: '•' };
+  const KNAME = { song: 'Cântare', sermon: 'Predică', prayer: 'Rugăciune', announcement: 'Anunțuri', reading: 'Citire', other: 'Alt moment' };
+  const POS = { 'Închinare': [['Lider închinare'], ['Vocal', 2], ['Chitară'], ['Clape'], ['Bas'], ['Tobe']], 'Media': [['Proiecție'], ['Sunet'], ['Live stream']],
+    'Copii': [['Învățător', 2]], 'Asimilare și ospitalitate': [['Primire la ușă', 2], ['Cafea']], 'Tineret': [['Lider tineret']] };
+  const COLORS = ['#f5b301', '#3fa7ff', '#ff7a59', '#2ecc71', '#c58cff', '#ff5aa5'];
+  let G = { doc: null, version: 0, people: [], me: null, deps: [], open: new Set() };
+  const cur = () => churches.find(c => c.church_id === $('gChurch').value) || churches[0];
+  const canPlan = () => ['leader', 'coordinator'].includes(cur()?.role);
+  const empty = () => ({ services: [], departments: [], volunteers: [] });
+  const day = iso => new Date(iso);
+  const fmtTime = iso => day(iso).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+  const pname = id => G.people.find(p => p.person_id === id)?.name || G.doc.volunteers.find(v => v.id === id)?.name || '—';
+
+  async function program() {
+    const c = cur(); if (!c) return;
+    $('church').textContent = c.name; document.title = c.name;
+    $('logo').hidden = !c.logo_url; if (c.logo_url) $('logo').src = c.logo_url;
+    $('logoSet').hidden = c.role !== 'coordinator';
+    launcher(c);
+    const [plan, ppl, me, ds] = await Promise.all([
+      sb.from('plans').select('doc, version').eq('church_id', c.church_id).maybeSingle(),
+      sb.rpc('reverb_people', { c: c.church_id }), sb.rpc('reverb_me', { c: c.church_id }),
+      sb.from('departments').select('name').eq('church_id', c.church_id).order('sort')]);
+    G.doc = plan.data?.doc?.services ? plan.data.doc : empty(); G.version = plan.data?.version || 0;
+    G.people = ppl.data || []; G.me = me.data || null; G.deps = (ds.data || []).map(d => d.name);
+    drawProgram();
+  }
+  $('gChurch').onchange = program;
+  addEventListener('visibilitychange', () => { if (!document.hidden && G.doc && $('vSong').hidden) program(); });   // came back: fresh program
+
+  // the departments and positions of the program come from the church's departments (Închinare, Media…)
+  function withBase(doc) {
+    doc.services ||= []; doc.departments ||= []; doc.volunteers ||= [];
+    G.deps.forEach((name, i) => { if (!doc.departments.some(d => d.name === name)) applyPlanOp(doc, { op: 'saveDepartment', department: { name, color: COLORS[i % COLORS.length], positions: (POS[name] || [['Slujitor']]).map(([n, needed = 1]) => ({ name: n, needed })) } }); });
+    for (const p of G.people) {                       // everyone with a link can be placed; can serve in his departments
+      const pos = doc.departments.filter(d => (p.departments || []).includes(d.name)).flatMap(d => d.positions.map(x => x.id));
+      const v = doc.volunteers.find(x => x.id === p.person_id);
+      if (!v) doc.volunteers.push({ id: p.person_id, name: p.name || '', positions: pos, away: [], maxPerMonth: 0 });
+      else { v.name = p.name || v.name; v.positions = [...new Set([...(v.positions || []), ...pos])]; }
+    }
+    return doc;
+  }
+  async function change(op) {                         // leaders: apply one operation and save, again on the newest copy if needed
+    const c = cur();
+    for (let tries = 0; tries < 3; tries++) {
+      const { data: row } = await sb.from('plans').select('doc, version').eq('church_id', c.church_id).maybeSingle();
+      const doc = withBase(row?.doc?.services ? row.doc : empty()), v = row?.version || 0;
+      const err = applyPlanOp(doc, structuredClone(op)); if (err) { alert(err); return false; }
+      const q = row ? sb.from('plans').update({ doc, version: v + 1, updated_at: new Date().toISOString(), updated_by: me.id }).eq('church_id', c.church_id).eq('version', v).select('version')
+        : sb.from('plans').insert({ church_id: c.church_id, doc, version: 1, updated_by: me.id }).select('version');
+      const { data, error } = await q;
+      if (!error && data?.length) {
+        G.doc = doc; G.version = data[0].version;
+        sb.from('plan_ops').insert({ church_id: c.church_id, op, user_id: me.id }).then(() => {});
+        drawProgram(); return true;
+      }
+    }
+    alert('Altcineva a schimbat programul în același timp. Mai încearcă o dată.'); program(); return false;
+  }
+
+  function drawProgram() {
+    const doc = G.doc, lead = canPlan(), today = new Date(Date.now() - 864e5).toISOString();
+    $('gTools').hidden = !lead;
+    const list = doc.services.filter(s => s.date >= today);
+    // where I serve
+    const mine = [];
+    for (const s of list) for (const [k, a] of Object.entries(s.assignments || {})) if (G.me && a.volunteer === G.me) {
+      const pid = k.split('#')[0], d = doc.departments.find(x => x.positions.some(p => p.id === pid)), p = d?.positions.find(x => x.id === pid);
+      mine.push({ s, k, a, what: p ? p.name : 'Slujești' });
+    }
+    $('gMineCard').hidden = !mine.length;
+    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine"><div class="x"><b>${esc(what)}</b><br><small class="mute">${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small></div>
+      ${a.status === 'confirmed' ? '<span class="st confirmed">✓ Vin</span>' : a.status === 'declined' ? '<span class="st declined">✕ Nu pot</span>' : ''}
+      <button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>✓ Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>✕ Nu pot</button></div>`).join('');
+    // the services
+    $('gList').innerHTML = list.map(s => serviceCard(s, lead)).join('')
+      || `<div class="card"><p class="mute" style="margin:0">Încă nu e niciun serviciu planificat.${lead ? ' Apasă „＋ Următoarele 8 duminici”.' : ''}</p></div>`;
+    // my days
+    const v = doc.volunteers.find(x => x.id === G.me), away = (v?.away || []).filter(d => d >= today.slice(0, 10));
+    $('gAway').innerHTML = away.map(d => `<span class="chip">${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))} <a href="#" data-unaway="${d}" style="color:var(--no);text-decoration:none">✕</a></span>`).join('') || '<span class="mute">Nicio zi blocată.</span>';
+    $('gAway').parentElement.hidden = !G.me;
+  }
+  function serviceCard(s, lead) {
+    const doc = G.doc, d = day(s.date), open = G.open.has(s.id);
+    const items = (s.items || []).map((it, i) => `<div class="it${it.kind === 'song' ? ' song' : ''}"><span class="k">${KIND[it.kind] || '•'}</span>
+      <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? ` <small>· ${esc(it.key)}</small>` : ''}${it.leader ? ` <small>· ${esc(it.leader)}</small>` : ''}${it.minutes ? ` <small>· ${it.minutes} min</small>` : ''}</div>
+      ${lead ? `<button data-mv="-1" data-i="${i}" data-s="${s.id}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" data-s="${s.id}" title="Mai jos">↓</button><button data-rm="${i}" data-s="${s.id}" class="ghost" title="Scoate">✕</button>` : ''}</div>`).join('')
+      || '<p class="mute" style="margin:4px 0">Programul nu e scris încă.</p>';
+    const add = lead ? `<div class="row" style="margin-top:8px"><select id="k_${s.id}">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${KIND[k]} ${n}</option>`).join('')}</select>
+      <input id="t_${s.id}" list="songTitles" placeholder="Titlul (cântările se aleg din bibliotecă)"><button data-additem="${s.id}">＋ Adaugă</button></div>` : '';
+    const team = doc.departments.map(dep => {
+      const slots = dep.positions.flatMap(p => Array.from({ length: p.needed }, (_, i) => ({ p, k: `${p.id}#${i}` })));
+      const rows = slots.map(({ p, k }) => {
+        const a = s.assignments?.[k];
+        if (!lead) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}</span>${stat(a)}</div>` : '';
+        const ppl = G.people.slice().sort((x, y) => ((y.departments || []).includes(dep.name) - (x.departments || []).includes(dep.name)) || (x.name || '').localeCompare(y.name || '', 'ro'));
+        return `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w"><select data-assign="${s.id}" data-k="${esc(k)}"><option value="">— liber —</option>${ppl.map(x =>
+          `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${esc(x.name)}${(x.departments || []).includes(dep.name) ? '' : ' ·'}</option>`).join('')}</select></span>${a ? stat(a) : ''}</div>`;
+      }).join('');
+      return rows ? `<h3 style="color:${esc(dep.color)}">${esc(dep.name)}</h3>${rows}` : '';
+    }).join('') || '<p class="mute">Nimeni pus încă.</p>';
+    const warn = lead ? serviceWarnings(doc, s).filter(w => !/neocupate/.test(w)) : [];
+    return `<details class="card svc" data-svc="${s.id}"${open ? ' open' : ''}><summary><span class="d"><small>${esc(d.toLocaleDateString('ro-RO', { weekday: 'short' }))}</small><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString('ro-RO', { month: 'short' }))}</small></span>
+      <span class="t"><b>${esc(s.title)}</b><small>${fmtTime(s.date)} · ${(s.items || []).length} momente · ${Object.keys(s.assignments || {}).length} oameni</small></span><span class="mute">▾</span></summary>
+      <div class="in"><h3>Programul</h3>${items}${add}<h3>Echipa</h3>${team}${warn.length ? `<p class="warn">⚠ ${warn.map(esc).join('<br>⚠ ')}</p>` : ''}
+      ${lead ? `<div class="row" style="margin-top:14px"><input id="n_${s.id}" value="${esc(s.title)}" maxlength="80"><button data-rename="${s.id}">Redenumește</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge serviciul</button></div>` : ''}</div></details>`;
+  }
+  const stat = a => `<span class="st ${a.status}">${a.status === 'confirmed' ? '✓' : a.status === 'declined' ? '✕ nu poate' : '⏳'}</span>`;
+
+  $('gList').addEventListener('toggle', e => { const d = e.target.closest('[data-svc]'); if (d) d.open ? G.open.add(d.dataset.svc) : G.open.delete(d.dataset.svc); }, true);
+  $('gList').addEventListener('change', e => {
+    const sel = e.target.closest('[data-assign]'); if (!sel) return;
+    const [position, slot] = sel.dataset.k.split('#');
+    change({ op: 'assign', id: sel.dataset.assign, position, slot: +slot, volunteer: sel.value || null });
+  });
+  $('gList').addEventListener('click', async e => {
+    const b = e.target.closest('button,[data-song]'); if (!b) return;
+    const s = G.doc.services.find(x => x.id === b.dataset.s || x.id === b.dataset.additem || x.id === b.dataset.rename || x.id === b.dataset.del);
+    if (b.dataset.song !== undefined) return openSong(b.dataset.song, b.dataset.title);
+    if (b.dataset.mv && s) { const it = s.items.slice(), i = +b.dataset.i, j = i + +b.dataset.mv; if (j < 0 || j >= it.length) return; [it[i], it[j]] = [it[j], it[i]]; return change({ op: 'setItems', id: s.id, items: it }); }
+    if (b.dataset.rm && s) { const it = s.items.slice(); it.splice(+b.dataset.rm, 1); return change({ op: 'setItems', id: s.id, items: it }); }
+    if (b.dataset.additem && s) {
+      const kind = $('k_' + s.id).value, title = $('t_' + s.id).value.trim(); if (!title && kind === 'song') return $('t_' + s.id).focus();
+      const song = kind === 'song' ? lib.find(x => x.title.toLowerCase() === title.toLowerCase()) : null;
+      return change({ op: 'setItems', id: s.id, items: [...s.items, { kind, title: title || KNAME[kind], ...(song ? { songId: song.local_id, key: song.key || '' } : {}) }] });
+    }
+    if (b.dataset.rename && s) return change({ op: 'updateService', id: s.id, title: $('n_' + s.id).value });
+    if (b.dataset.del && s && confirm(`Ștergi „${s.title}” din ${day(s.date).toLocaleDateString('ro-RO')}?`)) return change({ op: 'deleteService', id: s.id });
+  });
+  $('gMine').onclick = async e => {
+    const b = e.target.closest('[data-ans]'); if (!b) return; b.disabled = true;
+    const { data, error } = await sb.rpc('reverb_plan_answer', { c: cur().church_id, service: b.dataset.s, place: b.dataset.k, answer: b.dataset.ans });
+    if (error || data) alert(data || 'N-a mers. Verifică internetul.'); program();
+  };
+  async function setAway(days) {
+    const { data, error } = await sb.rpc('reverb_plan_away', { c: cur().church_id, days });
+    if (error || data) alert(data || 'N-a mers. Verifică internetul.'); program();
+  }
+  $('gAwayAdd').onclick = () => { const d = $('gAwayDay').value; if (!d) return $('gAwayDay').focus();
+    const v = G.doc.volunteers.find(x => x.id === G.me); setAway([...(v?.away || []), d]); $('gAwayDay').value = ''; };
+  $('gAway').onclick = e => { const a = e.target.closest('[data-unaway]'); if (!a) return; e.preventDefault();
+    const v = G.doc.volunteers.find(x => x.id === G.me); setAway((v?.away || []).filter(d => d !== a.dataset.unaway)); };
+  $('gSundays').onclick = () => change({ op: 'addSundays', count: 8, time: '10:00' });
+  $('gAdd').onclick = () => { const d = $('gDate').value; if (!d) return $('gDate').focus();
+    change({ op: 'addService', date: new Date(d).toISOString(), title: $('gTitle').value.trim() || 'Serviciu' }).then(ok => { if (ok) { $('gDate').value = ''; $('gTitle').value = ''; } }); };
+
   // 4) 🎵 the library: every song this person may read (his church + the library of his network; the rule is in the
   // database). The list is small (titles); the words come only when a song is opened.
-  let lib = [], cur = null, want = '', withChords = true, whole = true;
+  let lib = [], cur_ = null, want = '', withChords = true, whole = true;
   const fold = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   async function songs() {
     lib = [];
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb.from('songs').select('id, title, author, key').order('title').range(from, from + 999);
+      const { data, error } = await sb.from('songs').select('id, local_id, title, author, key').order('title').range(from, from + 999);
       if (error || !data?.length) break; lib.push(...data); if (data.length < 1000) break;
     }
-    $('vSongs').hidden = !lib.length; listSongs();
+    listSongs();
+    $('songTitles').innerHTML = lib.map(x => `<option value="${esc(x.title)}">`).join('');
   }
   function listSongs() {
     const q = fold($('sFind').value.trim()), hit = lib.filter(x => !q || fold(x.title + ' ' + (x.author || '')).includes(q));
@@ -249,19 +496,23 @@
       + (hit.length > 200 ? `<p class="mute">…și încă ${hit.length - 200}. Scrie mai mult din titlu.</p>` : '') || '<p class="mute">Nicio cântare găsită.</p>';
   }
   $('sFind').oninput = listSongs;
-  $('sList').onclick = async e => {
-    const r = e.target.closest('.srow'); if (!r) return;
-    const { data, error } = await sb.from('songs').select('id, title, author, key, body, arrangement').eq('id', r.dataset.id).single();
+  $('sList').onclick = e => { const r = e.target.closest('.srow'); if (r) openSong(null, null, r.dataset.id); };
+  // a song by its row, or by the program's song id (the id in the desktop library), or by its title
+  async function openSong(localId, title, rowId) {
+    let q = sb.from('songs').select('id, title, author, key, body, arrangement');
+    const hit = rowId ? { id: rowId } : lib.find(x => localId && x.local_id === localId) || lib.find(x => title && x.title.toLowerCase() === String(title).toLowerCase());
+    if (!hit) return alert('Cântarea nu e în biblioteca online.');
+    const { data, error } = await q.eq('id', hit.id).single();
     if (error || !data) return alert('Nu pot deschide cântarea. Verifică internetul.');
-    cur = data; want = originalKey(cur.key, cur.body) || '';
+    cur_ = data; want = originalKey(cur_.key, cur_.body) || '';
     $('sKey').innerHTML = want ? KEYS.filter(k => k.endsWith('m') === want.endsWith('m')).map(k => `<option${k === want ? ' selected' : ''}>${k}</option>`).join('') : '<option>—</option>';
-    $('sKey').disabled = !want; $('sTitle').textContent = cur.title; $('vSong').hidden = false; document.body.style.overflow = 'hidden';
+    $('sKey').disabled = !want; $('sTitle').textContent = cur_.title; $('vSong').hidden = false; document.body.style.overflow = 'hidden';
     history.pushState({ song: 1 }, ''); drawSong();
-  };
+  }
   function drawSong() {
-    const orig = originalKey(cur.key, cur.body), steps = want && orig ? keyDistance(orig, want) : 0;
-    const body = transpose(cur.body, steps, prefersFlats(want || 'C'));
-    const slides = toSlides(arrange(parseSong(body), cur.arrangement), 4);
+    const orig = originalKey(cur_.key, cur_.body), steps = want && orig ? keyDistance(orig, want) : 0;
+    const body = transpose(cur_.body, steps, prefersFlats(want || 'C'));
+    const slides = toSlides(arrange(parseSong(body), cur_.arrangement), 4);
     let last = null;
     const line = l => /\[/.test(l) && !stripChords(l).trim()
       ? (withChords ? `<div class="only">${esc(l.match(/\[([^\]]*)\]/g).map(x => x.slice(1, -1)).join('  '))}</div>` : '')
@@ -272,13 +523,13 @@
     el.scrollTop = 0;
     if (whole) requestAnimationFrame(() => fitWhole(el, { own: true, max: 40 }));
   }
-  const closeSong = () => { $('vSong').hidden = true; document.body.style.overflow = ''; cur = null; };
+  const closeSong = () => { $('vSong').hidden = true; document.body.style.overflow = ''; cur_ = null; };
   $('sBack').onclick = () => history.back();
   addEventListener('popstate', () => { if (!$('vSong').hidden) closeSong(); });
   $('sKey').onchange = () => { want = $('sKey').value; drawSong(); };
   $('sChords').onclick = () => { withChords = !withChords; $('sChords').classList.toggle('on', withChords); drawSong(); };
   $('sFit').onclick = () => { whole = !whole; $('sFit').classList.toggle('on', whole); drawSong(); };
-  addEventListener('resize', () => { if (cur && whole) drawSong(); });
+  addEventListener('resize', () => { if (cur_ && whole) drawSong(); });
   $('out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
   sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') show('vDoor'); });
   load();
