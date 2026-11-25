@@ -107,6 +107,7 @@
   .bell .bi{width:32px;height:32px;border-radius:9px;background:var(--fill-2);display:grid;place-items:center;color:var(--text);flex:none}
   .bell div{flex:1;min-width:0} .bell b{display:block;font-size:14px;font-weight:600} .bell small{display:block;color:var(--text-2);font-size:13px;line-height:1.4;margin-top:1px}
   .bell button{flex:none;padding:7px 12px;font-size:13px;align-self:center}
+  .autoout{margin:var(--sp-2) 0 0;font-size:13.5px;color:var(--text-2);line-height:1.45} .autoout b{color:var(--text);font-weight:600}
   .bell+.bell{border-top:0;margin-top:calc(-1 * var(--sp-2))}
   .paste{margin-top:var(--sp-4)} .paste label{display:block;font-size:13.5px;color:var(--text-2);margin-bottom:8px}
 
@@ -278,7 +279,8 @@
     <div id="vProg">
       <div class="sect"><h2>Servicii</h2><small id="gCount"></small></div>
       <div class="composer" id="gTools" hidden>
-        <div class="toolbar"><input id="gDate" type="datetime-local" aria-label="Data și ora"><input id="gTitle" placeholder="Numele serviciului" maxlength="80"><button id="gAdd" class="acc">Adaugă</button><button id="gSundays" title="Adaugă următoarele 8 duminici">8 duminici</button></div>
+        <div class="toolbar"><input id="gDate" type="datetime-local" aria-label="Data și ora"><input id="gTitle" placeholder="Numele serviciului" maxlength="80"><button id="gAdd" class="acc">Adaugă</button><button id="gSundays" title="Adaugă următoarele 8 duminici">8 duminici</button><button id="gAuto" title="Pune oamenii pe locurile libere din următoarele 5 săptămâni">✦ Programează echipa</button></div>
+        <p id="gAutoOut" class="autoout" hidden></p>
         <div id="hubKeyBox" hidden><div class="hubline"><svg class="i" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><span>Programul de aici și Planificarea de pe calculatorul bisericii sunt unul singur. Leagă calculatorul o dată (⚙ → Reverb online).</span><button id="hubKey">Leagă calculatorul</button></div>
           <div id="hubKeyOut" class="linkbox" hidden></div></div>
       </div>
@@ -840,19 +842,20 @@ Refren:
     }
     return doc;
   }
-  async function change(op) {                         // leaders: apply one operation and save, again on the newest copy if needed
-    const c = cur();
+  async function change(op) {                         // leaders: apply one operation (or a list) and save, again on the newest copy if needed
+    const c = cur(), list = [].concat(op);
     for (let tries = 0; tries < 3; tries++) {
       const { data: row } = await sb.from('plans').select('doc, version').eq('church_id', c.church_id).maybeSingle();
       const doc = withBase(row?.doc?.services ? row.doc : empty()), v = row?.version || 0;
-      const err = applyPlanOp(doc, structuredClone(op)); if (err) { alert(err); return false; }
+      const done = list.map(o => structuredClone(o));
+      for (const o of done) { const err = applyPlanOp(doc, o); if (err) { alert(err); return false; } }
       const q = row ? sb.from('plans').update({ doc, version: v + 1, updated_at: new Date().toISOString(), updated_by: me.id }).eq('church_id', c.church_id).eq('version', v).select('version')
         : sb.from('plans').insert({ church_id: c.church_id, doc, version: 1, updated_by: me.id }).select('version');
       const { data, error } = await q;
       if (!error && data?.length) {
         G.doc = doc; G.version = data[0].version;
-        sb.from('plan_ops').insert({ church_id: c.church_id, op, user_id: me.id }).then(() => {});
-        drawProgram(); if (/^(assign|addSundays|addService|setItems)$/.test(op.op)) notifyScan(c.church_id); return true;
+        sb.from('plan_ops').insert(list.map(o => ({ church_id: c.church_id, op: o, user_id: me.id }))).then(() => {});
+        drawProgram(); if (list.some(o => /^(assign|addSundays|addService|setItems|autoAssign)$/.test(o.op))) notifyScan(c.church_id); return done;
       }
     }
     alert('Altcineva a schimbat programul în același timp. Mai încearcă o dată.'); program(); return false;
@@ -919,7 +922,7 @@ Refren:
       <div class="in"><div><h3>Programul${mins ? `<small>${mins} min</small>` : ''}</h3>${prog}${add}</div><div><h3>Echipa${slotsAll.length ? `<small>${ok} confirmați din ${slotsAll.length}</small>` : ''}</h3>${team}</div>
       ${warn.length ? `<p class="warn">${warn.map(esc).join('<br>')}</p>` : ''}
       ${lead ? `<div class="svcbar">${edit ? `<input id="n_${s.id}" value="${esc(s.title)}" maxlength="80" style="flex:1 1 160px"><button data-rename="${s.id}">Salvează numele</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge</button><span class="sp"></span>` : '<span class="sp"></span>'}
-        <button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : 'Editează'}</button></div>` : ''}</div></details>`;
+        ${slotsAll.length > filled ? `<button data-auto="${s.id}" title="Pune oamenii pe locurile libere">✦ Completează echipa</button>` : ''}<button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : 'Editează'}</button></div>` : ''}</div></details>`;
   }
   const stat = a => `<span class="st ${a.status}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : 'În așteptare'}</span>`;
 
@@ -941,6 +944,7 @@ Refren:
       const song = kind === 'song' ? lib.find(x => x.title.toLowerCase() === title.toLowerCase()) : null;
       return change({ op: 'setItems', id: s.id, items: [...s.items, { kind, title: title || KNAME[kind], ...(song ? { songId: song.local_id, key: song.key || '' } : {}) }] });
     }
+    if (b.dataset.auto) { const sv = G.doc.services.find(x => x.id === b.dataset.auto); return autoTeam(sv ? [sv] : []); }
     if (b.dataset.rename && s) return change({ op: 'updateService', id: s.id, title: $('n_' + s.id).value });
     if (b.dataset.del && s && confirm(`Ștergi „${s.title}” din ${day(s.date).toLocaleDateString('ro-RO')}?`)) return change({ op: 'deleteService', id: s.id });
   });
@@ -958,6 +962,26 @@ Refren:
   $('gAway').onclick = e => { const a = e.target.closest('[data-unaway]'); if (!a) return; e.preventDefault();
     const v = G.doc.volunteers.find(x => x.id === G.me); setAway((v?.away || []).filter(d => d !== a.dataset.unaway)); };
   $('gSundays').onclick = () => change({ op: 'addSundays', count: 8, time: '10:00' });
+  // ✦ the scheduling agent: fills the empty places fairly (the same rules as the church computer's assistant, fill_team):
+  //   only people of that department, not on a day they blocked, under their monthly limit, not twice in one service;
+  //   whoever served least in the last 8 weeks first. Nobody already placed is moved. Everyone placed gets
+  //   „Ai fost programat” and answers Pot / Nu pot; a „Nu pot” frees the place for the next run.
+  async function autoTeam(svcs) {
+    if (!svcs.length) return;
+    const done = await change(svcs.map(s => ({ op: 'autoAssign', id: s.id }))); if (!done) return;
+    const n = done.reduce((t, o) => t + (o.filled || 0), 0);
+    const slots = G.doc.departments.reduce((t, d) => t + d.positions.reduce((u, p) => u + p.needed, 0), 0);
+    const empty = G.doc.services.filter(s => svcs.some(x => x.id === s.id)).reduce((t, s) => t + slots - Object.keys(s.assignments || {}).length, 0);
+    $('gAutoOut').hidden = false;
+    $('gAutoOut').innerHTML = (n ? `<b>Am programat ${n} ${n === 1 ? 'loc' : n % 100 >= 20 || n % 100 === 0 ? 'de locuri' : 'locuri'}</b> în ${svcs.length} ${svcs.length === 1 ? 'serviciu' : 'servicii'}. Fiecare om primește notificarea și răspunde „Pot” sau „Nu pot”.`
+      : '<b>N-am găsit pe nimeni nou de pus.</b>') + (empty ? ` Au rămas ${empty} ${empty === 1 ? 'loc liber' : empty % 100 >= 20 ? 'de locuri libere' : 'locuri libere'}: nimeni potrivit în departament, liber în ziua aceea și sub limita lunară.` : ' Toate locurile sunt ocupate.');
+    if (svcs.length === 1) G.open.add(svcs[0].id);
+    drawProgram();
+  }
+  $('gAuto').onclick = () => { const until = new Date(Date.now() + 35 * 864e5).toISOString(), now = new Date().toISOString();
+    const list = G.doc.services.filter(s => s.date >= now && s.date <= until);
+    if (!list.length) return alert('Nu e niciun serviciu în următoarele 5 săptămâni. Adaugă întâi serviciile (ex. „8 duminici”).');
+    if (confirm(`Programez echipa pentru ${list.length} ${list.length === 1 ? 'serviciu' : 'servicii'} din următoarele 5 săptămâni? Pun oameni doar pe locurile libere; cine e deja pus rămâne.`)) autoTeam(list); };
   $('gAdd').onclick = () => { const d = $('gDate').value; if (!d) return $('gDate').focus();
     change({ op: 'addService', date: new Date(d).toISOString(), title: $('gTitle').value.trim() || 'Serviciu' }).then(ok => { if (ok) { $('gDate').value = ''; $('gTitle').value = ''; } }); };
 

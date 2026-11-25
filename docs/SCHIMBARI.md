@@ -1,6 +1,14 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · Reverb online · ✦ agentul care programează echipa
+- **Planific din link (lideri).** Înainte: liderul punea fiecare om de mână, loc cu loc. Acum: **✦ Programează echipa**
+  (sus, lângă „8 duminici”) completează locurile libere din următoarele 5 săptămâni, iar **✦ Completează echipa** pe
+  fiecare serviciu doar pe acela. Aceleași reguli ca asistentul de pe calculatorul bisericii (`fill_team` /
+  `autoAssign` din plan.js): doar oameni din departament, nu în zilele blocate, sub limita lunară, nu de două ori în
+  același serviciu, întâi cine a slujit mai puțin în ultimele 8 săptămâni; cine e deja pus rămâne. Fiecare om pus
+  primește notificarea și răspunde Pot / Nu pot. Arată la final câte locuri a pus și câte au rămas libere și de ce.
+
 ## 2026-11-25 · 2026.11.25.6 · actualizările pe Windows
 - **Windows nu primea actualizări.** Înainte: Windows nu lasă redenumit folderul din care rulează aplicația
   (Documente/Betleem/update/hub), deci fiecare actualizare se oprea cu EPERM (în erori.log). Acum: dacă redenumirea nu
