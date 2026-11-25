@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · Reverb online · Planific curat și profesionist
+- Înainte: fiecare serviciu avea toate butoanele și listele de oameni deschise, cu iconițe peste tot.
+  Acum: lista e calmă: data, numele, ora, câte cântări, câți oameni pe câte locuri (cu bară de confirmări). Deschis:
+  Programul numerotat (titlu, ton, tipul momentului, minute) și Echipa pe departamente (punct colorat, „Confirmat /
+  În așteptare / Nu poate”). Liderii apasă „✎ Editează” ca să mute/scoată momente, să pună oameni și să redenumească;
+  „Gata” închide editarea. Pe calculator, Programul și Echipa stau una lângă alta.
+
 ## 2026-11-25 · 2026.11.25.1 · numele bisericii în față, Reverb discret; QR fără Predicator
 - **Numele.** Înainte: aplicația se prezenta „Reverb”, cu numele bisericii mic. Acum: fiecare biserică e întâmpinată cu
   numele ei („Bine ai venit în biserica Betleem”, cu logoul ei dacă îl are); Reverb rămâne discret: „powered by Reverb”

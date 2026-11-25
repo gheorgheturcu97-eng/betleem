@@ -57,20 +57,39 @@
   /* tabs: 🗓 Program · 🎵 Cântări · 👥 Oameni */
   .tabs{display:flex;gap:6px;margin:0 0 14px;position:sticky;top:0;z-index:3;background:var(--bg);padding:8px 0}
   .tabs button{flex:1;padding:12px 6px;font-size:15px} .tabs button.on{background:var(--acc);border-color:transparent;color:#fff}
-  /* 🗓 the program */
-  .svc{padding:0;overflow:hidden} .svc>summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;gap:12px;align-items:center}
-  .svc>summary::-webkit-details-marker{display:none} .svc>summary .d{min-width:54px;text-align:center;line-height:1.1}
-  .svc>summary .d b{display:block;font:800 24px Syne,Montserrat,sans-serif} .svc>summary .d small{color:var(--mute);font-size:12px;text-transform:uppercase}
-  .svc>summary .t{flex:1;min-width:0} .svc>summary .t b{display:block} .svc>summary .t small{color:var(--mute)}
-  .svc .in{padding:0 18px 18px;border-top:1px solid var(--line)} .svc h3{font:700 14px Montserrat,sans-serif;color:var(--sand);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px}
-  .it{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)} .it:first-of-type{border-top:0}
-  .it .k{width:24px;text-align:center} .it .x{flex:1;min-width:0} .it .x small{color:var(--mute)} .it.song .x b{text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);cursor:pointer}
-  .it button{padding:6px 9px;font-size:13px}
-  .slot{display:flex;gap:10px;align-items:center;padding:6px 0} .slot .p{flex:0 0 42%;color:var(--mute);font-size:14px} .slot .w{flex:1;min-width:0}
-  .slot select{padding:8px 10px;font-size:14px} .st{font-size:13px;white-space:nowrap} .st.confirmed{color:var(--ok)} .st.declined{color:var(--no)} .st.pending{color:var(--sand)}
-  .mine{display:flex;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)} .mine:first-of-type{border-top:0} .mine .x{flex:1;min-width:0}
-  .mine button{padding:9px 12px} .mine button.yes{background:rgba(123,216,143,.18)} .mine button.no{background:rgba(255,138,122,.15)}
-  .warn{color:var(--sand);font-size:13px;margin-top:8px}
+  /* 🗓 the program: quiet, clear, one look (2026-11-25) */
+  .sect{display:flex;align-items:baseline;justify-content:space-between;margin:22px 2px 10px} .sect h2{margin:0;font:700 13px Montserrat,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+  .sect small{color:var(--mute);font-size:13px}
+  .svc{padding:0;overflow:hidden;margin-bottom:10px} .svc>summary{list-style:none;cursor:pointer;padding:14px 16px;display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center}
+  .svc>summary::-webkit-details-marker{display:none} .svc[open]>summary{border-bottom:1px solid var(--line)}
+  .dt{text-align:center;line-height:1;border-right:1px solid var(--line);padding-right:14px}
+  .dt small{display:block;font:600 11px Montserrat,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)} .dt b{display:block;font:700 26px Montserrat,sans-serif;margin:4px 0;font-variant-numeric:tabular-nums}
+  .ttl{min-width:0} .ttl b{display:block;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .ttl small{color:var(--mute);font-size:13px}
+  .fill{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+  .bar{width:56px;height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden} .bar i{display:block;height:100%;background:var(--ok);border-radius:4px}
+  .svc .in{padding:4px 16px 16px;display:grid;gap:4px 28px} @media (min-width:640px){.svc .in{grid-template-columns:1fr 1fr}}
+  .svc h3{display:flex;align-items:center;justify-content:space-between;font:700 12px Montserrat,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:16px 0 4px}
+  .svc h3 small{font-weight:500;letter-spacing:0;text-transform:none}
+  .it{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)} .it:first-of-type{border-top:0}
+  .it .n{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;text-align:right} .it .x{min-width:0} .it .x b{font-weight:600}
+  .it .x small{display:block;color:var(--mute);font-size:12.5px;margin-top:1px} .it .m{color:var(--mute);font-size:12.5px;white-space:nowrap}
+  .it.song .x b{cursor:pointer} .it.song .x b:hover{text-decoration:underline}
+  .kind{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--sand)} .key{display:inline-block;margin-left:6px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.07);font:600 12px Montserrat,sans-serif;color:var(--fg)}
+  .ed{display:flex;gap:4px} .ed button{padding:5px 8px;font-size:12px;border-radius:8px}
+  .dep{display:flex;align-items:center;gap:8px;margin:14px 0 2px;font-weight:600;font-size:14px} .dep i{width:8px;height:8px;border-radius:50%} .dep small{margin-left:auto;color:var(--mute);font-weight:500;font-size:12px}
+  .slot{display:grid;grid-template-columns:minmax(84px,32%) 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px} .dep+.slot{border-top:0}
+  .slot .p{color:var(--mute)} .slot .w{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .slot .w.free{color:rgba(255,255,255,.28)}
+  .slot select{padding:7px 9px;font-size:14px;border-radius:9px} .slot select+.st{font-size:0;gap:0}   /* editing: only the coloured dot */
+  .st{display:inline-flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;color:var(--mute)} .st:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--sand)}
+  .st.confirmed:before{background:var(--ok)} .st.declined{color:var(--no)} .st.declined:before{background:var(--no)}
+  .svcbar{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .svcbar .sp{flex:1} .svcbar button{padding:8px 12px;font-size:13px}
+  .mine{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)} .mine:first-of-type{border-top:0}
+  .mine .x b{font-weight:600} .mine .x small{display:block;color:var(--mute);font-size:13px} .mine .act{display:flex;gap:6px;align-items:center}
+  .mine button{padding:8px 12px;font-size:13px} .mine button.yes{border-color:rgba(123,216,143,.5)} .mine button.no{border-color:rgba(255,138,122,.45)}
+  .warn{grid-column:1/-1;color:var(--sand);font-size:13px;margin:8px 0 0}
+  .addit{display:grid;grid-template-columns:auto 1fr auto;gap:6px;margin-top:8px} .addit select{width:auto}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .toolbar>*{flex:0 1 auto} .toolbar input{width:auto;flex:1 1 150px}
   /* 🎵 the library: any song, to rehearse on the phone (not tied to the program) */
   .sq{display:flex;gap:8px;margin-bottom:10px} .slist{max-height:56vh;overflow:auto;margin:0 -6px}
   .srow{display:flex;align-items:center;gap:10px;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer} .srow:first-child{border-top:0}
@@ -119,15 +138,14 @@
 
     <div id="vProg">
       <div class="row" id="gChurchRow" hidden style="margin-bottom:12px"><select id="gChurch"></select></div>
-      <div class="card" id="gMineCard" hidden><h2>Unde slujesc eu</h2><div id="gMine"></div></div>
+      <div id="gMineCard" hidden><div class="sect"><h2>Unde slujesc eu</h2></div><div class="card"><div id="gMine"></div></div></div>
       <div class="card" id="gTools" hidden>
-        <h2>Planifică</h2>
-        <div class="row"><button id="gSundays">＋ Următoarele 8 duminici</button></div>
-        <div class="row" style="margin-top:8px"><input id="gDate" type="datetime-local"><input id="gTitle" placeholder="Numele (ex. Seară de rugăciune)" maxlength="80"><button id="gAdd" class="acc">＋ Serviciu</button></div>
+        <div class="toolbar"><input id="gDate" type="datetime-local" aria-label="Data și ora"><input id="gTitle" placeholder="Numele serviciului" maxlength="80"><button id="gAdd" class="acc">＋ Serviciu</button><button id="gSundays" title="Adaugă următoarele 8 duminici">＋ 8 duminici</button></div>
       </div>
+      <div class="sect"><h2>Servicii</h2><small id="gCount"></small></div>
       <datalist id="songTitles"></datalist><div id="gList"><p class="mute">Se încarcă programul…</p></div>
-      <div class="card"><h2>Zile în care nu pot</h2><p class="mute" style="margin-top:0">Liderii nu te pun în zilele astea.</p>
-        <div class="chips" id="gAway"></div><div class="row" style="margin-top:10px"><input id="gAwayDay" type="date"><button id="gAwayAdd">＋ Adaugă ziua</button></div></div>
+      <div><div class="sect"><h2>Zile în care nu pot</h2><small>liderii nu te pun în ele</small></div><div class="card">
+        <div class="chips" id="gAway"></div><div class="row" style="margin-top:10px"><input id="gAwayDay" type="date"><button id="gAwayAdd">＋ Adaugă ziua</button></div></div></div>
     </div>
 
 
@@ -336,7 +354,7 @@
   const POS = { 'Închinare': [['Lider închinare'], ['Vocal', 2], ['Chitară'], ['Clape'], ['Bas'], ['Tobe']], 'Media': [['Proiecție'], ['Sunet'], ['Live stream']],
     'Copii': [['Învățător', 2]], 'Asimilare și ospitalitate': [['Primire la ușă', 2], ['Cafea']], 'Tineret': [['Lider tineret']] };
   const COLORS = ['#f5b301', '#3fa7ff', '#ff7a59', '#2ecc71', '#c58cff', '#ff5aa5'];
-  let G = { doc: null, version: 0, people: [], me: null, deps: [], open: new Set() };
+  let G = { doc: null, version: 0, people: [], me: null, deps: [], open: new Set(), edit: new Set() };
   const cur = () => churches.find(c => c.church_id === $('gChurch').value) || churches[0];
   const canPlan = () => ['leader', 'coordinator'].includes(cur()?.role);
   const empty = () => ({ services: [], departments: [], volunteers: [] });
@@ -402,43 +420,53 @@
       mine.push({ s, k, a, what: p ? p.name : 'Slujești' });
     }
     $('gMineCard').hidden = !mine.length;
-    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine"><div class="x"><b>${esc(what)}</b><br><small class="mute">${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small></div>
-      ${a.status === 'confirmed' ? '<span class="st confirmed">✓ Vin</span>' : a.status === 'declined' ? '<span class="st declined">✕ Nu pot</span>' : ''}
-      <button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>✓ Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>✕ Nu pot</button></div>`).join('');
+    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small></div>
+      <div class="act">${a.status === 'pending' ? '' : stat(a)}<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>Nu pot</button></div></div>`).join('');
     // the services
+    $('gCount').textContent = list.length ? `${list.length} ${list.length === 1 ? 'serviciu' : 'servicii'}` : '';
     $('gList').innerHTML = list.map(s => serviceCard(s, lead)).join('')
       || `<div class="card"><p class="mute" style="margin:0">Încă nu e niciun serviciu planificat.${lead ? ' Apasă „＋ Următoarele 8 duminici”.' : ''}</p></div>`;
     // my days
     const v = doc.volunteers.find(x => x.id === G.me), away = (v?.away || []).filter(d => d >= today.slice(0, 10));
     $('gAway').innerHTML = away.map(d => `<span class="chip">${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))} <a href="#" data-unaway="${d}" style="color:var(--no);text-decoration:none">✕</a></span>`).join('') || '<span class="mute">Nicio zi blocată.</span>';
-    $('gAway').parentElement.hidden = !G.me;
+    $('gAway').closest('.card').parentElement.hidden = !G.me;
   }
   function serviceCard(s, lead) {
-    const doc = G.doc, d = day(s.date), open = G.open.has(s.id);
-    const items = (s.items || []).map((it, i) => `<div class="it${it.kind === 'song' ? ' song' : ''}"><span class="k">${KIND[it.kind] || '•'}</span>
-      <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? ` <small>· ${esc(it.key)}</small>` : ''}${it.leader ? ` <small>· ${esc(it.leader)}</small>` : ''}${it.minutes ? ` <small>· ${it.minutes} min</small>` : ''}</div>
-      ${lead ? `<button data-mv="-1" data-i="${i}" data-s="${s.id}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" data-s="${s.id}" title="Mai jos">↓</button><button data-rm="${i}" data-s="${s.id}" class="ghost" title="Scoate">✕</button>` : ''}</div>`).join('')
-      || '<p class="mute" style="margin:4px 0">Programul nu e scris încă.</p>';
-    const add = lead ? `<div class="row" style="margin-top:8px"><select id="k_${s.id}">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${KIND[k]} ${n}</option>`).join('')}</select>
-      <input id="t_${s.id}" list="songTitles" placeholder="Titlul (cântările se aleg din bibliotecă)"><button data-additem="${s.id}">＋ Adaugă</button></div>` : '';
+    const doc = G.doc, d = day(s.date), open = G.open.has(s.id), edit = lead && G.edit.has(s.id);
+    const items = s.items || [], mins = items.reduce((t, it) => t + (it.minutes || 0), 0), songs = items.filter(it => it.kind === 'song').length;
+    const slotsAll = doc.departments.flatMap(dep => dep.positions.flatMap(p => Array.from({ length: p.needed }, (_, i) => `${p.id}#${i}`)));
+    const asg = s.assignments || {}, filled = slotsAll.filter(k => asg[k]).length, ok = slotsAll.filter(k => asg[k]?.status === 'confirmed').length;
+    const meta = [fmtTime(s.date), mins ? mins + ' min' : '', songs ? songs + (songs === 1 ? ' cântare' : ' cântări') : ''].filter(Boolean).join(' · ');
+    const prog = items.map((it, i) => `<div class="it${it.kind === 'song' ? ' song' : ''}"><span class="n">${i + 1}</span>
+      <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}
+        <small><span class="kind">${esc(KNAME[it.kind] || '')}</span>${it.leader ? ' · ' + esc(it.leader) : ''}</small></div>
+      ${edit ? `<span class="ed"><button data-mv="-1" data-i="${i}" data-s="${s.id}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" data-s="${s.id}" title="Mai jos">↓</button><button data-rm="${i}" data-s="${s.id}" title="Scoate">✕</button></span>` : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`).join('')
+      || '<p class="mute" style="margin:6px 0;font-size:14px">Programul nu e scris încă.</p>';
+    const add = edit ? `<div class="addit"><select id="k_${s.id}" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
+      <input id="t_${s.id}" list="songTitles" placeholder="Titlul"><button data-additem="${s.id}">＋</button></div>` : '';
     const team = doc.departments.map(dep => {
       const slots = dep.positions.flatMap(p => Array.from({ length: p.needed }, (_, i) => ({ p, k: `${p.id}#${i}` })));
+      const n = slots.filter(x => asg[x.k]).length; if (!edit && !n) return '';
       const rows = slots.map(({ p, k }) => {
-        const a = s.assignments?.[k];
-        if (!lead) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}</span>${stat(a)}</div>` : '';
+        const a = asg[k];
+        if (!edit) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}</span>${stat(a)}</div>` : '';
         const ppl = G.people.slice().sort((x, y) => ((y.departments || []).includes(dep.name) - (x.departments || []).includes(dep.name)) || (x.name || '').localeCompare(y.name || '', 'ro'));
-        return `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w"><select data-assign="${s.id}" data-k="${esc(k)}"><option value="">— liber —</option>${ppl.map(x =>
-          `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${esc(x.name)}${(x.departments || []).includes(dep.name) ? '' : ' ·'}</option>`).join('')}</select></span>${a ? stat(a) : ''}</div>`;
+        return `<div class="slot"><span class="p">${esc(p.name)}</span><select data-assign="${s.id}" data-k="${esc(k)}" aria-label="${esc(p.name)}"><option value="">Liber</option>${ppl.map(x =>
+          `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${esc(x.name)}${(x.departments || []).includes(dep.name) ? '' : ' (alt dep.)'}</option>`).join('')}</select>${a ? stat(a) : '<span></span>'}</div>`;
       }).join('');
-      return rows ? `<h3 style="color:${esc(dep.color)}">${esc(dep.name)}</h3>${rows}` : '';
-    }).join('') || '<p class="mute">Nimeni pus încă.</p>';
+      return `<div class="dep"><i style="background:${esc(dep.color)}"></i>${esc(dep.name)}<small>${n}/${slots.length}</small></div>${rows}`;
+    }).join('') || '<p class="mute" style="margin:6px 0;font-size:14px">Echipa nu e făcută încă.</p>';
     const warn = lead ? serviceWarnings(doc, s).filter(w => !/neocupate/.test(w)) : [];
-    return `<details class="card svc" data-svc="${s.id}"${open ? ' open' : ''}><summary><span class="d"><small>${esc(d.toLocaleDateString('ro-RO', { weekday: 'short' }))}</small><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString('ro-RO', { month: 'short' }))}</small></span>
-      <span class="t"><b>${esc(s.title)}</b><small>${fmtTime(s.date)} · ${(s.items || []).length} momente · ${Object.keys(s.assignments || {}).length} oameni</small></span><span class="mute">▾</span></summary>
-      <div class="in"><h3>Programul</h3>${items}${add}<h3>Echipa</h3>${team}${warn.length ? `<p class="warn">⚠ ${warn.map(esc).join('<br>⚠ ')}</p>` : ''}
-      ${lead ? `<div class="row" style="margin-top:14px"><input id="n_${s.id}" value="${esc(s.title)}" maxlength="80"><button data-rename="${s.id}">Redenumește</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge serviciul</button></div>` : ''}</div></details>`;
+    return `<details class="card svc" data-svc="${s.id}"${open ? ' open' : ''}><summary>
+      <span class="dt"><small>${esc(d.toLocaleDateString('ro-RO', { weekday: 'short' }).replace('.', ''))}</small><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString('ro-RO', { month: 'short' }).replace('.', ''))}</small></span>
+      <span class="ttl"><b>${esc(s.title)}</b><small>${esc(meta)}</small></span>
+      <span class="fill">${slotsAll.length ? `${filled}/${slotsAll.length}<span class="bar"><i style="width:${Math.round(100 * ok / slotsAll.length)}%"></i></span>` : ''}</span></summary>
+      <div class="in"><div><h3>Programul${mins ? `<small>${mins} min</small>` : ''}</h3>${prog}${add}</div><div><h3>Echipa${slotsAll.length ? `<small>${ok} confirmați din ${slotsAll.length}</small>` : ''}</h3>${team}</div>
+      ${warn.length ? `<p class="warn">${warn.map(esc).join('<br>')}</p>` : ''}
+      ${lead ? `<div class="svcbar">${edit ? `<input id="n_${s.id}" value="${esc(s.title)}" maxlength="80" style="flex:1 1 160px"><button data-rename="${s.id}">Salvează numele</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge</button><span class="sp"></span>` : '<span class="sp"></span>'}
+        <button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : '✎ Editează'}</button></div>` : ''}</div></details>`;
   }
-  const stat = a => `<span class="st ${a.status}">${a.status === 'confirmed' ? '✓' : a.status === 'declined' ? '✕ nu poate' : '⏳'}</span>`;
+  const stat = a => `<span class="st ${a.status}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : 'În așteptare'}</span>`;
 
   $('gList').addEventListener('toggle', e => { const d = e.target.closest('[data-svc]'); if (d) d.open ? G.open.add(d.dataset.svc) : G.open.delete(d.dataset.svc); }, true);
   $('gList').addEventListener('change', e => {
@@ -448,8 +476,9 @@
   });
   $('gList').addEventListener('click', async e => {
     const b = e.target.closest('button,[data-song]'); if (!b) return;
-    const s = G.doc.services.find(x => x.id === b.dataset.s || x.id === b.dataset.additem || x.id === b.dataset.rename || x.id === b.dataset.del);
+    const s = G.doc.services.find(x => [b.dataset.s, b.dataset.additem, b.dataset.rename, b.dataset.del].includes(x.id));
     if (b.dataset.song !== undefined) return openSong(b.dataset.song, b.dataset.title);
+    if (b.dataset.edit) { G.edit.has(b.dataset.edit) ? G.edit.delete(b.dataset.edit) : G.edit.add(b.dataset.edit); G.open.add(b.dataset.edit); return drawProgram(); }
     if (b.dataset.mv && s) { const it = s.items.slice(), i = +b.dataset.i, j = i + +b.dataset.mv; if (j < 0 || j >= it.length) return; [it[i], it[j]] = [it[j], it[i]]; return change({ op: 'setItems', id: s.id, items: it }); }
     if (b.dataset.rm && s) { const it = s.items.slice(); it.splice(+b.dataset.rm, 1); return change({ op: 'setItems', id: s.id, items: it }); }
     if (b.dataset.additem && s) {
