@@ -176,7 +176,7 @@
   .sq{display:flex;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-2)} .slist{max-height:58vh;overflow:auto;margin:0 calc(-1 * var(--sp-2))}
   .srow{display:flex;align-items:center;gap:var(--sp-3);padding:10px var(--sp-2);border-radius:var(--r-s);cursor:pointer;transition:background .12s} .srow:hover{background:var(--fill)}
   .srow b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .srow small{color:var(--text-3)}
-  #vSong,#vEdit{position:fixed;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  #vSong,#vEdit,#vItem{position:fixed;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   .stop{display:flex;align-items:center;gap:var(--sp-2);padding:10px max(12px,env(safe-area-inset-left));background:rgba(18,18,20,.8);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-bottom:1px solid var(--line)}
   .stop .t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .stop button,.stop select{padding:7px 11px;font-size:13.5px;width:auto} .stop button.on{background:var(--accent);color:#fff}
@@ -189,6 +189,27 @@
   .ed2{flex:1;min-height:0;display:grid;grid-template-rows:auto 1fr;overflow:auto} .edf{padding:var(--sp-3) var(--sp-4) 0}
   #eBody{min-height:42vh;margin-top:var(--sp-2);font:15px/1.5 var(--mono);resize:vertical}
   #ePrev{border-top:1px solid var(--line);margin-top:var(--sp-3)} .vers{margin:var(--sp-3) 0 0;font-size:13px;color:var(--text-2)} .vers button{padding:4px 9px;font-size:12px;margin-left:6px}
+  /* 🛠 prepare from home: pick a service, tap a moment, set it up */
+  .pick{display:flex;gap:6px;overflow-x:auto;margin:0 0 var(--sp-3);padding-bottom:2px;scrollbar-width:none}
+  .pick button{flex:none;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 12px;background:var(--fill);border-radius:var(--r-m);min-width:96px;max-width:180px}
+  .pick button b{font-size:14px;font-weight:600} .pick button small{font-size:12px;color:var(--text-3);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pick button.on{background:var(--accent-soft);box-shadow:inset 0 0 0 1px rgba(77,124,255,.4)} .pick button.on small{color:var(--text-2)}
+  .prepnote{margin:0 0 var(--sp-3);font-size:13.5px}
+  .it.tap{cursor:pointer;border-radius:var(--r-s);transition:background .12s} .it.tap:hover{background:var(--fill)}
+  .it .go{color:var(--text-3);width:14px;height:14px}
+  .it .x small .bgn{color:var(--text-2)}
+  .fl{display:block;margin:0 0 var(--sp-3)} .fl>span,.fl label>span{display:block;font-size:12px;color:var(--text-3);margin:0 0 5px;letter-spacing:.02em}
+  .fl2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)} .fl3{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--sp-2)}
+  @media (max-width:480px){.fl3{grid-template-columns:1fr 1fr 1fr}.fl3 label:first-child{grid-column:1/-1}}
+  .arr{display:flex;flex-wrap:wrap;gap:6px;min-height:36px;padding:6px;border-radius:var(--r-m);background:rgba(0,0,0,.3)}
+  .arr button{padding:5px 8px 5px 10px;font-size:13px;border-radius:8px;gap:6px} .arr button i{font-style:normal;color:var(--text-3)}
+  .secs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px} .secs button{padding:5px 10px;font-size:13px;background:none;box-shadow:inset 0 0 0 1px var(--line-2)}
+  .bgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+  .bgs button{padding:0;aspect-ratio:16/9;border-radius:8px;overflow:hidden;position:relative;background:#000 center/cover;font-size:11px;align-items:flex-end;justify-content:flex-start}
+  .bgs button span{padding:3px 6px;background:linear-gradient(transparent,rgba(0,0,0,.7));width:100%;text-align:left;color:#fff}
+  .bgs button.on{box-shadow:0 0 0 2px var(--accent)} .bgs button.none{background:var(--fill-2)}
+  #iPrev{border-top:1px solid var(--line);margin-top:var(--sp-3)} .ipv{padding:var(--sp-4);color:var(--text-2);font-size:14px}
+  @media (min-width:900px){#iPrev{border-top:0;border-left:1px solid var(--line);margin-top:0}}
   @media (min-width:900px){.ed2{grid-template-rows:none;grid-template-columns:1fr 1fr;overflow:hidden} .edf{overflow:auto;padding:var(--sp-4)} #eBody{min-height:60vh} #ePrev{border-top:0;border-left:1px solid var(--line);margin-top:0}}
 
   /* Reverb, quietly: a small mark at the end of the page */
@@ -266,8 +287,11 @@
       <div class="card zone"><p>Slide-urile se schimbă din aplicația de la biserică: versurile, prezentările, predica.</p>
         <a id="goLive" class="btn acc big">Deschide Proiectez</a></div>
       <p class="mute hubhint" style="margin:0 0 4px"></p>
-      <div class="sect"><h2>Programul de azi</h2><small id="pjWhen"></small></div>
+      <div class="sect"><h2>Pregătește de acasă</h2><small id="pjWhen"></small></div>
+      <p class="mute prepnote" id="pjNote">Ce pui aici ajunge singur în aplicația de la biserică, în cel mult un minut: ordinea, versetele, tonurile, fundalurile.</p>
+      <div class="pick" id="pjPick"></div>
       <div id="pjList"><p class="empty">Niciun serviciu planificat.</p></div>
+      <div id="pjAdd"></div>
       <div id="hubRow" hidden style="margin-top:24px"><p class="mute" style="margin:0 0 8px;font-size:13px">Adresa calculatorului bisericii (o trimite singur când e legat; aici doar dacă vrei s-o schimbi)</p>
         <div class="row" style="max-width:520px"><input id="hubUrl" placeholder="http://192.168.0.199:4545" inputmode="url"><button id="hubSave" style="flex:0 0 auto">Salvează</button></div></div>
     </div>
@@ -276,6 +300,10 @@
       <div class="card zone"><p>Pupitrul cu acorduri, track-urile, click-ul și pad-ul, din aplicația de la biserică.</p>
         <a id="goMd" class="btn acc big">Deschide MD &amp; Track</a></div>
       <p class="mute hubhint" style="margin:0 0 4px"></p>
+      <div class="sect"><h2>Pregătește pentru trupă</h2><small id="mdWhen"></small></div>
+      <p class="mute prepnote">Tonul și ordinea strofelor pentru fiecare cântare din program. Ajung la pupitru și pe ecrane la biserică.</p>
+      <div class="pick" id="mdPick"></div>
+      <div id="mdList"><p class="empty">Niciun serviciu planificat.</p></div>
       <div id="vSongs">
         <div class="sect sqh"><h2>Repetă acasă</h2><button id="sNew" hidden>Cântare nouă</button></div>
         <p class="mute" style="margin:0;font-size:14px">Orice cântare din bibliotecă, cu acorduri. Nu o pune pe program.</p>
@@ -323,15 +351,20 @@ Refren:
       <div class="chart" id="ePrev"></div>
     </div>
   </section>
+  <section id="vItem" hidden>
+    <div class="stop"><button id="iBack" title="Renunță">✕</button><span class="t" id="iHead"></span><button id="iSave" class="on">Salvează</button></div>
+    <div class="ed2"><div class="edf" id="iForm"></div><div class="chart" id="iPrev"></div></div>
+  </section>
   <footer>powered by <img src="wordmark.svg" alt="Reverb"></footer>
 </main>
 
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
-  import { parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS } from './core/song.js';
+  import { parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
   import { applyPlanOp, serviceWarnings } from './core/plan.js';
+  import { BOOKS, parseRef, formatRef } from './core/bibleref.js';
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'reverb-session' } });
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -503,16 +536,158 @@ Refren:
       $('hkCopy').onclick = async () => { try { await navigator.clipboard.writeText(key); $('hkCopy').textContent = 'Copiată'; } catch { getSelection().selectAllChildren($('hk')); } };
     } catch (e) { alert(e.message); }
   };
-  // ▶ Proiectez: the program of the next service, in order (read only)
-  function drawToday() {
-    const s = (G.doc?.services || []).find(x => x.date >= new Date(Date.now() - 6 * 3600e3).toISOString());
-    $('pjWhen').textContent = s ? `${day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })} · ${fmtTime(s.date)}` : '';
-    $('pjList').innerHTML = s?.items?.length ? s.items.map((it, i) => `<div class="it${it.kind === 'song' ? ' song' : ''}"><span class="n">${i + 1}</span>
-      <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<small><span class="kind">${esc(KNAME[it.kind] || '')}</span></small></div>
-      <span class="m">${it.minutes ? it.minutes + ' min' : ''}</span></div>`).join('') : `<p class="empty">${s ? 'Programul nu e scris încă.' : 'Niciun serviciu planificat.'}</p>`;
+  // 🛠 Prepare from home (Proiectez + MD & Track): pick a service, tap a moment and set it up. It is the same program
+  //    the church computer opens on Sunday (reverb-hub sync, within a minute). Leaders change everything (order, title,
+  //    verses, background, notes); the worship team (Închinare) sets a song's key and the order of its sections.
+  //    The backgrounds are the ones every Reverb app ships with (same file names in its media folder).
+  const BG = ['fundal-apus-cald', 'fundal-auriu-visiniu', 'fundal-aurora-albastru', 'fundal-cruce-lumina', 'fundal-gri-elegant', 'fundal-lumini-calde',
+    'fundal-lumini-reci', 'fundal-ocean', 'fundal-raze-albastre', 'fundal-raze-aurii', 'fundal-roz-pastel', 'fundal-smarald', 'fundal-valuri-aurii',
+    'fundal-valuri-matase', 'fundal-violet-noapte', 'miscare-apus', 'miscare-aurora', 'miscare-smarald', 'miscare-violet'];
+  const bgFile = n => '/media/' + n + (n.startsWith('miscare-') ? '.mp4' : '.jpg');
+  const bgName = f => { const n = String(f || '').replace(/^\/media\//, '').replace(/\.\w+$/, ''); if (!BG.includes(n)) return f ? 'fundalul ales la biserică' : '';
+    const w = n.replace(/^(fundal|miscare)-/, '').replace(/-/g, ' '); return (n.startsWith('miscare-') ? 'mișcare ' : '') + w; };
+  const CHEV = '<svg class="i go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+  const upcoming = () => (G.doc?.services || []).filter(s => s.date >= new Date(Date.now() - 6 * 3600e3).toISOString());
+  const prepSvc = () => { const l = upcoming(); return l.find(s => s.id === G.prep) || l[0] || null; };
+  const canMd = () => canEditSongs(cur()?.church_id);
+  const songOf = it => lib.find(x => it.songId && x.local_id === it.songId) || lib.find(x => it.title && x.title.toLowerCase() === String(it.title).toLowerCase());
+  const arrText = it => (it.arrangement?.length ? it.arrangement.length + ' părți în ordinea aleasă' : '');
+  function itemMeta(it) {
+    const k = KNAME[it.kind] || '', ref = it.kind === 'bible' && it.ref ? formatRef(it.ref) : '';
+    return [k !== it.title ? k : '', ref !== it.title ? ref : '', it.leader || '', arrText(it),
+      it.background ? `<span class="bgn">${esc(bgName(it.background))}</span>` : ''].filter(Boolean).map(x => (x.startsWith('<') ? x : esc(x))).join(' · ');
   }
-  $('pjList').onclick = e => { const b = e.target.closest('[data-song]'); if (b) openSong(b.dataset.song, b.dataset.title); };
+  function drawToday() {
+    const list = upcoming().slice(0, 10), s = prepSvc(), lead = canPlan(), md = canMd();
+    G.prep = s?.id || null;
+    const pick = list.length > 1 ? list.map(x => { const d = day(x.date);
+      return `<button data-pick="${x.id}" class="${x.id === s?.id ? 'on' : ''}"><b>${esc(d.toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))}</b><small>${esc(x.title)}</small></button>`; }).join('') : '';
+    $('pjPick').innerHTML = $('mdPick').innerHTML = pick;
+    const when = s ? `${day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })} · ${fmtTime(s.date)}` : '';
+    $('pjWhen').textContent = $('mdWhen').textContent = when;
+    $('pjNote').hidden = !lead && !md;
+    const items = s?.items || [];
+    $('pjList').innerHTML = items.length ? items.map((it, i) => { const tap = lead || (md && it.kind === 'song') || it.kind === 'song';
+      return `<div class="it${tap ? ' tap' : ''}" data-i="${i}"><span class="n">${i + 1}</span>
+      <div class="x"><b>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<small>${itemMeta(it)}</small></div>
+      ${lead ? `<span class="ed"><button data-mv="-1" data-i="${i}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" title="Mai jos">↓</button><button data-rm="${i}" title="Scoate">✕</button></span>` : tap ? CHEV : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
+      : `<p class="empty">${s ? 'Programul nu e scris încă.' : 'Niciun serviciu planificat.'}</p>`;
+    $('pjAdd').innerHTML = lead && s ? `<div class="addit"><select id="pjK" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
+      <input id="pjT" list="songTitles" placeholder="Titlul cântării, „Ioan 3:16-18” sau momentul"><button id="pjGo">Adaugă</button></div>` : '';
+    const songs = items.map((it, i) => [it, i]).filter(([it]) => it.kind === 'song');
+    $('mdList').innerHTML = songs.length ? songs.map(([it, i], k) => `<div class="it tap" data-i="${i}"><span class="n">${k + 1}</span>
+      <div class="x"><b>${esc(it.title)}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<small>${esc(arrText(it) || 'ordinea din cântare')}${it.leader ? ' · ' + esc(it.leader) : ''}</small></div>${CHEV}</div>`).join('')
+      : `<p class="empty">${s ? 'Nicio cântare pe program încă.' : 'Niciun serviciu planificat.'}</p>`;
+  }
+  for (const id of ['pjPick', 'mdPick']) $(id).onclick = e => { const b = e.target.closest('[data-pick]'); if (b) { G.prep = b.dataset.pick; drawToday(); } };
+  async function prepClick(e) {
+    const s = prepSvc(); if (!s) return;
+    const b = e.target.closest('button');
+    if (b?.dataset.mv) { const it = s.items.slice(), i = +b.dataset.i, j = i + +b.dataset.mv; if (j < 0 || j >= it.length) return; [it[i], it[j]] = [it[j], it[i]]; return change({ op: 'setItems', id: s.id, items: it }); }
+    if (b?.dataset.rm) { if (!confirm(`Scoți „${s.items[+b.dataset.rm]?.title}” din program?`)) return; const it = s.items.slice(); it.splice(+b.dataset.rm, 1); return change({ op: 'setItems', id: s.id, items: it }); }
+    const row = e.target.closest('.it.tap'); if (row) openItem(s, +row.dataset.i);
+  }
+  $('pjList').onclick = prepClick; $('mdList').onclick = prepClick;
+  $('pjAdd').onclick = async e => {
+    if (!e.target.closest('#pjGo')) return;
+    const s = prepSvc(), kind = $('pjK').value, title = $('pjT').value.trim(); if (!s) return;
+    if (!title && kind === 'song') return $('pjT').focus();
+    let it = { kind, title: title || KNAME[kind] };
+    if (kind === 'song') { const song = lib.find(x => x.title.toLowerCase() === title.toLowerCase()); if (!song) return alert('Alege cântarea din listă (scrie din titlu și apasă pe ea).'); it = { ...it, title: song.title, songId: song.local_id, key: song.key || '' }; }
+    if (kind === 'bible') { const ref = parseRef(title); if (!ref) return alert('Scrie pasajul așa: Ioan 3:16-18'); it = { kind, title: formatRef(ref), ref, versions: ['vdc'] }; }
+    if (await change({ op: 'setItems', id: s.id, items: [...s.items, it] })) { const n = prepSvc(); if (kind === 'bible' || kind === 'song') openItem(n, n.items.length - 1); }
+  };
+  $('pjAdd').onkeydown = e => { if (e.key === 'Enter' && e.target.id === 'pjT') $('pjGo').click(); };
 
+  // the sheet for one moment
+  let I = null;
+  async function openItem(s, i) {
+    const it = structuredClone(s.items[i]), lead = canPlan(), md = canMd() && it.kind === 'song';
+    if (!lead && !md) { if (it.kind === 'song') openSong(it.songId, it.title); return; }
+    I = { svc: s.id, i, it, lead, song: null, secs: [], orig: '' };
+    $('iHead').textContent = `${KNAME[it.kind] || ''} · ${it.title || ''}`;
+    if (it.kind === 'song') {
+      const hit = songOf(it);
+      if (hit) { const { data } = await sb.from('songs').select('id, title, key, body, arrangement').eq('id', hit.id).single(); if (data) { I.song = data; I.secs = parseSong(data.body || ''); I.orig = originalKey(data.key, data.body) || ''; } }
+      I.arr = arrangementIndexes(I.secs, it.arrangement?.length ? it.arrangement : I.song?.arrangement);
+      I.custom = !!it.arrangement?.length;
+    }
+    const f = [];
+    if (lead && it.kind !== 'song' && it.kind !== 'bible') f.push(`<label class="fl"><span>Titlul</span><input id="iTitle" maxlength="200" value="${esc(it.title || '')}"></label>`);
+    if (it.kind === 'bible') { const r = it.ref || { book: 42, chapter: 3, from: 16, to: 16 };
+      f.push(`<div class="fl3 fl"><label><span>Cartea</span><select id="iBook">${BOOKS.map((b, k) => `<option value="${k}"${k === r.book ? ' selected' : ''}>${esc(b[0])}</option>`).join('')}</select></label>
+        <label><span>Capitolul</span><input id="iCh" type="number" min="1" max="150" value="${r.chapter}"></label><label><span>De la v.</span><input id="iFrom" type="number" min="0" max="176" value="${r.from || ''}"></label>
+        <label><span>Până la</span><input id="iTo" type="number" min="0" max="176" value="${r.to || ''}"></label></div>`); }
+    if (it.kind === 'song') {
+      f.push(I.song ? `<label class="fl"><span>Tonul${I.orig ? ` (în cântare: ${esc(I.orig)})` : ''}</span><select id="iKey"><option value="">Ca în cântare</option>${(I.orig ? KEYS.filter(k => k.endsWith('m') === I.orig.endsWith('m')) : KEYS).map(k => `<option${k === it.key ? ' selected' : ''}>${k}</option>`).join('')}</select></label>
+        <div class="fl"><span>Ordinea pe ecran (atinge o parte ca s-o scoți)</span><div class="arr" id="iArr"></div>
+        <div class="secs" id="iSecs"></div><div class="row" style="margin-top:8px"><button id="iArrReset" class="ghost" style="flex:0 0 auto">Ca în cântare</button></div></div>`
+        : '<p class="mute">Cântarea nu e în biblioteca online, așa că tonul și ordinea se aleg la biserică.</p>');
+    }
+    if (lead) f.push(`<div class="fl2"><label class="fl"><span>Cine conduce</span><input id="iLead" maxlength="60" value="${esc(it.leader || '')}"></label>
+      <label class="fl"><span>Minute</span><input id="iMin" type="number" min="0" max="240" value="${it.minutes || ''}"></label></div>
+      <label class="fl"><span>Notă pentru echipă</span><textarea id="iNotes" rows="2" maxlength="300">${esc(it.notes || '')}</textarea></label>
+      <div class="fl"><span>Fundal pe ecran</span><div class="bgs" id="iBg"><button class="none${it.background ? '' : ' on'}" data-bg=""><span>Cel obișnuit</span></button>${BG.map(n =>
+        `<button data-bg="${bgFile(n)}" class="${it.background === bgFile(n) ? 'on' : ''}" style="background-image:url(bg/${n}.jpg)" title="${esc(bgName(bgFile(n)))}"><span>${esc(bgName(bgFile(n)))}</span></button>`).join('')}</div>
+        ${it.background && !BG.some(n => bgFile(n) === it.background) ? '<p class="mute" style="font-size:12.5px;margin:6px 0 0">Acum: un fundal ales la biserică. Alege altul doar dacă vrei să-l schimbi.</p>' : ''}</div>`);
+    $('iForm').innerHTML = f.join('');
+    $('vItem').hidden = false; document.body.style.overflow = 'hidden';
+    drawArr(); itemPrev();
+  }
+  const secName = k => I.secs[k]?.label || `Partea ${k + 1}`;
+  function drawArr() {
+    if (!$('iArr')) return;
+    $('iArr').innerHTML = I.arr.map((t, k) => `<button data-x="${k}" style="box-shadow:inset 3px 0 0 ${sectionColor(secName(+t.slice(1)))}">${esc(secName(+t.slice(1)))}<i>✕</i></button>`).join('') || '<span class="mute" style="font-size:13px;padding:4px">Nicio parte. Adaugă de mai jos.</span>';
+    $('iSecs').innerHTML = I.secs.map((x, k) => `<button data-add="${k}">+ ${esc(secName(k))}</button>`).join('');
+  }
+  function itemPrev() {
+    const el = $('iPrev'), it = I.it; unfit(el);
+    if (it.kind === 'song' && I.song) {
+      const want = $('iKey')?.value || '', steps = want && I.orig ? keyDistance(I.orig, want) : 0;
+      const body = transpose(I.song.body || '', steps, prefersFlats(want || I.orig || 'C'));
+      const secs = parseSong(body), order = I.arr.map(t => secs[+t.slice(1)]).filter(Boolean);
+      let last = null;
+      el.innerHTML = toSlides(order, 4).map(sl => { const head = sl.label !== last && sl.label ? `<div class="lbl" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : ''; last = sl.label;
+        return `<div data-fit-keep>${head}${sl.lines.map(l => /\[/.test(l) && !stripChords(l).trim() ? `<div class="only">${esc(l.match(/\[([^\]]*)\]/g).map(x => x.slice(1, -1)).join('  '))}</div>` : `<div class="ln">${chordLineToHtml(l, esc)}</div>`).join('')}</div>`; }).join('') || '<p class="mute">Nicio parte aleasă.</p>';
+    } else if (it.kind === 'bible') {
+      const r = readRef(); el.innerHTML = `<div class="ipv"><b style="color:var(--text);font-size:17px">${esc(r ? formatRef(r) : '—')}</b><p>Versetele apar pe ecran în traducerea bisericii, câte unul pe slide.</p></div>`;
+    } else el.innerHTML = `<div class="ipv">${it.background ? `<div style="aspect-ratio:16/9;border-radius:10px;background:#000 url(bg/${esc(String(it.background).replace(/^\/media\//, '').replace(/\.\w+$/, ''))}.jpg) center/cover;margin-bottom:12px"></div>` : ''}
+      <p>Prezentările, pozele și video-urile pentru acest moment se pun deocamdată la biserică (sau din telefon, cu „Primite”).</p></div>`;
+  }
+  const readRef = () => { if (!$('iBook')) return null; const book = +$('iBook').value, chapter = Math.max(1, +$('iCh').value || 1), from = Math.max(0, +$('iFrom').value || 0);
+    return { book, chapter, from, to: Math.max(from, +$('iTo').value || from) }; };
+  $('iForm').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.x !== undefined) { I.arr.splice(+b.dataset.x, 1); I.custom = true; drawArr(); itemPrev(); }
+    else if (b.dataset.add !== undefined) { I.arr.push('#' + b.dataset.add); I.custom = true; drawArr(); itemPrev(); }
+    else if (b.id === 'iArrReset') { I.arr = arrangementIndexes(I.secs, I.song?.arrangement); I.custom = false; drawArr(); itemPrev(); }
+    else if (b.dataset.bg !== undefined) { I.it.background = b.dataset.bg; for (const x of $('iBg').children) x.classList.toggle('on', x === b); itemPrev(); }
+  });
+  $('iForm').addEventListener('input', () => itemPrev());
+  const closeItem = () => { $('vItem').hidden = true; document.body.style.overflow = ''; I = null; };
+  $('iBack').onclick = closeItem;
+  $('iSave').onclick = async () => {
+    const s = (G.doc?.services || []).find(x => x.id === I.svc), it = I.it; if (!s) return closeItem();
+    const arrangement = it.kind === 'song' && I.song ? (I.custom ? I.arr.slice() : []) : null;
+    const key = $('iKey') ? $('iKey').value : null;
+    $('iSave').disabled = true;
+    try {
+      if (I.lead) {
+        if ($('iTitle')) it.title = $('iTitle').value.trim() || KNAME[it.kind];
+        if (it.kind === 'bible') { const r = readRef(); it.ref = r; it.title = formatRef(r); it.versions = it.versions?.length ? it.versions : ['vdc']; }
+        if (key !== null) it.key = key;
+        if (arrangement) { if (arrangement.length) it.arrangement = arrangement; else delete it.arrangement; }
+        it.leader = $('iLead').value.trim(); it.minutes = +$('iMin').value || 0; it.notes = $('iNotes').value.trim();
+        if (!it.background) delete it.background;
+        const items = s.items.slice(); items[I.i] = it;
+        if (await change({ op: 'setItems', id: s.id, items })) closeItem();
+      } else {
+        const { data, error } = await sb.rpc('reverb_plan_item', { c: cur().church_id, service: s.id, item: it.id, new_key: key, new_arrangement: arrangement });
+        if (error || data) return alert(data || 'N-a mers. Verifică internetul.');
+        closeItem(); program();
+      }
+    } finally { $('iSave').disabled = false; }
+  };
 
   // 🔔 notifications: this phone says "yes" once; the server tells the person when a leader places him (here or at church)
   const notifyCall = async body => { const { data: { session } } = await sb.auth.getSession();
@@ -599,7 +774,7 @@ Refren:
   //    saved meanwhile, the change is applied again on the newest one). Members answer their places and block days
   //    through two database functions that only touch their own places.
   const KIND = { song: '🎵', sermon: '🎤', prayer: '🙏', announcement: '📣', reading: '📖', bible: '📖', media: '🎬', other: '•' };
-  const KNAME = { song: 'Cântare', sermon: 'Predică', prayer: 'Rugăciune', announcement: 'Anunțuri', reading: 'Citire', other: 'Alt moment' };
+  const KNAME = { song: 'Cântare', sermon: 'Predică', prayer: 'Rugăciune', announcement: 'Anunțuri', reading: 'Citire', bible: 'Biblie', other: 'Alt moment' };
   const POS = { 'Închinare': [['Lider închinare'], ['Vocal', 2], ['Chitară'], ['Clape'], ['Bas'], ['Tobe']], 'Media': [['Proiecție'], ['Sunet'], ['Live stream']],
     'Copii': [['Învățător', 2]], 'Asimilare și ospitalitate': [['Primire la ușă', 2], ['Cafea']], 'Tineret': [['Lider tineret']] };
   const COLORS = ['#f5b301', '#3fa7ff', '#ff7a59', '#2ecc71', '#c58cff', '#ff5aa5'];
