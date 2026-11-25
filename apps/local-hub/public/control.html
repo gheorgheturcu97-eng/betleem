@@ -1300,6 +1300,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="rt-row"><span class="rt-l">Intrarea</span><select id="rtIn"></select><span class="hint">canalul</span><input id="rtInCh" type="number" min="1" max="64" value="1" style="width:64px"><span class="rt-meter"><i id="rtLvl"></i></span></div>
   <div class="rt-row"><span class="rt-l">Se aude în căști pe</span><select id="rtTalk"></select><label class="check"><input type="checkbox" id="rtTalkOn"> Pornit</label></div>
   <div class="rt-row"><span class="rt-l">Comenzi vocale</span><label class="check"><input type="checkbox" id="rtVoiceOn"> Ascultă comenzile din acest microfon (ex. „refrenul”, „strofa doi”, „mut la tobe”)</label></div>
+  <div class="rt-row"><span class="rt-l">Motor audio</span><label class="check"><input type="checkbox" id="rtEngine"> Motor nou (probă): toate track-urile pe același ceas, tempo fără derivă, saltul exact pe măsură. Se aplică după repornire.</label></div>
   <div class="rt-row"><span class="rt-l">Sensibilitate</span><input type="range" id="rtSens" min="1" max="10" value="4" style="flex:1"><span class="hint" id="rtVState"></span></div>
   <p class="hint">Ieșirile 1-2 sunt mixul principal. Pune click-ul și guide-ul pe ieșiri separate (de ex. 3 și 4) ca să meargă doar în căștile trupei. Pe Mac, placa trebuie aleasă și în Audio MIDI Setup cu toate canalele.</p>
 </div></div>
@@ -1507,7 +1508,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   import { backdrop } from '/glass.js';
   import * as BR from '/bibleref.js';
   import { connect, esc, paintBackground } from '/client.js';
-  import { Pad, Metronome, Multitrack, PAD_SOUNDS, tapper, outputs, inputs } from '/music.js';
+  import { Pad, Metronome, Multitrack, StemEngine, PAD_SOUNDS, tapper, outputs, inputs } from '/music.js';
   import { stripChords, sectionColor, fillChords, sectionKind } from '/core/song.js';
   import { LayerEditor, renderLayers, sameLayers, newLayer } from '/layers.js';
   const KIND = { song: 'cântare', sermon: 'predică', prayer: 'rugăciune', announcement: 'anunțuri', other: 'altceva', media: 'prezentare', reading: 'citire', bible: 'biblie' };
@@ -2747,7 +2748,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   // ---- MUZICĂ view: key, tempo, multitrack with cues (lyrics follow the tracks), click and pad in the mixer.
   // Sound keeps playing when you switch back to Live.
-  const pad = new Pad(), met = new Metronome(), tap = tapper(), mt = new Multitrack();
+  // 🎚 „Motor nou (probă)” (⚙ Rutare): every stem on one audio clock. Off by default until a Sunday of trials.
+  const newEngine = (() => { try { return JSON.parse(localStorage.getItem('betleem.music') || '{}').engine === 'nou' && !!window.AudioWorkletNode; } catch { return false; } })();
+  const pad = new Pad(), met = new Metronome(), tap = tapper(), mt = newEngine ? new StemEngine() : new Multitrack();
   let padFiles = 0; setTimeout(() => pad.loadFiles().then(n => { padFiles = n; if (n) renderMixer?.(); }), 2000);   // 🎹 Documents/Betleem/pad
   const prefs = (() => { try { return JSON.parse(localStorage.getItem('betleem.music') || '{}'); } catch { return {}; } })();
   const savePrefs = () => { try { localStorage.setItem('betleem.music', JSON.stringify(prefs)); } catch {} };
@@ -3837,14 +3840,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // into a section "fluently": while playing, the jump waits for the next bar and fades, so the band stays on time
   let pendingJump = null;
   function jumpTo(t, label = '') {
-    clearTimeout(pendingJump?.timer); document.querySelectorAll('#blocks .blk.armed').forEach(x => x.classList.remove('armed'));
+    clearTimeout(pendingJump?.timer); pendingJump?.cancel?.(); document.querySelectorAll('#blocks .blk.armed').forEach(x => x.classList.remove('armed'));
     if (!mt.playing) { mt.seek(t); lastCue = -2; followCues(t, true); markSection(); return; }
-    const it = S.setlist[mtItem], bpm = it?.bpm || it?.origBpm, off = it?.beatOffset || 0;
+    const it = S.setlist[mtItem], bpm = trackTempo(), off = it?.beatOffset || 0;   // the bar in the tracks' own time (their recorded tempo)
     let wait = 0;
     if (bpm) { const bar = 60 / bpm * (met.beats || 4), now = mt.time, next = off + Math.ceil((now - off + 0.02) / bar) * bar; wait = Math.max(0, (next - now) / (mt.rate || 1)); }
     const el = [...document.querySelectorAll('#blocks .blk')].find(x => Math.abs(+x.dataset.t - t) < 0.05); el?.classList.add('armed');
     say2(`→ ${label || 'secțiunea'}${wait > 0.05 ? ' la următoarea măsură' : ''}`);
-    pendingJump = { t, timer: setTimeout(async () => { el?.classList.remove('armed'); await mt.seekSmooth(t); lastCue = -2; followCues(t, true); markSection(); say2(''); }, wait * 1000) };
+    const landed = () => { el?.classList.remove('armed'); lastCue = -2; followCues(t, true); markSection(); say2(''); };
+    if (mt.jumpAt) { const at = wait > 0.05 ? mt.time + wait * (mt.rate || 1) : mt.time; pendingJump = { t, cancel: mt.jumpAt(at, t, landed) }; return; }   // on the audio clock, exactly on the bar
+    pendingJump = { t, timer: setTimeout(async () => { await mt.seekSmooth(t); landed(); }, wait * 1000) };
   }
   const say2 = t => { $('voiceSay').hidden = !t; $('voiceSay').textContent = t || ''; };
   // lyrics follow the tracks: when the play head passes a cue, that slide goes on screen
@@ -3933,7 +3938,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const devOpt = (list, cur) => list.map((d, k) => `<option value="${esc(d.deviceId)}" ${d.deviceId === cur ? 'selected' : ''}>${esc(d.label || (d.kind === 'audioinput' ? 'Intrare ' : 'Ieșire ') + (k + 1))}</option>`).join('');
     $('rtDev').innerHTML = devOpt(outs, prefs.trDev || 'default'); $('rtMet').innerHTML = devOpt(outs, prefs.metDev || 'default'); $('rtPad').innerHTML = devOpt(outs, prefs.padDev || 'default');
     $('rtIn').innerHTML = devOpt(ins, prefs.mdIn || 'default'); $('rtInCh').value = prefs.mdCh || 1; $('rtSens').value = prefs.mdSens || 4;
-    $('rtTalkOn').checked = !!mt.mic; $('rtVoiceOn').checked = !!mdVoice;
+    $('rtTalkOn').checked = !!mt.mic; $('rtVoiceOn').checked = !!mdVoice; $('rtEngine').checked = prefs.engine === 'nou';
     renderRouteGrid();
   }
   function renderRouteGrid() {
@@ -3949,6 +3954,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   }
   $('rtClose').onclick = () => $('routeModal').classList.remove('show');
   $('rtScan').onclick = async () => { try { (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach(t => t.stop()); } catch {} openRouting(); };
+  $('rtEngine').onchange = () => { prefs.engine = $('rtEngine').checked ? 'nou' : ''; savePrefs();
+    toast(mt.playing ? 'Se aplică la următoarea pornire a aplicației.' : 'Repornesc pagina ca să se aplice…'); if (!mt.playing && !pad.playing) setTimeout(() => location.reload(), 900); };
   $('rtDev').onchange = async () => { prefs.trDev = $('rtDev').value; savePrefs(); await mt.output(prefs.trDev); renderRouteGrid(); renderMixer(); };
   $('rtMet').onchange = async () => { prefs.metDev = $('rtMet').value; savePrefs(); await met.output(prefs.metDev); };
   $('rtPad').onchange = async () => { prefs.padDev = $('rtPad').value; savePrefs(); await pad.output(prefs.padDev); };

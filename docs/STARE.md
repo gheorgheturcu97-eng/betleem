@@ -213,3 +213,4 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   Verificat cu Playwright (lider + muzician, telefon și desktop). **Neverificat:** pe Mac mini, cu programul sincronizat.
 - **Reverb.dmg** (`buildPackage` în `src/server.js`, `public/descarca.html`): ditto → plutil (nume Reverb) → codesign ad hoc --deep → hdiutil UDZO, cu scurtătură „Aplicații”. Se face doar pe Mac. **Neverificat pe Mac** (scris aici, pe Linux).
 - **Sincronizarea stem-urilor** (`public/music.js` `alignAt`, `keepInStep`): pornire aliniată, corecție prin viteză (±2 %), salt doar peste 150 ms. Test: `test/music-sync.test.js`; măsurat în Chromium fără placă. **Neverificat pe Mac mini.**
+- **Motor nou (probă)** (`public/stem-worklet.js` StemCore/StemProcessor, `public/music.js` StemEngine; comutator ⚙ Rutare → Motor audio, preferința `betleem.music.engine = "nou"`): un ceas, WSOLA comun, salturi pe ceas (`mt.jumpAt`). Teste: `test/stem-engine.test.js`. **Neverificat pe Mac/placă.**

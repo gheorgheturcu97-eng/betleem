@@ -1,6 +1,20 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-26 · 2026.11.25.8 · MD & Track: „Motor nou (probă)”, toate track-urile pe același ceas
+- **Nou, oprit implicit** (⚙ Rutare → Motor audio → „Motor nou (probă)”, se aplică după repornire). Înainte: fiecare
+  track era un `<audio>` separat, cu ceasul lui și stretch-ul lui de tempo. Acum, cu motorul nou: track-urile sunt
+  decodate o dată și citite de un singur AudioWorklet (`public/stem-worklet.js`, clasa `StemEngine` din music.js) pe
+  ceasul audio: nu se pot depărta; tempo-ul e un singur stretch (WSOLA) ales pe mixul tuturor și aplicat la fel
+  fiecăruia, tonul rămâne; la tempo original e copie exactă. Saltul la secțiune se face pe ceasul audio, exact pe
+  următoarea măsură, cu 5 ms de crossfade (fără click). Mixerul, rutarea, tonul și talkback-ul sunt aceleași.
+- **Saltul „la următoarea măsură”** (ambele motoare). Înainte: cu tempo-ul schimbat, măsura era calculată din tempo-ul
+  nou, deci saltul cădea greșit. Acum: din tempo-ul în care sunt înregistrate track-urile (`trackTempo`).
+- Testat: `test/stem-engine.test.js` (copie exactă la tempo original; la 1,25 track-urile rămân identice între ele și
+  tonul rămâne 440 Hz; saltul la momentul planificat, fără click; sfârșitul cântării) și în Chromium cu 8 track-uri de
+  90 s (încărcare 2,3 s, tempo 1,15 exact, saltul la 1,00 s, pauză fixă). Memorie: ~115 MB pe track stereo de 5 min.
+  **Neverificat pe Mac și pe placa de sunet.**
+
 ## 2026-11-25 · 2026.11.25.7 · MD & Track: track-urile pornesc și rămân împreună
 - **Pornirea.** Înainte: `play()` pornea stem-urile fără să aștepte să fie toate la aceeași poziție (33–51 ms
   diferență; la prima redare după încărcare un stem putea porni din altă parte). Acum: toate sunt duse la aceeași

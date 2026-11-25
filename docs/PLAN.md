@@ -45,7 +45,8 @@ Fluxul: IMPORT → ANALIZĂ → ARANJARE → SONG MAP → REPETIȚIE → LIVE. O
 Mac mini. Ce schimbă sunetul vine oprit („Motor nou (probă)”) până trece o duminică de probă.
 - [x] E1 Audit și diagnoză (test de sincronizare: 8 track-uri, Chromium).
 - [x] E2a Pornire simultană + ținere în pas prin viteză (music.js `alignAt`/`keepInStep`, test/music-sync.test.js). Neverificat pe placă.
-- [ ] E2b Motor cu un singur ceas (AudioWorklet, track-uri decodate în RAM, tempo + ton în motor). Decizie: RAM-ul Mac mini.
+- [x] E2b Motor cu un singur ceas (`StemEngine` + `stem-worklet.js`), oprit implicit („Motor nou (probă)”). MacBook M1 Pro 16 GB. Neverificat pe placă.
+- [ ] E2c Încărcarea următoarei cântări în avans; waveform din motor (fără a doua decodare).
 - [ ] E3 Metronom pe ceasul motorului, hartă de tempo.
 - [ ] E4 Song Map (`songmap.js`): bară/beat, încredere, sursă, blocat; cue-urile vechi convertite.
 - [ ] E5 Arrangement Workspace: snap bară/beat, loop pe secțiune, undo/redo, split/merge secțiuni, grupuri de track-uri.

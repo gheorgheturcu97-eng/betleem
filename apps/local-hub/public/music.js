@@ -396,6 +396,91 @@ export class Multitrack {
   }
   async output(deviceId) { this.init(); const ok = await setOutput(this.ctx, deviceId); this.wire(); return ok; }
 }
+/**
+ * 🎚 Motor nou (probă): the same mixer, routing and pitch as Multitrack, but every stem is decoded once and read by a
+ * single AudioWorklet (stem-worklet.js) on the audio clock: the stems cannot drift apart, the tempo is one shared
+ * stretch (key kept), and jumps can be planned on the clock (exactly on the next bar). The time the page reads is the
+ * worklet's position on the audio clock, not an <audio> element's. Memory: the decoded song (~115 MB per stereo stem
+ * of 5 minutes at 48 kHz); the previous song is released when the next one loads.
+ */
+export class StemEngine extends Multitrack {
+  init() {
+    if (this.ctx) return; super.init();
+    this.stemReady = this.ctx.audioWorklet ? this.ctx.audioWorklet.addModule('/stem-worklet.js').then(() => true, () => false) : Promise.resolve(false);
+    this._pos = 0; this._ct = 0; this._dur = 0; this._jid = 0; this._jumps = new Map();
+  }
+  async load(stems) {
+    this.init(); this.stop(true);
+    for (const c of this.ch) { try { c.gain.disconnect(); c.shift?.disconnect(); } catch {} }
+    try { this.node?.disconnect(); this.node?.port.close(); } catch {}
+    this.node = null; this.ch = []; this._dur = 0; this._pos = 0;
+    if (!stems.length) return 0;
+    if (!(await this.stemReady)) throw new Error('Motorul nou nu merge pe acest calculator (fără AudioWorklet).');
+    const pitch = await this.pitchReady, data = new Array(stems.length);
+    const one = async i => {                         // three at a time: fast, without holding every encoded file at once
+      const s = stems[i]; let chans = [], dur = 0;
+      try {
+        const ab = await this.ctx.decodeAudioData(await (await fetch('/media/' + encodeURIComponent(s.file))).arrayBuffer());
+        for (let k = 0; k < Math.min(2, ab.numberOfChannels); k++) chans.push(ab.getChannelData(k).slice());
+        dur = ab.duration;
+      } catch { chans = [new Float32Array(0)]; }
+      data[i] = chans; s._dur = dur;
+    };
+    let next = 0; await Promise.all([0, 1, 2].map(async () => { while (next < stems.length) await one(next++); }));
+    const n = stems.length;
+    const node = new AudioWorkletNode(this.ctx, 'stems', { numberOfInputs: 0, numberOfOutputs: n, outputChannelCount: Array(n).fill(2) });
+    this.node = node;
+    this.ch = stems.map((s, i) => {
+      const gain = this.ctx.createGain(), pan = this.ctx.createStereoPanner(), meter = this.ctx.createAnalyser();
+      let shift = null;
+      if (pitch) { shift = new AudioWorkletNode(this.ctx, 'pitch-shift', { outputChannelCount: [2] }); shift.parameters.get('semitones').value = this.semis; node.connect(shift, i, 0); shift.connect(gain); }
+      else node.connect(gain, i, 0);
+      meter.fftSize = 512; gain.connect(pan);
+      const { _dur, ...rest } = s;
+      const c = { ...rest, panValue: Number(s.pan) || 0, el: { duration: _dur }, gain, pan, meter, shift, solo: false };
+      this.routeTrack(c); return c;
+    });
+    this._dur = Math.max(0, ...stems.map(s => s._dur || 0));
+    node.port.onmessage = ({ data: m }) => {
+      if (m.t === 'pos') { if (this.playing && m.playing) { this._pos = m.pos; this._ct = m.ct; } }   // paused: the page's own position stands
+      else if (m.t === 'jumped') { this._pos = m.to; this._ct = this.ctx.currentTime; const f = this._jumps.get(m.id); this._jumps.delete(m.id); f?.(m.to); }
+      else if (m.t === 'ended') { this.playing = false; cancelAnimationFrame(this.raf); this.onTime(this.time); this.onEnd(); }
+    };
+    node.port.postMessage({ t: 'load', stems: data }, data.flat().map(a => a.buffer));
+    node.port.postMessage({ t: 'speed', v: this.rate });
+    this.apply();
+    return this._dur;
+  }
+  get duration() { return this._dur || 0; }
+  get time() {
+    if (!this.ctx) return 0;
+    const t = this.playing ? this._pos + Math.max(0, this.ctx.currentTime - this._ct) * this.rate : this._pos;
+    return Math.max(0, Math.min(t, this._dur || 0));
+  }
+  setRate(r) { this.rate = Math.min(2, Math.max(0.5, r || 1)); this._pos = this.time; this._ct = this.ctx?.currentTime || 0; this.node?.port.postMessage({ t: 'speed', v: this.rate }); }
+  async play() {
+    if (!this.ch.length || !this.node) return;
+    this.init(); await this.ctx.resume();
+    this._ct = this.ctx.currentTime; this.node.port.postMessage({ t: 'play' }); this.playing = true;
+    const tick = () => { if (!this.playing) return; this.onTime(this.time); this.raf = requestAnimationFrame(tick); };
+    tick();
+  }
+  pause() {
+    const t = this.time; this.playing = false; cancelAnimationFrame(this.raf); this._pos = t;
+    this.node?.port.postMessage({ t: 'pause' }); this.node?.port.postMessage({ t: 'seek', to: t }); this.onTime(t);
+  }
+  seek(t, quiet, fade = false) {
+    t = Math.max(0, Math.min(t, this.duration || 0)); this._pos = t; this._ct = this.ctx?.currentTime || 0;
+    this.node?.port.postMessage({ t: 'seek', to: t, fade }); if (!quiet) this.onTime(t);
+  }
+  async seekSmooth(t) { this.seek(t, false, true); }
+  /** Jump to `to` exactly when the song reaches `at` (seconds, song time), with a short crossfade. Returns a cancel. */
+  jumpAt(at, to, done) {
+    const id = ++this._jid; this._jumps.set(id, done);
+    this.node?.port.postMessage({ t: 'jump', at, to, id });
+    return () => { this._jumps.delete(id); this.node?.port.postMessage({ t: 'cancel', id }); };
+  }
+}
 /** every microphone / interface input */
 export async function inputs() {
   try { return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput'); } catch { return []; }
