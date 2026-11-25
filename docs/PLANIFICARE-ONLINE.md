@@ -103,7 +103,7 @@ Linkul se schimbă cu „↻ Link nou” (cel vechi moare), iar „⛔ Scoate”
   oamenii cu link preiau voluntarul local cu același nume. Doar `services`, `departments`, `volunteers` (fără telefon,
   e-mail, link) călătoresc; ședințele, sarcinile, jurnalele rămân pe calculator. Cheia + copia comună:
   `Documents/Betleem/reverb-online.json` (0600). Verificat cap-coadă (calculator de probă ⇄ pagina linkului).
-- De aplicat (a așteptat confirmarea): `20261125110000_reverb_person_id_default.sql` (person_id automat la orice link nou).
+- ✅ Aplicat 2026-11-25: `20261125110000_reverb_person_id_default.sql` (person_id automat la orice link nou).
 - ⏳ **Feedback după slujire** (cerut 2026-11-24): cine a fost programat la un serviciu primește după serviciu o
   notificare „Cum a fost?” și scrie un feedback (ce a mers, ce nu); îl citesc coordonatorul și liderul departamentului.
   Vine după Pasul 3 (are nevoie de programările online); notificarea = pe pagina Reverb (și push dacă e instalată pe telefon).
