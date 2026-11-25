@@ -1,6 +1,14 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · Reverb online · 📲 Reverb ca aplicație pe telefon (fără App Store / Play)
+- Înainte: doar o pagină în browser (pe iPhone, „Adaugă pe ecranul principal” era pomenit doar la notificări).
+  Acum: sub notificări, „Reverb ca aplicație pe telefon”: pe Android/Chrome un buton **Instalează** (o atingere),
+  pe iPhone pașii Partajează → Adaugă pe ecranul principal. Iconița deschide Reverb pe tot ecranul; fără internet
+  se deschide ultima copie a paginii (sw.js). Se poate ascunde cu ✕.
+- Iconița de pe iPhone își ține propria memorie, deci prima dată cere linkul: pe pagina de întâmpinare există acum
+  „Lipește aici linkul primit” → Intră.
+
 ## 2026-11-25 · 2026.11.25.5 · 📦 Reverb pentru Mac ca DMG, fără Terminal
 - **Pachetul pentru alte biserici** (⚙ → Dă aplicația altor biserici). Înainte: Betleem-Mac.zip + două comenzi în
   Terminal (xattr, codesign). Acum: **Reverb.dmg**, făcut și semnat (ad hoc) pe Mac-ul bisericii: dublu-clic, tragi

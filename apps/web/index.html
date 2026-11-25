@@ -107,6 +107,8 @@
   .bell .bi{width:32px;height:32px;border-radius:9px;background:var(--fill-2);display:grid;place-items:center;color:var(--text);flex:none}
   .bell div{flex:1;min-width:0} .bell b{display:block;font-size:14px;font-weight:600} .bell small{display:block;color:var(--text-2);font-size:13px;line-height:1.4;margin-top:1px}
   .bell button{flex:none;padding:7px 12px;font-size:13px;align-self:center}
+  .bell+.bell{border-top:0;margin-top:calc(-1 * var(--sp-2))}
+  .paste{margin-top:var(--sp-4)} .paste label{display:block;font-size:13.5px;color:var(--text-2);margin-bottom:8px}
 
   /* the three zones: a segmented control on a phone, a sidebar list on a laptop */
   .tabs{display:flex;gap:2px;padding:3px;margin:var(--sp-2) 0 var(--sp-4);border-radius:var(--r-m);background:rgba(36,36,40,.72);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
@@ -249,6 +251,8 @@
       <li><b>2</b><span>Apasă linkul o singură dată, pe dispozitivul pe care vrei să folosești Reverb.</span></li>
       <li><b>3</b><span>Data viitoare deschizi direct pagina: rămâi conectat.</span></li></ol>
     <p id="doorErr" class="err" hidden></p>
+    <div class="paste"><label for="doorLink">Ai deschis Reverb din iconița de pe ecran? Lipește aici linkul primit:</label>
+      <div class="row"><input id="doorLink" placeholder="https://…#t=…" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="doorGo" class="acc" style="flex:0 0 auto">Intră</button></div></div>
   </section>
 
   <section id="vHome" hidden>
@@ -262,6 +266,7 @@
       <div id="gMine"></div>
     </div>
     <div class="bell" id="bell" hidden><span class="bi"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></span><div><b>Notificări când ești programat</b><small id="bellHint">Afli imediat când un lider te pune pe program.</small></div><button id="bellOn" class="acc">Pornește</button></div>
+    <div class="bell" id="inst" hidden><span class="bi"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3"/></svg></span><div><b>Reverb ca aplicație pe telefon</b><small id="instHint"></small></div><button id="instGo" class="acc" hidden>Instalează</button><button id="instX" class="ghost" title="Nu acum" style="padding:6px 8px">✕</button></div>
     <nav class="tabs" id="tabs" aria-label="Zone">
       <button data-tab="vProg" class="on"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span><b>Planific</b><small>Programul și echipa</small></span></button>
       <button data-tab="vProj"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M10.5 8.5v5l4-2.5z"/><path d="M8 20h8"/></svg><span><b>Proiectez</b><small>Slide-urile pe ecran</small></span></button>
@@ -381,6 +386,10 @@ Refren:
 
   // 1) the personal link: #t=… (after # it never reaches any server log), then forgotten from the address bar
   const t = new URLSearchParams(location.hash.slice(1)).get('t');
+  // 📲 the icon on the home screen keeps its own memory on iPhone: there the person pastes the link once
+  $('doorGo').onclick = () => { const v = $('doorLink').value.trim(), k = (v.match(/[#?&]t=([A-Za-z0-9_-]{20,})/) || v.match(/^([A-Za-z0-9_-]{20,})$/) || [])[1];
+    if (!k) { $('doorErr').textContent = 'Asta nu pare linkul tău. Copiază-l întreg din mesaj (ține apăsat pe link → Copiază).'; $('doorErr').hidden = false; return; }
+    location.hash = 't=' + k; location.reload(); };
   if (t) {
     history.replaceState(null, '', location.pathname);
     try {
@@ -411,7 +420,7 @@ Refren:
     $('tabs').querySelector('[data-tab="vPeople"]').hidden = !coord.length;
     $('gChurch').innerHTML = churches.map(c => `<option value="${c.church_id}">${esc(c.name)}</option>`).join('');
     $('gChurchRow').hidden = churches.length < 2;
-    show('vHome'); tabTo(['vProg', 'vProj', 'vMd'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'vProg'); bell(); if (coord.length) people(); songs(); if (churches.length) program();
+    show('vHome'); tabTo(['vProg', 'vProj', 'vMd'].includes(new URLSearchParams(location.search).get('tab')) ? new URLSearchParams(location.search).get('tab') : 'vProg'); bell(); instShow(); if (coord.length) people(); songs(); if (churches.length) program();
   }
 
   // 3) coordinators: the people and their links
@@ -726,6 +735,22 @@ Refren:
     } catch (e) { alert(e.message || 'N-a mers.'); $('bellOn').disabled = false; }
   };
 
+
+  // 📲 Reverb as an app on the phone, without any store: Android/Chrome install it with one tap; iPhone through Share →
+  //    Add to Home Screen (the icon then opens Reverb full screen and can receive the notifications).
+  let instEvt = null;
+  const instOff = () => { try { return localStorage.getItem('rv.instOff') === '1'; } catch { return false; } };
+  function instShow() {
+    if (standalone || instOff() || !me) return;
+    const android = /Android/.test(navigator.userAgent);
+    if (instEvt) { $('instHint').textContent = 'Iconiță pe ecran, se deschide pe tot ecranul, fără bara browserului.'; $('instGo').hidden = false; $('inst').hidden = false; }
+    else if (iOS) { $('instHint').innerHTML = 'Apasă <b style="display:inline;font-weight:600">Partajează</b> (pătratul cu săgeată) → <b style="display:inline;font-weight:600">Adaugă pe ecranul principal</b>. Prima dată din iconiță, lipește linkul de pe WhatsApp.'; $('inst').hidden = false; }
+    else if (android) { $('instHint').textContent = 'În Chrome: meniul ⋮ → „Instalează aplicația” (sau „Adaugă pe ecranul de pornire”).'; $('inst').hidden = false; }
+  }
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; instShow(); });
+  addEventListener('appinstalled', () => { $('inst').hidden = true; });
+  $('instGo').onclick = async () => { if (!instEvt) return; instEvt.prompt(); const r = await instEvt.userChoice.catch(() => null); instEvt = null; if (r?.outcome === 'accepted') $('inst').hidden = true; };
+  $('instX').onclick = () => { try { localStorage.setItem('rv.instOff', '1'); } catch {} $('inst').hidden = true; };
 
   // ✎ writing and correcting songs: leaders, coordinators and the worship team (Închinare) of the song's church.
   //    Every change keeps the previous text online (it can be put back), and reaches the church computer's library.
