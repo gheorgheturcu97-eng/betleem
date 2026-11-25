@@ -56,8 +56,20 @@ export function createUpdater({ root, dataDir, version, repo, publicKey = PUBLIC
       // swap: the running files are already in memory; the new ones are used from the next start
       const cur = path.join(UPDATE_DIR, 'hub'), old = path.join(UPDATE_DIR, 'hub-vechi');
       fs.rmSync(old, { recursive: true, force: true });
-      if (fs.existsSync(cur)) fs.renameSync(cur, old);
-      fs.renameSync(next, cur);
+      try {
+        if (fs.existsSync(cur)) fs.renameSync(cur, old);
+        fs.renameSync(next, cur);
+      } catch (e) {
+        // Windows will not rename the folder the running version was loaded from (EPERM / EBUSY). Its files are already
+        // in memory, so the new files are copied over it instead; package.json last, so a copy cut halfway still
+        // starts (or the desktop app falls back to its own version).
+        if (!['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e;
+        if (!fs.existsSync(cur) && fs.existsSync(old)) fs.renameSync(old, cur);
+        const files = fs.readdirSync(next).filter(f => f !== 'package.json');
+        for (const f of files) fs.cpSync(path.join(next, f), path.join(cur, f), { recursive: true, force: true });
+        fs.copyFileSync(path.join(next, 'package.json'), path.join(cur, 'package.json'));
+        fs.rmSync(next, { recursive: true, force: true });
+      }
       set({ ready: manifest.version, available: manifest.version, from, error: '' });
       return true;
     } catch (e) { log('update', e); set({ error: 'Actualizarea nu s-a putut instala: ' + e.message }); return false; }

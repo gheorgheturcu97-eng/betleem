@@ -36,3 +36,23 @@ test('a signed package installs next to the running one; a changed or unsigned o
   assert.equal(u.packageForPeers().manifest.version, '2026.12.1.1', 'can pass it on to the next computer');
   assert.equal(await u.install(manifest, buf, 'test'), false, 'not twice');
 });
+
+test('on Windows the running folder cannot be renamed: the new files are copied over it', async t => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-upd-win-'));
+  const hub = path.join(tmp, 'hub'); fs.mkdirSync(path.join(hub, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(hub, 'src', 'server.js'), '// v3');
+  fs.writeFileSync(path.join(hub, 'package.json'), JSON.stringify({ version: '2026.12.2.1' }));
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const manifest = await pack(hub, path.join(tmp, 'out'), privateKey.export({ type: 'pkcs8', format: 'pem' }));
+  const buf = fs.readFileSync(path.join(tmp, 'out', 'betleem-hub.tgz'));
+  const data = path.join(tmp, 'data'), cur = path.join(data, 'update', 'hub');
+  fs.mkdirSync(path.join(cur, 'src'), { recursive: true });
+  fs.writeFileSync(path.join(cur, 'src', 'server.js'), '// v1 running');
+  const real = fs.renameSync;
+  t.mock.method(fs, 'renameSync', (a, b) => { if (path.resolve(a) === path.resolve(cur)) throw Object.assign(new Error('EPERM'), { code: 'EPERM' }); return real(a, b); });
+  const u = createUpdater({ root: hub, dataDir: data, version: '2026.11.20.1', publicKey: publicKey.export({ type: 'spki', format: 'pem' }) });
+  assert.equal(await u.install(manifest, buf, 'test'), true);
+  assert.equal(fs.readFileSync(path.join(cur, 'src', 'server.js'), 'utf8'), '// v3');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(cur, 'package.json'), 'utf8')).version, '2026.12.2.1');
+  assert.ok(!fs.existsSync(path.join(data, 'update', 'hub-next')));
+});

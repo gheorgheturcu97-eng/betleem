@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-25 · 2026.11.25.6 · actualizările pe Windows
+- **Windows nu primea actualizări.** Înainte: Windows nu lasă redenumit folderul din care rulează aplicația
+  (Documente/Betleem/update/hub), deci fiecare actualizare se oprea cu EPERM (în erori.log). Acum: dacă redenumirea nu
+  merge, fișierele noi se copiază peste cele vechi (package.json la final) și versiunea nouă pornește la următoarea
+  deschidere. Test nou în `test/updater.test.js`. Pe PC-ul care s-a blocat, o dată de mână: închizi Reverb, ștergi
+  folderul update\hub, redeschizi (pornește versiunea din aplicație, care ia singură actualizarea).
+
 ## 2026-11-25 · Reverb online · 📲 Reverb ca aplicație pe telefon (fără App Store / Play)
 - Înainte: doar o pagină în browser (pe iPhone, „Adaugă pe ecranul principal” era pomenit doar la notificări).
   Acum: sub notificări, „Reverb ca aplicație pe telefon”: pe Android/Chrome un buton **Instalează** (o atingere),
