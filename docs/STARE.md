@@ -202,4 +202,4 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   pe laptop în două coloane.
 - **🔔 + ✎ (2026.11.25.3):** Web Push (`apps/web/sw.js`, `reverb-notify`, `push_subs`, `push_sent`, cheile în `app_secrets`);
   editor de cântări în link (`#vEdit`, RLS `private.can_edit_songs`, `song_versions` cu trigger); sincronizarea cântărilor
-  în `src/reverb-sync.js` (`songsPull` / `songsPush` în `reverb-hub`). Teste: 72 trec.
+  în `src/reverb-sync.js` (`songsPull` / `songsPush` în `reverb-hub`). Teste: 71 trec.
