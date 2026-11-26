@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-26 · Reverb pentru Linux + click-ul în motorul nou (E3)
+- **Linux (nou).** Reverb-Linux.tar.gz (x86_64): Electron 42.3.0 + hub-ul semnat 2026.11.25.8; `instaleaza.sh` (o dată,
+  fără parolă) pune Reverb în meniu și pe Desktop; `reverb.sh` pornește cu `--no-sandbox`. Datele în Documente/Betleem,
+  actualizările vin singure. Verificat pe un Linux fără ecran (xvfb): instalarea, pornirea, hub-ul pe :4545.
+  Nu am folosit AppImage (unealta lui ar fi trebuit descărcată și rulată).
+- **Click-ul (motorul nou, E3).** Înainte: click-ul era programat separat și „ajustat” după track-uri. Acum, cu
+  „Motor nou (probă)”: click-ul e făcut chiar în motor, pe același eșantion ca track-urile (accent pe măsura 1, mai
+  repede când e tempo-ul mai mare, rămâne pe grila cântării și după un salt); acceptă și o hartă de tempo (grid).
+  Test în `test/stem-engine.test.js`. Motorul vechi: neschimbat.
+
 ## 2026-11-26 · 2026.11.25.8 · MD & Track: „Motor nou (probă)”, toate track-urile pe același ceas
 - **Nou, oprit implicit** (⚙ Rutare → Motor audio → „Motor nou (probă)”, se aplică după repornire). Înainte: fiecare
   track era un `<audio>` separat, cu ceasul lui și stretch-ul lui de tempo. Acum, cu motorul nou: track-urile sunt

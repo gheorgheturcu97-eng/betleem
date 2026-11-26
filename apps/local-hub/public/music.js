@@ -168,7 +168,9 @@ export function detectBeat(pcm, rate, beatsPerBar = 4) {
 }
 
 export class Metronome {
-  constructor() { this.ctx = null; this.bpm = 120; this.beats = 4; this.vol = 0.7; this.playing = false; this.onBeat = () => {}; }
+  constructor() { this.ctx = null; this.bpm = 120; this.beats = 4; this._vol = 0.7; this.playing = false; this.onBeat = () => {}; }
+  get vol() { return this._vol; }
+  set vol(v) { this._vol = v; this.engine?.clickVol(v); }
   init() {
     if (this.ctx) return;
     const g = typeof this.graph === 'function' ? this.graph() : this.graph;
@@ -198,9 +200,14 @@ export class Metronome {
   /** Click locked to the tracks: beats fall on the song's grid (first beat at `offset` s), following tempo changes. */
   // `trackBpm`: the tempo the tracks were recorded at (the beats are in the tracks' own time). The tracks' clock is read
   // through a smoothed line, so the small jumps of the audio elements' time do not shake the click.
-  async playWith(track, offset = 0, trackBpm = 0) {
+  async playWith(track, offset = 0, trackBpm = 0, grid = null) {
     this.init(); await this.ctx.resume();
     this.pause(); this.playing = true; this.synced = true;
+    if (track.clickOn) {                             // Motor nou: the click is made by the engine itself, on the stems' clock
+      this.engine = track;
+      track.clickOn({ offset, bpm: trackBpm || this.bpm / (track.rate || 1), beats: this.beats, grid, out: this.out, vol: this.vol, onBeat: b => this.playing && this.onBeat(b) });
+      return;
+    }
     let lastBeat = null, anchor = null;
     this.timer = setInterval(() => {
       const rate = track.rate || 1, now = this.ctx.currentTime, spb = 60 / (trackBpm || this.bpm / rate);   // seconds per beat, in the tracks' time
@@ -220,7 +227,7 @@ export class Metronome {
       }
     }, 20);
   }
-  pause() { this.playing = false; this.synced = false; clearInterval(this.timer); this.onBeat(-1); }
+  pause() { this.playing = false; this.synced = false; clearInterval(this.timer); if (this.engine) { this.engine.clickOff(); this.engine = null; } this.onBeat(-1); }
   setBpm(b) { this.bpm = Math.min(300, Math.max(30, Math.round((+b || 120) * 100) / 100)); }   // decimals kept: 74.98 stays 74.98
   async output(deviceId) { this.init(); return setOutput(this.ctx, deviceId); }
 }
@@ -428,8 +435,8 @@ export class StemEngine extends Multitrack {
     };
     let next = 0; await Promise.all([0, 1, 2].map(async () => { while (next < stems.length) await one(next++); }));
     const n = stems.length;
-    const node = new AudioWorkletNode(this.ctx, 'stems', { numberOfInputs: 0, numberOfOutputs: n, outputChannelCount: Array(n).fill(2) });
-    this.node = node;
+    const node = new AudioWorkletNode(this.ctx, 'stems', { numberOfInputs: 0, numberOfOutputs: n + 1, outputChannelCount: Array(n + 1).fill(2) });
+    this.node = node;                                // outputs 0..n-1: the stems; output n: the click (E3)
     this.ch = stems.map((s, i) => {
       const gain = this.ctx.createGain(), pan = this.ctx.createStereoPanner(), meter = this.ctx.createAnalyser();
       let shift = null;
@@ -444,10 +451,12 @@ export class StemEngine extends Multitrack {
     node.port.onmessage = ({ data: m }) => {
       if (m.t === 'pos') { if (this.playing && m.playing) { this._pos = m.pos; this._ct = m.ct; } }   // paused: the page's own position stands
       else if (m.t === 'jumped') { this._pos = m.to; this._ct = this.ctx.currentTime; const f = this._jumps.get(m.id); this._jumps.delete(m.id); f?.(m.to); }
+      else if (m.t === 'beat') { const f = this._click?.onBeat; if (f) setTimeout(() => f(m.b), Math.max(0, (this.ctx.baseLatency || 0) * 1000)); }
       else if (m.t === 'ended') { this.playing = false; cancelAnimationFrame(this.raf); this.onTime(this.time); this.onEnd(); }
     };
     node.port.postMessage({ t: 'load', stems: data }, data.flat().map(a => a.buffer));
     node.port.postMessage({ t: 'speed', v: this.rate });
+    if (this._click) this.clickOn(this._click);      // a running click goes on with the new song
     this.apply();
     return this._dur;
   }
@@ -474,6 +483,17 @@ export class StemEngine extends Multitrack {
     this.node?.port.postMessage({ t: 'seek', to: t, fade }); if (!quiet) this.onTime(t);
   }
   async seekSmooth(t) { this.seek(t, false, true); }
+  /** ⏱ the click from the engine: beats from `offset` at `bpm` (the tracks' own tempo), or a beat grid (tempo map) */
+  clickOn(c) {
+    this._click = c; if (!this.node) return;
+    if (!this.clickGain) this.clickGain = this.ctx.createGain();
+    this.clickGain.gain.value = c.vol ?? 0.7;
+    try { this.clickGain.disconnect(); } catch {} this.clickGain.connect(c.out || this.bus('click'));
+    try { this.node.connect(this.clickGain, this.ch.length, 0); } catch {}
+    this.node.port.postMessage({ t: 'click', on: true, off: c.offset || 0, spb: 60 / (c.bpm || 120), beats: c.beats || 4, grid: c.grid || null });
+  }
+  clickOff() { this._click = null; this.node?.port.postMessage({ t: 'click', on: false }); }
+  clickVol(v) { if (this.clickGain) this.clickGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.02); if (this._click) this._click.vol = v; }
   /** Jump to `to` exactly when the song reaches `at` (seconds, song time), with a short crossfade. Returns a cancel. */
   jumpAt(at, to, done) {
     const id = ++this._jid; this._jumps.set(id, done);

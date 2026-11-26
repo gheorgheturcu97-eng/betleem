@@ -48,3 +48,25 @@ test('the end of the song stops it and says so', () => {
   play(k, SR * 1.2);
   assert.equal(k.playing, false); assert.ok(k.events.some(e => e.t === 'ended'));
 });
+
+test('the click is made on the same clock: each beat starts on its exact frame, also faster and after a jump', () => {
+  const onsets = (o, from = 0) => { const r = []; let quiet = 1e9; for (let i = from; i < o.length; i++) { if (o[i] !== 0 && quiet > 2000) r.push(i); quiet = o[i] === 0 ? quiet + 1 : 0; } return r; };
+  const k = new StemCore(SR); k.load([[new Float32Array(SR * 20)]]); k.playing = true;
+  k.setClick({ on: true, off: SR * 0.5, spf: SR * 0.5, beats: 4 });
+  const out = play(k, SR * 3, 2);                 // stem + click output
+  const on = onsets(out[1][0]);
+  // the attack starts from 0 on the beat's frame, so the first audible sample is the next one
+  assert.deepEqual(on.slice(0, 4), [SR * 0.5, SR * 1, SR * 1.5, SR * 2].map(x => x + 1), 'beats at 0.5 s, 1 s, 1.5 s, 2 s');
+  const bars = k.events.filter(e => e.t === 'beat').map(e => e.b);
+  assert.deepEqual(bars.slice(0, 5), [0, 1, 2, 3, 0], 'the first beat after the offset is bar 1 (the accent)');
+  const f = new StemCore(SR); f.load([[new Float32Array(SR * 20)]]); f.speed = 1.25; f.playing = true;
+  f.setClick({ on: true, off: 0, spf: SR * 0.5, beats: 4 });
+  const fo = onsets(play(f, SR * 2, 2)[1][0]);
+  assert.ok(Math.abs(fo[1] - SR * 0.4) <= 2 && Math.abs(fo[2] - SR * 0.8) <= 2, 'faster song: a beat every 0.4 s of output ' + fo.slice(0, 3));
+  const j = new StemCore(SR); j.load([[new Float32Array(SR * 20)]]); j.playing = true;
+  j.setClick({ on: true, off: 0, spf: SR * 0.5, beats: 4 }); j.jumps.push({ at: SR * 0.7, to: SR * 5.25, id: 1 });
+  const jo = onsets(play(j, SR * 2, 2)[1][0], SR * 0.75);
+  // after landing at 5.25 s, the next beat of the song is 5.5 s: 0.25 s of output later
+  const landed = Math.floor(SR * 0.7 / 128) * 128;
+  assert.ok(Math.abs(jo[0] - (landed + SR * 0.25)) <= 130, 'beat after the jump on the song grid: ' + (jo[0] - landed) / SR);
+});

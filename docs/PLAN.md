@@ -47,7 +47,7 @@ Mac mini. Ce schimbă sunetul vine oprit („Motor nou (probă)”) până trece
 - [x] E2a Pornire simultană + ținere în pas prin viteză (music.js `alignAt`/`keepInStep`, test/music-sync.test.js). Neverificat pe placă.
 - [x] E2b Motor cu un singur ceas (`StemEngine` + `stem-worklet.js`), oprit implicit („Motor nou (probă)”). MacBook M1 Pro 16 GB. Neverificat pe placă.
 - [ ] E2c Încărcarea următoarei cântări în avans; waveform din motor (fără a doua decodare).
-- [ ] E3 Metronom pe ceasul motorului, hartă de tempo.
+- [x] E3 Click în motorul nou (pe eșantion, grid pentru harta de tempo). Harta din Ableton se leagă în E4.
 - [ ] E4 Song Map (`songmap.js`): bară/beat, încredere, sursă, blocat; cue-urile vechi convertite.
 - [ ] E5 Arrangement Workspace: snap bară/beat, loop pe secțiune, undo/redo, split/merge secțiuni, grupuri de track-uri.
 - [ ] E6 Analiza într-un Worker, cu cache pe disc (peaks, BPM, structură); ghid + cue → propunere cu încredere, confirmată de om.
