@@ -1591,6 +1591,18 @@ const KEYNOTE_SCRIPT = `on run argv
     close d saving no
   end tell
 end run`;
+// Microsoft PowerPoint on a Mac (when Keynote cannot): it saves the slides as PDF exactly as they look in PowerPoint
+const MAC_PPT_SCRIPT = `on run argv
+  set inF to POSIX file (item 1 of argv)
+  set outP to item 2 of argv
+  tell application "Microsoft PowerPoint"
+    open inF
+    set p to active presentation
+    save p in (POSIX file outP) as save as PDF
+    close p saving no
+  end tell
+end run`;
+let lastNativeError = '';
 const PPT_SCRIPT = `param($in, $out)
 $app = New-Object -ComObject PowerPoint.Application
 $p = $app.Presentations.Open($in, $true, $false, $false)
@@ -1603,11 +1615,19 @@ async function nativePdf(file) {
   const out = path.join(work, 'p-' + Date.now().toString(36) + '.pdf');
   const run = (cmd, args) => new Promise((ok, no) => execFile(cmd, args, { timeout: 240000, windowsHide: true }, e => e ? no(e) : ok()));
   try {
-    if (process.platform === 'darwin' && fs.existsSync('/Applications/Keynote.app')) {
-      // Keynote is sandboxed: give it a copy inside Documente/Betleem
+    lastNativeError = '';
+    if (process.platform === 'darwin') {
+      // Keynote and PowerPoint are sandboxed: give them a copy inside Documente/Betleem; Keynote first, then PowerPoint
       const src = path.join(work, 'p-' + Date.now().toString(36) + path.extname(file));
       fs.copyFileSync(file, src);
-      try { await run('osascript', ['-e', KEYNOTE_SCRIPT, src, out]); } finally { fs.rmSync(src, { force: true }); }
+      try {
+        for (const [app, script] of [['/Applications/Keynote.app', KEYNOTE_SCRIPT], ['/Applications/Microsoft PowerPoint.app', MAC_PPT_SCRIPT]]) {
+          if (!fs.existsSync(app)) continue;
+          try { await run('osascript', ['-e', script, src, out]); if (fs.existsSync(out) && fs.statSync(out).size > 0) break; }
+          catch (e) { lastNativeError = String(e.message || e); logError('convert ' + path.basename(app), e); }
+        }
+      } finally { fs.rmSync(src, { force: true }); }
+      if (!(fs.existsSync(out) && fs.statSync(out).size > 0)) return null;
     } else if (process.platform === 'win32') {
       const ps1 = path.join(work, 'ppt-pdf.ps1'); fs.writeFileSync(ps1, PPT_SCRIPT);
       await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1, path.resolve(file), out]);
@@ -2219,14 +2239,20 @@ async function handle(req, res) {
       if (!checkPin(req)) return json(res, 401, { error: 'PIN greșit' });
       const name = path.basename(url.searchParams.get('name') || '').replace(/[^\w.\- ]/g, '_');
       if (!SHOW_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Tip de fișier nepermis' });
-      const native = (process.platform === 'darwin' && fs.existsSync('/Applications/Keynote.app')) || process.platform === 'win32';
+      const native = (process.platform === 'darwin' && (fs.existsSync('/Applications/Keynote.app') || fs.existsSync('/Applications/Microsoft PowerPoint.app'))) || process.platform === 'win32';
       if (!findOffice() && !native) return json(res, 200, { office: false });
       const buf = await body(req, 300 * 1024 * 1024, true);
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-show-')), src = path.join(dir, name);
       fs.writeFileSync(src, buf);
       try {
         const pdf = await toPdf(src);
-        if (!pdf) return json(res, 200, { office: false, error: 'Nu am putut deschide prezentarea cu Keynote / PowerPoint / LibreOffice' });
+        if (!pdf) {
+          // macOS refused: Betleem may not control Keynote / PowerPoint yet (Privacy & Security → Automation)
+          const denied = /-1743|not authori[sz]ed|nu este autorizat|not allowed/i.test(lastNativeError);
+          return json(res, 200, { office: false, denied, error: denied
+            ? 'macOS nu-i dă voie lui Betleem să deschidă Keynote / PowerPoint. Deschide Setări sistem → Confidențialitate și securitate → Automatizare → Betleem și bifează Keynote și Microsoft PowerPoint, apoi importă din nou. Până atunci, slide-urile sunt desenate de Betleem și pot arăta altfel decât în PowerPoint.'
+            : 'Nu am putut deschide prezentarea cu Keynote / PowerPoint, așa că slide-urile sunt desenate de Betleem și pot arăta altfel decât în PowerPoint.' });
+        }
         res.writeHead(200, { 'content-type': 'application/pdf' }); const data = fs.readFileSync(pdf);
         if (pdf.includes(path.sep + 'conversie' + path.sep)) fs.rmSync(pdf, { force: true });
         return res.end(data);

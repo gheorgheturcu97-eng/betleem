@@ -768,7 +768,7 @@
         const headers = { 'x-pin': hub.pin() };
         const upload = async (name, blob) => { const r = await fetch('/api/media?name=' + encodeURIComponent(name), { method: 'POST', headers, body: blob }); if (!r.ok) throw new Error('Nu am putut salva ' + name); return '/media/' + name; };
         const convert = async f => { const r = await fetch('/api/convert?name=' + encodeURIComponent(f.name), { method: 'POST', body: f, headers });
-          if ((r.headers.get('content-type') || '').includes('pdf')) return await r.blob(); return null; };
+          if ((r.headers.get('content-type') || '').includes('pdf')) return await r.blob(); const j = await r.json().catch(() => ({})); if (j.denied) alert(j.error); else if (j.error) toast(j.error); return null; };
         const fonts = families => fetch('/api/fonts', { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ families }) }).then(r => r.json());
         const done = await importMedia(files, { upload, convert, fonts, progress: t => toast(t) });
         const it = s.items[i], slides = done.flatMap(d => d.slides);

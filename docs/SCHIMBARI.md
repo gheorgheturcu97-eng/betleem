@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · PowerPoint: exact ca în PowerPoint, sau spune de ce nu (2026.11.28.12)
+- **Importul de prezentări pe Mac (`nativePdf` în server.js).** Înainte: încerca doar Keynote; dacă macOS nu-i dădea voie
+  (Automatizare), trecea în tăcere la desenul propriu (alte fonturi, texte suprapuse). Acum: încearcă Keynote, apoi
+  Microsoft PowerPoint; dacă macOS refuză, apare un mesaj cu pașii exacți (Setări sistem → Confidențialitate și
+  securitate → Automatizare → Betleem → bifează Keynote și Microsoft PowerPoint), apoi slide-urile se desenează tot de
+  Betleem ca rezervă.
+
 ## 2026-11-28 · Aranjamente ca în ProPresenter, nume standard Verse / Chorus, ✂ Rupe slide-ul (2026.11.28.12)
 - **Aranjamente (control.html, `saveArrangement`/`deleteArrangement`).** Înainte: un singur rând „Ordine” și ＋ dintr-o
   listă. Acum: deasupra stă rândul „Secțiuni” (fiecare secțiune o dată, colorată, ca Groups în ProPresenter): clic o pune
