@@ -196,6 +196,9 @@
   body.viewonly #sEdit,body.viewonly #sNew,body.viewonly #gTools,body.viewonly .svcbar{display:none!important}
   .person button[data-do="view"].on{background:rgba(255,140,40,.2);color:#ffb070}
   body[data-tab]:not([data-tab="vProg"]) #gMineCard,body[data-tab]:not([data-tab="vProg"]) #bell,body[data-tab]:not([data-tab="vProg"]) #inst,body[data-tab="vProj"] #myChurches,body[data-tab="vMd"] #myChurches,body[data-tab="vProj"] #logoSet,body[data-tab="vMd"] #logoSet{display:none!important}
+  .it:has(.ed){-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .it.drag{position:relative;z-index:3;background:var(--surface-2,#1e1e22);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);transition:none!important}
+  .it{transition:transform .15s ease}
   .bigadd{width:100%;padding:14px;font-size:16px;margin-top:var(--sp-2);border-radius:var(--r-m)}
   #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
@@ -658,7 +661,7 @@ Refren:
     $('pjList').innerHTML = items.length ? items.map((it, i) => { const tap = lead || (md && it.kind === 'song') || it.kind === 'song';
       return `<div class="it${tap ? ' tap' : ''}" data-i="${i}"><span class="n">${i + 1}</span>
       <div class="x"><b>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<small>${itemMeta(it)}</small></div>
-      ${lead ? `<span class="ed"><button data-mv="-1" data-i="${i}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" title="Mai jos">↓</button><button data-rm="${i}" title="Scoate">✕</button></span>` : tap ? CHEV : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
+      ${lead ? `<span class="ed"><button data-rm="${i}" title="Scoate">✕</button></span>` : tap ? CHEV : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
       : `<p class="empty">${s ? 'Programul nu e scris încă.' : 'Niciun serviciu planificat.'}</p>`;
     $('pjAdd').innerHTML = lead && s ? `<button class="acc bigadd" id="pjSongs">＋ Cântări în program</button><div class="addit"><select id="pjK" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
       <input id="pjT" list="songTitles" placeholder="Titlul cântării, „Ioan 3:16-18” sau momentul"><button id="pjGo">Adaugă</button></div>` : '';
@@ -668,6 +671,43 @@ Refren:
       : `<p class="empty">${s ? 'Nicio cântare pe program încă.' : 'Niciun serviciu planificat.'}</p>`;
   }
   for (const id of ['pjPick', 'mdPick']) $(id).onclick = e => { const b = e.target.closest('[data-pick]'); if (b) { G.prep = b.dataset.pick; drawToday(); } };
+  // ✋ move a moment: hold it a moment with the finger (a short tap still opens it, a swipe still scrolls), then drag it;
+  // with a mouse just grab it and drag. The others make room as it moves. Only rows that can be edited (.ed) move.
+  function sortable(list, onMove) {
+    let drag = null;
+    list.addEventListener('touchmove', e => { if (drag?.on) e.preventDefault(); }, { passive: false });
+    list.addEventListener('click', e => { if (drag?.done) { e.stopPropagation(); e.preventDefault(); drag = null; } }, true);
+    list.addEventListener('pointerdown', e => {
+      const row = e.target.closest('.it'); if (!row || !row.querySelector('.ed') || e.target.closest('button,select,input,a') || e.button > 0) return;
+      const rows = [...list.querySelectorAll('.it')].filter(r => r.parentElement === row.parentElement), from = rows.indexOf(row);
+      const d = drag = { on: false, done: false, from, to: from, x0: e.clientX, y0: e.clientY, lastY: e.clientY, sy0: scrollY, rows, row, raf: 0, key: row.querySelector('.ed')?.dataset.s };
+      const start = () => {
+        if (drag !== d || d.on) return; d.on = true; d.rects = rows.map(r => r.getBoundingClientRect()); d.h = d.rects[from].height;
+        row.classList.add('drag'); navigator.vibrate?.(10); try { row.setPointerCapture(e.pointerId); } catch {}
+        const tick = () => {
+          if (d.lastY < 90) scrollBy(0, -12); else if (d.lastY > innerHeight - 90) scrollBy(0, 12);
+          const ds = scrollY - d.sy0, dy = d.lastY - d.y0 + ds, mid = d.rects[from].top + d.h / 2 + dy - ds;
+          row.style.transform = `translateY(${dy}px)`;
+          d.to = rows.reduce((n, r, i) => i !== from && d.rects[i].top + d.rects[i].height / 2 - ds < mid ? n + 1 : n, 0);
+          rows.forEach((r, i) => { if (i !== from) r.style.transform = from < d.to && i > from && i <= d.to ? `translateY(${-d.h}px)` : d.to < from && i >= d.to && i < from ? `translateY(${d.h}px)` : ''; });
+          d.raf = requestAnimationFrame(tick);
+        };
+        d.raf = requestAnimationFrame(tick);
+      };
+      const timer = e.pointerType === 'mouse' ? 0 : setTimeout(start, 320);
+      const move = ev => { d.lastY = ev.clientY;
+        if (!d.on && Math.hypot(ev.clientX - d.x0, ev.clientY - d.y0) > 8) { if (e.pointerType === 'mouse') start(); else end(); } };
+      const end = () => { clearTimeout(timer); removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end);
+        if (!d.on) { if (drag === d) drag = null; return; }
+        cancelAnimationFrame(d.raf); rows.forEach(r => { r.style.transform = ''; }); row.classList.remove('drag'); d.on = false; d.done = true;
+        setTimeout(() => { if (drag === d) drag = null; }, 400);
+        if (d.to !== d.from) onMove(d.from, d.to, d); };
+      addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
+    });
+  }
+  const moveTo = (items, from, to) => { const it = items.slice(); const [x] = it.splice(from, 1); it.splice(to, 0, x); return it; };
+  sortable($('pjList'), (from, to) => { const s = prepSvc(); if (s) change({ op: 'setItems', id: s.id, items: moveTo(s.items, from, to) }); });
+  sortable($('gList'), (from, to, d) => { const s = G.doc.services.find(x => x.id === d.key); if (s) change({ op: 'setItems', id: s.id, items: moveTo(s.items, from, to) }); });
   async function prepClick(e) {
     const s = prepSvc(); if (!s) return;
     const b = e.target.closest('button');
@@ -1053,7 +1093,7 @@ Refren:
     const prog = items.map((it, i) => { const t0 = clock(at); at += it.minutes || 0; return `<div class="it${it.kind === 'song' ? ' song' : ''}${mins ? ' timed' : ''}"><span class="n">${mins ? `<span class="t0">${t0}</span>` : i + 1}</span>
       <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}
         <small><span class="kind">${esc(KNAME[it.kind] || '')}</span>${it.leader ? ' · ' + esc(it.leader) : ''}</small></div>
-      ${edit ? `<span class="ed"><button data-mv="-1" data-i="${i}" data-s="${s.id}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" data-s="${s.id}" title="Mai jos">↓</button><button data-rm="${i}" data-s="${s.id}" title="Scoate">✕</button></span>` : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
+      ${edit ? `<span class="ed" data-s="${s.id}"><button data-rm="${i}" data-s="${s.id}" title="Scoate">✕</button></span>` : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
       || '<p class="mute" style="margin:6px 0;font-size:14px">Programul nu e scris încă.</p>';
     const add = edit ? `<div class="addit"><select id="k_${s.id}" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
       <input id="t_${s.id}" list="songTitles" placeholder="Titlul"><button data-additem="${s.id}">Adaugă</button></div>` : '';
