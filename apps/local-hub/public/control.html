@@ -1981,12 +1981,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   // a preview: clic → its settings; dublu-clic → the screen opens on the projector / stage monitor, dublu-clic again closes it
   document.querySelectorAll('.screens .screen').forEach((el, i) => {
     const kind = i ? 'stage' : 'main'; let t = 0;
-    el.title = 'Clic: aspectul ecranului · Dublu-clic: pornește / oprește ' + (i ? 'ecranul de scenă' : 'proiectorul');
+    el.title = 'Clic: aspectul ecranului · Dublu-clic: pornește ' + (i ? 'ecranul de scenă' : 'proiectorul') + ' (sau îl aduce înapoi pe monitorul lui)';
     el.onclick = e => { if (e.target.closest('.open,select')) return; clearTimeout(t); t = setTimeout(() => openLook(kind), 260); };
     el.ondblclick = e => {
       if (e.target.closest('.open,select')) return; clearTimeout(t);
-      if (S?.screensOpen?.[kind]) { send({ type: 'closeScreen', kind }); toast(i ? 'Ecranul de scenă s-a închis' : 'Proiectorul s-a închis'); }
-      else { openScreen(i ? '/stage.html' : '/main.html', i ? 'bnc-stage' : 'bnc-main'); toast(i ? 'Ecranul de scenă pornește' : 'Proiectorul pornește'); }
+      // Sunday safety: a double-click only (re)opens the screen on its monitor; it never closes it
+      openScreen(i ? '/stage.html' : '/main.html', i ? 'bnc-stage' : 'bnc-main'); toast(i ? 'Ecranul de scenă e pornit' : 'Proiectorul e pornit');
     };
   });
   $('lookOpen').onclick = () => lookScreen === 'stage' ? openScreen('/stage.html', 'bnc-stage') : openScreen('/main.html', 'bnc-main');

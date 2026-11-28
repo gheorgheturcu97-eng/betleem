@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Siguranță: proiectorul nu se mai închide din greșeală (2026.11.28.11)
+- **Fereastra proiectorului / scenei.** Înainte (2026.11.28.3–10): Esc apăsat când fereastra proiectorului avea focusul
+  o închidea, iar dublu-clic pe previzualizare o închidea dacă era deschisă. Acum: Esc pe proiector nu face nimic;
+  dublu-clic pe previzualizare doar pornește ecranul (sau îl readuce pe monitorul lui), nu îl mai închide.
+
 ## 2026-11-28 · Reparat: Esc care închidea o fereastră golea și ecranele (2026.11.28.10)
 - **Esc (control.html).** Înainte: Esc care închidea editorul de slide (sau altă fereastră) pornea în același timp și
   „Ecran gol”, așa că Sala și Scena rămâneau fără versuri. Acum: Esc închide doar fereastra; în Live, Esc e tot

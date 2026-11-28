@@ -45,9 +45,8 @@ export function paintBackground(el, name) {
 /** True in the projector / stage window of the desktop app (not a preview inside Live, not a phone or a TV browser). */
 export const isOutputWindow = () => window.top === window && /Electron/.test(navigator.userAgent);
 /** 🖥 The output window says it is open, and closes itself when the operator asks (double-click on its preview in Live)
- *  or with Esc pressed on it. */
+ *  (Esc on the projector window does nothing: it must never close by mistake.) */
 export function outputEvents(kind, hubRef) {
-  if (isOutputWindow()) addEventListener('keydown', e => { if (e.key === 'Escape') window.close(); });
   return m => {
     if (!isOutputWindow()) return;
     if (m.type === 'online') setTimeout(() => hubRef()?.send({ type: 'screenHere', kind }), 0);
