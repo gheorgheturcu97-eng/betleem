@@ -100,6 +100,26 @@
   .mine{display:grid;grid-template-columns:1fr auto;gap:var(--sp-3);align-items:center;padding:var(--sp-3) 0 var(--sp-1);border-top:1px solid var(--line)} .mine:first-of-type{border-top:0}
   .mine .x b{font-weight:600} .mine .x small{display:block;color:var(--text-2);font-size:13px;margin-top:1px} .mine .act{display:flex;gap:6px;align-items:center}
   .mine button{padding:8px 12px;font-size:13px} .mine button.yes{background:rgba(50,208,116,.16);color:#7ee3a6} .mine button.no{background:var(--fill)}
+  /* 🔔 the closer Sunday is and still no answer, the louder: Thursday yellow, Friday orange, Saturday red (blinking) */
+  .mineCard.u1{background:linear-gradient(180deg,rgba(245,197,24,.16),rgba(245,197,24,.04)),var(--surface);box-shadow:inset 0 0 0 1.5px rgba(245,197,24,.6),var(--shadow);animation:ring1 2.6s infinite}
+  .mineCard.u2{background:linear-gradient(180deg,rgba(255,140,40,.2),rgba(255,140,40,.05)),var(--surface);box-shadow:inset 0 0 0 2px rgba(255,140,40,.75),var(--shadow);animation:ring2 1.6s infinite}
+  .mineCard.u3{background:linear-gradient(180deg,rgba(255,59,48,.26),rgba(255,59,48,.07)),var(--surface);box-shadow:inset 0 0 0 2px #ff3b30,var(--shadow);animation:blink3 .9s steps(2,jump-none) infinite}
+  @keyframes ring1{50%{box-shadow:inset 0 0 0 1.5px rgba(245,197,24,.25),0 0 0 6px rgba(245,197,24,.12)}}
+  @keyframes ring2{50%{box-shadow:inset 0 0 0 2px rgba(255,140,40,.3),0 0 0 8px rgba(255,140,40,.18)}}
+  @keyframes blink3{50%{box-shadow:inset 0 0 0 2px rgba(255,59,48,.2),0 0 0 10px rgba(255,59,48,.25)}}
+  .mineCard.u1 .pulse{background:#f5c518} .mineCard.u2 .pulse{background:#ff8c28} .mineCard.u3 .pulse{background:#ff3b30}
+  .mine .due{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600}
+  .mine .due.u1{background:rgba(245,197,24,.18);color:#f5c518} .mine .due.u2{background:rgba(255,140,40,.2);color:#ff9d4a} .mine .due.u3{background:#ff3b30;color:#fff}
+  @media (prefers-reduced-motion:reduce){.mineCard.u1,.mineCard.u2,.mineCard.u3{animation:none}}
+  /* ✕ / + the posts of one service */
+  .slot .x{padding:4px 8px;font-size:13px;color:var(--text-3);background:none} .slot .x:hover{color:var(--no)}
+  .slot.edit{grid-template-columns:minmax(84px,34%) 1fr auto auto}
+  .addpos{display:flex;gap:6px;margin:4px 0 8px} .addpos select{flex:1;padding:6px 8px;font-size:13px;border-radius:8px;color:var(--text-2)}
+  .dep .off{margin-left:6px;padding:2px 8px;font-size:12px;color:var(--text-3);background:none} .dep.zero{opacity:.55}
+  .st.pending.u1{color:#f5c518} .st.pending.u2{color:#ff9d4a} .st.pending.u3{color:#ff3b30;font-weight:600}
+  .wa{padding:3px 8px;font-size:12px;background:rgba(37,211,102,.16);color:#5fe08f;border-radius:7px;margin-left:4px}
+  .it .t0{color:var(--text-3);font-size:12px;font-variant-numeric:tabular-nums} .it.timed{grid-template-columns:42px 1fr auto}
+  .slot .w .wa{margin:4px 0 0}
   .mine.new .x b:after{content:"nou";margin-left:8px;padding:1px 6px;border-radius:6px;background:var(--accent);color:#fff;font-size:10.5px;font-weight:600;vertical-align:1px}
 
   /* the notification hint: a quiet system hint, not a banner */
@@ -370,7 +390,7 @@ Refren:
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
   import { parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
-  import { applyPlanOp, serviceWarnings } from './core/plan.js';
+  import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency } from './core/plan.js';
   import { BOOKS, parseRef, formatRef } from './core/bibleref.js';
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'reverb-session' } });
   const $ = id => document.getElementById(id);
@@ -802,7 +822,9 @@ Refren:
   //    through two database functions that only touch their own places.
   const KIND = { song: '🎵', sermon: '🎤', prayer: '🙏', announcement: '📣', reading: '📖', bible: '📖', media: '🎬', other: '•' };
   const KNAME = { song: 'Cântare', sermon: 'Predică', prayer: 'Rugăciune', announcement: 'Anunțuri', reading: 'Citire', bible: 'Biblie', other: 'Alt moment' };
-  const POS = { 'Închinare': [['Lider închinare'], ['Vocal', 2], ['Chitară'], ['Clape'], ['Bas'], ['Tobe']], 'Media': [['Proiecție'], ['Sunet'], ['Live stream']],
+  const POS = { 'Închinare': [['Lider închinare'], ['Vocal', 2], ['Chitară acustică'], ['Chitară electrică'], ['Pian / clape'], ['Bas'], ['Tobe'], ['Chitară 2', 1, true], ['Vocal 3', 1, true], ['Vioară', 1, true]],
+    'Media': [['Sunet'], ['Live stream'], ['Versuri (proiecție)'], ['Camera 1'], ['Camera 2', 1, true]],
+    'Social media': [['Foto'], ['Reels / video', 1, true], ['Postări', 1, true]],
     'Copii': [['Învățător', 2]], 'Asimilare și ospitalitate': [['Primire la ușă', 2], ['Cafea']], 'Tineret': [['Lider tineret']] };
   const COLORS = ['#f5b301', '#3fa7ff', '#ff7a59', '#2ecc71', '#c58cff', '#ff5aa5'];
   let G = { doc: null, version: 0, people: [], me: null, deps: [], open: new Set(), edit: new Set() };
@@ -833,7 +855,15 @@ Refren:
   // the departments and positions of the program come from the church's departments (Închinare, Media…)
   function withBase(doc) {
     doc.services ||= []; doc.departments ||= []; doc.volunteers ||= [];
-    G.deps.forEach((name, i) => { if (!doc.departments.some(d => d.name === name)) applyPlanOp(doc, { op: 'saveDepartment', department: { name, color: COLORS[i % COLORS.length], positions: (POS[name] || [['Slujitor']]).map(([n, needed = 1]) => ({ name: n, needed })) } }); });
+    G.deps.forEach((name, i) => { if (!doc.departments.some(d => d.name === name)) applyPlanOp(doc, { op: 'saveDepartment', department: { name, color: COLORS[i % COLORS.length], positions: (POS[name] || [['Slujitor']]).map(([n, needed = 1, optional]) => ({ name: n, needed, optional })) } }); });
+    // once: the posts asked for in November 2026 (Camera 1 / 2, Chitară 2…) join the departments that already exist
+    if ((doc.posV || 0) < 2) {
+      const fold = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const more = { 'Media': [['Camera 1'], ['Camera 2', 1, true]], 'Închinare': [['Chitară 2', 1, true], ['Vocal 3', 1, true], ['Vioară', 1, true]] };
+      for (const d of doc.departments) for (const [n, needed = 1, optional] of more[d.name] || [])
+        if (!d.positions.some(p => fold(p.name) === fold(n))) d.positions.push({ id: crypto.randomUUID(), name: n, needed, ...(optional ? { optional: true } : {}) });
+      doc.posV = 2;
+    }
     for (const p of G.people) {                       // everyone with a link can be placed; can serve in his departments
       const pos = doc.departments.filter(d => (p.departments || []).includes(d.name)).flatMap(d => d.positions.map(x => x.id));
       const v = doc.volunteers.find(x => x.id === p.person_id);
@@ -873,8 +903,11 @@ Refren:
     }
     $('gMineCard').hidden = !mine.length;
     const open = mine.filter(x => x.a.status === 'pending').length;
+    const loud = Math.max(0, ...mine.filter(x => x.a.status === 'pending').map(x => urgency(x.s.date)));
+    $('gMineCard').className = 'card mineCard' + (loud ? ' u' + loud : '');
+    nag(loud, mine.filter(x => x.a.status === 'pending'));
     $('gMineN').textContent = open ? `${open} de confirmat` : `${mine.length} ${mine.length === 1 ? 'loc' : 'locuri'} · confirmat`;
-    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine${a.status === 'pending' ? ' new' : ''}"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small></div>
+    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine${a.status === 'pending' ? ' new' : ''}"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small>${a.status === 'pending' && urgency(s.date) ? `<span class="due u${urgency(s.date)}">${DUE[urgency(s.date)]}</span>` : ''}</div>
       <div class="act">${a.status === 'pending' ? '' : stat(a)}<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>Nu pot</button></div></div>`).join('');
     // the services
     $('gCount').textContent = list.length ? `${list.length} ${list.length === 1 ? 'serviciu' : 'servicii'}` : '';
@@ -891,43 +924,72 @@ Refren:
   function serviceCard(s, lead) {
     const doc = G.doc, d = day(s.date), open = G.open.has(s.id), edit = lead && G.edit.has(s.id);
     const items = s.items || [], mins = items.reduce((t, it) => t + (it.minutes || 0), 0), songs = items.filter(it => it.kind === 'song').length;
-    const slotsAll = doc.departments.flatMap(dep => dep.positions.flatMap(p => Array.from({ length: p.needed }, (_, i) => `${p.id}#${i}`)));
+    const slotsAll = placesOf(doc, s).map(x => x.k);
     const asg = s.assignments || {}, filled = slotsAll.filter(k => asg[k]).length, ok = slotsAll.filter(k => asg[k]?.status === 'confirmed').length;
     const meta = [fmtTime(s.date), mins ? mins + ' min' : '', songs ? songs + (songs === 1 ? ' cântare' : ' cântări') : ''].filter(Boolean).join(' · ');
-    const prog = items.map((it, i) => `<div class="it${it.kind === 'song' ? ' song' : ''}"><span class="n">${i + 1}</span>
+    let at = d.getHours() * 60 + d.getMinutes();     // ⏱ the run sheet with the clock: when each moment starts
+    const clock = m => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    const prog = items.map((it, i) => { const t0 = clock(at); at += it.minutes || 0; return `<div class="it${it.kind === 'song' ? ' song' : ''}${mins ? ' timed' : ''}"><span class="n">${mins ? `<span class="t0">${t0}</span>` : i + 1}</span>
       <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}
         <small><span class="kind">${esc(KNAME[it.kind] || '')}</span>${it.leader ? ' · ' + esc(it.leader) : ''}</small></div>
-      ${edit ? `<span class="ed"><button data-mv="-1" data-i="${i}" data-s="${s.id}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" data-s="${s.id}" title="Mai jos">↓</button><button data-rm="${i}" data-s="${s.id}" title="Scoate">✕</button></span>` : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`).join('')
+      ${edit ? `<span class="ed"><button data-mv="-1" data-i="${i}" data-s="${s.id}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" data-s="${s.id}" title="Mai jos">↓</button><button data-rm="${i}" data-s="${s.id}" title="Scoate">✕</button></span>` : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
       || '<p class="mute" style="margin:6px 0;font-size:14px">Programul nu e scris încă.</p>';
     const add = edit ? `<div class="addit"><select id="k_${s.id}" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
       <input id="t_${s.id}" list="songTitles" placeholder="Titlul"><button data-additem="${s.id}">Adaugă</button></div>` : '';
     const team = doc.departments.map(dep => {
-      const slots = dep.positions.flatMap(p => Array.from({ length: p.needed }, (_, i) => ({ p, k: `${p.id}#${i}` })));
-      const n = slots.filter(x => asg[x.k]).length; if (!edit && !n) return '';
-      const rows = slots.map(({ p, k }) => {
-        const a = asg[k];
-        if (!edit) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}</span>${stat(a)}</div>` : '';
+      const slots = dep.positions.flatMap(p => Array.from({ length: needFor(s, p) }, (_, i) => ({ p, k: `${p.id}#${i}`, last: i === needFor(s, p) - 1 })));
+      const n = slots.filter(x => asg[x.k]).length; if (!edit && !n && !(lead && slots.length)) return '';
+      const rows = slots.map(({ p, k, last }) => {
+        const a = asg[k], u = a?.status === 'pending' ? urgency(s.date) : 0;
+        if (!edit) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}${lead && a.status === 'pending' && u ? `<br><button class="wa" data-wa="${esc(a.volunteer)}" data-s="${s.id}" data-pos="${esc(p.name)}" title="Trimite-i pe WhatsApp un mesaj că n-a răspuns">📲 Amintește-i</button>` : ''}</span>${stat(a, u)}</div>`
+          : lead ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w mute">liber</span><span></span></div>` : '';
         const ppl = G.people.slice().sort((x, y) => ((y.departments || []).includes(dep.name) - (x.departments || []).includes(dep.name)) || (x.name || '').localeCompare(y.name || '', 'ro'));
-        return `<div class="slot"><span class="p">${esc(p.name)}</span><select data-assign="${s.id}" data-k="${esc(k)}" aria-label="${esc(p.name)}"><option value="">Liber</option>${ppl.map(x =>
-          `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${esc(x.name)}${(x.departments || []).includes(dep.name) ? '' : ' (alt dep.)'}</option>`).join('')}</select>${a ? stat(a) : '<span></span>'}</div>`;
+        return `<div class="slot edit"><span class="p">${esc(p.name)}</span><select data-assign="${s.id}" data-k="${esc(k)}" aria-label="${esc(p.name)}"><option value="">Liber</option>${ppl.map(x =>
+          `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${esc(x.name)}${(x.departments || []).includes(dep.name) ? '' : ' (alt dep.)'}</option>`).join('')}</select>${a ? stat(a, u) : '<span></span>'}${last ? `<button class="x" data-unneed="${p.id}" data-s="${s.id}" title="Nu e nevoie de ${esc(p.name)} la acest program">✕</button>` : '<span></span>'}</div>`;
       }).join('');
-      return `<div class="dep"><i style="background:${esc(dep.color)}"></i>${esc(dep.name)}<small>${n}/${slots.length}</small></div>${rows}`;
+      // + a post: one more of a standard post, an optional one (Chitară 2, Camera 2…) or a new name
+      const plus = edit ? `<div class="addpos"><select data-addpos="${s.id}" data-dep="${dep.id}" aria-label="Adaugă un post la ${esc(dep.name)}"><option value="">＋ Adaugă un post la ${esc(dep.name)}…</option>${dep.positions.map(p =>
+        `<option value="${p.id}">${esc(p.name)}${needFor(s, p) ? ' (încă unul)' : ''}</option>`).join('')}<option value="*">Alt post (scrii numele)…</option></select></div>` : '';
+      if (!slots.length && !edit) return '';
+      return `<div class="dep${slots.length ? '' : ' zero'}"><i style="background:${esc(dep.color)}"></i>${esc(dep.name)}<small>${slots.length ? `${n}/${slots.length}` : 'nu e nevoie'}</small>${edit && slots.length ? `<button class="off" data-depoff="${dep.id}" data-s="${s.id}" title="Fără ${esc(dep.name)} la acest program">✕ tot</button>` : ''}</div>${rows}${plus}`;
     }).join('') || '<p class="mute" style="margin:6px 0;font-size:14px">Echipa nu e făcută încă.</p>';
+    const newDep = edit ? `<div class="addpos"><select data-adddep="${s.id}" aria-label="Departament nou"><option value="">＋ Departament nou (ex. Social media)…</option>${Object.keys(POS).filter(n => !doc.departments.some(d => d.name === n)).map(n => `<option>${esc(n)}</option>`).join('')}<option value="*">Alt departament…</option></select></div>` : '';
     const warn = lead ? serviceWarnings(doc, s).filter(w => !/neocupate/.test(w)) : [];
     const isToday = d.toDateString() === new Date().toDateString();
     return `<details class="svc${isToday ? ' today' : ''}" data-svc="${s.id}"${open ? ' open' : ''}><summary>
       <span class="dt"><small>${esc(d.toLocaleDateString('ro-RO', { weekday: 'short' }).replace('.', ''))}</small><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString('ro-RO', { month: 'short' }).replace('.', ''))}</small></span>
       <span class="ttl"><b>${esc(s.title)}</b><small>${esc(meta)}</small></span>
       <span class="fill">${slotsAll.length ? `${filled}/${slotsAll.length}<span class="bar"><i style="width:${Math.round(100 * ok / slotsAll.length)}%"></i></span>` : ''}</span><svg class="i chev" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M9 6l6 6-6 6"/></svg></summary>
-      <div class="in"><div><h3>Programul${mins ? `<small>${mins} min</small>` : ''}</h3>${prog}${add}</div><div><h3>Echipa${slotsAll.length ? `<small>${ok} confirmați din ${slotsAll.length}</small>` : ''}</h3>${team}</div>
+      <div class="in"><div><h3>Programul${mins ? `<small>${mins} min</small>` : ''}</h3>${prog}${add}</div><div><h3>Echipa${slotsAll.length ? `<small>${ok} confirmați din ${slotsAll.length}</small>` : ''}</h3>${team}${newDep}</div>
       ${warn.length ? `<p class="warn">${warn.map(esc).join('<br>')}</p>` : ''}
       ${lead ? `<div class="svcbar">${edit ? `<input id="n_${s.id}" value="${esc(s.title)}" maxlength="80" style="flex:1 1 160px"><button data-rename="${s.id}">Salvează numele</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge</button><span class="sp"></span>` : '<span class="sp"></span>'}
         ${slotsAll.length > filled ? `<button data-auto="${s.id}" title="Pune oamenii pe locurile libere">✦ Completează echipa</button>` : ''}<button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : 'Editează'}</button></div>` : ''}</div></details>`;
   }
-  const stat = a => `<span class="st ${a.status}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : 'În așteptare'}</span>`;
+  const stat = (a, u = 0) => `<span class="st ${a.status}${u ? ' u' + u : ''}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : u === 3 ? 'N-a răspuns!' : 'În așteptare'}</span>`;
+  const DUE = { 1: 'Mai ai 3 zile să răspunzi', 2: 'Mai sunt 2 zile: răspunde azi', 3: 'Ultima zi: răspunde acum' };
+  // 🔔 red (the day before): a reminder on the phone at most 3 times a day (morning, noon, evening), while it's still unanswered
+  function nag(level, open) {
+    if (level < 3 || !open.length || !('Notification' in window) || Notification.permission !== 'granted') return;
+    const part = Math.floor(new Date().getHours() / 8), key = 'rv-nag-' + new Date().toDateString() + '-' + part;
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch { return; }
+    const x = open[0];
+    navigator.serviceWorker?.ready.then(r => r.showNotification('Nu ai răspuns la programare', { body: `${x.what} · ${x.s.title}, ${day(x.s.date).toLocaleDateString('ro-RO', { weekday: 'long' })} ${fmtTime(x.s.date)}. Apasă Pot sau Nu pot.`, tag: 'rv-nag', icon: 'icon-512.png', data: { url: location.href.split('#')[0] } })).catch(() => {});
+  }
 
   $('gList').addEventListener('toggle', e => { const d = e.target.closest('[data-svc]'); if (d) d.open ? G.open.add(d.dataset.svc) : G.open.delete(d.dataset.svc); }, true);
   $('gList').addEventListener('change', e => {
+    const nd = e.target.closest('[data-adddep]');
+    if (nd) { let name = nd.value; nd.value = ''; if (name === '*') name = (prompt('Numele departamentului:') || '').trim(); if (!name) return;
+      G.open.add(nd.dataset.adddep);
+      return change({ op: 'saveDepartment', department: { name, color: COLORS[G.doc.departments.length % COLORS.length], positions: (POS[name] || [['Slujitor']]).map(([n, needed = 1, optional]) => ({ name: n, needed, optional })) } }); }
+    const ap = e.target.closest('[data-addpos]');
+    if (ap) {
+      const s = G.doc.services.find(x => x.id === ap.dataset.addpos), v = ap.value; ap.value = ''; if (!s || !v) return;
+      if (v === '*') { const name = (prompt('Numele postului (ex. Chitară 2, Camera 2, Foto):') || '').trim(); if (!name) return;
+        return change({ op: 'setNeed', id: s.id, department: ap.dataset.dep, name, needed: 1 }); }
+      const p = G.doc.departments.flatMap(d => d.positions).find(x => x.id === v);
+      return change({ op: 'setNeed', id: s.id, position: v, needed: needFor(s, p) + 1 });
+    }
     const sel = e.target.closest('[data-assign]'); if (!sel) return;
     const [position, slot] = sel.dataset.k.split('#');
     change({ op: 'assign', id: sel.dataset.assign, position, slot: +slot, volunteer: sel.value || null });
@@ -943,6 +1005,17 @@ Refren:
       const kind = $('k_' + s.id).value, title = $('t_' + s.id).value.trim(); if (!title && kind === 'song') return $('t_' + s.id).focus();
       const song = kind === 'song' ? lib.find(x => x.title.toLowerCase() === title.toLowerCase()) : null;
       return change({ op: 'setItems', id: s.id, items: [...s.items, { kind, title: title || KNAME[kind], ...(song ? { songId: song.local_id, key: song.key || '' } : {}) }] });
+    }
+    if (b.dataset.unneed && s) { const p = G.doc.departments.flatMap(d => d.positions).find(x => x.id === b.dataset.unneed); const k = `${p.id}#${needFor(s, p) - 1}`;
+      if (s.assignments?.[k] && !confirm(`${pname(s.assignments[k].volunteer)} e pus la ${p.name}. Scoți postul de la acest program?`)) return;
+      return change({ op: 'setNeed', id: s.id, position: p.id, needed: needFor(s, p) - 1 }); }
+    if (b.dataset.depoff && s) { const d = G.doc.departments.find(x => x.id === b.dataset.depoff), busy = d.positions.some(p => Object.keys(s.assignments || {}).some(k => k.startsWith(p.id + '#')));
+      if (busy && !confirm(`Scoți tot departamentul ${d.name} de la acest program? Oamenii puși acolo sunt eliberați.`)) return;
+      return change(d.positions.filter(p => needFor(s, p)).map(p => ({ op: 'setNeed', id: s.id, position: p.id, needed: 0 }))); }
+    if (b.dataset.wa && s) {                         // 📲 free: WhatsApp opens with the message ready, the leader picks the person and sends
+      const when = day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }) + ' la ' + fmtTime(s.date);
+      const msg = `Salut, ${pname(b.dataset.wa).split(' ')[0]}! Ești programat la ${b.dataset.pos}, ${when} (${s.title}), și încă n-ai răspuns. Intră aici și apasă „Pot” sau „Nu pot”: ${location.href.split('#')[0]}`;
+      return open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
     }
     if (b.dataset.auto) { const sv = G.doc.services.find(x => x.id === b.dataset.auto); return autoTeam(sv ? [sv] : []); }
     if (b.dataset.rename && s) return change({ op: 'updateService', id: s.id, title: $('n_' + s.id).value });
@@ -970,8 +1043,7 @@ Refren:
     if (!svcs.length) return;
     const done = await change(svcs.map(s => ({ op: 'autoAssign', id: s.id }))); if (!done) return;
     const n = done.reduce((t, o) => t + (o.filled || 0), 0);
-    const slots = G.doc.departments.reduce((t, d) => t + d.positions.reduce((u, p) => u + p.needed, 0), 0);
-    const empty = G.doc.services.filter(s => svcs.some(x => x.id === s.id)).reduce((t, s) => t + slots - Object.keys(s.assignments || {}).length, 0);
+    const empty = G.doc.services.filter(s => svcs.some(x => x.id === s.id)).reduce((t, s) => t + placesOf(G.doc, s).filter(x => !s.assignments?.[x.k]).length, 0);
     $('gAutoOut').hidden = false;
     $('gAutoOut').innerHTML = (n ? `<b>Am programat ${n} ${n === 1 ? 'loc' : n % 100 >= 20 || n % 100 === 0 ? 'de locuri' : 'locuri'}</b> în ${svcs.length} ${svcs.length === 1 ? 'serviciu' : 'servicii'}. Fiecare om primește notificarea și răspunde „Pot” sau „Nu pot”.`
       : '<b>N-am găsit pe nimeni nou de pus.</b>') + (empty ? ` Au rămas ${empty} ${empty === 1 ? 'loc liber' : empty % 100 >= 20 ? 'de locuri libere' : 'locuri libere'}: nimeni potrivit în departament, liber în ziua aceea și sub limita lunară.` : ' Toate locurile sunt ocupate.');

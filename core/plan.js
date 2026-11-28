@@ -24,13 +24,29 @@ export function cannotServe(plan, s, volunteerId, exceptKey) {
   return '';
 }
 
+/** How many people this position needs in this service: the service's own choice (✕ = 0, + = more),
+ *  else the department's standard (an optional position, e.g. „Chitară 2”, is 0 until it is added). */
+export const needFor = (s, p) => s?.need && s.need[p.id] !== undefined ? s.need[p.id] : (p.optional ? 0 : p.needed);
+/** Every place of a service: [{ d, p, k: 'positionId#slot' }] */
+export const placesOf = (plan, s) => plan.departments.flatMap(d => d.positions.flatMap(p => Array.from({ length: needFor(s, p) }, (_, i) => ({ d, p, k: `${p.id}#${i}` }))));
+/** 🔔 how urgent an unanswered place is: 0 calm · 1 yellow (3 days before) · 2 orange (2 days) · 3 red (the day before / the day) */
+export function urgency(serviceDate, now = new Date()) {
+  const a = new Date(serviceDate), b = new Date(now); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+  const days = Math.round((a - b) / 864e5);
+  return days < 0 ? 0 : days <= 1 ? 3 : days === 2 ? 2 : days === 3 ? 1 : 0;
+}
+/** ⏱ the same colours for time everywhere: 0 fine · 1 yellow (75 % used) · 2 orange (90 %) · 3 red (over) */
+export const timeLevel = (usedSec, plannedSec) => !plannedSec ? 0 : usedSec > plannedSec ? 3 : usedSec >= plannedSec * 0.9 ? 2 : usedSec >= plannedSec * 0.75 ? 1 : 0;
+
 export function defaultPlan() {
-  const dept = (name, color, positions) => ({ id: id(), name, color, positions: positions.map(([n, needed = 1]) => ({ id: id(), name: n, needed })) });
+  const dept = (name, color, positions) => ({ id: id(), name, color, positions: positions.map(([n, needed = 1, optional]) => ({ id: id(), name: n, needed, ...(optional ? { optional: true } : {}) })) });
   return {
     services: [],
     departments: [
-      dept('Închinare', '#f5b301', [['Lider închinare'], ['Vocal', 2], ['Chitară'], ['Clape'], ['Bas'], ['Tobe']]),
-      dept('Media', '#3fa7ff', [['Proiecție'], ['Sunet'], ['Live stream']]),
+      dept('Închinare', '#f5b301', [['Lider închinare'], ['Vocal', 2], ['Chitară acustică'], ['Chitară electrică'], ['Pian / clape'], ['Bas'], ['Tobe'],
+        ['Chitară 2', 1, true], ['Vocal 3', 1, true], ['Vioară', 1, true], ['Pad / synth', 1, true]]),
+      dept('Media', '#3fa7ff', [['Sunet'], ['Live stream'], ['Versuri (proiecție)'], ['Camera 1'], ['Camera 2', 1, true]]),
+      dept('Social media', '#ff5aa5', [['Foto'], ['Reels / video', 1, true], ['Postări', 1, true]]),
       dept('Program', '#c58cff', [['Moderator'], ['Predicator']]),
       dept('Ospitalitate', '#2ecc71', [['Primire la ușă', 2], ['Cafea']]),
       dept('Copii', '#ff7a59', [['Învățător școala duminicală']]),
@@ -106,6 +122,7 @@ export function applyPlanOp(plan, op) {
     case 'copyItems': {                                  // copy the program from another service
       const s = svc(), from = plan.services.find(x => x.id === op.from); if (!s || !from) return 'Serviciul nu există';
       s.items = cleanItems(from.items.map(i => ({ ...i, id: undefined })));
+      if (from.need) s.need = { ...from.need }; else delete s.need;          // the same posts as there (✕ / + per service)
       break;
     }
     case 'setItems': { const s = svc(); if (!s) return 'Serviciul nu există'; s.items = cleanItems(op.items); break; }
@@ -120,9 +137,28 @@ export function applyPlanOp(plan, op) {
     case 'saveDepartment': {
       const d = op.department || {};
       const clean = { id: d.id || id(), name: str(d.name) || 'Departament', color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#8c929a',
-        positions: (d.positions || []).slice(0, 30).map(p => ({ id: p.id || id(), name: str(p.name) || 'Poziție', needed: Math.min(10, Math.max(1, Number(p.needed) || 1)) })) };
+        positions: (d.positions || []).slice(0, 30).map(p => ({ id: p.id || id(), name: str(p.name) || 'Poziție', needed: Math.min(10, Math.max(1, Number(p.needed) || 1)), ...(p.optional ? { optional: true } : {}) })) };
       const i = plan.departments.findIndex(x => x.id === clean.id);
       if (i >= 0) plan.departments[i] = clean; else plan.departments.push(clean);
+      break;
+    }
+    // ✕ / + a position in ONE service (the church's standard stays): „only acoustic and piano tonight”, „Camera 2 this time”.
+    // A new name („Chitară 2”) becomes an optional position of the department, ready for other services too.
+    case 'setNeed': {
+      const s = svc(); if (!s) return 'Serviciul nu există';
+      let p = plan.departments.flatMap(d => d.positions).find(x => x.id === op.position);
+      if (!p && op.name) {
+        const d = plan.departments.find(x => x.id === op.department); if (!d) return 'Departamentul nu există';
+        p = d.positions.find(x => str(x.name).toLowerCase() === str(op.name).toLowerCase());
+        if (!p) { if (d.positions.length >= 30) return 'Prea multe posturi'; p = { id: id(), name: str(op.name, 40), needed: 1, optional: true }; d.positions.push(p); }
+      }
+      if (!p) return 'Postul nu există';
+      const n = Math.min(10, Math.max(0, Math.round(Number(op.needed) || 0)));
+      s.need ||= {};
+      if (n === (p.optional ? 0 : p.needed)) delete s.need[p.id]; else s.need[p.id] = n;
+      if (!Object.keys(s.need).length) delete s.need;
+      for (const k of Object.keys(s.assignments)) { const [pid, slot] = k.split('#'); if (pid === p.id && +slot >= n) delete s.assignments[k]; }   // the people of a removed place are freed
+      op.position = p.id;
       break;
     }
     case 'deleteDepartment': plan.departments = plan.departments.filter(d => d.id !== op.id); break;
@@ -258,7 +294,7 @@ export function autoAssign(plan, s, onlyDept = '') {
   let n = 0;
   for (const d of plan.departments) {
     if (onlyDept && d.id !== onlyDept && d.name !== onlyDept) continue;
-    for (const p of d.positions) for (let slot = 0; slot < p.needed; slot++) {
+    for (const p of d.positions) for (let slot = 0; slot < needFor(s, p); slot++) {
       const key = `${p.id}#${slot}`; if (s.assignments[key]) continue;
       const inHere = new Set(Object.values(s.assignments).map(a => a.volunteer));
       const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key))
@@ -304,7 +340,7 @@ export function serviceWarnings(plan, s) {
     if (a.status === 'declined') out.push(`${v.name} a spus că nu poate`);
   }
   let empty = 0;
-  for (const d of plan.departments) for (const p of d.positions) for (let i = 0; i < p.needed; i++) if (!s.assignments[`${p.id}#${i}`]) empty++;
+  for (const { k } of placesOf(plan, s)) if (!s.assignments[k]) empty++;
   if (empty) out.push(`${empty} poziții neocupate`);
   return out;
 }
