@@ -955,22 +955,26 @@
   #results .lib .acts{position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:3px;border-radius:10px;
     background:rgba(20,22,28,.92);box-shadow:0 2px 10px rgba(0,0,0,.4);pointer-events:none}
   #results .lib:hover .acts{pointer-events:auto}
-  /* ⇔ Pe ecran: Programul și Cântările se retrag într-o bară subțire; trec cu mouse-ul (sau scriu în căutare) și se deschid
-     peste slide-uri, fără să mute nimic. Se pornește/oprește din Vizualizare. */
-  .main.auto:not(.noL):not(.noR){grid-template-columns:44px 8px minmax(0,1fr) 8px 44px}
-  .main.auto.noL:not(.noR){grid-template-columns:minmax(0,1fr) 8px 44px}
-  .main.auto.noR:not(.noL){grid-template-columns:44px 8px minmax(0,1fr)}
-  .main.auto>.gut{visibility:hidden}
-  .main.auto>#pLeft,.main.auto>#pRight{position:relative;z-index:30;transition:box-shadow .15s}
-  .main.auto>#pLeft{justify-self:start;width:44px} .main.auto>#pRight{justify-self:end;width:44px}
-  .main.auto>#pLeft:hover,.main.auto>#pLeft:focus-within{width:var(--colL,300px);box-shadow:12px 0 40px rgba(0,0,0,.55)}
-  .main.auto>#pRight:hover,.main.auto>#pRight:focus-within{width:var(--colR,390px);box-shadow:-12px 0 40px rgba(0,0,0,.55)}
-  .main.auto>#pLeft:not(:hover):not(:focus-within)>*,.main.auto>#pRight:not(:hover):not(:focus-within)>*{visibility:hidden}
-  .main.auto>#pLeft:not(:hover):not(:focus-within)::after,.main.auto>#pRight:not(:hover):not(:focus-within)::after{
+  /* ⇔ Programul și Cântările: se ascund doar când apeși tu (▤ / ▥, Ctrl/⌘+1 / 3); rămâne o bară subțire, iar un clic pe
+     ea le aduce înapoi. Retragerea automată cât ești pe ecran e oprită (se pornește din Vizualizare, dacă o vrei). */
+  .main.noL:not(.noR),.main.auto.noL:not(.noR){grid-template-columns:44px 8px minmax(0,1fr) 8px var(--colR,390px)!important}
+  .main.noR:not(.noL),.main.auto.noR:not(.noL){grid-template-columns:var(--colL,300px) 8px minmax(0,1fr) 8px 44px!important}
+  .main.noL.noR,.main.auto:not(.noL):not(.noR){grid-template-columns:44px 8px minmax(0,1fr) 8px 44px!important}
+  .main.noL>#pLeft,.main.noR>#pRight,.main.auto>#pLeft,.main.auto>#pRight{display:block!important;position:relative;width:44px;cursor:pointer}
+  .main.noL>.gut[data-g=colL],.main.noR>.gut[data-g=colR],.main.auto>.gut{display:block!important;visibility:hidden}
+  .main.noL>#pLeft>*,.main.noR>#pRight>*,.main.auto>#pLeft>*,.main.auto>#pRight>*{visibility:hidden}
+  .main.noL>#pLeft::after,.main.noR>#pRight::after,.main.auto>#pLeft::after,.main.auto>#pRight::after{
     position:absolute;inset:0;display:grid;place-items:center;writing-mode:vertical-rl;transform:rotate(180deg);
-    font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);cursor:pointer}
-  .main.auto>#pLeft:not(:hover):not(:focus-within)::after{content:"Program ›"}
-  .main.auto>#pRight:not(:hover):not(:focus-within)::after{content:"‹ Cântări · Biblia"}
+    font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+  .main.noL>#pLeft::after,.main.auto>#pLeft::after{content:"Program ›"}
+  .main.noR>#pRight::after,.main.auto>#pRight::after{content:"‹ Cântări · Biblia"}
+  #pLeft,#pRight{position:relative}
+  .hidep{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:16px;height:44px;padding:0!important;border-radius:8px!important;
+    font-size:13px;line-height:1;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.08)!important;border:1px solid var(--stroke)!important;color:var(--mute)}
+  #pLeft .hidep{right:3px} #pRight .hidep{left:3px}
+  #pLeft:hover .hidep,#pRight:hover .hidep{opacity:1} .hidep:hover{color:var(--fg);background:rgba(255,255,255,.16)!important}
+  .main.noL>#pLeft .hidep,.main.noR>#pRight .hidep,.main.auto .hidep{display:none}
+  .main.noL>#pLeft:hover::after,.main.noR>#pRight:hover::after,.main.auto>#pLeft:hover::after,.main.auto>#pRight:hover::after{color:var(--fg)}
 </style>
 
 <style id="pp-side">
@@ -1048,7 +1052,7 @@
 
   <div class="main" id="mainGrid">
     <!-- left: service order -->
-    <aside class="panel glass" id="pLeft">
+    <aside class="panel glass" id="pLeft"><button class="hidep" data-hide="L" title="Ascunde Programul (Ctrl/⌘+1) · clic pe bară îl aduce înapoi">‹</button>
       <div class="panel-head"><h2>Program</h2><select id="progSel" class="grow" hidden title="Alege programul (duminică, Crăciun…)"></select>
         <button id="progCur" class="prog-cur grow" title="Alege alt program (serviciu)"><span id="progCurT">—</span><i>▾</i></button>
         <button id="progAdd" class="icon prog-add" title="Adaugă un program din Planning Center (sau unul nou)">＋</button></div>
@@ -1140,7 +1144,7 @@
     <div class="gut v" data-g="colR" title="Trage ca să lărgești · dublu-clic = normal"></div>
 
     <!-- right: library / internet / editor -->
-    <aside class="panel glass" id="pRight">
+    <aside class="panel glass" id="pRight"><button class="hidep" data-hide="R" title="Ascunde Cântări · Biblia (Ctrl/⌘+3) · clic pe bară le aduce înapoi">›</button>
       <div class="seg" id="tabs">
         <button data-t="lib" class="sel">Cântări</button>
         <button data-t="bible">Biblia</button>
@@ -1852,7 +1856,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       { l: 'Programul', k: 'Mod+1', chk: () => !layout.L, run: () => togglePart('L') },
       { l: 'Ecranele (previzualizare)', k: 'Mod+2', chk: () => $('screens').dataset.vis !== 'none', run: () => togglePart('S') },
       { l: 'Cântări · Biblia · Internet', k: 'Mod+3', chk: () => !layout.R, run: () => togglePart('R') },
-      { l: 'Retrage Programul și Cântările cât ești pe ecran', chk: () => layout.auto !== false, run: () => { layout.auto = layout.auto === false; applyParts(); render(); } },
+      { l: 'Retrage Programul și Cântările cât ești pe ecran', chk: () => layout.auto === true, run: () => { layout.auto = layout.auto !== true; applyParts(); render(); } },
       '-',
       { l: 'Cântări', run: () => { if (layout.R) togglePart('R'); showTab('lib'); } },
       { l: 'Biblia', k: 'F8', run: () => { if (layout.R) togglePart('R'); showTab('bible'); $('bibQ').focus(); } },
@@ -2316,6 +2320,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     applyParts();
   }
   document.querySelectorAll('#layoutT button').forEach(b => b.onclick = () => togglePart(b.dataset.p));
+  document.querySelectorAll('.hidep').forEach(b => b.onclick = e => { e.stopPropagation(); togglePart(b.dataset.hide); });
+  // a hidden panel stays as a thin bar: one click on it brings it back (in auto mode it switches the auto mode off)
+  for (const [id, p] of [['pLeft', 'L'], ['pRight', 'R']]) $(id).addEventListener('click', e => {
+    const g = $('mainGrid');
+    if (g.classList.contains(p === 'L' ? 'noL' : 'noR')) { e.stopPropagation(); togglePart(p); }
+    else if (g.classList.contains('auto')) { e.stopPropagation(); layout.auto = false; applyParts(); render(); }
+  }, true);
   addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && ['1', '2', '3'].includes(e.key)) { e.preventDefault(); togglePart({ 1: 'L', 2: 'S', 3: 'R' }[e.key]); } });
   // previews of the two screens: both, one, or hidden (the real screens do not change)
   const setVis = v => {
@@ -2635,7 +2646,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
     document.querySelectorAll('.screens .screen').forEach((el, i) => el.classList.toggle('on', !!S.screensOpen?.[i ? 'stage' : 'main']));
-    $('mainGrid').classList.toggle('auto', layout.auto !== false && S.live.item >= 0 && !S.live.blank);   // ⇔ on screen: side panels retract
+    $('mainGrid').classList.toggle('auto', layout.auto === true && S.live.item >= 0 && !S.live.blank);   // ⇔ on screen: side panels retract
     $('bBlank').classList.toggle('on', S.live.blank); $('bOff').classList.toggle('on', !!S.live.blank);
     $('bPreach').hidden = !S.live.preachers; $('bPreach').classList.toggle('off', !!S.live.preacherOff);
     $('bPreach').textContent = S.live.preacherOff ? '🎤 Dă-i controlul' : '🎤 Predicatorul · Preia'; $('bOff').textContent = S.live.blank ? '⏻ Ecran gol · Esc ca să revină' : '⏻ Ecran gol'; $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);

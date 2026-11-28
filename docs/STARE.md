@@ -42,7 +42,7 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 ## Proiectez (`public/control.html`, `main.html`, `stage.html`)
 - Slide-urile în listă arată ca în ProPresenter (2026-11-28): ecrane mici 16:9 cu fundalul și fontul de pe proiector,
   bandă colorată dedesubt cu numărul și secțiunea, „PE ECRAN” pe cel live (stilul `#pp-slides`).
-- Pe ecran, Programul și Cântările se retrag în bare subțiri (deschise la hover; `.main.auto`, stilul `#pp-rails`,
+- Programul și Cântările se ascund cu mânerul ‹ / › (bară subțire, clic = înapoi); retragerea automată pe ecran e opțională ( `.main.auto`, stilul `#pp-rails`,
   oprire din Vizualizare). Dublu-clic pe previzualizare pornește/oprește proiectorul sau scena (`screenHere`/`closeScreen`,
   `S.screensOpen`, `outputEvents` în client.js); punct verde = ecran pornit. Neverificat pe Mac mini.
 - Versuri, Biblie, PowerPoint și PDF (pe Mac prin Keynote, pe Windows prin PowerPoint, altfel prin randarea proprie),

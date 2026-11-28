@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Programul și Cântările se ascund doar când vrei tu (2026.11.28.7)
+- **Panourile din stânga și din dreapta.** Înainte (2026.11.28.3–6): cât era ceva pe ecran se retrăgeau singure și ieșeau
+  la trecerea cu mouse-ul. Acum: stau pe loc. Le ascunzi tu cu mânerul ‹ / › de pe marginea lor (sau Ctrl/⌘+1 / 3);
+  rămâne o bară subțire „Program ›” / „‹ Cântări · Biblia”, iar un clic pe ea le aduce înapoi. Retragerea automată
+  există în continuare, oprită: Vizualizare → „Retrage Programul și Cântările cât ești pe ecran”.
+
 ## 2026-11-28 · Live fără spații goale (2026.11.28.6)
 - **Așezarea din mijloc în Live (control.html, stilul `#pp-side`).** Înainte: sus o bandă cu cele două previzualizări mici
   în mijloc și gol în stânga și în dreapta; jos fundalurile pe un rând cu loc gol în capăt. Acum: slide-urile stau în
