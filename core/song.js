@@ -690,6 +690,34 @@ export function sectionKind(label        )              {
   return '';
 }
 
+/**
+ * The standard names, like ProPresenter: "Strofa 2" -> "Verse 2", "Refren" -> "Chorus", "Pre-refren" -> "Pre-Chorus",
+ * "Punte" -> "Bridge", "Final" -> "Ending". Intro, Tag and names it does not know stay as they are.
+ */
+export function standardLabel(label        )         {
+  const raw = String(label || '').trim(), num = (raw.match(/(\d+)\s*$/) || [])[1];
+  const n = num ? ' ' + num : '';
+  switch (sectionKind(raw)) {
+    case 'verse': return 'Verse' + (n || ' 1');
+    case 'chorus': return 'Chorus' + n;
+    case 'prechorus': return 'Pre-Chorus' + n;
+    case 'bridge': return 'Bridge' + n;
+    case 'intro': return 'Intro' + n;
+    case 'outro': return 'Ending' + n;
+    case 'tag': return 'Tag' + n;
+    default: return raw;
+  }
+}
+/** Every section label line of a song written with the standard names (the words and chords do not change). */
+export function standardizeLabels(body        )         {
+  return String(body || '').replace(/\r\n?/g, '\n').split('\n').map(line => {
+    const t = line.trim();
+    if (!isLabelLine(t)) return line;
+    const was = cleanLabel(t), now = standardLabel(was);
+    return now === was ? line : now + ':';
+  }).join('\n');
+}
+
 /** One color per kind of section, same everywhere in the app. */
 export const SECTION_COLORS                         = {
   verse: '#5aa9ff', chorus: '#ffb13b', prechorus: '#ff7eb6', bridge: '#b38cff', intro: '#4fd1a5', outro: '#8f96a3', tag: '#47d7e6', '': '#8f96a3',
