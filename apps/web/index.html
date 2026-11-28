@@ -210,6 +210,21 @@
   #songPick .voice{padding:10px 12px 0;margin:0} #songPick .vmsg{padding:0 14px}
   .voice button.rec{background:#e5243b;color:#fff;animation:recp 1s ease-in-out infinite} @keyframes recp{50%{opacity:.6}}
   .vmsg{margin:6px 0 0;font-size:13px;color:var(--text-2)}
+  body[data-tab]:not([data-tab="vProg"]) #gLead,body[data-tab]:not([data-tab="vProg"]) #gOffer{display:none!important}
+  .leadCard,.offerCard{margin-top:12px} .leadCard .lh{font-weight:600;margin:4px 0 6px;display:flex;gap:8px;align-items:center} .leadCard .lh small{color:var(--text-3);font-weight:500}
+  .lrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line)} .lrow>div{flex:1;min-width:0} .lrow small{display:block;color:var(--text-3);font-size:12.5px}
+  .lrow button{padding:7px 11px;font-size:13px} .lrow .yes{background:rgba(50,208,116,.16);color:#7ee3a6} .lrow .go{color:var(--accent-text);font-size:13px;white-space:nowrap}
+  .lrow[data-goto]{cursor:pointer} .lrow.u1 b{color:#f5c518} .lrow.u2 b{color:#ff9d4a} .lrow.u3 b{color:#ff5a50}
+  .leadCard.u1{box-shadow:inset 0 0 0 1.5px rgba(245,197,24,.6),var(--shadow);animation:ring1 2.6s infinite}
+  .leadCard.u2{box-shadow:inset 0 0 0 2px rgba(255,140,40,.75),var(--shadow);animation:ring2 1.6s infinite}
+  .leadCard.u3{box-shadow:inset 0 0 0 2px #ff3b30,var(--shadow);animation:blink3 .9s steps(2,jump-none) infinite;background:linear-gradient(180deg,rgba(255,59,48,.18),rgba(255,59,48,.04)),var(--surface)}
+  .offerCard.ask{box-shadow:inset 0 0 0 1.5px rgba(245,197,24,.6),var(--shadow);animation:ring1 2.6s infinite}
+  .offerCard .oh{display:flex;align-items:center;gap:10px} .offerCard .oh div{flex:1} .offerCard .oh small{display:block;color:var(--text-2);font-size:13px;margin-top:2px}
+  .orow{padding:10px 0;border-top:1px solid var(--line);margin-top:8px} .orow .od small{color:var(--text-3);font-size:12px;margin-left:6px}
+  .ochips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px} .ochips button{padding:6px 10px;font-size:13px;border-radius:9px;background:none;box-shadow:inset 0 0 0 1px var(--line-2)}
+  .ochips button.on{background:color-mix(in srgb,var(--lc,#4d7cff) 28%,transparent);box-shadow:inset 0 0 0 1.5px var(--lc,#4d7cff);color:#fff}
+  .ochips .nop.on{--lc:#ff3b30}
+  .st.leave{color:#ff9d4a}
   .bigadd{width:100%;padding:14px;font-size:16px;margin-top:var(--sp-2);border-radius:var(--r-m)}
   #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
@@ -349,7 +364,9 @@
       <div class="mineHead"><span class="pulse"></span><b>Ești programat</b><small id="gMineN"></small></div>
       <div id="gMine"></div>
     </div>
+    <div class="card leadCard" id="gLead" hidden></div>
     <div class="card propose" id="gPropose" hidden></div>
+    <div class="card offerCard" id="gOffer" hidden></div>
     <div class="bell" id="bell" hidden><span class="bi"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></span><div><b>Notificări când ești programat</b><small id="bellHint">Afli imediat când un lider te pune pe program.</small></div><button id="bellOn" class="acc">Pornește</button></div>
     <div class="bell" id="inst" hidden><span class="bi"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3"/></svg></span><div><b>Reverb ca aplicație pe telefon</b><small id="instHint"></small></div><button id="instGo" class="acc" hidden>Instalează</button><button id="instX" class="ghost" title="Nu acum" style="padding:6px 8px">✕</button></div>
     <nav class="tabs" id="tabs" aria-label="Zone">
@@ -457,7 +474,7 @@ Refren:
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
   import { listedSongs, spokenSongs, spokenStructure, standardLabel, parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
-  import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency } from './core/plan.js';
+  import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency, offerFor } from './core/plan.js';
   import { BOOKS, parseRef, formatRef } from './core/bibleref.js';
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'reverb-session' } });
   const $ = id => document.getElementById(id);
@@ -654,7 +671,7 @@ Refren:
   const bgName = f => { const n = String(f || '').replace(/^\/media\//, '').replace(/\.\w+$/, ''); if (!BG.includes(n)) return f ? 'fundalul ales la biserică' : '';
     const w = n.replace(/^(fundal|miscare)-/, '').replace(/-/g, ' '); return (n.startsWith('miscare-') ? 'mișcare ' : '') + w; };
   const CHEV = '<svg class="i go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
-  const overAt = s => new Date(s.date).getTime() + Math.max(90, (s.items || []).reduce((t, it) => t + (it.minutes || 0), 0) + 30) * 60000;
+  const overAt = s => new Date(s.date).getTime() + ((s.items || []).reduce((t, it) => t + (it.minutes || 0), 0) || 60) * 60000;   // its own minutes (none written: 1 h)
   const isOver = s => overAt(s) < Date.now();                  // 🗄 finished: archived, out of the lists
   const upcoming = () => (G.doc?.services || []).filter(s => !isOver(s));
   const prepSvc = () => { const l = upcoming(); return l.find(s => s.id === G.prep) || l[0] || null; };
@@ -1191,7 +1208,8 @@ Refren:
     nag(loud, mine.filter(x => x.a.status === 'pending'));
     $('gMineN').textContent = open ? `${open} de confirmat` : `${mine.length} ${mine.length === 1 ? 'loc' : 'locuri'} · confirmat`;
     $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine${a.status === 'pending' ? ' new' : ''}"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small>${a.status === 'pending' && urgency(s.date) ? `<span class="due u${urgency(s.date)}">${DUE[urgency(s.date)]}</span>` : ''}${PREACH.test(what) ? preachBox(s) : ''}</div>
-      <div class="act">${a.status === 'pending' ? '' : stat(a)}<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>Nu pot</button></div></div>`).join('');
+      <div class="act">${a.status === 'pending' ? '' : stat(a)}${a.status === 'leave' ? `<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}">Rămân</button>`
+        : `<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}${a.status === 'confirmed' ? ' data-ask="1"' : ''}>${a.status === 'confirmed' ? 'Cer să ies' : 'Nu pot'}</button>`}</div></div>`).join('');
     // the services
     $('gCount').textContent = list.length ? `${list.length} ${list.length === 1 ? 'serviciu' : 'servicii'}` : '';
     let lastMonth = '';
@@ -1206,8 +1224,76 @@ Refren:
     const v = doc.volunteers.find(x => x.id === G.me), away = (v?.away || []).filter(d => d >= today.slice(0, 10));
     $('gAway').innerHTML = away.map(d => `<span class="chip">${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))} <a href="#" data-unaway="${d}" style="color:var(--no);text-decoration:none">✕</a></span>`).join('') || '<span class="mute">Nicio zi blocată.</span>';
     $('gAwayBox').hidden = !G.me;
-    drawToday(); pinShow(); viewOnly();
+    drawToday(); pinShow(); viewOnly(); drawLead(); drawOffer();
   }
+  // 🔔 for leaders: who asks to be taken off (approve / refuse), and the programs close by with empty places
+  // (the same colours: 3 days yellow, 2 orange, the day before red and blinking)
+  function drawLead() {
+    const box = $('gLead'), lead = canPlan(); if (!lead) { box.hidden = true; return; }
+    const doc = G.doc, list = upcoming(), asks = [], empty = [];
+    const posName = pid => doc.departments.flatMap(d => d.positions).find(p => p.id === pid)?.name || 'loc';
+    for (const s of list) {
+      for (const [k, a] of Object.entries(s.assignments || {})) if (a.status === 'leave') asks.push({ s, k, a });
+      const days = Math.round((new Date(s.date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 864e5);
+      const free = placesOf(doc, s).filter(x => !s.assignments?.[x.k] || s.assignments[x.k].status === 'declined');
+      if (days <= 7 && free.length) empty.push({ s, free, u: urgency(s.date) });
+    }
+    const top = Math.max(0, ...empty.map(x => x.u), asks.length ? 2 : 0);
+    box.hidden = !asks.length && !empty.length; box.className = 'card leadCard' + (top ? ' u' + top : '');
+    const when = s => `${day(s.date).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtTime(s.date)}`;
+    box.innerHTML = (asks.length ? `<div class="lh">↩ Cer să fie scoși <small>${asks.length}</small></div>` + asks.map(({ s, k, a }) => `<div class="lrow"><div><b>${esc(pname(a.volunteer))}</b> · ${esc(posName(k.split('#')[0]))}<small>${esc(s.title)}, ${esc(when(s))}</small></div>
+        <button class="yes" data-leave="ok" data-s="${s.id}" data-k="${esc(k)}">Aprob</button><button data-leave="no" data-s="${s.id}" data-k="${esc(k)}">Refuz</button></div>`).join('') : '')
+      + (empty.length ? `<div class="lh">⚠ Locuri libere în curând</div>` + empty.map(({ s, free, u }) => `<div class="lrow u${u}" data-goto="${s.id}"><div><b>${esc(s.title)}</b> · ${esc(when(s))}<small>${free.length} ${free.length === 1 ? 'loc liber' : 'locuri libere'}: ${esc([...new Set(free.map(x => x.p.name))].slice(0, 6).join(', '))}</small></div><span class="go">Completează ›</span></div>`).join('') : '');
+  }
+  $('gLead').onclick = async e => {
+    const b = e.target.closest('[data-leave]'), g = e.target.closest('[data-goto]');
+    if (b) { const [position, slot] = b.dataset.k.split('#'), s = G.doc.services.find(x => x.id === b.dataset.s), a = s?.assignments?.[b.dataset.k]; if (!a) return;
+      if (b.dataset.leave === 'ok') { if (!confirm(`${pname(a.volunteer)} iese de pe program, iar locul rămâne liber. Aprobi?`)) return; return change({ op: 'assign', id: s.id, position, slot: +slot, volunteer: null }); }
+      return change({ op: 'assign', id: s.id, position, slot: +slot, volunteer: a.volunteer, status: 'confirmed' }); }
+    if (g) { G.open.add(g.dataset.goto); G.edit.add(g.dataset.goto); drawProgram(); document.querySelector(`[data-svc="${g.dataset.goto}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  };
+  // 🗓 "Când pot sluji": every Sunday / program from today to the end of next month, the posts I can take that day or "Nu pot";
+  // at the start of a month (or when the period ends) the box asks for it, pulsing
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  function offerDays() {
+    const from = new Date(), to = new Date(from.getFullYear(), from.getMonth() + 2, 0), days = new Map();
+    for (const s of G.doc.services) { const d = s.date.slice(0, 10); if (!isOver(s) && d >= ymd(from) && d <= ymd(to)) days.set(d, (days.get(d) || []).concat(s.title)); }
+    const gone = new Set(G.doc.services.filter(isOver).map(s => s.date.slice(0, 10)));
+    for (const d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) if (d.getDay() === 0 && !days.has(ymd(d)) && !gone.has(ymd(d))) days.set(ymd(d), []);
+    return { from: ymd(from), to: ymd(to), days: [...days.entries()].sort(([a], [b]) => a.localeCompare(b)) };
+  }
+  function drawOffer() {
+    const box = $('gOffer'), meP = G.people.find(p => p.person_id === G.me); if (!G.me || !meP) { box.hidden = true; return; }
+    const mine = G.doc.departments.filter(d => (meP.departments || []).includes(d.name)).flatMap(d => d.positions.filter(p => !p.optional || true).map(p => ({ ...p, dep: d.name, color: d.color })));
+    if (!mine.length) { box.hidden = true; return; }
+    const v = G.doc.volunteers.find(x => x.id === G.me) || {}, per = offerDays(), done = v.offerTo && v.offerTo >= per.to;
+    const ask = !done && (new Date().getDate() <= 10 || !v.offerTo || v.offerTo < ymd(new Date()));
+    G.offer ||= structuredClone(v.offer || {});
+    box.hidden = false; box.className = 'card offerCard' + (ask ? ' ask' : '');
+    const months = [...new Set(per.days.map(([d]) => new Date(d + 'T12:00').toLocaleDateString('ro-RO', { month: 'long' })))].join(' – ');
+    if (!G.offerOpen) { box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji</b><small>${done ? `✓ Completat până pe ${esc(new Date(v.offerTo + 'T12:00').toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }))}` : `Spune liderilor în ce duminici și unde poți sluji (${esc(months)})`}</small></div><button data-offer="open" class="${ask ? 'acc' : ''}">${done ? 'Schimbă' : 'Completează'}</button></div>`; return; }
+    box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji · ${esc(months)}</b><small>Atinge unde poți sluji în fiecare duminică, sau „Nu pot”. Liderii te pun după asta.</small></div></div>`
+      + per.days.map(([d, titles]) => { const o = G.offer[d], no = Array.isArray(o) && !o.length;
+        return `<div class="orow"><div class="od"><b>${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))}</b><small>${esc(titles.join(', ') || 'duminică')}</small></div>
+          <div class="ochips">${mine.map(p => `<button data-od="${d}" data-op="${p.id}" class="${(o || []).includes(p.id) ? 'on' : ''}" style="--lc:${esc(p.color)}">${esc(p.name)}</button>`).join('')}<button data-od="${d}" data-op="" class="nop${no ? ' on' : ''}">Nu pot</button></div></div>`; }).join('')
+      + `<div class="row" style="margin-top:10px"><button class="acc" data-offer="save">Trimite liderilor</button><button class="ghost" data-offer="close">Închide</button></div>`;
+  }
+  $('gOffer').onclick = async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.offer === 'open') { G.offerOpen = true; return drawOffer(); }
+    if (b.dataset.offer === 'close') { G.offerOpen = false; return drawOffer(); }
+    if (b.dataset.od) { const d = b.dataset.od, cur = G.offer[d] || [];
+      G.offer[d] = !b.dataset.op ? [] : cur.includes(b.dataset.op) ? cur.filter(x => x !== b.dataset.op) : [...cur, b.dataset.op];
+      return drawOffer(); }
+    if (b.dataset.offer === 'save') {
+      const per = offerDays(), offers = Object.fromEntries(per.days.map(([d]) => [d, G.offer[d] || []]));
+      b.disabled = true;
+      const { data, error } = await sb.rpc('reverb_plan_offer', { c: cur().church_id, day_from: per.from, day_to: per.to, offers });
+      if (error) { b.disabled = false; return alert(/reverb_plan_offer/.test(error.message || '') ? 'Funcția nu e pornită încă pe server (pasul din Supabase).' : 'N-a mers. Verifică internetul.'); }
+      if (data) { b.disabled = false; return alert(data); }
+      G.offerOpen = false; G.offer = null; alert('Mulțumim! Liderii văd acum când și unde poți sluji.'); program();
+    }
+  };
   // 👁 on the phone of someone who only looks: the program and his own Pot / Nu pot stay; Proiectez, MD & Track and editing go
   function viewOnly() {
     const only = (G.doc?.viewOnly || []).includes(me?.id) && !['leader', 'coordinator'].includes(cur()?.role);
@@ -1237,9 +1323,10 @@ Refren:
         const a = asg[k], u = a?.status === 'pending' ? urgency(s.date) : 0;
         if (!edit) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}${lead && a.status === 'pending' && u ? `<br><button class="wa" data-wa="${esc(a.volunteer)}" data-s="${s.id}" data-pos="${esc(p.name)}" title="Trimite-i pe WhatsApp un mesaj că n-a răspuns">📲 Amintește-i</button>` : ''}</span>${stat(a, u)}</div>`
           : lead ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w mute">liber</span><span></span></div>` : '';
-        const ppl = G.people.slice().sort((x, y) => ((y.departments || []).includes(dep.name) - (x.departments || []).includes(dep.name)) || (x.name || '').localeCompare(y.name || '', 'ro'));
+        const day0 = s.date.slice(0, 10), off = x => offerFor(doc.volunteers.find(v => v.id === x.person_id), day0, p.id), rk = x => ({ yes: 0, '': 1, other: 2, no: 3 }[off(x)]);
+        const ppl = G.people.slice().sort((x, y) => rk(x) - rk(y) || ((y.departments || []).includes(dep.name) - (x.departments || []).includes(dep.name)) || (x.name || '').localeCompare(y.name || '', 'ro'));
         return `<div class="slot edit"><span class="p">${esc(p.name)}</span><select data-assign="${s.id}" data-k="${esc(k)}" aria-label="${esc(p.name)}"><option value="">Liber</option>${ppl.map(x =>
-          `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${esc(x.name)}${(x.departments || []).includes(dep.name) ? '' : ' (alt dep.)'}</option>`).join('')}</select>${a ? stat(a, u) : '<span></span>'}${last ? `<button class="x" data-unneed="${p.id}" data-s="${s.id}" title="Nu e nevoie de ${esc(p.name)} la acest program">✕</button>` : '<span></span>'}</div>`;
+          `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${off(x) === 'yes' ? '✓ ' : ''}${esc(x.name)}${off(x) === 'yes' ? ' · s-a oferit' : off(x) === 'no' ? ' · a zis că nu poate' : (x.departments || []).includes(dep.name) ? '' : ' (alt dep.)'}</option>`).join('')}</select>${a ? stat(a, u) : '<span></span>'}${last ? `<button class="x" data-unneed="${p.id}" data-s="${s.id}" title="Nu e nevoie de ${esc(p.name)} la acest program">✕</button>` : '<span></span>'}</div>`;
       }).join('');
       // + a post: one more of a standard post, an optional one (Chitară 2, Camera 2…) or a new name
       const plus = edit ? `<div class="addpos"><select data-addpos="${s.id}" data-dep="${dep.id}" aria-label="Adaugă un post la ${esc(dep.name)}"><option value="">＋ Adaugă un post la ${esc(dep.name)}…</option>${dep.positions.map(p =>
@@ -1262,7 +1349,7 @@ Refren:
       ${lead ? `<div class="svcbar">${edit ? `<input id="n_${s.id}" value="${esc(s.title)}" maxlength="80" style="flex:1 1 160px"><button data-rename="${s.id}">Salvează numele</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge</button><span class="sp"></span>` : '<span class="sp"></span>'}
         ${slotsAll.length > filled ? `<button data-auto="${s.id}" title="Pune oamenii pe locurile libere">✦ Completează echipa</button>` : ''}<button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : 'Editează'}</button></div>` : ''}</div></details>`;
   }
-  const stat = (a, u = 0) => `<span class="st ${a.status}${u ? ' u' + u : ''}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : u === 3 ? 'N-a răspuns!' : 'În așteptare'}</span>`;
+  const stat = (a, u = 0) => `<span class="st ${a.status}${u ? ' u' + u : ''}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : a.status === 'leave' ? 'Cere să iasă' : u === 3 ? 'N-a răspuns!' : 'În așteptare'}</span>`;
   // 📎 the preacher's presentation: PowerPoint, Keynote, PDF or pictures (they go to the church computer, 📥 Primite), or a Canva link
   const PREACH = /predic|pastor|vorbitor|mesaj/i;
   function preachBox(s) {
@@ -1369,7 +1456,9 @@ Refren:
     if (b.dataset.del && s && confirm(`Ștergi „${s.title}” din ${day(s.date).toLocaleDateString('ro-RO')}?`)) return change({ op: 'deleteService', id: s.id });
   });
   $('gMine').onclick = async e => {
-    const b = e.target.closest('[data-ans]'); if (!b) return; b.disabled = true;
+    const b = e.target.closest('[data-ans]'); if (!b) return;
+    if (b.dataset.ask && !confirm('Ai confirmat că vii. Liderul primește cererea ta și te scoate doar dacă aprobă. Trimiți cererea?')) return;
+    b.disabled = true;
     const { data, error } = await sb.rpc('reverb_plan_answer', { c: cur().church_id, service: b.dataset.s, place: b.dataset.k, answer: b.dataset.ans });
     if (error || data) alert(data || 'N-a mers. Verifică internetul.'); program();
   };

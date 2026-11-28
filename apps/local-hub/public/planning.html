@@ -1037,7 +1037,7 @@
         return `<div class="slot"><span title="${esc(p.name)}">${esc(p.name)}${many ? ' ' + (slot + 1) : ''}</span>
           <select data-p="${p.id}" data-s="${slot}">${volunteerOptions(p.id, a?.volunteer, s)}</select>
           <select class="st${a?.status === 'pending' && u ? ' u' + u : ''}" data-p="${p.id}" data-s="${slot}" ${a ? '' : 'disabled'} title="Confirmare">
-            <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option></select>
+            <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option>${a?.status === 'leave' ? '<option value="leave" selected title="Cere să fie scos: alege ✓ (rămâne) sau scoate-l">↩</option>' : ''}</select>
           <button class="icon ghost wa" data-wa="${a ? p.id + '#' + slot : ''}" ${a ? '' : 'disabled'} title="💬 Trimite-i pe WhatsApp: când slujește și linkul lui de confirmare">💬</button>
           ${slot === needFor(s, p) - 1 ? `<button class="icon ghost" data-unneed="${p.id}" title="Nu e nevoie de ${esc(p.name)} la acest program">✕</button>` : '<span></span>'}</div>`;
       })).join('')}<select class="addpos" data-dep="${d.id}"><option value="">＋ Adaugă un post la ${esc(d.name)}…</option>${d.positions.map(p => `<option value="${p.id}">${esc(p.name)}${needFor(s, p) ? ' (încă unul)' : ''}</option>`).join('')}<option value="*">Alt post (scrii numele)…</option></select></div>`; }).join('')

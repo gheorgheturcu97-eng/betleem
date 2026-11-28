@@ -1,6 +1,18 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · Când pot sluji, locuri libere, ieșirea doar cu acordul liderului (Reverb online + 2026.11.28.19)
+- **🗓 Când pot sluji (Planific).** Nou: fiecare om alege pe fiecare duminică / program de azi până la sfârșitul lunii viitoare
+  posturile lui pe care le poate lua sau „Nu pot” (`reverb_plan_offer`, `v.offer`, `offerFrom/To`). La început de lună cardul
+  pulsează. Liderii îl văd primul în listă cu „✓ s-a oferit”; ✦ Completează echipa îi ia întâi pe ei și nu-i pune pe cei care au zis
+  că nu pot (`offerFor` în src/plan.js, cu test).
+- **⚠ Locuri libere în curând (lideri).** Nou: un card sus cu programele din următoarele 7 zile care au locuri goale, cu aceleași
+  culori (3 zile galben, 2 portocaliu, ziua dinainte roșu care clipește); „Completează ›” deschide programul în editare.
+- **După „Pot”.** Înainte: omul putea apăsa oricând „Nu pot” și se scotea singur. Acum: „Cer să ies” trimite o cerere (`leave`);
+  liderul o vede sus („↩ Cer să fie scoși”) și apasă Aprob (locul rămâne liber) sau Refuz; omul poate apăsa „Rămân”. La fel pe
+  linkul de la calculatorul bisericii (eu.html).
+- **Arhiva** (corectat): un program dispare imediat ce trec minutele lui (fără minute: după o oră).
+
 ## 2026-11-28 (seara) · 🎤 Programul și structura spuse cu vocea (Reverb online)
 - **„＋ Cântări în program” → 🎤 Spune.** Nou: „Mii de laude în G, apoi Psalmul 8 în re…” pune cântările în ordine, fiecare în tonul
   spus (litere sau do-re-mi, diez, bemol, minor); arată ce a pus și ce n-a găsit.

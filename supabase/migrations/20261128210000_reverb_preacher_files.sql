@@ -81,3 +81,57 @@ end $$;
 
 revoke all on function public.reverb_plan_propose(uuid, text, text, text, text) from public, anon;
 grant execute on function public.reverb_plan_propose(uuid, text, text, text, text) to authenticated;
+
+-- ✓ After "Pot" nobody takes himself off alone: "Nu pot" becomes a request ("leave"); the leader approves or refuses it.
+create or replace function public.reverb_plan_answer(c uuid, service text, place text, answer text) returns text
+language plpgsql security definer set search_path = '' as $$
+declare me text := public.reverb_me(c); d jsonb; i int; now_s text;
+begin
+  if me is null then return 'Nu ești în această biserică'; end if;
+  if answer not in ('confirmed', 'declined', 'pending') then return 'Răspuns greșit'; end if;
+  select doc into d from public.plans where church_id = c for update;
+  if d is null then return 'Nu există program'; end if;
+  select ord - 1 into i from jsonb_array_elements(d->'services') with ordinality s(v, ord) where v->>'id' = service;
+  if i is null then return 'Serviciul nu mai există'; end if;
+  if d #>> array['services', i::text, 'assignments', place, 'volunteer'] is distinct from me then return 'Locul nu e al tău'; end if;
+  now_s := d #>> array['services', i::text, 'assignments', place, 'status'];
+  if answer = 'declined' and now_s in ('confirmed', 'leave') then answer := 'leave'; end if;     -- a request, not a change
+  if answer = 'pending' and now_s in ('confirmed', 'leave') then return 'Ai confirmat deja; cere liderului să te scoată.'; end if;
+  d := jsonb_set(d, array['services', i::text, 'assignments', place, 'status'], to_jsonb(answer));
+  if answer = 'leave' then d := jsonb_set(d, array['services', i::text, 'assignments', place, 'leaveAt'], to_jsonb(now()));
+  else d := d #- array['services', i::text, 'assignments', place, 'leaveAt']; end if;
+  update public.plans set doc = d, version = version + 1, updated_at = now(), updated_by = (select auth.uid()) where church_id = c;
+  insert into public.plan_ops (church_id, op, user_id) values (c, jsonb_build_object('op', 'answer', 'id', service, 'place', place, 'status', answer, 'by', me), (select auth.uid()));
+  return null;
+end $$;
+
+-- 🗓 "Când pot sluji": for each day of the period, the posts I can take (an empty list = I can't that day)
+create or replace function public.reverb_plan_offer(c uuid, day_from text, day_to text, offers jsonb) returns text
+language plpgsql security definer set search_path = '' as $$
+declare me text := public.reverb_me(c); d jsonb; i int; clean jsonb := '{}'; k text; val jsonb; nm text;
+begin
+  if me is null then return 'Nu ești în această biserică'; end if;
+  if day_from !~ '^\d{4}-\d{2}-\d{2}$' or day_to !~ '^\d{4}-\d{2}-\d{2}$' or day_to < day_from then return 'Perioadă greșită'; end if;
+  for k, val in select * from jsonb_each(coalesce(offers, '{}')) loop
+    if k ~ '^\d{4}-\d{2}-\d{2}$' and k between day_from and day_to and jsonb_typeof(val) = 'array' then
+      clean := clean || jsonb_build_object(k, (select coalesce(jsonb_agg(left(x, 40)), '[]') from jsonb_array_elements_text(val) x limit 30));
+    end if;
+  end loop;
+  insert into public.plans (church_id, doc) values (c, '{"services":[],"departments":[],"volunteers":[]}') on conflict (church_id) do nothing;
+  select doc into d from public.plans where church_id = c for update;
+  d := jsonb_set(d, '{volunteers}', coalesce(d->'volunteers', '[]'));
+  select ord - 1 into i from jsonb_array_elements(d->'volunteers') with ordinality s(v, ord) where v->>'id' = me;
+  if i is null then
+    select m.display_name into nm from public.members m where m.church_id = c and m.user_id = (select auth.uid());
+    d := jsonb_set(d, '{volunteers}', (d->'volunteers') || jsonb_build_object('id', me, 'name', coalesce(nm, ''), 'positions', '[]'::jsonb, 'away', '[]'::jsonb, 'maxPerMonth', 0));
+    i := jsonb_array_length(d->'volunteers') - 1;
+  end if;
+  d := jsonb_set(d, array['volunteers', i::text, 'offer'], clean);
+  d := jsonb_set(d, array['volunteers', i::text, 'offerFrom'], to_jsonb(day_from));
+  d := jsonb_set(d, array['volunteers', i::text, 'offerTo'], to_jsonb(day_to));
+  update public.plans set doc = d, version = version + 1, updated_at = now(), updated_by = (select auth.uid()) where church_id = c;
+  return null;
+end $$;
+
+revoke all on function public.reverb_plan_offer(uuid, text, text, jsonb) from public, anon;
+grant execute on function public.reverb_plan_offer(uuid, text, text, jsonb) to authenticated;

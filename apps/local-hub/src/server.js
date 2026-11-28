@@ -2270,7 +2270,8 @@ async function handle(req, res) {
         if (m.action === 'answer') {                          // ✓ I'll be there / ✕ I can't
           const sv = plan.services.find(x => x.id === m.service), a = sv?.assignments[m.key];
           if (!a || a.volunteer !== me.id) return json(res, 400, { error: 'Nu mai ești pus aici.' });
-          a.status = m.status === 'declined' ? 'declined' : 'confirmed'; a.answeredAt = new Date().toISOString();
+          // after „Pot” a „Nu pot” is a request the leader approves (the same rule as Reverb online)
+          a.status = m.status === 'declined' ? (['confirmed', 'leave'].includes(a.status) ? 'leave' : 'declined') : 'confirmed'; a.answeredAt = new Date().toISOString();
         } else if (m.action === 'away') {                     // the days I can't serve, and how often I can
           me.away = [...new Set((m.away || []).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort().slice(0, 120);
           if (m.maxPerMonth !== undefined) me.maxPerMonth = Math.min(8, Math.max(0, Math.round(Number(m.maxPerMonth) || 0)));

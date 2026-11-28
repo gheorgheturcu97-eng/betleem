@@ -5,7 +5,7 @@
 // No Node-only imports: the same file runs in the browser too (Reverb online copies it to apps/web/core/plan.js).
 const id = () => globalThis.crypto.randomUUID();
 const KINDS = ['song', 'sermon', 'prayer', 'announcement', 'reading', 'other', 'media', 'bible'];
-const STATUS = ['pending', 'confirmed', 'declined'];
+const STATUS = ['pending', 'confirmed', 'declined', 'leave'];   // leave = confirmed, asked to be taken off (the leader decides)
 const YSTATUS = ['realizat', 'in_curs', 'planificat', 'propunere', 'de_confirmat'];
 /** A personal link for each volunteer (no password): long, random, can be replaced to cancel the old one. */
 export const newToken = () => btoa(String.fromCharCode(...globalThis.crypto.getRandomValues(new Uint8Array(18))))
@@ -183,6 +183,7 @@ export function applyPlanOp(plan, op) {
         positions: (v.positions || []).map(p => str(p, 40)).slice(0, 40),
         away: [...new Set((v.away || []).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort().slice(0, 120),
         maxPerMonth: Math.min(8, Math.max(0, Math.round(Number(v.maxPerMonth) || 0))),     // 0 = no limit
+        ...(old?.offer ? { offer: old.offer, offerFrom: old.offerFrom, offerTo: old.offerTo } : {}),   // 🗓 what he said he can do (Reverb online)
         leader: !!v.leader,                                                                   // sees the leaders' meetings and tasks on his page
         photographer: !!v.photographer,                                                       // 📷 may upload event photos from his page
         token: old?.token || newToken() };
@@ -297,6 +298,14 @@ export function applyPlanOp(plan, op) {
   return null;
 }
 
+/** 🗓 What someone said for a day in "Când pot sluji": 'yes' (that post), 'other' (he offered other posts that day),
+ *  'no' (inside the period he filled, he did not offer that day), '' (he said nothing about it). */
+export function offerFor(v, day, positionId) {
+  if (!v?.offerFrom || day < v.offerFrom || day > v.offerTo) return '';
+  const o = v.offer?.[day];
+  return !o?.length ? 'no' : o.includes(positionId) ? 'yes' : 'other';
+}
+
 /** ✦ Fill the empty places of a service fairly: people who can serve there, didn't block the day, are under their
  *  monthly limit and aren't already in this service; whoever served least in the last 8 weeks comes first.
  *  Returns the number of places filled. Nobody already placed is moved. */
@@ -310,8 +319,10 @@ export function autoAssign(plan, s, onlyDept = '') {
     for (const p of d.positions) for (let slot = 0; slot < needFor(s, p); slot++) {
       const key = `${p.id}#${slot}`; if (s.assignments[key]) continue;
       const inHere = new Set(Object.values(s.assignments).map(a => a.volunteer));
-      const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key))
-        .sort((a, b) => (load[a.id] || 0) - (load[b.id] || 0) || a.name.localeCompare(b.name, 'ro'))[0];
+      // 🗓 who offered himself for this day and post first; who said this day is not his, never; then the one who served least
+      const day = s.date.slice(0, 10), rank = v => ({ yes: 0, '': 1, other: 2 }[offerFor(v, day, p.id)]);
+      const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key) && offerFor(v, day, p.id) !== 'no')
+        .sort((a, b) => rank(a) - rank(b) || (load[a.id] || 0) - (load[b.id] || 0) || a.name.localeCompare(b.name, 'ro'))[0];
       if (!pick) continue;
       s.assignments[key] = { volunteer: pick.id, status: 'pending', auto: true }; load[pick.id] = (load[pick.id] || 0) + 1; n++;
     }
@@ -351,6 +362,7 @@ export function serviceWarnings(plan, s) {
     if ((v.away || []).includes(day)) out.push(`${v.name} a spus că lipsește în ziua asta`);
     else { const why = cannotServe(plan, s, v.id, key); if (why) out.push(why); }
     if (a.status === 'declined') out.push(`${v.name} a spus că nu poate`);
+    if (a.status === 'leave') out.push(`${v.name} cere să fie scos (aprobă sau refuză)`);
   }
   let empty = 0;
   for (const { k } of placesOf(plan, s)) if (!s.assignments[k]) empty++;
