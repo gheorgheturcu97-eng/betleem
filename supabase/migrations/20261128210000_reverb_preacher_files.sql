@@ -113,7 +113,8 @@ begin
   if me is null then return 'Nu ești în această biserică'; end if;
   if day_from !~ '^\d{4}-\d{2}-\d{2}$' or day_to !~ '^\d{4}-\d{2}-\d{2}$' or day_to < day_from then return 'Perioadă greșită'; end if;
   for k, val in select * from jsonb_each(coalesce(offers, '{}')) loop
-    if k ~ '^\d{4}-\d{2}-\d{2}$' and k between day_from and day_to and jsonb_typeof(val) = 'array' then
+    -- a day ("2026-12-06") or one program of that day ("s:<id>": a Sunday can hold several programs)
+    if ((k ~ '^\d{4}-\d{2}-\d{2}$' and k between day_from and day_to) or k ~ '^s:[A-Za-z0-9-]{1,60}$') and jsonb_typeof(val) = 'array' then
       clean := clean || jsonb_build_object(k, (select coalesce(jsonb_agg(left(x, 40)), '[]') from jsonb_array_elements_text(val) x limit 30));
     end if;
   end loop;

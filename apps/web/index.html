@@ -224,7 +224,7 @@
   .ochips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px} .ochips button{padding:6px 10px;font-size:13px;border-radius:9px;background:none;box-shadow:inset 0 0 0 1px var(--line-2)}
   .ochips button.on{background:color-mix(in srgb,var(--lc,#4d7cff) 28%,transparent);box-shadow:inset 0 0 0 1.5px var(--lc,#4d7cff);color:#fff}
   .ochips .nop.on{--lc:#ff3b30}
-  .st.leave{color:#ff9d4a}
+  .st.leave{color:#ff9d4a} .lrow.tired small{color:var(--text-2);font-size:13px;line-height:1.45;margin-top:4px}
   .bigadd{width:100%;padding:14px;font-size:16px;margin-top:var(--sp-2);border-radius:var(--r-m)}
   #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
@@ -474,7 +474,7 @@ Refren:
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
   import { listedSongs, spokenSongs, spokenStructure, standardLabel, parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
-  import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency, offerFor } from './core/plan.js';
+  import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency, offerFor, noBreak } from './core/plan.js';
   import { BOOKS, parseRef, formatRef } from './core/bibleref.js';
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'reverb-session' } });
   const $ = id => document.getElementById(id);
@@ -1238,13 +1238,24 @@ Refren:
       const free = placesOf(doc, s).filter(x => !s.assignments?.[x.k] || s.assignments[x.k].status === 'declined');
       if (days <= 7 && free.length) empty.push({ s, free, u: urgency(s.date) });
     }
+    const now = new Date(), months = [0, 1].map(k => { const d = new Date(now.getFullYear(), now.getMonth() + k, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
+    const tired = months.flatMap(m => noBreak(doc, m).map(x => ({ ...x, m, name: x.name || pname(x.id) })));
     const top = Math.max(0, ...empty.map(x => x.u), asks.length ? 2 : 0);
-    box.hidden = !asks.length && !empty.length; box.className = 'card leadCard' + (top ? ' u' + top : '');
+    box.hidden = !asks.length && !empty.length && !tired.length; box.className = 'card leadCard' + (top ? ' u' + top : '');
     const when = s => `${day(s.date).toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtTime(s.date)}`;
     box.innerHTML = (asks.length ? `<div class="lh">↩ Cer să fie scoși <small>${asks.length}</small></div>` + asks.map(({ s, k, a }) => `<div class="lrow"><div><b>${esc(pname(a.volunteer))}</b> · ${esc(posName(k.split('#')[0]))}<small>${esc(s.title)}, ${esc(when(s))}</small></div>
         <button class="yes" data-leave="ok" data-s="${s.id}" data-k="${esc(k)}">Aprob</button><button data-leave="no" data-s="${s.id}" data-k="${esc(k)}">Refuz</button></div>`).join('') : '')
+      + (tired.length ? `<div class="lh">🔋 Fără nicio duminică liberă</div>` + tired.map(x => { const mo = new Date(x.m + '-15').toLocaleDateString('ro-RO', { month: 'long' }), first = (x.name || '').split(' ')[0];
+        return `<div class="lrow tired"><div><b>${esc(x.name)}</b> · toate cele ${x.sundays} duminici din ${esc(mo)}<small>${esc(TIRED[(x.name.length + x.sundays) % TIRED.length](first, mo))}</small></div></div>`; }).join('') : '')
       + (empty.length ? `<div class="lh">⚠ Locuri libere în curând</div>` + empty.map(({ s, free, u }) => `<div class="lrow u${u}" data-goto="${s.id}"><div><b>${esc(s.title)}</b> · ${esc(when(s))}<small>${free.length} ${free.length === 1 ? 'loc liber' : 'locuri libere'}: ${esc([...new Set(free.map(x => x.p.name))].slice(0, 6).join(', '))}</small></div><span class="go">Completează ›</span></div>`).join('') : '');
   }
+  // 🔋 the word for the leader when someone has no Sunday off (a smile, and a real reason to give him one)
+  const TIRED = [
+    (n, m) => `Chiar și Ilie a avut nevoie de un somn sub ienupăr și de turte calde (1 Împărați 19). Dă-i lui ${n} o duminică în ${m} în care doar să stea în sală, să cânte din toată inima și să se încarce. Un voluntar odihnit sună mai bine decât unul pe baterie de rezervă. 🔋`,
+    (n, m) => `${n} e pe program în fiecare duminică din ${m}. Admirabil, dar și telefonul cere priză din când în când. 😄 Caută-i un înlocuitor pentru o duminică, ca să se poată închina fără căști și fără listă de cântări.`,
+    (n, m) => `Până și Domnul S-a odihnit în ziua a șaptea. 🙂 ${n} slujește în toate duminicile din ${m}; programează-i o pauză, ca să vină cu bucurie, nu din obișnuință.`,
+    (n, m) => `Alertă de entuziasm: ${n} n-are nicio duminică liberă în ${m}. 🙌 Ca lider, cel mai frumos cadou e o duminică în care el doar primește. Găsește-i un coleg care să-i țină locul.`,
+  ];
   $('gLead').onclick = async e => {
     const b = e.target.closest('[data-leave]'), g = e.target.closest('[data-goto]');
     if (b) { const [position, slot] = b.dataset.k.split('#'), s = G.doc.services.find(x => x.id === b.dataset.s), a = s?.assignments?.[b.dataset.k]; if (!a) return;
@@ -1256,11 +1267,10 @@ Refren:
   // at the start of a month (or when the period ends) the box asks for it, pulsing
   const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   function offerDays() {
-    const from = new Date(), to = new Date(from.getFullYear(), from.getMonth() + 2, 0), days = new Map();
-    for (const s of G.doc.services) { const d = s.date.slice(0, 10); if (!isOver(s) && d >= ymd(from) && d <= ymd(to)) days.set(d, (days.get(d) || []).concat(s.title)); }
-    const gone = new Set(G.doc.services.filter(isOver).map(s => s.date.slice(0, 10)));
-    for (const d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) if (d.getDay() === 0 && !days.has(ymd(d)) && !gone.has(ymd(d))) days.set(ymd(d), []);
-    return { from: ymd(from), to: ymd(to), days: [...days.entries()].sort(([a], [b]) => a.localeCompare(b)) };
+    const from = new Date(), to = new Date(from.getFullYear(), from.getMonth() + 2, 0), rows = [], have = new Set();
+    for (const s of G.doc.services) { const d = s.date.slice(0, 10); have.add(d); if (!isOver(s) && d >= ymd(from) && d <= ymd(to)) rows.push({ key: 's:' + s.id, d, at: s.date, title: `${fmtTime(s.date)} · ${s.title}` }); }
+    for (const d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) if (d.getDay() === 0 && !have.has(ymd(d))) rows.push({ key: ymd(d), d: ymd(d), at: ymd(d) + 'T00:00', title: 'duminică' });
+    return { from: ymd(from), to: ymd(to), days: rows.sort((a, b) => a.at.localeCompare(b.at)) };
   }
   function drawOffer() {
     const box = $('gOffer'), meP = G.people.find(p => p.person_id === G.me); if (!G.me || !meP) { box.hidden = true; return; }
@@ -1270,12 +1280,12 @@ Refren:
     const ask = !done && (new Date().getDate() <= 10 || !v.offerTo || v.offerTo < ymd(new Date()));
     G.offer ||= structuredClone(v.offer || {});
     box.hidden = false; box.className = 'card offerCard' + (ask ? ' ask' : '');
-    const months = [...new Set(per.days.map(([d]) => new Date(d + 'T12:00').toLocaleDateString('ro-RO', { month: 'long' })))].join(' – ');
+    const months = [...new Set(per.days.map(r => new Date(r.d + 'T12:00').toLocaleDateString('ro-RO', { month: 'long' })))].join(' – ');
     if (!G.offerOpen) { box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji</b><small>${done ? `✓ Completat până pe ${esc(new Date(v.offerTo + 'T12:00').toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }))}` : `Spune liderilor în ce duminici și în ce departament poți sluji (${esc(months)})`}</small></div><button data-offer="open" class="${ask ? 'acc' : ''}">${done ? 'Schimbă' : 'Completează'}</button></div>`; return; }
-    box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji · ${esc(months)}</b><small>Atinge departamentul în care poți sluji în fiecare duminică, sau „Nu pot”. Postul ți-l alege liderul departamentului.</small></div></div>`
-      + per.days.map(([d, titles]) => { const o = G.offer[d], no = Array.isArray(o) && !o.length;
-        return `<div class="orow"><div class="od"><b>${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))}</b><small>${esc(titles.join(', ') || 'duminică')}</small></div>
-          <div class="ochips">${mine.map(p => `<button data-od="${d}" data-op="${p.id}" class="${(o || []).includes(p.id) ? 'on' : ''}" style="--lc:${esc(p.color)}">${esc(p.name)}</button>`).join('')}<button data-od="${d}" data-op="" class="nop${no ? ' on' : ''}">Nu pot</button></div></div>`; }).join('')
+    box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji · ${esc(months)}</b><small>Atinge departamentele în care poți sluji la fiecare program (poți alege mai multe), sau „Nu pot”. Postul ți-l alege liderul departamentului.</small></div></div>`
+      + per.days.map(r => { const o = G.offer[r.key] ?? (r.key.startsWith('s:') ? G.offer[r.d] : undefined), no = Array.isArray(o) && !o.length;
+        return `<div class="orow"><div class="od"><b>${esc(new Date(r.d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))}</b><small>${esc(r.title)}</small></div>
+          <div class="ochips">${mine.map(p => `<button data-od="${r.key}" data-op="${p.id}" class="${(o || []).includes(p.id) ? 'on' : ''}" style="--lc:${esc(p.color)}">${esc(p.name)}</button>`).join('')}<button data-od="${r.key}" data-op="" class="nop${no ? ' on' : ''}">Nu pot</button></div></div>`; }).join('')
       + `<div class="row" style="margin-top:10px"><button class="acc" data-offer="save">Trimite liderilor</button><button class="ghost" data-offer="close">Închide</button></div>`;
   }
   $('gOffer').onclick = async e => {
@@ -1286,7 +1296,7 @@ Refren:
       G.offer[d] = !b.dataset.op ? [] : cur.includes(b.dataset.op) ? cur.filter(x => x !== b.dataset.op) : [...cur, b.dataset.op];
       return drawOffer(); }
     if (b.dataset.offer === 'save') {
-      const per = offerDays(), offers = Object.fromEntries(per.days.map(([d]) => [d, G.offer[d] || []]));
+      const per = offerDays(), offers = Object.fromEntries(per.days.map(r => [r.key, G.offer[r.key] ?? (r.key.startsWith('s:') ? G.offer[r.d] : null) ?? []]));
       b.disabled = true;
       const { data, error } = await sb.rpc('reverb_plan_offer', { c: cur().church_id, day_from: per.from, day_to: per.to, offers });
       if (error) { b.disabled = false; return alert(/reverb_plan_offer/.test(error.message || '') ? 'Funcția nu e pornită încă pe server (pasul din Supabase).' : 'N-a mers. Verifică internetul.'); }
@@ -1323,7 +1333,7 @@ Refren:
         const a = asg[k], u = a?.status === 'pending' ? urgency(s.date) : 0;
         if (!edit) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}${lead && a.status === 'pending' && u ? `<br><button class="wa" data-wa="${esc(a.volunteer)}" data-s="${s.id}" data-pos="${esc(p.name)}" title="Trimite-i pe WhatsApp un mesaj că n-a răspuns">📲 Amintește-i</button>` : ''}</span>${stat(a, u)}</div>`
           : lead ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w mute">liber</span><span></span></div>` : '';
-        const day0 = s.date.slice(0, 10), off = x => offerFor(doc.volunteers.find(v => v.id === x.person_id), day0, dep.id), rk = x => ({ yes: 0, '': 1, other: 2, no: 3 }[off(x)]);
+        const day0 = s.date.slice(0, 10), off = x => offerFor(doc.volunteers.find(v => v.id === x.person_id), day0, dep.id, s.id), rk = x => ({ yes: 0, '': 1, other: 2, no: 3 }[off(x)]);
         const ppl = G.people.slice().sort((x, y) => rk(x) - rk(y) || ((y.departments || []).includes(dep.name) - (x.departments || []).includes(dep.name)) || (x.name || '').localeCompare(y.name || '', 'ro'));
         return `<div class="slot edit"><span class="p">${esc(p.name)}</span><select data-assign="${s.id}" data-k="${esc(k)}" aria-label="${esc(p.name)}"><option value="">Liber</option>${ppl.map(x =>
           `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${off(x) === 'yes' ? '✓ ' : ''}${esc(x.name)}${off(x) === 'yes' ? ' · s-a oferit' : off(x) === 'no' ? ' · a zis că nu poate' : (x.departments || []).includes(dep.name) ? '' : ' (alt dep.)'}</option>`).join('')}</select>${a ? stat(a, u) : '<span></span>'}${last ? `<button class="x" data-unneed="${p.id}" data-s="${s.id}" title="Nu e nevoie de ${esc(p.name)} la acest program">✕</button>` : '<span></span>'}</div>`;

@@ -6,6 +6,10 @@ Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de 
   departamentul în care poate sluji (postul îl alege liderul de departament) sau „Nu pot” (`reverb_plan_offer`, `v.offer`, `offerFrom/To`). La început de lună cardul
   pulsează. Liderii îl văd primul în listă cu „✓ s-a oferit”; ✦ Completează echipa îi ia întâi pe ei și nu-i pune pe cei care au zis
   că nu pot (`offerFor` în src/plan.js, cu test).
+- **Mai multe departamente și programe în aceeași duminică.** În „Când pot sluji” omul poate bifa mai multe departamente pe rând, iar
+  fiecare program are rândul lui (10:00 și 18:00 separat; cheia `s:<id>`, ziua rămâne pentru duminicile fără program).
+- **🔋 Fără nicio duminică liberă (lideri).** Nou: cine e pe program în toate duminicile unei luni (luna aceasta sau următoarea)
+  apare sus cu o recomandare prietenoasă să-i dea o duminică doar de închinare (`noBreak` în src/plan.js, cu test).
 - **⚠ Locuri libere în curând (lideri).** Nou: un card sus cu programele din următoarele 7 zile care au locuri goale, cu aceleași
   culori (3 zile galben, 2 portocaliu, ziua dinainte roșu care clipește); „Completează ›” deschide programul în editare.
 - **După „Pot”.** Înainte: omul putea apăsa oricând „Nu pot” și se scotea singur. Acum: „Cer să ies” trimite o cerere (`leave`);

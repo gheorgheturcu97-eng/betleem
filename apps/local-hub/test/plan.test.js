@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultPlan, applyPlanOp, serviceWarnings, nextSundays, needFor, placesOf, urgency, timeLevel, offerFor } from '../src/plan.js';
+import { defaultPlan, applyPlanOp, serviceWarnings, nextSundays, needFor, placesOf, urgency, timeLevel, offerFor, noBreak } from '../src/plan.js';
 
 test('nextSundays gives Sundays at the chosen hour', () => {
   const d = nextSundays(new Date('2026-11-17T12:00:00'), 3, '10:30');
@@ -66,11 +66,22 @@ test('🗓 "Când pot sluji": autofill takes who offered that day for the depart
   const s = plan.services[0], tobe = plan.departments[0].positions.find(p => p.name === 'Tobe');
   for (const n of ['Ana', 'Bogdan', 'Cristi']) applyPlanOp(plan, { op: 'saveVolunteer', volunteer: { name: n, positions: [tobe.id] } });
   const [ana, bog, cri] = plan.volunteers;
-  Object.assign(ana, { offerFrom: '2030-01-01', offerTo: '2030-02-28', offer: {} });                       // filled, did not offer the 6th
+  Object.assign(ana, { offerFrom: '2030-01-01', offerTo: '2030-02-28', offer: { '2030-01-06': [] } });   // said „Nu pot” for the 6th
   Object.assign(cri, { offerFrom: '2030-01-01', offerTo: '2030-02-28', offer: { '2030-01-06': [plan.departments[0].id] } });   // offered Închinare that day
   applyPlanOp(plan, { op: 'autoAssign', id: s.id, department: plan.departments[0].id });
   assert.equal(s.assignments[`${tobe.id}#0`].volunteer, cri.id);
   assert.equal(offerFor(ana, '2030-01-06', plan.departments[0].id), 'no'); assert.equal(offerFor(bog, '2030-01-06', plan.departments[0].id), '');
   s.assignments[`${tobe.id}#0`].status = 'leave';
   assert.ok(serviceWarnings(plan, s).some(w => /cere să fie scos/.test(w)));
+});
+
+test('🗓 one Sunday, two programs: the answer for each program counts; 🔋 who serves every Sunday of a month is found', () => {
+  const plan = defaultPlan(), wor = plan.departments[0].id, media = plan.departments[1].id;
+  const v = { id: 'x', name: 'Andrei', offerFrom: '2030-01-01', offerTo: '2030-01-31', offer: { 's:am': [wor], 's:pm': [], '2030-01-13': [media] } };
+  assert.equal(offerFor(v, '2030-01-06', wor, 'am'), 'yes'); assert.equal(offerFor(v, '2030-01-06', wor, 'pm'), 'no');
+  assert.equal(offerFor(v, '2030-01-13', media, 'later'), 'yes'); assert.equal(offerFor(v, '2030-01-20', wor, 'new'), '');
+  plan.volunteers.push({ id: 'x', name: 'Andrei', positions: [] }, { id: 'y', name: 'Bianca', positions: [] });
+  for (const [i, d] of ['2030-01-06', '2030-01-13', '2030-01-20', '2030-01-27'].entries())
+    plan.services.push({ id: 's' + i, date: d + 'T10:00:00', title: 'Duminică', items: [], assignments: { 'p#0': { volunteer: 'x', status: 'confirmed' }, ...(i % 2 ? { 'q#0': { volunteer: 'y', status: 'pending' } } : {}) } });
+  assert.deepEqual(noBreak(plan, '2030-01').map(x => x.name), ['Andrei']);
 });
