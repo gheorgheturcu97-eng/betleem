@@ -1,6 +1,18 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · 🔎 Importul prezentărilor verificat înainte și după (2026.11.28.19)
+- **Ordinea pe Mac.** Înainte: un .pptx trecea întâi prin Keynote (care îl redesenează în felul lui), apoi prin PowerPoint.
+  Acum: un PowerPoint e desenat de PowerPoint dacă e instalat, un Keynote de Keynote; LibreOffice doar după ele.
+- **Analiza dinainte (`src/showcheck.js`, `prepareShow` în server.js).** Nou: citește prezentarea (slide-uri, ascunse,
+  format, fonturi folosite și incluse, video, fișiere legate din afară), întreabă sistemul ce fonturi are (Mac: AppKit,
+  Windows: System.Drawing), descarcă de pe Google Fonts ce lipsește și le **instalează pentru utilizator** (Mac:
+  ~/Library/Fonts, Windows: %LOCALAPPDATA%\Microsoft\Windows\Fonts + registru HKCU), ca să le vadă Keynote / PowerPoint.
+- **Verificarea de după + raport.** Nou: compară paginile ieșite cu slide-urile vizibile și arată „🔎 Verificarea importului”:
+  cine a desenat, fonturi găsite / instalate / înlocuite, video și linkuri care lipsesc, și **tranzițiile**: păstrate la
+  fel (cu durată și direcție), cele care nu există aici (ex. Morph → estompare) și slide-urile care trec singure.
+- Calitatea paginilor: JPEG 0,94 (înainte 0,9).
+
 ## 2026-11-28 (seara) · Predicatorul își pune prezentarea din aplicație (Reverb online + 2026.11.28.19)
 - **📎 / 🎨 la „Ești programat” (Reverb online).** Înainte: predicatorul putea trimite prezentarea doar din linkul către
   calculatorul bisericii. Acum: la locul lui de Predicator / Pastor / Vorbitor are „📎 Pune prezentarea” (PowerPoint,

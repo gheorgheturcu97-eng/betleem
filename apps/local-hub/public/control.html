@@ -15,6 +15,7 @@
 <title>Reverb</title>
 <link rel="stylesheet" href="/reverb-mark.css">
 <style>
+  #mTitle{white-space:pre-line}
   :root{
     --bg:#07080c; --fg:#f4f5f7; --mute:rgba(235,238,245,.6); --faint:rgba(235,238,245,.38);
     --glass:rgba(255,255,255,.065); --glass-2:rgba(255,255,255,.10); --glass-3:rgba(255,255,255,.17);
@@ -2528,11 +2529,11 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     inp.click();
   }
   async function importFiles(files, into = -1) {
-    const { importMedia } = await import('/importer.js');
+    const { importMedia, importReport } = await import('/importer.js'); const reports = [];
     const upload = async (name, blob) => (await api('/api/media?name=' + encodeURIComponent(name), { method: 'POST', body: blob }), '/media/' + name);
     const convert = async f => {
       const r = await fetch('/api/convert?name=' + encodeURIComponent(f.name), { method: 'POST', body: f, headers: { 'x-pin': hub.pin() } });
-      if ((r.headers.get('content-type') || '').includes('pdf')) return await r.blob();
+      if ((r.headers.get('content-type') || '').includes('pdf')) { reports.push([f.name, r.headers.get('x-betleem-report')]); return await r.blob(); }
       const j = await r.json().catch(() => ({}));
       if (!/\.(pptx?|ppsx?|key|odp)$/i.test(f.name)) { if (j.error) toast(j.error); return null; }
       const why = (j.error || 'Nu am putut deschide prezentarea cu Keynote / PowerPoint.') + (j.detail ? '\n\nDetaliu: ' + j.detail : '');
@@ -2543,6 +2544,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     try {
       const fonts = families => api('/api/fonts', { method: 'POST', body: JSON.stringify({ families }) });
       const done = await importMedia(files, { upload, convert, fonts, progress: t => toast(t) });
+      // 🔎 the check: slides vs pages, who drew them, fonts found / installed, and anything to look at before Sunday
+      const rep = done.map(d => [d.file, importReport((reports.find(([n]) => n === d.file) || [])[1], d.note)]).filter(([n, r]) => n && r);
+      if (rep.length) setTimeout(() => ask('🔎 Verificarea importului\n\n' + rep.map(([n, r]) => `„${n}”\n${r.text}`).join('\n\n'), [], 'Am înțeles'), 600);
       if (into >= 0 && S.setlist[into]) {
         const one = done.length === 1 ? done[0] : {}, slides = done.flatMap(d => d.slides);
         send({ type: 'updateItem', item: into, patch: { slides, transitions: one.transitions, advance: one.advance } });

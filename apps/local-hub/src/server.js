@@ -5,6 +5,7 @@
 //
 //   PIN=1234 PORT=4545 npm start
 
+import { analyzePptx, pdfPageCount } from './showcheck.js';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1670,7 +1671,7 @@ const MAC_PPT_SCRIPT = `on run argv
     close p saving no
   end tell
 end run`;
-let lastNativeError = '';
+let lastNativeError = '', lastEngine = '';
 const PPT_SCRIPT = `param($in, $out)
 $app = New-Object -ComObject PowerPoint.Application
 $p = $app.Presentations.Open($in, $true, $false, $false)
@@ -1689,9 +1690,12 @@ async function nativePdf(file) {
       const src = path.join(work, 'p-' + Date.now().toString(36) + path.extname(file));
       fs.copyFileSync(file, src);
       try {
-        for (const [app, script] of [['/Applications/Keynote.app', KEYNOTE_SCRIPT], ['/Applications/Microsoft PowerPoint.app', MAC_PPT_SCRIPT]]) {
+        // a PowerPoint file is drawn by PowerPoint first (Keynote re-draws it its own way); a Keynote file by Keynote first
+        const engines = [['/Applications/Microsoft PowerPoint.app', MAC_PPT_SCRIPT, 'PowerPoint'], ['/Applications/Keynote.app', KEYNOTE_SCRIPT, 'Keynote']];
+        if (/\.key$/i.test(file)) engines.reverse();
+        for (const [app, script, nameOf] of engines) {
           if (!fs.existsSync(app)) continue;
-          try { await run('osascript', ['-e', script, src, out]); if (fs.existsSync(out) && fs.statSync(out).size > 0) break; }
+          try { await run('osascript', ['-e', script, src, out]); if (fs.existsSync(out) && fs.statSync(out).size > 0) { lastEngine = nameOf; break; } }
           catch (e) { lastNativeError = String(e.message || e); logError('convert ' + path.basename(app), e); }
         }
       } finally { fs.rmSync(src, { force: true }); }
@@ -1699,6 +1703,7 @@ async function nativePdf(file) {
     } else if (process.platform === 'win32') {
       const ps1 = path.join(work, 'ppt-pdf.ps1'); fs.writeFileSync(ps1, PPT_SCRIPT);
       await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1, path.resolve(file), out]);
+      lastEngine = 'PowerPoint';
     } else return null;
     return fs.existsSync(out) && fs.statSync(out).size > 0 ? out : null;
   } catch (e) { logError('convert', e); fs.rmSync(out, { force: true }); return null; }
@@ -1712,7 +1717,74 @@ async function toPdf(file) {
   fs.mkdirSync(LO_PROFILE, { recursive: true });
   await new Promise((ok, no) => execFile(office, [`-env:UserInstallation=${pathToFileURL(LO_PROFILE).href}`, '--headless', '--convert-to', 'pdf', '--outdir', out, file], { timeout: 240000 }, e => e ? no(e) : ok()));
   const pdf = fs.readdirSync(out).find(f => f.endsWith('.pdf'));
+  if (pdf) lastEngine = 'LibreOffice';
   return pdf ? path.join(out, pdf) : null;
+}
+
+// 🔤 The fonts this computer has (what Keynote / PowerPoint can use), asked from the system itself; kept 10 minutes
+let sysFontCache = { at: 0, set: null };
+async function systemFonts() {
+  if (sysFontCache.set && Date.now() - sysFontCache.at < 600000) return sysFontCache.set;
+  const { execFile } = await import('node:child_process');
+  const run = (cmd, args) => new Promise(ok => execFile(cmd, args, { timeout: 30000, windowsHide: true, maxBuffer: 8 << 20 }, (e, out) => ok(e ? '' : String(out))));
+  let list = '';
+  if (process.platform === 'darwin') list = await run('osascript', ['-l', 'JavaScript', '-e', "ObjC.import('AppKit'); ObjC.deepUnwrap($.NSFontManager.sharedFontManager.availableFontFamilies).join('\\n')"]);
+  else if (process.platform === 'win32') list = await run('powershell.exe', ['-NoProfile', '-Command', 'Add-Type -AssemblyName System.Drawing; (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }']);
+  else list = await run('fc-list', [':', 'family']);
+  const set = new Set(list.split(/\r?\n|,/).map(x => x.trim().toLowerCase()).filter(Boolean));
+  sysFontCache = { at: Date.now(), set: set.size ? set : null };
+  return sysFontCache.set;
+}
+/** Puts downloaded fonts where the system (and so Keynote / PowerPoint) finds them: only for this user, nothing needs a password. */
+async function installUserFonts(families) {
+  const idx = fontIndex(), done = [];
+  for (const fam of families) {
+    const f = idx[fam]; if (!f?.files?.length || (f.source && f.source.toLowerCase() !== fam.toLowerCase())) continue;   // a look-alike has another name: no use to PowerPoint
+    for (const x of f.files) {
+      const src = path.join(FONTS_DIR, x.file);
+      try {
+        if (process.platform === 'darwin') { const d = path.join(os.homedir(), 'Library', 'Fonts', 'Betleem-' + x.file); if (!fs.existsSync(d)) fs.copyFileSync(src, d); }
+        else if (process.platform === 'win32') {
+          const dir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Microsoft', 'Windows', 'Fonts'); fs.mkdirSync(dir, { recursive: true });
+          const d = path.join(dir, 'Betleem-' + x.file); if (!fs.existsSync(d)) fs.copyFileSync(src, d);
+          const { execFileSync } = await import('node:child_process');
+          execFileSync('reg', ['add', 'HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts', '/v', `${fam} ${x.weight === '700' ? 'Bold ' : ''}${x.style === 'italic' ? 'Italic ' : ''}(TrueType)`.replace('  ', ' '), '/t', 'REG_SZ', '/d', d, '/f'], { windowsHide: true, timeout: 15000 });
+        } else continue;
+      } catch (e) { logError('font install ' + fam, e); }
+    }
+    done.push(fam);
+  }
+  if (done.length) sysFontCache.at = 0;
+  return done;
+}
+/** 🔎 Before the import: what the presentation needs; the fonts it lacks are downloaded and installed. Returns the report. */
+async function prepareShow(file) {
+  const rep = { engine: '', fonts: { ok: [], installed: [], embedded: [], lookalike: [], missing: [] }, warnings: [] };
+  if (!/\.(pptx|ppsx)$/i.test(file)) return rep;
+  let a; try { a = analyzePptx(fs.readFileSync(file)); } catch (e) { rep.warnings.push(e.message); return rep; }
+  Object.assign(rep, { slides: a.slides, visible: a.visible, hiddenAt: a.hiddenAt, ratio: a.size.ratio, videos: a.videos, external: a.external });
+  const have = await systemFonts(), office = process.platform === 'win32' || fs.existsSync('/Applications/Microsoft PowerPoint.app');
+  const need = [];
+  for (const f of a.fonts) {
+    const k = f.toLowerCase();
+    if (a.embedded.some(x => x.toLowerCase() === k)) { rep.fonts.embedded.push(f); continue; }          // inside the file: PowerPoint uses it
+    if (have?.has(k) || (office && /^(calibri|calibri light|cambria|candara|consolas|constantia|corbel|segoe ui|aptos.*)$/i.test(f))) { rep.fonts.ok.push(f); continue; }
+    need.push(f);
+  }
+  if (need.length) {
+    const r = await ensureFonts(need).catch(() => ({ got: [], missing: need }));
+    const installed = await installUserFonts(r.got || []);
+    for (const f of need) {
+      if (installed.includes(f)) rep.fonts.installed.push(f);
+      else if (LOOKALIKE[f.toLowerCase()] && (r.got || []).includes(f)) rep.fonts.lookalike.push(`${f} → ${LOOKALIKE[f.toLowerCase()]}`);
+      else rep.fonts.missing.push(f);
+    }
+  }
+  if (a.videos.length) rep.warnings.push(`Prezentarea are ${a.videos.length === 1 ? 'un video' : a.videos.length + ' video'} (${a.videos.slice(0, 3).join(', ')}): pe ecran apare doar prima imagine. Pune video-ul separat în program.`);
+  if (a.external.length) rep.warnings.push(`${a.external.length} ${a.external.length === 1 ? 'fișier e legat' : 'fișiere sunt legate'} din calculatorul autorului (nu sunt în prezentare): ${a.external.slice(0, 2).map(x => path.basename(decodeURIComponent(x))).join(', ')}. Cere-i prezentarea cu ele incluse sau PDF.`);
+  if (rep.fonts.lookalike.length) rep.warnings.push(`Fonturi Microsoft care nu sunt pe acest calculator, înlocuite cu unele la fel de late: ${rep.fonts.lookalike.join(', ')}. Cu PowerPoint instalat arată exact.`);
+  if (rep.fonts.missing.length) rep.warnings.push(`Fonturi pe care nu le am și nu le-am putut descărca: ${rep.fonts.missing.join(', ')}. Verifică internetul și importă din nou; dacă tot lipsesc, cere-i predicatorului PDF-ul sau fontul.`);
+  return rep;
 }
 
 async function handle(req, res) {
@@ -2318,7 +2390,15 @@ async function handle(req, res) {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-show-')), src = path.join(dir, name);
       fs.writeFileSync(src, buf);
       try {
+        const report = await prepareShow(src).catch(e => ({ warnings: [e.message], fonts: {} }));
+        lastEngine = '';
         const pdf = await toPdf(src);
+        if (pdf) {
+          report.engine = lastEngine; report.pages = pdfPageCount(fs.readFileSync(pdf));
+          if (report.visible && report.pages !== report.visible) report.warnings.push(`Am primit ${report.pages} pagini, dar prezentarea are ${report.visible} slide-uri vizibile. Verifică-le înainte de duminică.`);
+          if (report.engine === 'LibreOffice') report.warnings.push('Desenată de LibreOffice (nu e Keynote / PowerPoint pe acest calculator): umbrele și efectele pot diferi puțin.');
+          res.setHeader('x-betleem-report', Buffer.from(JSON.stringify(report)).toString('base64url'));
+        }
         if (!pdf) {
           // macOS refused: Betleem may not control Keynote / PowerPoint yet (Privacy & Security → Automation)
           const denied = /-1743|not authori[sz]ed|nu este autorizat|not allowed/i.test(lastNativeError);

@@ -4,7 +4,7 @@
 const W = 1920, H = 1080;
 const VIDEO = /\.(mp4|webm|mov)$/i, IMAGE = /\.(png|jpe?g|webp)$/i;
 const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 30).toLowerCase() || 'prezentare';
-const toBlob = canvas => new Promise(ok => canvas.toBlob(ok, 'image/jpeg', 0.9));
+const toBlob = canvas => new Promise(ok => canvas.toBlob(ok, 'image/jpeg', 0.94));
 
 /**
  * files: File[]; upload(name, blob) → url; progress(text).
@@ -45,7 +45,22 @@ export async function importMedia(files, { upload, convert, fonts = async () => 
     }
     const shown = info?.slides.filter(x => !x.hidden) || [];
     const fx = shown.length === slides.length ? shown : null;     // pages and slides line up: keep PowerPoint's transitions and timings
-    out.push({ title, slides, ...(fx ? { transitions: fx.map(x => x.transition), advance: fx.map(x => x.advance) } : {}) });
+    // ✨ the transitions: which came over exactly, which became the nearest one we have, and the slides that change by themselves
+    let note = '';
+    if (info && shown.some(x => x.transition || x.advance)) {
+      if (!fx) note = `⚠ Tranzițiile nu s-au putut potrivi (${slides.length} pagini, ${shown.length} slide-uri): slide-urile se schimbă simplu. Verifică prezentarea.`;
+      else {
+        const exact = [], near = {}, timed = fx.filter(x => x.advance).length;
+        fx.forEach((x, i) => { if (!x.transition) return; const from = x.transition.from || x.transition.type;
+          if (EXACT.has(from)) exact.push(i + 1); else (near[`${from} → ${x.transition.type}`] ||= []).push(i + 1); });
+        const lines = [];
+        if (exact.length) lines.push(`✓ Tranziții păstrate la fel: ${exact.length} (${[...new Set(fx.filter(x => x.transition && EXACT.has(x.transition.from || x.transition.type)).map(x => TNAME[x.transition.type] || x.transition.type))].join(', ')}), cu durata și direcția lor`);
+        for (const [k, at] of Object.entries(near)) lines.push(`⚠ Tranziția „${k.split(' → ')[0]}” (slide ${at.join(', ')}) nu există aici: o fac „${TNAME[k.split(' → ')[1]] || k.split(' → ')[1]}”, cea mai apropiată`);
+        if (timed) lines.push(`✓ ${timed} ${timed === 1 ? 'slide trece singur' : 'slide-uri trec singure'} după timpul din PowerPoint`);
+        note = lines.join('\n');
+      }
+    } else if (/\.(key|ppt|pps)$/i.test(ext)) note = '⚠ Din acest format nu pot citi tranzițiile: slide-urile se schimbă simplu. Salvează ca .pptx dacă vrei tranzițiile.';
+    out.push({ title, file: f.name, note, slides, ...(fx ? { transitions: fx.map(x => x.transition), advance: fx.map(x => x.advance) } : {}) });
   }
   return out;
 }
@@ -64,6 +79,8 @@ const TRANS = { fade: 'fade', dissolve: 'fade', push: 'push', wipe: 'wipe', cove
   flip: 'push', gallery: 'push', cube: 'push', doors: 'split', box: 'zoom', reveal: 'uncover', ferris: 'push', conveyor: 'push',
   pan: 'push', prism: 'push', flythrough: 'zoom', warp: 'zoom', curtains: 'split', wind: 'push', airplane: 'push', origami: 'fade',
   fracture: 'fade', crush: 'zoom', peelOff: 'uncover', pageCurlDouble: 'uncover', pageCurlSingle: 'uncover', drape: 'fade', prestige: 'fade' };
+const EXACT = new Set(['fade', 'push', 'wipe', 'cover', 'pull', 'split', 'zoom', 'cut', 'dissolve']);   // drawn the same here
+const TNAME = { fade: 'estompare', push: 'împingere', wipe: 'ștergere', cover: 'acoperire', uncover: 'descoperire', split: 'despicare', zoom: 'zoom', cut: 'tăiere' };
 export async function pptxInfo(file) {
   const z = await unzip(file);
   const relMap = async path => {
@@ -87,7 +104,7 @@ export async function pptxInfo(file) {
       const dur = Number(tr.getAttribute('p14:dur') || tr.getAttribute('dur')) || ({ slow: 1000, med: 750, fast: 500 }[tr.getAttribute('spd')] ?? 700);
       const el = kind && [...tr.children].find(c => c.localName === kind);
       const dir = el?.getAttribute('dir') || '';
-      if (kind) transition = { type: TRANS[kind] || 'fade', dir: /^[lrud]$/.test(dir) ? dir : dir === 'in' || dir === 'out' ? dir : '', dur: Math.min(5000, Math.max(0, dur)) };
+      if (kind) transition = { from: kind, type: TRANS[kind] || 'fade', dir: /^[lrud]$/.test(dir) ? dir : dir === 'in' || dir === 'out' ? dir : '', dur: Math.min(5000, Math.max(0, dur)) };
       const adv = [...d.getElementsByTagNameNS('*', 'transition')].map(t => t.getAttribute('advTm')).find(Boolean);
       if (adv) advance = Math.max(500, Number(adv));
     }
@@ -373,4 +390,19 @@ function drawText(ctx, tx, [x, y, w, h], ph, color, k, master) {
     for (const p of r.parts) { ctx.font = p.font; ctx.fillStyle = p.color; ctx.fillText(p.word, xx, yy + rh * 0.8); xx += p.w; }
     yy += rh;
   }
+}
+
+// 🔎 the check the computer did around a presentation (fonts found / installed, slides vs pages, videos, links), in words
+export function importReport(b64, note = '') {
+  let r; try { r = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(String(b64 || '').replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)))); } catch { r = null; }
+  if (!r) return note ? { ok: !/⚠/.test(note), text: note } : null;
+  const f = r.fonts || {}, lines = [];
+  if (r.visible) lines.push(`${r.pages === r.visible ? '✓' : '⚠'} ${r.pages} din ${r.visible} slide-uri${r.hiddenAt?.length ? ` (ascunse și sărite: ${r.hiddenAt.join(', ')})` : ''} · ${r.ratio || ''}`);
+  if (r.engine) lines.push(`✓ Desenată de ${r.engine}${r.engine === 'LibreOffice' ? '' : ', exact ca în ' + r.engine}`);
+  if (f.ok?.length) lines.push('✓ Fonturi pe calculator: ' + f.ok.join(', '));
+  if (f.embedded?.length) lines.push('✓ Fonturi incluse în prezentare: ' + f.embedded.join(', '));
+  if (f.installed?.length) lines.push('✓ Fonturi descărcate și instalate acum: ' + f.installed.join(', '));
+  if (note) lines.push(note);
+  for (const w of r.warnings || []) lines.push('⚠ ' + w);
+  return { ok: !(r.warnings || []).length && !/⚠/.test(note), text: lines.join('\n') };
 }

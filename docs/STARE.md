@@ -140,6 +140,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   + bucket `prezentari` (migrarea 20261128210000, testată pe un Postgres local cu tabele de probă; **neaplicată încă în
   Supabase**). Hub: `cloudFiles()` în server.js (după sincronizare, în 📥 Primite; **neverificat cap-coadă**), badge 🎨 în control.html.
 
+- **🔎 Import verificat (2026.11.28.19):** `src/showcheck.js` (analyzePptx, pdfPageCount; test showcheck.test.js cu
+  test/fixtures/proba.pptx), server.js `systemFonts`, `installUserFonts`, `prepareShow`, antetul `x-betleem-report`;
+  importer.js `importReport` + nota de tranziții (EXACT / TNAME). Verificat cap-coadă cu LibreOffice aici (Linux).
+  **Neverificat pe Mac / Windows** (instalarea fonturilor în sistem, PowerPoint înaintea Keynote).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

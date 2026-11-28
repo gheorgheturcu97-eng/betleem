@@ -797,11 +797,11 @@
       if (!files.length) return;
       if (i < 0) { s.items.push({ kind: 'media', title: files[0].name.replace(/\.[^.]+$/, ''), minutes: 2 }); i = s.items.length - 1; }
       try {
-        const { importMedia } = await import('/importer.js');
+        const { importMedia, importReport } = await import('/importer.js'); const reports = [];
         const headers = { 'x-pin': hub.pin() };
         const upload = async (name, blob) => { const r = await fetch('/api/media?name=' + encodeURIComponent(name), { method: 'POST', headers, body: blob }); if (!r.ok) throw new Error('Nu am putut salva ' + name); return '/media/' + name; };
         const convert = async f => { const r = await fetch('/api/convert?name=' + encodeURIComponent(f.name), { method: 'POST', body: f, headers });
-          if ((r.headers.get('content-type') || '').includes('pdf')) return await r.blob(); const j = await r.json().catch(() => ({}));
+          if ((r.headers.get('content-type') || '').includes('pdf')) { reports.push([f.name, r.headers.get('x-betleem-report')]); return await r.blob(); } const j = await r.json().catch(() => ({}));
           if (!/\.(pptx?|ppsx?|key|odp)$/i.test(f.name)) { if (j.error) toast(j.error); return null; }
           const why = (j.error || 'Nu am putut deschide prezentarea cu Keynote / PowerPoint.') + (j.detail ? '\n\nDetaliu: ' + j.detail : '');
           if (!confirm(why + '\n\nCel mai sigur: în PowerPoint, Fișier → Exportă → PDF, apoi importă PDF-ul — arată exact ca în PowerPoint.\n\nOK = continui oricum (Betleem desenează slide-urile singur, pot arăta altfel) · Anulează = opresc importul'))
@@ -816,6 +816,9 @@
         if (!it.title) it.title = done[0].title;
         await op({ op: 'setItems', id: s.id, items: s.items });
         toast(`${slides.length} slide-uri la „${it.title || KIND[it.kind]}”`);
+        // 🔎 the check: what was found, installed, and anything to look at before Sunday
+        const rep = done.map(d => [d.file, importReport((reports.find(([n]) => n === d.file) || [])[1], d.note)]).filter(([n, r]) => n && r);
+        if (rep.length) alert('🔎 Verificarea importului\n\n' + rep.map(([n, r]) => `„${n}”\n${r.text}`).join('\n\n'));
       } catch (e) { toast(e.message || String(e)); }
   }
 
