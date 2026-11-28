@@ -83,3 +83,25 @@ html.light .dept,html.light .team-box{background:rgba(255,255,255,.6)!important}
 
 /* 🎨 modules a church switched off (⚙ Setări → Aspect și funcții) */
 html.no-md [data-mod~=md], html.no-lumini [data-mod~=lumini], html.no-lideri [data-mod~=lideri], html.no-asistent [data-mod~=asistent], html.no-voluntari [data-mod~=voluntari]{display:none!important}
+
+/* ☀ Mod zi, mai clar (2026-11-28): fundal gri deschis, panouri albe care se văd, text gri mai închis, chenare vizibile */
+html.light{--mute:rgba(21,23,29,.72);--faint:rgba(21,23,29,.55);--stroke:rgba(15,20,35,.14);--stroke-hi:rgba(15,20,35,.28)}
+html.light body{background:linear-gradient(160deg,#e9edf3,#dde3ec 60%,#e4e8ef)!important}
+html.light .backdrop,html.light .aurora{display:none}
+html.light .glass{background:#ffffff!important;border:1px solid rgba(15,20,35,.1)!important;box-shadow:0 1px 2px rgba(15,20,35,.06),0 8px 24px rgba(15,20,35,.07)!important;backdrop-filter:none!important}
+html.light button,html.light .btn{background:#f3f5f9;border:1px solid rgba(15,20,35,.14);box-shadow:none}
+html.light button:hover,html.light .btn:hover{background:#e8ecf2}
+html.light .seg{background:#eef1f6;border-color:rgba(15,20,35,.1)}
+html.light .seg button{background:transparent;border-color:transparent}
+html.light .seg button.sel{background:#fff;box-shadow:0 1px 3px rgba(15,20,35,.18)}
+html.light input,html.light select,html.light textarea{background:#fff;border:1px solid rgba(15,20,35,.16)}
+html.light .lib .chip{background:#eef1f6!important;color:#2a2f3a!important;border:1px solid rgba(15,20,35,.12)}
+html.light .lib:hover{background:#f1f4f8} html.light #results .lib .acts{background:#fff;box-shadow:0 2px 10px rgba(15,20,35,.18)}
+html.light #setlist .item{background:#f6f8fb;border:1px solid rgba(15,20,35,.06)}
+html.light #setlist .item.sel{background:rgba(255,191,47,.2);border-color:rgba(245,163,0,.45)}
+html.light .msgbox{background:#fff!important;border:1px solid rgba(15,20,35,.16)!important} html.light .msgbox input,html.light .msgbox select{background:transparent!important;border:0!important;color:var(--fg)!important}
+html.light .tagf button,html.light .tags button,html.light .tagchips button{background:#eef1f6;color:#2a2f3a}
+html.light .screen{border-color:rgba(15,20,35,.18)}
+html.light #slides .slide.pp{box-shadow:0 0 0 1px rgba(15,20,35,.12),0 4px 12px rgba(15,20,35,.12)}
+html.light .main.noL>#pLeft::after,html.light .main.noR>#pRight::after,html.light .main.auto>#pLeft::after,html.light .main.auto>#pRight::after{color:#4a505c}
+html.light .hidep{background:#eef1f6!important;color:#4a505c}

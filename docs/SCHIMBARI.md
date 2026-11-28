@@ -1,7 +1,10 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
-## 2026-11-28 · Programul și Cântările se ascund doar când vrei tu (2026.11.28.7)
+## 2026-11-28 · Panourile se ascund doar când vrei tu + mod zi clar (2026.11.28.7)
+- **Modul zi (☀, glass.css).** Înainte: totul alb pe alb, text gri foarte deschis, butoane și tonuri (G, A) aproape
+  invizibile. Acum: fundal gri deschis, panouri albe curate cu chenar și umbră, text gri mai închis, butoane și câmpuri
+  cu chenar vizibil, tonurile ca etichete, programul ales evidențiat. Modul noapte: neschimbat.
 - **Panourile din stânga și din dreapta.** Înainte (2026.11.28.3–6): cât era ceva pe ecran se retrăgeau singure și ieșeau
   la trecerea cu mouse-ul. Acum: stau pe loc. Le ascunzi tu cu mânerul ‹ / › de pe marginea lor (sau Ctrl/⌘+1 / 3);
   rămâne o bară subțire „Program ›” / „‹ Cântări · Biblia”, iar un clic pe ea le aduce înapoi. Retragerea automată
