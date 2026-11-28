@@ -224,6 +224,24 @@
   .stop .t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .stop button,.stop select{padding:7px 11px;font-size:13.5px;width:auto} .stop button.on{background:var(--accent);color:#fff}
   .chart{flex:1;min-height:0;overflow:auto;padding:var(--sp-4) var(--sp-4) var(--sp-6);font:16px/1.15 var(--mono);--chord:#ffb547}
+  /* 🎼 the song view (#sChart): header, a column with the section names, chords in blue above the syllables, the map below */
+  #sChart{font:19px/1.2 var(--font);--chord:#4da3ff;padding:var(--sp-4) max(16px,env(safe-area-inset-left)) var(--sp-6)}
+  #sChart .shead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;height:auto;margin:0 0 1.2em;padding-bottom:.9em;border-bottom:1px solid var(--line)}
+  #sChart .shead h2{margin:0;font-size:1.35em;font-weight:600;line-height:1.15} #sChart .shead small{display:block;color:var(--text-2);font-size:.75em;margin-top:.2em}
+  #sChart .meta{display:flex;flex-direction:column;align-items:flex-end;gap:.15em;color:var(--chord);font-size:.8em;white-space:nowrap}
+  #sChart .sec{display:grid;grid-template-columns:5.2em 1fr;gap:0 .8em;margin:0 0 1em;border-radius:8px}
+  #sChart .sl{color:var(--text-3);font-size:.82em;padding-top:1.35em;line-height:1.2} #sChart .sl .ab{display:none}
+  #sChart.lyr .sl{padding-top:.1em} #sChart .sec .sb>.ln:first-child:not(:has(.seg)){margin-top:0}
+  #sChart .ln{display:flex;flex-wrap:wrap;margin:0 0 .3em} #sChart .seg b{color:var(--chord);font-weight:700;font-size:.85em;height:1.35em;line-height:1.35em}
+  #sChart .only{color:var(--chord);font-weight:700;font-size:.85em;margin:0 0 .3em;white-space:pre}
+  #sChart .sec.again{margin-bottom:.6em} #sChart .rep{color:var(--text-3);font-style:italic}
+  #sChart .sec.again .sl{padding-top:0}
+  #sChart .sec.flash{animation:secFlash 1.2s ease-out} @keyframes secFlash{0%{background:rgba(77,163,255,.28)}100%{background:transparent}}
+  @media (max-width:560px){#sChart .sec{grid-template-columns:2.4em 1fr;gap:0 .5em} #sChart .sl .full{display:none} #sChart .sl .ab{display:inline;font-weight:600;color:var(--lc,var(--text-3))}}
+  .smap{display:flex;gap:4px;overflow-x:auto;padding:8px max(10px,env(safe-area-inset-left));background:rgba(18,18,20,.88);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-top:1px solid var(--line);scrollbar-width:none}
+  .smap button{flex:1 0 auto;min-width:40px;padding:7px 8px;font-size:12.5px;font-weight:600;border-radius:7px;background:rgba(255,255,255,.07);color:var(--text-2);box-shadow:inset 0 -2px 0 var(--lc,transparent)}
+  #vSong #sTitle{visibility:hidden}
+  .smap button.on{background:rgba(77,163,255,.22);color:#fff}
   .chart .lbl{font:600 .75em var(--font);letter-spacing:.06em;text-transform:uppercase;margin:1.1em 0 .3em} .chart>div:first-child .lbl{margin-top:0}
   .chart .ln{display:flex;flex-wrap:wrap;margin:0 0 .25em} .chart .seg{display:inline-flex;flex-direction:column;white-space:pre}
   .chart .seg b{color:var(--chord);font-weight:600;height:1.2em;line-height:1.2em} .chart .seg i{font-style:normal;line-height:1.2em}
@@ -383,6 +401,7 @@
     <div class="stop"><button id="sBack">←</button><span class="t" id="sTitle"></span>
       <select id="sKey" title="Tonul"></select><button id="sChords" class="on" title="Acorduri da/nu">Acorduri</button><button id="sFit" class="on" title="Toată piesa pe ecran / derulez">⤢</button><button id="sEdit" title="Corectează textul și acordurile" hidden>✎</button></div>
     <div class="chart" id="sChart"></div>
+    <nav class="smap" id="sMap" aria-label="Secțiunile cântării"></nav>
   </section>
   <section id="vEdit" hidden>
     <div class="stop"><button id="eBack" title="Renunță">✕</button><span class="t" id="eHead">Cântare nouă</span><button id="eSave" class="on">Salvează</button></div>
@@ -410,7 +429,7 @@ Refren:
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
-  import { parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
+  import { standardLabel, parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
   import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency } from './core/plan.js';
   import { BOOKS, parseRef, formatRef } from './core/bibleref.js';
@@ -1167,7 +1186,7 @@ Refren:
   $('sList').onclick = e => { const r = e.target.closest('.srow'); if (r) openSong(null, null, r.dataset.id); };
   // a song by its row, or by the program's song id (the id in the desktop library), or by its title
   async function openSong(localId, title, rowId) {
-    let q = sb.from('songs').select('id, church_id, local_id, title, author, key, body, arrangement');
+    let q = sb.from('songs').select('id, church_id, local_id, title, author, key, bpm, body, arrangement');
     const hit = rowId ? { id: rowId } : lib.find(x => localId && x.local_id === localId) || lib.find(x => title && x.title.toLowerCase() === String(title).toLowerCase());
     if (!hit) return alert('Cântarea nu e în biblioteca online.');
     const { data, error } = await q.eq('id', hit.id).single();
@@ -1178,20 +1197,41 @@ Refren:
     $('sKey').disabled = !want; $('sTitle').textContent = cur_.title; $('vSong').hidden = false; document.body.style.overflow = 'hidden';
     history.pushState({ song: 1 }, ''); drawSong();
   }
+  // 🎼 the chart like a musician's app: title and author on top, the key / tempo on the right, the name of each section in a
+  // column on the left, the chords above the syllable; a section sung again shows only its first line (↺); the strip at the
+  // bottom is the song's map (V1 C V2 C B…): tap one to go there, the one you are at lights up
+  const ABBR = l => { const k = standardLabel(l || ''); const n = (k.match(/(\d+)$/) || [])[1] || '';
+    return /^Verse/.test(k) ? 'V' + (n || '') : /^Pre-Chorus/.test(k) ? 'PC' + n : /^Chorus/.test(k) ? 'C' + n : /^Bridge/.test(k) ? 'B' + n : /^Intro/.test(k) ? 'In' : /^(Ending|Outro)/.test(k) ? 'Out' : /^Tag/.test(k) ? 'Tag' : (l || '').slice(0, 3); };
   function drawSong() {
     const orig = originalKey(cur_.key, cur_.body), steps = want && orig ? keyDistance(orig, want) : 0;
     const body = transpose(cur_.body, steps, prefersFlats(want || 'C'));
-    const slides = toSlides(arrange(parseSong(body), cur_.arrangement), 4);
-    let last = null;
+    const secs = arrange(parseSong(body), cur_.arrangement);
     const line = l => /\[/.test(l) && !stripChords(l).trim()
-      ? (withChords ? `<div class="only">${esc(l.match(/\[([^\]]*)\]/g).map(x => x.slice(1, -1)).join('  '))}</div>` : '')
+      ? (withChords ? `<div class="only">${esc(l.match(/\[([^\]]*)\]/g).map(x => x.slice(1, -1)).join('   '))}</div>` : '')
       : `<div class="ln">${withChords ? chordLineToHtml(l, esc) : esc(stripChords(l))}</div>`;
     const el = $('sChart'); unfit(el); el.classList.toggle('lyr', !withChords);
-    el.innerHTML = slides.map(sl => { const head = sl.label !== last && sl.label ? `<div class="lbl" style="color:${sectionColor(sl.label)}">${esc(sl.label)}</div>` : ''; last = sl.label;
-      return `<div data-fit-keep>${head}${sl.lines.map(line).join('')}</div>`; }).join('') || '<p class="mute">Cântarea nu are text.</p>';
-    el.scrollTop = 0;
+    const seen = new Set();
+    const meta = [want ? `Ton ${esc(want)}` : '', cur_.bpm ? `${Math.round(cur_.bpm)} bpm` : ''].filter(Boolean);
+    el.innerHTML = `<header class="shead" data-fit-keep><div><h2>${esc(cur_.title)}</h2>${cur_.author ? `<small>${esc(cur_.author)}</small>` : ''}</div>${meta.length ? `<div class="meta">${meta.map(x => `<span>${x}</span>`).join('')}</div>` : ''}</header>`
+      + secs.map((sc, i) => { const k = (sc.label || '#' + i).toLowerCase(), again = sc.label && seen.has(k); seen.add(k);
+        const first = sc.lines.find(l => stripChords(l).trim()) || '';
+        return `<div class="sec${again ? ' again' : ''}" id="sec${i}" data-fit-keep style="--lc:${sectionColor(sc.label || '')}"><div class="sl"><span class="full">${esc(sc.label || '')}</span><span class="ab">${esc(ABBR(sc.label))}</span></div>
+          <div class="sb">${again ? `<div class="ln rep">↺ ${esc(stripChords(first))}…</div>` : sc.lines.map(line).join('')}</div></div>`; }).join('')
+      || '<p class="mute">Cântarea nu are text.</p>';
+    $('sMap').innerHTML = secs.map((sc, i) => `<button data-go="${i}" style="--lc:${sectionColor(sc.label || '')}">${esc(ABBR(sc.label) || i + 1)}</button>`).join('');
+    $('sMap').hidden = secs.length < 2;
+    el.scrollTop = 0; mapNow();
     if (whole) requestAnimationFrame(() => fitWhole(el, { own: true, max: 40 }));
   }
+  function mapNow() {                                 // the section at the top of the screen lights up in the strip
+    const el = $('sChart'), top = el.getBoundingClientRect().top + 40; let now = 0;
+    el.querySelectorAll('.sec').forEach((x, i) => { if (x.getBoundingClientRect().top <= top) now = i; });
+    $('sMap').querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === now));
+  }
+  $('sChart').addEventListener('scroll', () => requestAnimationFrame(mapNow), { passive: true });
+  $('sMap').onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; const t = $('sec' + b.dataset.go); if (!t) return;
+    if (whole) { t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); }     // the whole song is on screen: show where
+    else $('sChart').scrollTo({ top: t.offsetTop - 8, behavior: 'smooth' }); };
   const closeSong = () => { $('vSong').hidden = true; document.body.style.overflow = ''; cur_ = null; };
   $('sBack').onclick = () => history.back();
   addEventListener('popstate', () => { if (!$('vSong').hidden) closeSong(); });

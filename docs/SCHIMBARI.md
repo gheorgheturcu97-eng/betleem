@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · Cântarea ca la un stand de muzician (Reverb online)
+- **Ecranul cu acordurile (`#vSong`, `drawSong`).** Înainte: secțiunile tăiate în slide-uri de 4 rânduri, numele secțiunii
+  deasupra, font monospațiat, acorduri portocalii. Acum (după exemplul trimis de proprietar): titlul și autorul sus, tonul și
+  BPM-ul în dreapta, numele secțiunii într-o coloană în stânga (pe telefon prescurtat și colorat: V1, C, B), acordurile
+  albastre deasupra silabei, un refren cântat din nou apare scurt (↺ primul rând…), iar jos e harta cântării (V1 C V2 C B C):
+  apeși și sari acolo, secțiunea la care ești se aprinde. Tonul, Acorduri da/nu, ⤢ toată piesa și ✎ au rămas.
+
 ## 2026-11-28 (seara) · Telefon: bara de sus, cântări ușor, cod pentru versuri, „Doar vede”; culorile timpului (2026.11.28.19 + Reverb online)
 - **Bara cu zonele pe telefon (Reverb online).** Înainte: Planific / Proiectez / MD & Track stăteau în pagină și plecau la
   derulare. Acum: stau mereu sus, îngust; dispar doar când deschizi acordurile pe tot ecranul.
