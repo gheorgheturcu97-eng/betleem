@@ -143,7 +143,11 @@
   .tk .tx{border:0;background:transparent;padding:4px 2px}
   .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:999px;background:#ff5a5a;color:#fff;font-size:11px;line-height:18px;text-align:center}
   .vlink{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;padding:10px;border-radius:12px;background:rgba(255,255,255,.05)} .vlink code{font-size:11px;word-break:break-all;flex:1 1 100%;color:var(--mute)}
-  .slot .wa{width:30px;height:30px;padding:0;border-radius:9px} .slot{grid-template-columns:110px 1fr 44px 30px}
+  .slot .wa{width:30px;height:30px;padding:0;border-radius:9px} .slot{grid-template-columns:110px 1fr 44px 30px 28px}
+  #team .addpos{width:100%;margin:2px 0 4px;font-size:13px;opacity:.85} #team .dept.zero{opacity:.6} #team h3 .off{margin-left:auto;font-size:12px;width:auto;padding:2px 8px}
+  #team h3{display:flex;align-items:center;gap:6px}
+  .st.u1{box-shadow:0 0 0 2px #f5c518} .st.u2{box-shadow:0 0 0 2px #ff8c28} .st.u3{box-shadow:0 0 0 2px #ff3b30;animation:blinkU .9s steps(2,jump-none) infinite}
+  @keyframes blinkU{50%{box-shadow:0 0 0 2px transparent}}
   @media (max-width:1100px){#v-leaders{grid-template-columns:minmax(0,1fr)}}
   .ctx{position:fixed;z-index:200;display:none;flex-direction:column;min-width:230px;padding:5px;background:rgba(30,32,40,.92);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.5)}
   .ctx button{display:flex;align-items:center;gap:18px;justify-content:space-between;text-align:left;background:transparent;border:0;box-shadow:none;padding:6px 10px;border-radius:7px;font-size:13px;color:var(--fg);white-space:nowrap}
@@ -199,7 +203,7 @@
   @media (max-width: 900px){ #v-songs{grid-template-columns:minmax(0,1fr)} .sg-head{display:none} .sg{grid-template-columns:24px 1fr 60px;grid-template-areas:"c t u" ". g g"} .sg .tg{grid-area:g} .sg .k,.sg .when{display:none} }
   .vol{display:grid;grid-template-columns:1fr 130px 30px 30px;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045)}
   .vol small{display:block;color:var(--mute);font-size:11.5px}
-  .posrow{display:grid;grid-template-columns:1fr 70px 30px;gap:6px;margin-bottom:6px}
+  .posrow{display:grid;grid-template-columns:1fr 70px auto 30px;align-items:center;gap:6px;margin-bottom:6px}
 
   .signin{position:fixed;inset:0;display:none;place-items:center;z-index:50;background:rgba(5,6,10,.55);backdrop-filter:blur(8px)}
   .signin.show{display:grid}
@@ -218,7 +222,7 @@
     .it{grid-template-columns:44px 1fr 64px 30px;grid-template-areas:"time title min del" ". who key ."}
     .it time{grid-area:time} .it .t{grid-area:title} .it [data-f=leader]{grid-area:who} .it [data-f=key]{grid-area:key} .it .row{grid-area:min} .it [data-del]{grid-area:del}
     .it .row .hint{display:none} .it [data-f=minutes]{width:56px !important}
-    .ed-head #sDate{width:100%} .add{flex-wrap:wrap} .slot{grid-template-columns:95px 1fr 44px}
+    .ed-head #sDate{width:100%} .add{flex-wrap:wrap} .slot{grid-template-columns:95px 1fr 44px 30px 28px}
     .grid-wrap{overflow:auto} .vol{grid-template-columns:1fr 30px 30px} .vol>.hint{display:none}
     input,select,textarea{font-size:16px}   /* no zoom-in on iPhone */
   }
@@ -478,6 +482,10 @@
   const volName = id => P.volunteers.find(v => v.id === id)?.name || '';
   const localDT = iso => { const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
   const hhmm = d => d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+  // ✕ / + posts per service (the same rule as src/plan.js needFor): the service's choice, else the department's standard
+  const needFor = (s, p) => s?.need && s.need[p.id] !== undefined ? s.need[p.id] : (p.optional ? 0 : p.needed);
+  // 🔔 3 days before yellow, 2 orange, the day before red (the same as src/plan.js urgency)
+  const urgency = iso => { const a = new Date(iso), b = new Date(); a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0); const n = Math.round((a - b) / 864e5); return n < 0 ? 0 : n <= 1 ? 3 : n === 2 ? 2 : n === 3 ? 1 : 0; };
 
   // ---- Planning Center: connect once with a personal token, then import songs (with chords) and upcoming plans
   const pcoApi = (url, body) => fetch(url, { method: body ? 'POST' : 'GET', headers: { 'x-pin': hub.pin(), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
@@ -993,20 +1001,32 @@
   }
   function renderTeamFor(s) {
     $('warnings').innerHTML = s.warnings.map(w => '⚠ ' + esc(w)).join('<br>');
-    $('team').innerHTML = P.departments.map(d => `<div class="dept"><h3><i style="background:${d.color}"></i>${esc(d.name)}</h3>${
-      d.positions.flatMap(p => Array.from({ length: p.needed }, (_, slot) => {
-        const a = s.assignments[`${p.id}#${slot}`];
-        return `<div class="slot"><span title="${esc(p.name)}">${esc(p.name)}${p.needed > 1 ? ' ' + (slot + 1) : ''}</span>
+    const u = urgency(s.date);
+    $('team').innerHTML = P.departments.map(d => { const n = d.positions.reduce((t, p) => t + needFor(s, p), 0);
+      return `<div class="dept${n ? '' : ' zero'}"><h3><i style="background:${d.color}"></i>${esc(d.name)}${n ? `<button class="icon ghost off" data-depoff="${d.id}" title="Fără ${esc(d.name)} la acest program">✕ tot</button>` : '<small class="hint"> · nu e nevoie la acest program</small>'}</h3>${
+      d.positions.flatMap(p => Array.from({ length: needFor(s, p) }, (_, slot) => {
+        const a = s.assignments[`${p.id}#${slot}`], many = needFor(s, p) > 1;
+        return `<div class="slot"><span title="${esc(p.name)}">${esc(p.name)}${many ? ' ' + (slot + 1) : ''}</span>
           <select data-p="${p.id}" data-s="${slot}">${volunteerOptions(p.id, a?.volunteer, s)}</select>
-          <select class="st" data-p="${p.id}" data-s="${slot}" ${a ? '' : 'disabled'} title="Confirmare">
+          <select class="st${a?.status === 'pending' && u ? ' u' + u : ''}" data-p="${p.id}" data-s="${slot}" ${a ? '' : 'disabled'} title="Confirmare">
             <option value="pending" ${a?.status === 'pending' ? 'selected' : ''}>⏳</option><option value="confirmed" ${a?.status === 'confirmed' ? 'selected' : ''}>✓</option><option value="declined" ${a?.status === 'declined' ? 'selected' : ''}>✕</option></select>
-          <button class="icon ghost wa" data-wa="${a ? p.id + '#' + slot : ''}" ${a ? '' : 'disabled'} title="💬 Trimite-i pe WhatsApp: când slujește și linkul lui de confirmare">💬</button></div>`;
-      })).join('')}</div>`).join('') + (P.volunteers.length ? `<div class="row"><button id="autoTeam" class="acc" title="✦ Pune oamenii pe locurile goale: cine poate sluji acolo, n-a blocat ziua, e sub limita lui; cine a slujit mai puțin în ultimele 8 săptămâni are prioritate">✦ Completează echipa</button><button id="waAll" class="ghost" data-mod="voluntari" title="Câte un mesaj pe WhatsApp pentru fiecare om programat">💬 Anunță echipa</button></div>` : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
+          <button class="icon ghost wa" data-wa="${a ? p.id + '#' + slot : ''}" ${a ? '' : 'disabled'} title="💬 Trimite-i pe WhatsApp: când slujește și linkul lui de confirmare">💬</button>
+          ${slot === needFor(s, p) - 1 ? `<button class="icon ghost" data-unneed="${p.id}" title="Nu e nevoie de ${esc(p.name)} la acest program">✕</button>` : '<span></span>'}</div>`;
+      })).join('')}<select class="addpos" data-dep="${d.id}"><option value="">＋ Adaugă un post la ${esc(d.name)}…</option>${d.positions.map(p => `<option value="${p.id}">${esc(p.name)}${needFor(s, p) ? ' (încă unul)' : ''}</option>`).join('')}<option value="*">Alt post (scrii numele)…</option></select></div>`; }).join('')
+      + (P.volunteers.length ? `<div class="row"><button id="autoTeam" class="acc" title="✦ Pune oamenii pe locurile goale: cine poate sluji acolo, n-a blocat ziua, e sub limita lui; cine a slujit mai puțin în ultimele 8 săptămâni are prioritate">✦ Completează echipa</button><button id="waAll" class="ghost" data-mod="voluntari" title="Câte un mesaj pe WhatsApp pentru fiecare om programat">💬 Anunță echipa</button></div>` : '<p class="hint">Adaugă voluntari în tabul „Echipe”.</p>');
+    document.querySelectorAll('#team [data-unneed]').forEach(b => b.onclick = () => { const p = P.departments.flatMap(d => d.positions).find(x => x.id === b.dataset.unneed), k = `${p.id}#${needFor(s, p) - 1}`;
+      if (s.assignments[k] && !confirm('Pe acest loc e cineva pus. Scoți postul de la acest program?')) return; op({ op: 'setNeed', id: s.id, position: p.id, needed: needFor(s, p) - 1 }); });
+    document.querySelectorAll('#team [data-depoff]').forEach(b => b.onclick = async () => { const d = P.departments.find(x => x.id === b.dataset.depoff);
+      if (d.positions.some(p => Object.keys(s.assignments).some(k => k.startsWith(p.id + '#'))) && !confirm(`Scoți tot ${d.name} de la acest program? Oamenii puși acolo sunt eliberați.`)) return;
+      for (const p of d.positions.filter(p => needFor(s, p))) await op({ op: 'setNeed', id: s.id, position: p.id, needed: 0 }); });
+    document.querySelectorAll('#team .addpos').forEach(sel => sel.onchange = () => { const v = sel.value; sel.value = ''; if (!v) return;
+      if (v === '*') { const name = (prompt('Numele postului (ex. Chitară 2, Camera 2, Foto):') || '').trim(); if (name) op({ op: 'setNeed', id: s.id, department: sel.dataset.dep, name, needed: 1 }); return; }
+      const p = P.departments.flatMap(d => d.positions).find(x => x.id === v); op({ op: 'setNeed', id: s.id, position: v, needed: needFor(s, p) + 1 }); });
     document.querySelectorAll('#team [data-wa]').forEach(b => b.onclick = () => b.dataset.wa && sendWa(s, b.dataset.wa));
     if ($('waAll')) $('waAll').onclick = () => announceTeam(s);
     if ($('autoTeam')) $('autoTeam').onclick = async () => { const before = Object.keys(s.assignments).length; await op({ op: 'autoAssign', id: s.id });
       const now = Object.keys(P.services.find(x => x.id === s.id)?.assignments || {}).length; toast(now > before ? `✦ Am pus ${now - before} oameni. Verifică și apoi „💬 Anunță echipa”.` : 'Nu am găsit pe nimeni liber pentru locurile goale (vezi poziții, zile blocate, limite).'); };
-    document.querySelectorAll('#team select').forEach(sel => sel.onchange = () => {
+    document.querySelectorAll('#team .slot select').forEach(sel => sel.onchange = () => {
       const p = sel.dataset.p, slot = +sel.dataset.s, row = sel.parentElement.querySelectorAll('select');
       op({ op: 'assign', id: s.id, position: p, slot, volunteer: row[0].value, status: row[1].value || 'pending' });
     });
@@ -1024,13 +1044,14 @@
     let html = '<tr><th>Poziție</th>' + svcs.map(s => { const d = new Date(s.date); return `<th>${DAYS[d.getDay()]} ${d.getDate()} · ${hhmm(d)}<br><small class="hint">${esc(s.title)}</small></th>`; }).join('') + '</tr>';
     for (const d of P.departments) {
       html += `<tr><td class="dep" colspan="${svcs.length + 1}"><span style="color:${d.color}">●</span> ${esc(d.name)}</td></tr>`;
-      for (const p of d.positions) for (let slot = 0; slot < p.needed; slot++) {
-        html += `<tr><td class="pos">${esc(p.name)}${p.needed > 1 ? ' ' + (slot + 1) : ''}</td>` + svcs.map((s, si) => {
+      for (const p of d.positions) { const most = Math.max(0, ...svcs.map(s => needFor(s, p))); for (let slot = 0; slot < most; slot++) {
+        html += `<tr><td class="pos">${esc(p.name)}${most > 1 ? ' ' + (slot + 1) : ''}</td>` + svcs.map((s, si) => {
+          if (slot >= needFor(s, p)) return '<td class="hint" title="Nu e nevoie la acest program">—</td>';
           const a = s.assignments[`${p.id}#${slot}`];
           const bad = a && (dups[si][a.volunteer] > 1 || (P.volunteers.find(v => v.id === a.volunteer)?.away || []).includes(s.date.slice(0, 10)));
           return `<td><select class="${bad ? 'conflict' : ''}" data-id="${s.id}" data-p="${p.id}" data-s="${slot}" title="${a ? { pending: 'aștept răspuns', confirmed: 'confirmat', declined: 'a spus că nu poate' }[a.status] : ''}">${volunteerOptions(p.id, a?.volunteer, s)}</select>${a ? ({ confirmed: ' ✓', declined: ' ✕' }[a.status] || '') : ''}</td>`;
         }).join('') + '</tr>';
-      }
+      } }
     }
     $('grid').innerHTML = html;
     document.querySelectorAll('#grid select').forEach(sel => sel.onchange = () => op({ op: 'assign', id: sel.dataset.id, position: sel.dataset.p, slot: +sel.dataset.s, volunteer: sel.value }));
@@ -1209,7 +1230,7 @@
   function renderTeams() {
     $('depts').innerHTML = P.departments.map(d => `<div class="dept"><h3><i style="background:${d.color}"></i><span class="grow">${esc(d.name)}</span>
       <button class="icon ghost" data-edit="${d.id}" title="Editează">✎</button></h3>
-      <p class="hint">${d.positions.map(p => esc(p.name) + (p.needed > 1 ? ' ×' + p.needed : '')).join(' · ') || 'fără poziții'}</p></div>`).join('');
+      <p class="hint">${d.positions.map(p => esc(p.name) + (p.needed > 1 ? ' ×' + p.needed : '') + (p.optional ? ' (opțional)' : '')).join(' · ') || 'fără poziții'}</p></div>`).join('');
     document.querySelectorAll('#depts [data-edit]').forEach(b => b.onclick = () => editDept(P.departments.find(d => d.id === b.dataset.edit)));
     const q = $('volQ').value.toLowerCase();
     const posName = id => P.departments.flatMap(d => d.positions).find(p => p.id === id)?.name;
@@ -1277,10 +1298,10 @@
     $('mBox').querySelectorAll('[data-w]').forEach(b => b.onclick = () => { const r = rows[+b.dataset.w]; wa(r.v.phone, r.text); b.textContent = '✓ Deschis'; });
   }
   function editDept(d) {
-    const rows = () => [...$('mBox').querySelectorAll('.posrow')].map(r => ({ id: r.dataset.id || undefined, name: r.querySelector('.pn').value, needed: +r.querySelector('.pq').value })).filter(p => p.name.trim());
-    const rowHtml = p => `<div class="posrow" data-id="${p.id || ''}"><input class="pn" value="${esc(p.name)}" placeholder="Poziție (ex. Vocal)"><input class="pq" type="number" min="1" max="10" value="${p.needed || 1}" title="Câți oameni"><button class="icon ghost" onclick="this.parentElement.remove()">✕</button></div>`;
+    const rows = () => [...$('mBox').querySelectorAll('.posrow')].map(r => ({ id: r.dataset.id || undefined, name: r.querySelector('.pn').value, needed: +r.querySelector('.pq').value, optional: r.querySelector('.po').checked })).filter(p => p.name.trim());
+    const rowHtml = p => `<div class="posrow" data-id="${p.id || ''}"><input class="pn" value="${esc(p.name)}" placeholder="Poziție (ex. Vocal)"><input class="pq" type="number" min="1" max="10" value="${p.needed || 1}" title="Câți oameni"><label class="hint" title="Opțional: nu apare singur în programe, îl adaugi cu „＋ Adaugă un post” doar când e nevoie (ex. Chitară 2, Camera 2)"><input type="checkbox" class="po"${p.optional ? ' checked' : ''}> opțional</label><button class="icon ghost" onclick="this.parentElement.remove()">✕</button></div>`;
     dialog(d.id ? 'Editează departament' : 'Departament nou', `<div class="row"><label class="grow">Nume<input id="dN" value="${esc(d.name)}"></label><label>Culoare<input id="dC" type="color" value="${d.color}" style="width:56px;height:38px;padding:2px"></label></div>
-      <p class="hint" style="margin:0 0 8px">Poziții și câți oameni trebuie:</p><div id="pRows">${d.positions.map(rowHtml).join('')}</div>
+      <p class="hint" style="margin:0 0 8px">Poziții și câți oameni trebuie de obicei. „Opțional” = doar când îl adaugi la un program (Chitară 2, Camera 2). La fiecare program poți da ✕ sau ＋.</p><div id="pRows">${d.positions.map(rowHtml).join('')}</div>
       <button class="ghost" id="pAdd">＋ poziție</button>${d.id ? '<button class="ghost" id="dDel" style="float:right">🗑 Șterge departamentul</button>' : ''}`,
       () => op({ op: 'saveDepartment', department: { id: d.id, name: $('dN').value, color: $('dC').value, positions: rows() } }));
     $('pAdd').onclick = () => $('pRows').insertAdjacentHTML('beforeend', rowHtml({ name: '', needed: 1 }));

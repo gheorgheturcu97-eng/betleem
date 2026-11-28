@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultPlan, applyPlanOp, serviceWarnings, nextSundays } from '../src/plan.js';
+import { defaultPlan, applyPlanOp, serviceWarnings, nextSundays, needFor, placesOf, urgency, timeLevel } from '../src/plan.js';
 
 test('nextSundays gives Sundays at the chosen hour', () => {
   const d = nextSundays(new Date('2026-11-17T12:00:00'), 3, '10:30');
@@ -33,4 +33,29 @@ test('plan: services, program, volunteers, assignments, warnings', () => {
   applyPlanOp(p, { op: 'deleteVolunteer', id: ana.id });
   assert.equal(Object.keys(s.assignments).length, 0, 'removing a volunteer clears their slots');
   assert.equal(applyPlanOp(p, { op: 'nope' }), 'Operație necunoscută');
+});
+
+test('✕ / ＋ posts per service: the standard stays, one service needs only some posts; optional posts are added when needed', () => {
+  const plan = defaultPlan();
+  applyPlanOp(plan, { op: 'addService', date: '2030-01-06T08:00:00Z', title: 'Seară de închinare' });
+  const s = plan.services[0], wor = plan.departments.find(d => d.name === 'Închinare');
+  const tobe = wor.positions.find(p => p.name === 'Tobe'), ch2 = wor.positions.find(p => p.name === 'Chitară 2');
+  assert.equal(needFor(s, ch2), 0); assert.equal(needFor(s, tobe), 1);
+  const before = placesOf(plan, s).length;
+  assert.equal(applyPlanOp(plan, { op: 'assign', id: s.id, position: tobe.id, slot: 0, volunteer: null }), null);
+  applyPlanOp(plan, { op: 'setNeed', id: s.id, position: tobe.id, needed: 0 });
+  applyPlanOp(plan, { op: 'setNeed', id: s.id, position: ch2.id, needed: 1 });
+  assert.equal(placesOf(plan, s).length, before);
+  assert.ok(!placesOf(plan, s).some(x => x.p.id === tobe.id)); assert.ok(placesOf(plan, s).some(x => x.p.id === ch2.id));
+  applyPlanOp(plan, { op: 'setNeed', id: s.id, department: wor.id, name: 'Saxofon', needed: 1 });
+  assert.ok(wor.positions.find(p => p.name === 'Saxofon').optional);
+  applyPlanOp(plan, { op: 'addService', date: '2030-01-13T08:00:00Z', title: 'Duminică' });
+  assert.equal(needFor(plan.services[1], tobe), 1);                       // the other services keep the standard
+  applyPlanOp(plan, { op: 'setNeed', id: s.id, position: tobe.id, needed: 1 });
+  assert.equal(s.need[tobe.id], undefined);                                 // back to the standard: nothing stored
+  assert.equal(urgency('2030-01-06T08:00:00Z', new Date('2030-01-02T12:00:00Z')), 0);
+  assert.equal(urgency('2030-01-06T08:00:00Z', new Date('2030-01-03T12:00:00Z')), 1);
+  assert.equal(urgency('2030-01-06T08:00:00Z', new Date('2030-01-04T12:00:00Z')), 2);
+  assert.equal(urgency('2030-01-06T08:00:00Z', new Date('2030-01-05T12:00:00Z')), 3);
+  assert.equal(timeLevel(100, 600), 0); assert.equal(timeLevel(460, 600), 1); assert.equal(timeLevel(550, 600), 2); assert.equal(timeLevel(610, 600), 3);
 });

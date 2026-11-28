@@ -104,6 +104,28 @@ Decizii:
 > blocări, limite, confirmări”, „Pasul 4, programarea făcută de asistent”, „Pasul 4, notificări și mesajele păstorului”,
 > „Pasul 4, pastorul își încarcă prezentarea”.
 
+### Pasul 4+. Planificarea cerută pe 2026-11-28 (ordinea agreată)
+- ✅ **Posturi pe fiecare program** (✕ / ＋, posturi opționale: Chitară 2, Camera 2…; Media: Sunet, Live, Versuri,
+  Camera 1/2; Social media: Foto, Reels, Postări). 2026.11.28.18 + Reverb online.
+- ✅ **Insistența până la răspuns** în pagină: galben (3 zile), portocaliu (2), roșu care clipește (ziua dinainte),
+  notificare de 3 ori pe zi când pagina e deschisă; liderul are „📲 Amintește-i” pe WhatsApp (gratuit, el apasă Trimite).
+- ⏳ **Notificarea de 3 ori pe zi de pe server** (și cu telefonul închis): `reverb-notify` + programare pg_cron.
+  Cere publicarea funcției în Supabase (conectorul Supabase sau proprietarul cu Supabase CLI).
+- ⏳ **WhatsApp automat** (fără apăsare): doar prin WhatsApp Business Cloud API (Meta, cont business verificat,
+  șabloane aprobate, ~gratuit pentru puține mesaje). Decizie: întâi „📲 Amintește-i” manual, apoi API-ul dacă e nevoie.
+- ⏳ **Culorile timpului peste tot** (`timeLevel` în src/plan.js: galben 75 %, portocaliu 90 %, roșu peste, cu „+mm:ss”):
+  desfășurătorul din Planificare, Live (control.html), stage.html și pagina de pe telefon/tabletă.
+- ⏳ **Cântări de pe telefon** mai ușor: căutare mare, „＋ în program” dintr-o atingere, ton și ordinea strofelor.
+- ⏳ **Asistentul vocal** („de 2 ori refrenul, tranziție în D…”): microfonul telefonului → text → același asistent
+  (`src/ai.js`, unelte pe program). Motor: Ollama pe Mac mini (gratuit) întâi, Claude dacă Ollama nu răspunde
+  sau nu știe, și invers când nu e internet. Ollama accesibil online doar prin tunelul din Pasul 3 (nu porturi pe router).
+- ⏳ **Biblioteca rețelei**: Betleem = biblioteca-mamă (doar Betleem o scrie). Fiecare biserică are biblioteca ei,
+  pornită dintr-o copie a celei mame; schimbările ei rămân la ea (copie la prima editare, cu „sursa” păstrată), iar
+  cântările noi din biblioteca-mamă apar ca „noi în Betleem” și le ia cu un clic. Supabase are deja `songs` pe biserică
+  și citirea bibliotecii rețelei; lipsește „copiază la mine când editez” și lista „noi în Betleem”.
+- ⏳ **Stage display** reproiectat (discuția următoare): casete pe care le tragi, mari/mici, colțuri, fiecare cu rolul
+  ei (timer, slide următor, ce urmează în program), vizibile de pe scenă.
+
 ## Pasul 5. Zona Lideri (separată de duminică)
 Decizii:
 - **Întâlnirea de marți**: agendă văzută de toți din timp, sarcini cu responsabil și termen, remindere,

@@ -83,7 +83,7 @@
         let team = '';
         if ($('oTeam').checked) {                      // names only: no phone numbers on a page that gets shared
           const name = id => P.volunteers.find(v => v.id === id)?.name || '';
-          team = P.departments.map(dp => { const ppl = dp.positions.flatMap(po => Array.from({ length: po.needed }, (_, i) => s.assignments[`${po.id}#${i}`]).filter(Boolean).map(a => `${esc(name(a.volunteer))} <span style="color:var(--mute)">· ${esc(po.name)}</span>`)).filter(Boolean);
+          team = P.departments.map(dp => { const ppl = dp.positions.flatMap(po => Array.from({ length: s.need && s.need[po.id] !== undefined ? s.need[po.id] : (po.optional ? 0 : po.needed) }, (_, i) => s.assignments[`${po.id}#${i}`]).filter(Boolean).map(a => `${esc(name(a.volunteer))} <span style="color:var(--mute)">· ${esc(po.name)}</span>`)).filter(Boolean);
             return ppl.length ? `<div><b>${esc(dp.name)}</b>${ppl.join('<br>')}</div>` : ''; }).join('');
           if (team) team = `<h2>Echipa</h2><div class="team">${team}</div>`;
         }

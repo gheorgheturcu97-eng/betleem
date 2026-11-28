@@ -124,6 +124,12 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   stage arată „Urmează” primul slide); `screensUp()` în control.html deschide ecranele singure. Miniaturile (`own()`,
   `.txt.scr`) copiază stilul din main.html; `/api/slides/:i` dă slide-urile ca pe ecran (cu engleza).
 
+- **Posturi pe fiecare program + insistență (2026.11.28.18, verificat în browser; test în plan.test.js):** `src/plan.js`
+  `needFor`, `placesOf`, op `setNeed` (`s.need`, posturi `optional`), `urgency` (0–3), `timeLevel` (pentru culorile
+  timpului, încă nefolosit pe ecrane). planning.html: ✕ / ✕ tot / ＋ în `renderTeamFor`, grila lunară cu „—”, bifa
+  „opțional”. Reverb online (`apps/web/index.html`, gh-pages): același lucru + `.mineCard.u1/u2/u3`, `nag()`, „📲 Amintește-i”,
+  migrarea `doc.posV = 2` (Camera 1/2, Chitară 2…). Verificat cu o copie falsă a Supabase (fără date reale).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

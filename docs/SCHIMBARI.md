@@ -1,6 +1,20 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Posturi pe fiecare program + insistența până la răspuns (2026.11.28.18 + Reverb online)
+- **Echipa unui program (Planificare și Reverb online, op `setNeed`, `s.need`).** Înainte: fiecare program primea toate
+  posturile tuturor departamentelor și nu se putea scoate niciunul. Acum: ✕ pe un post sau „✕ tot” pe un departament îl
+  scoate doar de la acel program; „＋ Adaugă un post” pune încă unul sau un post opțional (Chitară 2, Camera 2) ori un
+  nume nou. Standardul bisericii rămâne neschimbat. „Copiază programul de la” copiază și posturile.
+- **Posturi noi.** Media: Camera 1 (și Camera 2 opțional); Închinare: Chitară 2, Vocal 3, Vioară (opționale). Online se
+  adaugă singure o dată; pe calculator le pui din Echipe → departament (bifa nouă „opțional”). Bisericile noi pornesc cu
+  Media: Sunet, Live stream, Versuri, Camera 1/2 și Social media: Foto, Reels, Postări.
+- **Programat și fără răspuns (Reverb online).** Înainte: cardul „Ești programat” era mereu albastru. Acum: cu 3 zile
+  înainte galben care pulsează, cu 2 zile portocaliu, în ziua dinainte roșu care clipește, cu „Ultima zi: răspunde acum”,
+  și o notificare de până la 3 ori pe zi (dimineață, prânz, seară) când e deschisă pagina. Liderii văd „N-a răspuns!”
+  și butonul „📲 Amintește-i” (WhatsApp cu mesajul și linkul gata). Pe calculator, ⏳ se colorează la fel.
+- **Desfășurătorul pe telefon.** Înainte: momentele erau numerotate 1, 2, 3. Acum: fiecare are ora la care începe.
+
 ## 2026-11-28 · Clic = scenă, dublu-clic = sală; slide „Gol”; miniaturi ca ecranul (2026.11.28.17)
 - **Clic pe slide (control.html, op `cue`).** Înainte: un clic trimitea slide-ul pe ambele ecrane. Acum: un clic îl pune
   doar pe ecranul de scenă (portocaliu, „PE SCENĂ”; pe scenă scrie „Doar pe scenă”), dublu-clic îl trimite și în sală.
