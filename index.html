@@ -199,6 +199,12 @@
   .it:has(.ed){-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
   .it.drag{position:relative;z-index:3;background:var(--surface-2,#1e1e22);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);transition:none!important}
   .it{transition:transform .15s ease}
+  .propose{margin-top:12px;background:linear-gradient(180deg,rgba(50,208,116,.12),rgba(50,208,116,.03)),var(--surface);box-shadow:inset 0 0 0 1px rgba(50,208,116,.3),var(--shadow)}
+  .propose .prop{display:flex;align-items:center;gap:12px} .propose .prop+.prop{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .propose .prop div{flex:1} .propose small{display:block;color:var(--text-2);font-size:13px;margin-top:2px}
+  body[data-tab]:not([data-tab="vProg"]) #gPropose{display:none!important}
+  .archbtn{width:100%;margin-top:16px;color:var(--text-3)} .arch{opacity:.75}
+  .props{margin-top:10px} .props .key{font-size:12px;padding:0 5px;border-radius:5px;background:var(--fill)}
   .bigadd{width:100%;padding:14px;font-size:16px;margin-top:var(--sp-2);border-radius:var(--r-m)}
   #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
@@ -334,6 +340,7 @@
       <div class="mineHead"><span class="pulse"></span><b>Ești programat</b><small id="gMineN"></small></div>
       <div id="gMine"></div>
     </div>
+    <div class="card propose" id="gPropose" hidden></div>
     <div class="bell" id="bell" hidden><span class="bi"><svg class="i" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></span><div><b>Notificări când ești programat</b><small id="bellHint">Afli imediat când un lider te pune pe program.</small></div><button id="bellOn" class="acc">Pornește</button></div>
     <div class="bell" id="inst" hidden><span class="bi"><svg class="i" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3"/></svg></span><div><b>Reverb ca aplicație pe telefon</b><small id="instHint"></small></div><button id="instGo" class="acc" hidden>Instalează</button><button id="instX" class="ghost" title="Nu acum" style="padding:6px 8px">✕</button></div>
     <nav class="tabs" id="tabs" aria-label="Zone">
@@ -638,7 +645,9 @@ Refren:
   const bgName = f => { const n = String(f || '').replace(/^\/media\//, '').replace(/\.\w+$/, ''); if (!BG.includes(n)) return f ? 'fundalul ales la biserică' : '';
     const w = n.replace(/^(fundal|miscare)-/, '').replace(/-/g, ' '); return (n.startsWith('miscare-') ? 'mișcare ' : '') + w; };
   const CHEV = '<svg class="i go" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
-  const upcoming = () => (G.doc?.services || []).filter(s => s.date >= new Date(Date.now() - 6 * 3600e3).toISOString());
+  const overAt = s => new Date(s.date).getTime() + Math.max(90, (s.items || []).reduce((t, it) => t + (it.minutes || 0), 0) + 30) * 60000;
+  const isOver = s => overAt(s) < Date.now();                  // 🗄 finished: archived, out of the lists
+  const upcoming = () => (G.doc?.services || []).filter(s => !isOver(s));
   const prepSvc = () => { const l = upcoming(); return l.find(s => s.id === G.prep) || l[0] || null; };
   const canMd = () => canEditSongs(cur()?.church_id);
   const songOf = it => lib.find(x => it.songId && x.local_id === it.songId) || lib.find(x => it.title && x.title.toLowerCase() === String(it.title).toLowerCase());
@@ -729,17 +738,17 @@ Refren:
   $('pjAdd').onkeydown = e => { if (e.key === 'Enter' && e.target.id === 'pjT') $('pjGo').click(); };
 
   // 🎵 the song picker for a phone: search by title or words of the title, tap ＋ to add; it stays open for the next one
-  function songSheet() {
-    const s = prepSvc(); if (!s) return;
+  function songSheet(opt = {}) {
+    const s = prepSvc(); if (!s && !opt.pick) return;
     $('songPick')?.remove();
     const box = Object.assign(document.createElement('section'), { id: 'songPick' });
-    box.innerHTML = `<div class="stop"><button id="spX" title="Închide">✕</button><span class="t">Cântări în program</span><button id="spOk" class="on">Gata</button></div>
+    box.innerHTML = `<div class="stop"><button id="spX" title="Închide">✕</button><span class="t">${esc(opt.title || 'Cântări în program')}</span><button id="spOk" class="on">Gata</button></div>
       <div class="spq"><input id="spQ" type="search" placeholder="Caută: titlu, autor…" autocomplete="off" enterkeyhint="search"></div><div id="spL" class="spl"></div>`;
     document.body.append(box); document.body.style.overflow = 'hidden';
     const close = () => { box.remove(); document.body.style.overflow = ''; };
     $('spX').onclick = $('spOk').onclick = close;
     const draw = () => {
-      const q = fold($('spQ').value).trim(), sv = prepSvc(), have = new Set((sv?.items || []).filter(x => x.kind === 'song').map(x => x.songId));
+      const q = fold($('spQ').value).trim(), sv = prepSvc(), have = new Set(opt.pick ? [] : (sv?.items || []).filter(x => x.kind === 'song').map(x => x.songId));
       const hits = (q ? lib.filter(x => fold(x.title + ' ' + (x.author || '')).includes(q)) : lib).slice(0, 80);
       // 🎹 the key: it starts at the song's own key; pick another before ＋ (the chords are moved when it is shown)
       const keyPick = x => { const k = x.key || '', minor = /m$/.test(k), list = KEYS.filter(y => y.endsWith('m') === minor), cur = keyWant.get(x.local_id) || k;
@@ -752,7 +761,9 @@ Refren:
     $('spQ').oninput = draw; draw(); setTimeout(() => $('spQ').focus(), 50);
     $('spL').onclick = async e => {
       const b = e.target.closest('[data-add]'); if (!b || b.disabled) return;
-      const song = lib.find(x => x.local_id === b.dataset.add), sv = prepSvc(); if (!song || !sv) return;
+      const song = lib.find(x => x.local_id === b.dataset.add), sv = prepSvc(); if (!song) return;
+      if (opt.pick) { b.disabled = true; b.textContent = '…'; if (await opt.pick(song, keyWant.get(song.local_id) || song.key || '')) close(); else { b.disabled = false; b.textContent = '＋'; } return; }
+      if (!sv) return;
       if (b.closest('.sp').classList.contains('in') && !confirm(`„${song.title}” e deja în program. O mai pun o dată?`)) return;
       b.disabled = true; b.textContent = '…';
       const key = keyWant.get(song.local_id) || song.key || '';
@@ -1048,7 +1059,7 @@ Refren:
   function drawProgram() {
     const doc = G.doc, lead = canPlan(), today = new Date(Date.now() - 864e5).toISOString();
     $('gTools').hidden = !lead;
-    const list = doc.services.filter(s => s.date >= today);
+    const list = doc.services.filter(s => !isOver(s)), past = doc.services.filter(isOver).reverse();
     // where I serve
     const mine = [];
     for (const s of list) for (const [k, a] of Object.entries(s.assignments || {})) if (G.me && a.volunteer === G.me) {
@@ -1069,6 +1080,10 @@ Refren:
     $('gList').innerHTML = list.map(s => { const mo = day(s.date).toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
       const head = mo !== lastMonth ? `<div class="month">${esc(mo)}</div>` : ''; lastMonth = mo; return head + serviceCard(s, lead); }).join('')
       || `<p class="empty">Încă nu e niciun serviciu planificat.${lead ? ' Adaugă unul mai sus sau apasă „8 duminici”.' : ''}</p>`;
+    // 🗄 the archive: the programs that are over, out of the way; one tap shows them (newest first)
+    if (past.length) $('gList').insertAdjacentHTML('beforeend', `<button class="ghost archbtn" id="gArch">🗄 Arhivă · ${past.length} ${past.length === 1 ? 'program trecut' : 'programe trecute'} ${G.arch ? '▴' : '▾'}</button>`
+      + (G.arch ? `<div class="arch">${past.slice(0, 30).map(s => serviceCard(s, false)).join('')}</div>` : ''));
+    drawPropose();
     // my days
     const v = doc.volunteers.find(x => x.id === G.me), away = (v?.away || []).filter(d => d >= today.slice(0, 10));
     $('gAway').innerHTML = away.map(d => `<span class="chip">${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))} <a href="#" data-unaway="${d}" style="color:var(--no);text-decoration:none">✕</a></span>`).join('') || '<span class="mute">Nicio zi blocată.</span>';
@@ -1115,13 +1130,16 @@ Refren:
       return `<div class="dep${slots.length ? '' : ' zero'}"><i style="background:${esc(dep.color)}"></i>${esc(dep.name)}<small>${slots.length ? `${n}/${slots.length}` : 'nu e nevoie'}</small>${edit && slots.length ? `<button class="off" data-depoff="${dep.id}" data-s="${s.id}" title="Fără ${esc(dep.name)} la acest program">✕ tot</button>` : ''}</div>${rows}${plus}`;
     }).join('') || '<p class="mute" style="margin:6px 0;font-size:14px">Echipa nu e făcută încă.</p>';
     const newDep = edit ? `<div class="addpos"><select data-adddep="${s.id}" aria-label="Departament nou"><option value="">＋ Departament nou (ex. Social media)…</option>${Object.keys(POS).filter(n => !doc.departments.some(d => d.name === n)).map(n => `<option>${esc(n)}</option>`).join('')}<option value="*">Alt departament…</option></select></div>` : '';
+    const props = (s.proposals || []).filter(p => p.title);
+    const propHtml = lead && props.length ? `<div class="props"><h3>Propuneri de cântări<small>${props.length}</small></h3>${props.map((p, k) => { const inProg = (s.items || []).some(it => it.kind === 'song' && (it.songId === p.songId || it.title === p.title));
+      return `<div class="slot"><span class="p">${esc(p.name || '')}</span><span class="w">${esc(p.title)}${p.key ? ` <span class="key">${esc(p.key)}</span>` : ''}</span>${inProg ? '<span class="st confirmed">în program</span>' : `<button class="mini" data-takeprop="${k}" data-s="${s.id}">＋ în program</button>`}</div>`; }).join('')}</div>` : '';
     const warn = lead ? serviceWarnings(doc, s).filter(w => !/neocupate/.test(w)) : [];
     const isToday = d.toDateString() === new Date().toDateString();
     return `<details class="svc${isToday ? ' today' : ''}" data-svc="${s.id}"${open ? ' open' : ''}><summary>
       <span class="dt"><small>${esc(d.toLocaleDateString('ro-RO', { weekday: 'short' }).replace('.', ''))}</small><b>${d.getDate()}</b><small>${esc(d.toLocaleDateString('ro-RO', { month: 'short' }).replace('.', ''))}</small></span>
       <span class="ttl"><b>${esc(s.title)}</b><small>${esc(meta)}</small></span>
       <span class="fill">${slotsAll.length ? `${filled}/${slotsAll.length}<span class="bar"><i style="width:${Math.round(100 * ok / slotsAll.length)}%"></i></span>` : ''}</span><svg class="i chev" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M9 6l6 6-6 6"/></svg></summary>
-      <div class="in"><div><h3>Programul${mins ? `<small>${mins} min</small>` : ''}</h3>${prog}${add}</div><div><h3>Echipa${slotsAll.length ? `<small>${ok} confirmați din ${slotsAll.length}</small>` : ''}</h3>${team}${newDep}</div>
+      <div class="in"><div><h3>Programul${mins ? `<small>${mins} min</small>` : ''}</h3>${prog}${add}</div><div><h3>Echipa${slotsAll.length ? `<small>${ok} confirmați din ${slotsAll.length}</small>` : ''}</h3>${team}${newDep}${propHtml}</div>
       ${warn.length ? `<p class="warn">${warn.map(esc).join('<br>')}</p>` : ''}
       ${lead ? `<div class="svcbar">${edit ? `<input id="n_${s.id}" value="${esc(s.title)}" maxlength="80" style="flex:1 1 160px"><button data-rename="${s.id}">Salvează numele</button><button class="ghost" data-del="${s.id}" style="color:var(--no)">Șterge</button><span class="sp"></span>` : '<span class="sp"></span>'}
         ${slotsAll.length > filled ? `<button data-auto="${s.id}" title="Pune oamenii pe locurile libere">✦ Completează echipa</button>` : ''}<button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : 'Editează'}</button></div>` : ''}</div></details>`;
@@ -1188,6 +1206,21 @@ Refren:
     const [position, slot] = sel.dataset.k.split('#');
     change({ op: 'assign', id: sel.dataset.assign, position, slot: +slot, volunteer: sel.value || null });
   });
+  $('gList').addEventListener('click', e => { if (e.target.closest('#gArch')) { G.arch = !G.arch; drawProgram(); } }, true);
+  // 🎵 after "Pot": propose one song for that service; the box goes away as soon as you proposed
+  function drawPropose() {
+    const box = $('gPropose'); if (!box) return;
+    const open = upcoming().filter(s => Object.values(s.assignments || {}).some(a => a.volunteer === G.me && a.status === 'confirmed')
+      && !(s.proposals || []).some(p => p.by === G.me));
+    box.hidden = !open.length || !G.me;
+    box.innerHTML = open.slice(0, 2).map(s => `<div class="prop"><div><b>🎵 Propune o cântare</b><small>pentru ${esc(s.title)}, ${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))}. Liderii o văd și o pot pune în program.</small></div><button class="acc" data-propose="${s.id}">Alege</button></div>`).join('');
+  }
+  $('gPropose').onclick = e => { const b = e.target.closest('[data-propose]'); if (!b) return; const sid = b.dataset.propose;
+    songSheet({ title: 'Propune o cântare', one: true, pick: async (song, key) => {
+      const { data, error } = await sb.rpc('reverb_plan_propose', { c: cur().church_id, service: sid, song: song.local_id, title: song.title, skey: key });
+      if (error) { alert(/reverb_plan_propose/.test(error.message || '') ? 'Funcția nu e pornită încă pe server (pasul din Supabase).' : 'N-a mers. Verifică internetul.'); return false; }
+      if (data) { alert(data); return false; }
+      await program(); return true; } }); };
   $('gList').addEventListener('click', async e => {
     const b = e.target.closest('button,[data-song]'); if (!b) return;
     const s = G.doc.services.find(x => [b.dataset.s, b.dataset.additem, b.dataset.rename, b.dataset.del].includes(x.id));
@@ -1200,6 +1233,8 @@ Refren:
       const song = kind === 'song' ? lib.find(x => x.title.toLowerCase() === title.toLowerCase()) : null;
       return change({ op: 'setItems', id: s.id, items: [...s.items, { kind, title: title || KNAME[kind], ...(song ? { songId: song.local_id, key: song.key || '' } : {}) }] });
     }
+    if (b.dataset.takeprop !== undefined && s) { const p = (s.proposals || []).filter(x => x.title)[+b.dataset.takeprop]; if (!p) return;
+      return change({ op: 'setItems', id: s.id, items: [...s.items, { kind: 'song', title: p.title, songId: p.songId, key: p.key || '', minutes: 5, leader: p.name || '' }] }); }
     if (b.dataset.unneed && s) { const p = G.doc.departments.flatMap(d => d.positions).find(x => x.id === b.dataset.unneed); const k = `${p.id}#${needFor(s, p) - 1}`;
       if (s.assignments?.[k] && !confirm(`${pname(s.assignments[k].volunteer)} e pus la ${p.name}. Scoți postul de la acest program?`)) return;
       return change({ op: 'setNeed', id: s.id, position: p.id, needed: needFor(s, p) - 1 }); }
