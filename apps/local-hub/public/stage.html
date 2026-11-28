@@ -59,7 +59,7 @@
 <footer><div id="next"></div><div id="prog"></div></footer>
 <div id="blank">ECRAN NEGRU</div>
 <script type="module">
-  import { connect, esc, stayAwake } from '/client.js';
+  import { connect, esc, stayAwake, outputEvents } from '/client.js';
   import { chordLineToHtml, sectionColor } from '/core/song.js';
   const $ = id => document.getElementById(id);
   stayAwake();
@@ -124,7 +124,7 @@
     el.style.fontSize = size + 'vh';
     for (let v = size; v > 1.6 && el.scrollHeight > el.clientHeight + 2; v -= 0.2) el.style.fontSize = v.toFixed(1) + 'vh';
   }
-  connect(s => {
+  const outHub = connect(s => {
     S = s; if (s.now) skew = s.now - Date.now();
     style(s.display?.stage);
     const L = s.live, item = s.setlist[L.item];
@@ -145,7 +145,7 @@
     $('blank').style.display = L.blank ? 'block' : 'none';
     $('msg').style.display = L.message && L.messageTo !== 'main' ? 'block' : 'none'; $('msg').textContent = L.message;
     tick();
-  });
+  }, outputEvents('stage', () => outHub));
 </script>
 </body>
 </html>

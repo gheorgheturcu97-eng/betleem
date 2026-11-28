@@ -46,7 +46,7 @@
 <div id="black"></div>
 <div id="msg"></div>
 <script type="module">
-  import { connect, esc, paintBackground, stayAwake } from '/client.js';
+  import { connect, esc, paintBackground, stayAwake, outputEvents } from '/client.js';
   import { stripChords } from '/core/song.js';
   import { renderLayers } from '/layers.js';
   const $ = id => document.getElementById(id);
@@ -140,7 +140,7 @@
     t.animate(inn, { duration: half, delay: type === 'fade' ? half : 0, easing: ease, fill: 'backwards' });
   }
   const picTr = d => !d.tr || d.tr === 'cut' ? null : { type: 'fade', dur: Number.isFinite(+d.trDur) ? +d.trDur : TR_DEF };
-  connect(s => {
+  const outHub = connect(s => {
     S = s; if (s.now) skew = s.now - Date.now();
     const L = s.live, item = s.setlist[L.item];
     const dd = s.display ? { ...s.display.main, ...(item?.display || {}), ...(item?.slideStyles?.[L.slide] || {}) } : {};
@@ -177,7 +177,7 @@
     }
     $('msg').style.display = L.message && L.messageTo !== 'stage' ? 'block' : 'none';
     $('msg').textContent = L.message;
-  });
+  }, outputEvents('main', () => outHub));
 </script>
 </body>
 </html>

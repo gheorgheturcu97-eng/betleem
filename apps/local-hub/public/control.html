@@ -945,6 +945,33 @@
   #slides .slide.pp .pic{margin:0;border-radius:0}
   .slides-panel{padding:14px 16px 16px}
 </style>
+
+<style id="pp-rails">
+  /* 🎵 Biblioteca: butoanele ✎ ＋ 🗑 apar peste rând doar la trecerea cu mouse-ul, fără să ocupe loc în rest */
+  #results .lib{position:relative}
+  /* 🖥 Proiector ↗ / Scenă ↗ nu mai stau peste previzualizare: dublu-clic pe ea pornește/oprește ecranul */
+  .screens .screen .open{display:none}
+  .screens .screen.on .cap i{background:#3ddc84;box-shadow:0 0 8px #3ddc84}
+  #results .lib .acts{position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:3px;border-radius:10px;
+    background:rgba(20,22,28,.92);box-shadow:0 2px 10px rgba(0,0,0,.4);pointer-events:none}
+  #results .lib:hover .acts{pointer-events:auto}
+  /* ⇔ Pe ecran: Programul și Cântările se retrag într-o bară subțire; trec cu mouse-ul (sau scriu în căutare) și se deschid
+     peste slide-uri, fără să mute nimic. Se pornește/oprește din Vizualizare. */
+  .main.auto:not(.noL):not(.noR){grid-template-columns:44px 8px minmax(0,1fr) 8px 44px}
+  .main.auto.noL:not(.noR){grid-template-columns:minmax(0,1fr) 8px 44px}
+  .main.auto.noR:not(.noL){grid-template-columns:44px 8px minmax(0,1fr)}
+  .main.auto>.gut{visibility:hidden}
+  .main.auto>#pLeft,.main.auto>#pRight{position:relative;z-index:30;transition:box-shadow .15s}
+  .main.auto>#pLeft{justify-self:start;width:44px} .main.auto>#pRight{justify-self:end;width:44px}
+  .main.auto>#pLeft:hover,.main.auto>#pLeft:focus-within{width:var(--colL,300px);box-shadow:12px 0 40px rgba(0,0,0,.55)}
+  .main.auto>#pRight:hover,.main.auto>#pRight:focus-within{width:var(--colR,390px);box-shadow:-12px 0 40px rgba(0,0,0,.55)}
+  .main.auto>#pLeft:not(:hover):not(:focus-within)>*,.main.auto>#pRight:not(:hover):not(:focus-within)>*{visibility:hidden}
+  .main.auto>#pLeft:not(:hover):not(:focus-within)::after,.main.auto>#pRight:not(:hover):not(:focus-within)::after{
+    position:absolute;inset:0;display:grid;place-items:center;writing-mode:vertical-rl;transform:rotate(180deg);
+    font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);cursor:pointer}
+  .main.auto>#pLeft:not(:hover):not(:focus-within)::after{content:"Program ›"}
+  .main.auto>#pRight:not(:hover):not(:focus-within)::after{content:"‹ Cântări · Biblia"}
+</style>
 </head>
 <body>
 <div class="rv-mark" aria-hidden="true"></div>
@@ -1803,6 +1830,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       { l: 'Programul', k: 'Mod+1', chk: () => !layout.L, run: () => togglePart('L') },
       { l: 'Ecranele (previzualizare)', k: 'Mod+2', chk: () => $('screens').dataset.vis !== 'none', run: () => togglePart('S') },
       { l: 'Cântări · Biblia · Internet', k: 'Mod+3', chk: () => !layout.R, run: () => togglePart('R') },
+      { l: 'Retrage Programul și Cântările cât ești pe ecran', chk: () => layout.auto !== false, run: () => { layout.auto = layout.auto === false; applyParts(); render(); } },
       '-',
       { l: 'Cântări', run: () => { if (layout.R) togglePart('R'); showTab('lib'); } },
       { l: 'Biblia', k: 'F8', run: () => { if (layout.R) togglePart('R'); showTab('bible'); $('bibQ').focus(); } },
@@ -1944,8 +1972,16 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('lookClose').onclick = closeLook;
   addEventListener('click', e => { if (look.classList.contains('show') && !look.contains(e.target) && !e.target.closest('#bLook,.screen')) closeLook(); });
   document.querySelectorAll('#lookTabs button').forEach(b => b.onclick = () => openLook(b.dataset.s));
-  document.querySelectorAll('.screens .screen').forEach((el, i) => {               // click a preview → its settings
-    el.title = 'Apasă ca să configurezi ecranul'; el.onclick = e => { if (!e.target.closest('.open')) openLook(i ? 'stage' : 'main'); };
+  // a preview: clic → its settings; dublu-clic → the screen opens on the projector / stage monitor, dublu-clic again closes it
+  document.querySelectorAll('.screens .screen').forEach((el, i) => {
+    const kind = i ? 'stage' : 'main'; let t = 0;
+    el.title = 'Clic: aspectul ecranului · Dublu-clic: pornește / oprește ' + (i ? 'ecranul de scenă' : 'proiectorul');
+    el.onclick = e => { if (e.target.closest('.open,select')) return; clearTimeout(t); t = setTimeout(() => openLook(kind), 260); };
+    el.ondblclick = e => {
+      if (e.target.closest('.open,select')) return; clearTimeout(t);
+      if (S?.screensOpen?.[kind]) { send({ type: 'closeScreen', kind }); toast(i ? 'Ecranul de scenă s-a închis' : 'Proiectorul s-a închis'); }
+      else { openScreen(i ? '/stage.html' : '/main.html', i ? 'bnc-stage' : 'bnc-main'); toast(i ? 'Ecranul de scenă pornește' : 'Proiectorul pornește'); }
+    };
   });
   $('lookOpen').onclick = () => lookScreen === 'stage' ? openScreen('/stage.html', 'bnc-stage') : openScreen('/main.html', 'bnc-main');
   $('lTimerReset').onclick = () => { send({ type: 'resetTimer' }); toast('Timer-ul pornește de la zero'); };
@@ -2576,6 +2612,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (S.service.startsAt && document.activeElement !== $('svcStart')) {
       const d = new Date(S.service.startsAt); $('svcStart').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
+    document.querySelectorAll('.screens .screen').forEach((el, i) => el.classList.toggle('on', !!S.screensOpen?.[i ? 'stage' : 'main']));
+    $('mainGrid').classList.toggle('auto', layout.auto !== false && S.live.item >= 0 && !S.live.blank);   // ⇔ on screen: side panels retract
     $('bBlank').classList.toggle('on', S.live.blank); $('bOff').classList.toggle('on', !!S.live.blank);
     $('bPreach').hidden = !S.live.preachers; $('bPreach').classList.toggle('off', !!S.live.preacherOff);
     $('bPreach').textContent = S.live.preacherOff ? '🎤 Dă-i controlul' : '🎤 Predicatorul · Preia'; $('bOff').textContent = S.live.blank ? '⏻ Ecran gol · Esc ca să revină' : '⏻ Ecran gol'; $('bLogo').classList.toggle('on', S.live.logo); $('bNoText').classList.toggle('on', !!S.live.noText);

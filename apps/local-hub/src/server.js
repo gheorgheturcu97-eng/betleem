@@ -374,7 +374,9 @@ export function addSongs(list) {
 export { core, extractLyrics };
 
 function snapshot() {
+  const open = k => [...sessions.values()].some(s => s.screen === k);
   return {
+    screensOpen: { main: open('main'), stage: open('stage') },     // 🖥 is the projector / stage window open right now
     service: db.service,
     display: db.display,
     lights: db.lights || { scenes: [] },
@@ -453,7 +455,7 @@ const need = (ws, role) => ROLE_RANK[sessions.get(ws)?.role ?? 'viewer'] >= ROLE
 wss.on('connection', (ws, req) => {
   sessions.set(ws, { role: !PIN || (TRUST_LOCALHOST && localReq(req)) || openLan(req) ? 'leader' : 'viewer', addr: String(req.socket.remoteAddress) });
   ws.send(JSON.stringify({ type: 'hello', role: sessions.get(ws).role, state: snapshot() }));
-  ws.on('close', () => { const was = sessions.get(ws)?.role; sessions.delete(ws); if (was === 'preacher') broadcast(); });
+  ws.on('close', () => { const was = sessions.get(ws); sessions.delete(ws); if (was?.role === 'preacher' || was?.screen) broadcast(); });
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     try { handleMessage(ws, m); }
@@ -491,6 +493,13 @@ const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 't
 
 function handleMessage(ws, m) {
     const reply = o => ws.send(JSON.stringify(o));
+    // 🖥 the projector / stage windows say they are open; a double-click on a preview in Live closes them
+    if (m.type === 'screenHere') { const s = sessions.get(ws); if (s) { s.screen = m.kind === 'stage' ? 'stage' : 'main'; broadcast(); } return; }
+    if (m.type === 'closeScreen') {
+      if (!need(ws, 'operator')) return;
+      for (const [c, s] of sessions) if (s.screen === m.kind && c.readyState === 1) c.send(JSON.stringify({ type: 'closeScreen', kind: m.kind }));
+      return;
+    }
     if (history.church !== db.activeChurch) { history.undo = []; history.redo = []; history.church = db.activeChurch; }
     if ((m.type === 'undo' || m.type === 'redo') && need(ws, 'operator')) {
       const from = history[m.type], to = history[m.type === 'undo' ? 'redo' : 'undo'];

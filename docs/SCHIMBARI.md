@@ -1,6 +1,18 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Mai mult loc în Live (2026.11.28.3)
+- **Programul și Cântările cât ești pe ecran.** Înainte: stăteau mereu deschise, iar slide-urile aveau loc puțin.
+  Acum: cât timp e ceva pe ecran (nu „Ecran gol”), se retrag în câte o bară subțire („Program ›”, „‹ Cântări · Biblia”);
+  treci cu mouse-ul pe bară și se deschid peste slide-uri, fără să mute nimic. Se oprește din Vizualizare →
+  „Retrage Programul și Cântările cât ești pe ecran”.
+- **Butoanele din lista de cântări (✎ ＋ 🗑).** Înainte: țineau loc gol pe fiecare rând, iar titlurile erau tăiate.
+  Acum: apar peste rând doar la trecerea cu mouse-ul.
+- **Proiector ↗ / Scenă ↗.** Înainte: butoane peste previzualizare. Acum: dublu-clic pe previzualizarea Sălii sau a
+  Scenei pornește ecranul; încă un dublu-clic îl închide (Esc apăsat pe fereastra proiectorului îl închide și el).
+  Punctul de lângă SALĂ / SCENĂ e verde cât timp ecranul e pornit. Clic simplu: tot aspectul ecranului.
+  Esc în Live rămâne „Ecran gol”, ca până acum.
+
 ## 2026-11-28 · Slide-urile din Proiectez arată ca în ProPresenter (2026.11.28.2)
 - **Lista de slide-uri (control.html, `#slides`).** Înainte: carduri mici cu text înghesuit, eticheta secțiunii sus și
   o margine colorată. Acum: fiecare slide e un ecran mic 16:9, cu fundalul cântării și fontul de pe proiector, textul
