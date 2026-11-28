@@ -54,3 +54,30 @@ end $$;
 
 revoke all on function public.reverb_plan_attach(uuid, text, text, text, text) from public, anon;
 grant execute on function public.reverb_plan_attach(uuid, text, text, text, text) to authenticated;
+
+-- 🎵 someone who said "Pot" for a service proposes one song for it (one per person; a new one replaces his old one).
+-- The leaders see the proposals on the service and put them in the program with one tap.
+create or replace function public.reverb_plan_propose(c uuid, service text, song text, title text, skey text) returns text
+language plpgsql security definer set search_path = '' as $$
+declare me text := public.reverb_me(c); d jsonb; i int; ok boolean; nm text; props jsonb;
+begin
+  if me is null then return 'Nu ești în această biserică'; end if;
+  if coalesce(trim(title), '') = '' then return 'Alege cântarea'; end if;
+  select doc into d from public.plans where church_id = c for update;
+  if d is null then return 'Nu există program'; end if;
+  select ord - 1 into i from jsonb_array_elements(d->'services') with ordinality s(v, ord) where v->>'id' = service;
+  if i is null then return 'Serviciul nu mai există'; end if;
+  select true into ok from jsonb_each(coalesce(d #> array['services', i::text, 'assignments'], '{}')) a(k, v)
+   where a.v->>'volunteer' = me and a.v->>'status' = 'confirmed' limit 1;
+  if not coalesce(ok, false) then return 'Poți propune după ce ai confirmat că vii.'; end if;
+  select m.display_name into nm from public.members m where m.church_id = c and m.user_id = (select auth.uid());
+  select coalesce(jsonb_agg(p), '[]') into props from jsonb_array_elements(coalesce(d #> array['services', i::text, 'proposals'], '[]')) p where p->>'by' <> me;
+  props := props || jsonb_build_object('by', me, 'name', coalesce(nm, ''), 'songId', left(coalesce(song, ''), 60), 'title', left(title, 200), 'key', left(coalesce(skey, ''), 8), 'at', to_jsonb(now()));
+  d := jsonb_set(d, array['services', i::text, 'proposals'], props);
+  update public.plans set doc = d, version = version + 1, updated_at = now(), updated_by = (select auth.uid()) where church_id = c;
+  insert into public.plan_ops (church_id, op, user_id) values (c, jsonb_build_object('op', 'propose', 'id', service, 'by', me, 'title', title), (select auth.uid()));
+  return null;
+end $$;
+
+revoke all on function public.reverb_plan_propose(uuid, text, text, text, text) from public, anon;
+grant execute on function public.reverb_plan_propose(uuid, text, text, text, text) to authenticated;

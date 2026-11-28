@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · Arhiva programelor și propunerile de cântări (Reverb online)
+- **🗄 Arhivă.** Înainte: un program rămânea în listă până a doua zi. Acum: după ora de început + durata lui (cel puțin
+  1 h 30) dispare din Planific, Proiectez, MD & Track și „Ești programat”; îl găsești jos, în „🗄 Arhivă”.
+- **🎵 Propune o cântare.** Nou: cine a apăsat „Pot” vede în Planific „Propune o cântare” pentru acel program; alege cântarea și
+  tonul; rubrica dispare imediat. Liderii văd „Propuneri de cântări” la program și le pun cu „＋ în program”. Cere funcția
+  `reverb_plan_propose` din același fișier SQL (20261128210000), lipit o dată în Supabase.
+
 ## 2026-11-28 (seara) · 🔎 Importul prezentărilor verificat înainte și după (2026.11.28.19)
 - **Ordinea pe Mac.** Înainte: un .pptx trecea întâi prin Keynote (care îl redesenează în felul lui), apoi prin PowerPoint.
   Acum: un PowerPoint e desenat de PowerPoint dacă e instalat, un Keynote de Keynote; LibreOffice doar după ele.
