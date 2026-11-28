@@ -200,10 +200,12 @@
   #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
   #songPick .spl{flex:1;overflow:auto;padding:0 12px 20px;-webkit-overflow-scrolling:touch}
-  #songPick .sp{display:flex;width:100%;align-items:center;gap:10px;text-align:left;padding:12px 4px;background:none;border-radius:0;border-bottom:1px solid var(--line)}
+  #songPick .sp{display:flex;width:100%;align-items:center;gap:8px;text-align:left;padding:10px 2px;border-bottom:1px solid var(--line)}
+  #songPick .spk{width:auto;flex:none;padding:7px 6px;font-size:15px;border-radius:9px;font-weight:600}
+  #songPick .sp button{flex:none;min-width:46px;padding:8px 12px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;font-size:17px}
+  #songPick .sp.in button{background:rgba(50,208,116,.18);color:#7ee3a6}
   #songPick .sp span{flex:1;min-width:0;display:flex;flex-direction:column} #songPick .sp b{font-weight:500;font-size:16px} #songPick .sp small{color:var(--text-3);font-size:13px}
-  #songPick .sp i{font-style:normal;min-width:44px;text-align:center;padding:6px 10px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600}
-  #songPick .sp.in i{background:rgba(50,208,116,.18);color:#7ee3a6;font-size:13px;font-weight:500}
+
   .addit{display:grid;grid-template-columns:auto 1fr auto;gap:6px;margin-top:var(--sp-2)} .addit select{width:auto}
   .toolbar{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center} .toolbar>*{flex:0 1 auto} .toolbar input{width:auto;flex:1 1 150px}
   .composer{padding:var(--sp-3);border-radius:var(--r-l);background:var(--fill);margin-bottom:var(--sp-2)}
@@ -699,16 +701,22 @@ Refren:
     const draw = () => {
       const q = fold($('spQ').value).trim(), sv = prepSvc(), have = new Set((sv?.items || []).filter(x => x.kind === 'song').map(x => x.songId));
       const hits = (q ? lib.filter(x => fold(x.title + ' ' + (x.author || '')).includes(q)) : lib).slice(0, 80);
-      $('spL').innerHTML = hits.map(x => `<button class="sp${have.has(x.local_id) ? ' in' : ''}" data-add="${esc(x.local_id)}"><span><b>${esc(x.title)}</b><small>${esc([x.key && 'ton ' + x.key, x.author].filter(Boolean).join(' · '))}</small></span><i>${have.has(x.local_id) ? '✓ în program' : '＋'}</i></button>`).join('')
+      // 🎹 the key: it starts at the song's own key; pick another before ＋ (the chords are moved when it is shown)
+      const keyPick = x => { const k = x.key || '', minor = /m$/.test(k), list = KEYS.filter(y => y.endsWith('m') === minor), cur = keyWant.get(x.local_id) || k;
+        return `<select class="spk" data-key="${esc(x.local_id)}" aria-label="Tonul">${(k ? list : ['', ...KEYS]).map(y => `<option value="${y}"${y === cur ? ' selected' : ''}>${y || 'ton'}</option>`).join('')}</select>`; };
+      $('spL').innerHTML = hits.map(x => `<div class="sp${have.has(x.local_id) ? ' in' : ''}"><span><b>${esc(x.title)}</b><small>${esc([x.key && 'original ' + x.key, x.author].filter(Boolean).join(' · '))}</small></span>${keyPick(x)}<button data-add="${esc(x.local_id)}">${have.has(x.local_id) ? '✓' : '＋'}</button></div>`).join('')
         || '<p class="empty">Nu am găsit. Încearcă alt cuvânt din titlu.</p>';
     };
+    const keyWant = new Map();
+    $('spL').onchange = e => { const k = e.target.closest('[data-key]'); if (k) keyWant.set(k.dataset.key, k.value); };
     $('spQ').oninput = draw; draw(); setTimeout(() => $('spQ').focus(), 50);
     $('spL').onclick = async e => {
       const b = e.target.closest('[data-add]'); if (!b || b.disabled) return;
       const song = lib.find(x => x.local_id === b.dataset.add), sv = prepSvc(); if (!song || !sv) return;
-      if (b.classList.contains('in') && !confirm(`„${song.title}” e deja în program. O mai pun o dată?`)) return;
-      b.disabled = true; b.querySelector('i').textContent = '…';
-      if (await change({ op: 'setItems', id: sv.id, items: [...sv.items, { kind: 'song', title: song.title, songId: song.local_id, key: song.key || '', minutes: 5 }] })) draw();
+      if (b.closest('.sp').classList.contains('in') && !confirm(`„${song.title}” e deja în program. O mai pun o dată?`)) return;
+      b.disabled = true; b.textContent = '…';
+      const key = keyWant.get(song.local_id) || song.key || '';
+      if (await change({ op: 'setItems', id: sv.id, items: [...sv.items, { kind: 'song', title: song.title, songId: song.local_id, key, minutes: 5 }] })) draw();
       else b.disabled = false;
     };
   }

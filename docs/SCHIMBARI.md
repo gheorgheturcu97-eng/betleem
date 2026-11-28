@@ -37,6 +37,7 @@ Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de 
 - **＋ Cântări în program (Proiectez, telefon).** Înainte: alegeai felul, scriai titlul exact și apăsai Adaugă. Acum: un buton
   mare deschide lista cu căutare (titlu, autor); ＋ adaugă imediat, „✓ în program” arată ce e deja; rămâne deschisă pentru
   următoarea. Rândul vechi (moment, verset) a rămas dedesubt.
+  Acum (22:05): fiecare cântare din listă are și tonul (pornește din cel original); îl schimbi înainte de ＋.
 - **🔒 Codul pentru versuri (Oameni → Codul pentru versuri).** Nou, oprit implicit: când coordonatorul pune un cod, muzicienii îl
   scriu o dată (până închid aplicația) înainte să schimbe versuri, acorduri, ordinea strofelor sau tonul. Liderii nu au nevoie.
 - **👁 Doar vede (Oameni → la fiecare om).** Nou: omul vede programul și răspunde la locul lui, dar nu mai are Proiectez,
