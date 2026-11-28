@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Înapoi la așezarea de dinainte în Live (2026.11.28.9)
+- **Coloana din dreapta cu Sala, Scena și fundalurile (2026.11.28.6–8) a fost scoasă, la cererea proprietarului.** Acum:
+  ca înainte, ecranele sus, slide-urile la mijloc, fundalurile jos. Rămân numele scurte ale butoanelor (＋ Adaugă,
+  ⇩ Din rețea, 📌 Fixează) și restul schimbărilor de azi.
+
 ## 2026-11-28 · Copiezi slide-uri cu ⌘C / ⌘V; scrii direct pe slide (2026.11.28.8)
 - **Copiere de slide-uri (control.html + `pasteSlides` în server.js).** Înainte: ⌘C pe un slide copia doar textul, iar
   ⌘V îl repeta numai în aceeași cântare. Acum: alegi unul sau mai multe slide-uri (⇧-clic = de la până la, ⌘-clic = încă

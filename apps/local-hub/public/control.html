@@ -978,27 +978,6 @@
   .main.noL>#pLeft:hover::after,.main.noR>#pRight:hover::after,.main.auto>#pLeft:hover::after,.main.auto>#pRight:hover::after{color:var(--fg)}
 </style>
 
-<style id="pp-side">
-  /* 🧩 Live fără spații moarte (ca în ProPresenter): slide-urile în stânga, pe toată înălțimea; în dreapta o coloană cu
-     previzualizarea Sălii și a Scenei una sub alta, iar sub ele fundalurile, care umplu tot ce rămâne. */
-  .center{display:grid!important;grid-template-columns:minmax(0,1fr) var(--sideW,clamp(260px,21vw,430px));
-          grid-template-rows:auto minmax(0,1fr);grid-template-areas:"slides screens" "slides bgs";gap:8px}
-  .center>.gut[data-g=scrH],.center>.gut[data-g=bgH]{display:none}
-  .center>.slides-panel{grid-area:slides;min-height:0}
-  .center>#screens{grid-area:screens;display:flex!important;flex-direction:column;gap:8px;padding:8px}
-  .center>#screens .screen{width:100%;max-height:none}
-  .center>#bgPanel{grid-area:bgs;height:auto!important;min-height:0;padding:10px}
-  .center:has(#screens[data-vis=none])>#bgPanel{grid-row:1 / span 2}
-  .center:has(#screens[data-vis=none])>#screens{display:none!important}
-  #bgPanel .bg-head{flex-wrap:wrap;gap:6px;margin-bottom:8px}
-  #bgPanel .bg-head .grow{display:none}
-  #bgPanel .bg-head .zoom{margin-left:auto}
-  #bgPanel .bg-head .btn{padding:4px 10px;font-size:12px}
-  #gallery{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(var(--bgW,104px),1fr));gap:8px;
-           overflow-x:hidden!important;overflow-y:auto!important;align-content:start;grid-auto-rows:max-content;flex:1;min-height:0}
-  #gallery .bg{width:auto!important}
-  .screen .mon{right:8px!important;max-width:60%}
-</style>
 </head>
 <body>
 <div class="rv-mark" aria-hidden="true"></div>
