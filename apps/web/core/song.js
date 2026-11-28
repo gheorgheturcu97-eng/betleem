@@ -861,3 +861,68 @@ export function occurrenceOf(sections           , k        )         {
   const key = sections[k]?.lines.join('\n');
   return sections.slice(0, k).filter(s => s.lines.join('\n') === key).length;
 }
+
+// ---------------------------------------------------------------- 🎤 what someone says (or dictates) → the program
+const foldRo = (t        ) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const SOLFEGE                         = { do: 'C', re: 'D', mi: 'E', fa: 'F', sol: 'G', la: 'A', si: 'B' };
+const NUMBERS                         = { unu: 1, una: 1, intai: 1, prima: 1, primul: 1, doi: 2, doua: 2, trei: 3, treia: 3, patru: 4, patra: 4, cinci: 5, cincea: 5, sase: 6, sasea: 6, sapte: 7, saptea: 7, opt: 8, opta: 8, noua: 9, zece: 10 };
+
+/** "în G", "în re", "tonul la minor", "în fa diez" → the key ("G", "D", "Am", "F#"), and the words without it. */
+export function spokenKey(text        )                                {
+  const t = foldRo(text);
+  const m = t.match(/\b(?:in|ton(?:ul|alitatea)?|pe)\s+(do|re|mi|fa|sol|la|si|[a-g])(?:\s*(#|diez|b\b|bemol))?(?:\s*(minor|m\b|major))?(?=\s|$|[,.;])/);
+  if (!m) return { key: '', rest: text };
+  const root = SOLFEGE[m[1]] || m[1].toUpperCase();
+  const acc = m[2] ? (/#|diez/.test(m[2]) ? '#' : 'b') : '', minor = m[3] && /^m/.test(m[3]) && m[3] !== 'major';
+  return { key: root + acc + (minor ? 'm' : ''), rest: (text.slice(0, m.index) + ' ' + text.slice((m.index || 0) + m[0].length)).trim() };
+}
+
+/** The parts of a spoken list: "A, apoi B și după C" → ["A", "B", "C"]. */
+export function spokenParts(text        )           {
+  return String(text || '').split(/\s*(?:[,;.\n]|\bapoi\b|\bdupa aceea\b|\bdupă aceea\b|\bdupa\b|\bdupă\b|\bsi apoi\b|\bși apoi\b|\bthen\b)\s*/i)
+    .map(x => x.replace(/^(?:si|și|pune(?:-mi)?|adauga|adaugă|vreau|cantarea|cântarea|piesa)\s+/i, '').trim()).filter(Boolean);
+}
+
+/** 🎤 "Mii de laude în G, apoi Psalmul 8 în re" → which titles (by index) and their keys. Titles are matched on their words,
+ *  without diacritics, so "mii de laude" finds "Mii de laude (Lauda Celui ce a biruit)". Parts it cannot match come back in `missed`. */
+export function spokenSongs(text        , titles          )                                                                              {
+  const words = (t        ) => foldRo(t).replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 1);
+  const tw = titles.map(t => words(t));
+  const picks                                                 = [], missed           = [];
+  for (const part of spokenParts(text)) {
+    const { key, rest } = spokenKey(part), q = words(rest).filter(w => !['de', 'si', 'in', 'la', 'cu', 'pe'].includes(w) || words(rest).length < 3);
+    if (!q.length) continue;
+    let best = -1, score = 0;
+    tw.forEach((w, i) => {
+      const hit = q.filter(x => w.some(y => y === x || (x.length > 3 && y.startsWith(x)) || (y.length > 3 && x.startsWith(y)))).length / q.length;
+      const s = hit - Math.max(0, w.length - q.length) * 0.01 + (foldRo(titles[i]).startsWith(foldRo(rest)) ? 0.05 : 0);
+      if (s > score) { score = s; best = i; }
+    });
+    if (best >= 0 && score >= 0.6) picks.push({ index: best, key, said: part }); else missed.push(part);
+  }
+  return { picks, missed };
+}
+
+/** 🎤 "strofa 1, refren, strofa 2, refren de două ori, bridge, final" → the order as section indexes of the song ("#k").
+ *  A number picks the second verse; no number: the first of that kind, then the next ones in turn for verses. */
+export function spokenStructure(text        , sections           )                                        {
+  const kinds = sections.map(s => ({ kind: sectionKind(s.label), num: +(String(s.label).match(/(\d+)\s*$/) || [])[1] || 0 }));
+  const order           = [], missed           = [];
+  let nextVerse = 1;
+  for (const part of spokenParts(text)) {
+    const t = foldRo(part);
+    const kind = /pre[- ]?(refren|chorus|cor)/.test(t) ? 'prechorus' : /(refren|chorus|\bcor\b)/.test(t) ? 'chorus' : /(bridge|punte|\bpod\b)/.test(t) ? 'bridge'
+      : /intro/.test(t) ? 'intro' : /(final|ending|outro|sfarsit)/.test(t) ? 'outro' : /\btag\b/.test(t) ? 'tag' : /(strof|vers|verse|\bv\s*\d)/.test(t) ? 'verse' : '';
+    if (!kind) { missed.push(part); continue; }
+    const times = (() => { const m = t.match(/(?:de\s+)?(\d+|doua|trei|patru)\s+ori|x\s*(\d+)/); return m ? (+(m[1] || m[2]) || NUMBERS[m[1]] || 1) : 1; })();
+    const nm = t.replace(/(?:de\s+)?(\d+|doua|trei|patru)\s+ori|x\s*\d+/, '').match(/(\d+)|\b(unu|una|intai|prima|primul|doi|doua|trei|treia|patru|patra|cinci|cincea|sase|sasea|sapte|saptea|opt|opta|noua|zece)\b/);
+    let num = nm ? (+nm[1] || NUMBERS[nm[2]] || 0) : 0;
+    if (kind === 'verse' && !num) num = nextVerse;
+    let i = kinds.findIndex(k => k.kind === kind && (num ? (k.num || 1) === num : true));
+    if (i < 0 && kind !== 'verse') i = kinds.findIndex(k => k.kind === kind);
+    if (i < 0) { missed.push(part); continue; }
+    if (kind === 'verse') nextVerse = (kinds[i].num || 1) + 1;
+    for (let r = 0; r < Math.min(times, 6); r++) order.push('#' + i);
+  }
+  return { order, missed };
+}

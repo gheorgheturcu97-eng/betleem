@@ -116,6 +116,7 @@ Decizii:
 - ⏳ **Culorile timpului peste tot** (`timeLevel` în src/plan.js: galben 75 %, portocaliu 90 %, roșu peste, cu „+mm:ss”):
   desfășurătorul din Planificare, Live (control.html), stage.html și pagina de pe telefon/tabletă.
 - ⏳ **Cântări de pe telefon** mai ușor: căutare mare, „＋ în program” dintr-o atingere, ton și ordinea strofelor.
+- ✅ **Vocea fără AI în Reverb online** (2026-11-28): 🎤 Spune la cântări și la structură (`spokenSongs`, `spokenStructure`).
 - ⏳ **Asistentul vocal** („de 2 ori refrenul, tranziție în D…”): microfonul telefonului → text → același asistent
   (`src/ai.js`, unelte pe program). Motor: Ollama pe Mac mini (gratuit) întâi, Claude dacă Ollama nu răspunde
   sau nu știe, și invers când nu e internet. Ollama accesibil online doar prin tunelul din Pasul 3 (nu porturi pe router).

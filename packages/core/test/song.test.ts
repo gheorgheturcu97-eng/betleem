@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseSong, stripChords, transpose, transposeChord, keyDistance, toSlides, arrange,
-  isChordLine, chordsOverToChordPro, normalizeImported, readMeta, standardizeLabels, standardLabel,
+  isChordLine, chordsOverToChordPro, normalizeImported, readMeta, standardizeLabels, standardLabel, spokenKey, spokenSongs, spokenStructure,
 } from '../src/song.ts';
 
 const SONG = `{title: Mare e Domnul}
@@ -289,4 +289,20 @@ test('standard names like ProPresenter: Strofa → Verse, Refren → Chorus, Fin
   assert.equal(out, 'Verse 1:\nA [G]b\n\nChorus:\nC d\n\nPre-Chorus:\nE\n\nEnding:\nF');
   assert.equal(standardLabel('Refren 2'), 'Chorus 2'); assert.equal(standardLabel('Strofa'), 'Verse 1'); assert.equal(standardLabel('Tag'), 'Tag');
   assert.deepEqual(parseSong(out).map(s => s.label), ['Verse 1', 'Chorus', 'Pre-Chorus', 'Ending']);
+});
+
+test('🎤 a spoken program: songs with their keys, in order', () => {
+  const titles = ['Mii de laude (Lauda Celui ce a biruit)', 'Psalmul 8', 'Aleluia', 'Numele lui e Isus', 'Tu ești vrednic'];
+  const r = spokenSongs('Pune mii de laude în G, apoi psalmul 8 în re, după aceea numele lui e Isus în la minor și apoi o cântare care nu există', titles);
+  assert.deepEqual(r.picks.map(p => [titles[p.index], p.key]), [['Mii de laude (Lauda Celui ce a biruit)', 'G'], ['Psalmul 8', 'D'], ['Numele lui e Isus', 'Am']]);
+  assert.equal(r.missed.length, 1);
+  assert.equal(spokenKey('aleluia în fa diez').key, 'F#');
+  assert.equal(spokenKey('aleluia tonul B bemol').key, 'Bb');
+});
+
+test('🎤 a spoken structure: verse 1, chorus, verse 2, chorus twice, bridge, ending', () => {
+  const secs = parseSong('Strofa 1:\na\n\nStrofa 2:\nb\n\nPre-refren:\nc\n\nRefren:\nd\n\nPunte:\ne\n\nFinal:\nf');
+  const r = spokenStructure('strofa unu, refren, a doua strofă, pre refren, refrenul de două ori, bridge și apoi final', secs);
+  assert.deepEqual(r.order, ['#0', '#3', '#1', '#2', '#3', '#3', '#4', '#5']);
+  assert.deepEqual(spokenStructure('strofa, refren, strofa, refren', secs).order, ['#0', '#3', '#1', '#3']);
 });

@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · 🎤 Programul și structura spuse cu vocea (Reverb online)
+- **„＋ Cântări în program” → 🎤 Spune.** Nou: „Mii de laude în G, apoi Psalmul 8 în re…” pune cântările în ordine, fiecare în tonul
+  spus (litere sau do-re-mi, diez, bemol, minor); arată ce a pus și ce n-a găsit.
+- **Structură → 🎤 Spune.** Nou: „strofa 1, refren, strofa 2, refren de două ori, bridge, final” așază blocurile; apoi Salvează.
+- Înțelegerea e în `packages/core/src/song.ts` (`spokenKey`, `spokenParts`, `spokenSongs`, `spokenStructure`, cu test), fără AI și
+  fără internet în plus; microfonul = recunoașterea vocală a telefonului (ro-RO), altfel dictarea de pe tastatură.
+
 ## 2026-11-28 (seara) · Structura cântării pe program, ca în ProPresenter (Reverb online)
 - **„Structură” în vederea cântării.** Înainte: o cântare deschisă din program arăta ordinea din bibliotecă și tonul original;
   ordinea se schimba doar din Proiectez → Pregătește de acasă, ca listă de nume. Acum: cântarea deschisă din program are tonul și

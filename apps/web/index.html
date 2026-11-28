@@ -205,6 +205,10 @@
   body[data-tab]:not([data-tab="vProg"]) #gPropose{display:none!important}
   .archbtn{width:100%;margin-top:16px;color:var(--text-3)} .arch{opacity:.75}
   .props{margin-top:10px} .props .key{font-size:12px;padding:0 5px;border-radius:5px;background:var(--fill)}
+  .voice{display:flex;gap:6px;margin:8px 0 0} .voice input{flex:1;min-width:0;font-size:15px} .voice button{flex:none;padding:8px 12px}
+  #songPick .voice{padding:10px 12px 0;margin:0} #songPick .vmsg{padding:0 14px}
+  .voice button.rec{background:#e5243b;color:#fff;animation:recp 1s ease-in-out infinite} @keyframes recp{50%{opacity:.6}}
+  .vmsg{margin:6px 0 0;font-size:13px;color:var(--text-2)}
   .bigadd{width:100%;padding:14px;font-size:16px;margin-top:var(--sp-2);border-radius:var(--r-m)}
   #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
@@ -450,7 +454,7 @@ Refren:
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
-  import { standardLabel, parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
+  import { spokenSongs, spokenStructure, standardLabel, parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
   import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency } from './core/plan.js';
   import { BOOKS, parseRef, formatRef } from './core/bibleref.js';
@@ -741,12 +745,25 @@ Refren:
   };
   $('pjAdd').onkeydown = e => { if (e.key === 'Enter' && e.target.id === 'pjT') $('pjGo').click(); };
 
+  // 🎤 voice: the phone's own speech recognition (Romanian) writes into the field; without it, the keyboard's 🎤 dictation does
+  function voice(input, btn, done) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { input.focus(); input.placeholder = 'Apasă 🎤 de pe tastatură și vorbește, apoi „Pune”'; return; }
+    const r = new SR(); r.lang = 'ro-RO'; r.interimResults = true; r.continuous = false;
+    btn.classList.add('rec'); input.value = '';
+    r.onresult = e => { input.value = [...e.results].map(x => x[0].transcript).join(''); };
+    r.onerror = e => { btn.classList.remove('rec'); if (e.error === 'not-allowed') alert('Dă voie la microfon pentru această pagină (în setările telefonului), sau folosește 🎤 de pe tastatură.'); else input.focus(); };
+    r.onend = () => { btn.classList.remove('rec'); if (input.value.trim()) done(); };
+    try { r.start(); } catch { btn.classList.remove('rec'); input.focus(); }
+  }
+
   // 🎵 the song picker for a phone: search by title or words of the title, tap ＋ to add; it stays open for the next one
   function songSheet(opt = {}) {
     const s = prepSvc(); if (!s && !opt.pick) return;
     $('songPick')?.remove();
     const box = Object.assign(document.createElement('section'), { id: 'songPick' });
     box.innerHTML = `<div class="stop"><button id="spX" title="Închide">✕</button><span class="t">${esc(opt.title || 'Cântări în program')}</span><button id="spOk" class="on">Gata</button></div>
+      ${opt.pick ? '' : `<div class="voice"><input id="spV" placeholder="🎤 Spune: Mii de laude în G, apoi Psalmul 8 în re" autocomplete="off" enterkeyhint="go"><button id="spMic" title="Vorbește">🎤</button><button id="spGo" class="acc">Pune</button></div><p class="vmsg" id="spMsg" hidden></p>`}
       <div class="spq"><input id="spQ" type="search" placeholder="Caută: titlu, autor…" autocomplete="off" enterkeyhint="search"></div><div id="spL" class="spl"></div>`;
     document.body.append(box); document.body.style.overflow = 'hidden';
     const close = () => { box.remove(); document.body.style.overflow = ''; };
@@ -763,6 +780,19 @@ Refren:
     const keyWant = new Map();
     $('spL').onchange = e => { const k = e.target.closest('[data-key]'); if (k) keyWant.set(k.dataset.key, k.value); };
     $('spQ').oninput = draw; draw(); setTimeout(() => $('spQ').focus(), 50);
+    // 🎤 "Mii de laude în G, apoi Psalmul 8 în re…": every song found goes in, in that order, in the key said (or its own)
+    const say = async () => {
+      const text = $('spV').value.trim(), sv = prepSvc(); if (!text || !sv) return;
+      const r = spokenSongs(text, lib.map(x => x.title)), add = r.picks.map(p => { const x = lib[p.index]; return { kind: 'song', title: x.title, songId: x.local_id, key: p.key || x.key || '', minutes: 5 }; });
+      $('spMsg').hidden = false;
+      if (!add.length) { $('spMsg').textContent = 'N-am recunoscut nicio cântare. Spune titlurile cum sunt în bibliotecă, despărțite prin „apoi”.'; return; }
+      $('spGo').disabled = true;
+      const ok = await change({ op: 'setItems', id: sv.id, items: [...sv.items, ...add] }); $('spGo').disabled = false;
+      if (!ok) return;
+      $('spMsg').innerHTML = `✓ Am pus: ${add.map(a => `<b>${esc(a.title)}</b>${a.key ? ' (' + esc(a.key) + ')' : ''}`).join(', ')}${r.missed.length ? `<br>⚠ N-am găsit: ${r.missed.map(esc).join(', ')}` : ''}`;
+      $('spV').value = ''; draw();
+    };
+    if ($('spV')) { $('spGo').onclick = say; $('spV').onkeydown = e => { if (e.key === 'Enter') say(); }; $('spMic').onclick = () => voice($('spV'), $('spMic'), say); }
     $('spL').onclick = async e => {
       const b = e.target.closest('[data-add]'); if (!b || b.disabled) return;
       const song = lib.find(x => x.local_id === b.dataset.add), sv = prepSvc(); if (!song) return;
@@ -798,6 +828,7 @@ Refren:
     if (it.kind === 'song') {
       f.push(I.song ? `<label class="fl"><span>Tonul${I.orig ? ` (în cântare: ${esc(I.orig)})` : ''}</span><select id="iKey"><option value="">Ca în cântare</option>${(I.orig ? KEYS.filter(k => k.endsWith('m') === I.orig.endsWith('m')) : KEYS).map(k => `<option${k === it.key ? ' selected' : ''}>${k}</option>`).join('')}</select></label>
         <div class="fl"><span>Structura la acest program <small class="mute">(trage blocurile ca să schimbi ordinea · ✕ scoate)</small></span><div class="arr" id="iArr"></div>
+        <div class="voice"><input id="iV" placeholder="🎤 Spune: strofa 1, refren, strofa 2, refren de două ori, bridge" autocomplete="off" enterkeyhint="go"><button id="iMic" title="Vorbește">🎤</button><button id="iGo" class="acc">Aplică</button></div><p class="vmsg" id="iMsg" hidden></p>
         <span style="margin-top:12px">Grupurile cântării <small class="mute">(atinge ca să-l pui la sfârșit)</small></span><div class="secs" id="iSecs"></div>
         <div class="row" style="margin-top:10px"><button id="iArrReset" class="ghost" style="flex:0 0 auto">↺ Ca în cântare</button><span class="mute" id="iArrNote" style="font-size:12.5px;align-self:center"></span></div></div>`
         : '<p class="mute">Cântarea nu e în biblioteca online, așa că tonul și ordinea se aleg la biserică.</p>');
@@ -859,10 +890,22 @@ Refren:
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.x !== undefined) { I.arr.splice(+b.dataset.x, 1); I.custom = true; drawArr(); itemPrev(); }
     else if (b.dataset.add !== undefined) { I.arr.push('#' + b.dataset.add); I.custom = true; drawArr(); itemPrev(); }
+    else if (b.id === 'iGo') sayArr();
+    else if (b.id === 'iMic') voice($('iV'), b, sayArr);
     else if (b.id === 'iArrReset') { I.arr = arrangementIndexes(I.secs, I.song?.arrangement); I.custom = false; drawArr(); itemPrev(); }
     else if (b.dataset.bg !== undefined) { I.it.background = b.dataset.bg; for (const x of $('iBg').children) x.classList.toggle('on', x === b); itemPrev(); }
   });
-  $('iForm').addEventListener('input', () => itemPrev());
+  $('iForm').addEventListener('input', e => { if (e.target.id !== 'iV') itemPrev(); });
+  $('iForm').addEventListener('keydown', e => { if (e.target.id === 'iV' && e.key === 'Enter') { e.preventDefault(); sayArr(); } });
+  // 🎤 "strofa 1, refren, strofa 2, refren de două ori, bridge, final" → the blocks in that order
+  function sayArr() {
+    const text = $('iV').value.trim(); if (!text || !I?.secs.length) return;
+    const r = spokenStructure(text, I.secs); $('iMsg').hidden = false;
+    if (!r.order.length) { $('iMsg').textContent = 'N-am recunoscut părțile. Spune: strofa 1, refren, strofa 2, bridge, final.'; return; }
+    I.arr = r.order; I.custom = true; drawArr(); itemPrev();
+    $('iMsg').textContent = '✓ ' + r.order.map(t => ABBR(secName(+t.slice(1)))).join(' · ') + (r.missed.length ? '   ⚠ n-am găsit: ' + r.missed.join(', ') : '') + '  (apasă Salvează)';
+    $('iV').value = '';
+  }
   const closeItem = () => { $('vItem').hidden = true; I = null; if (!$('vSong').hidden && cur_) drawSong(); else document.body.style.overflow = ''; };
   $('iBack').onclick = closeItem;
   $('iSave').onclick = async () => {
