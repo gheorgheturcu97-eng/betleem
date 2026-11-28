@@ -1637,7 +1637,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       const close = v => { $('modal').classList.remove('show'); $('mOk').onclick = $('mCancel').onclick = $('modal').onkeydown = null; done(v); };
       $('mOk').onclick = () => close(inputs.map(i => i.type === 'checkbox' ? i.checked : i.value));
       $('mCancel').onclick = () => close(null);
-      $('modal').onkeydown = e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') $('mOk').click(); if (e.key === 'Escape') close(null); };
+      $('modal').onkeydown = e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') $('mOk').click(); if (e.key === 'Escape') { e.preventDefault(); close(null); } };
     });
   }
 
@@ -2411,6 +2411,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (k === 'c' && e.shiftKey && S.live.slides[S.live.slide]) { e.preventDefault(); copyText(S.live.slides[S.live.slide].lines.map(l => stripChords(l)).join('\n')); toast('Text copiat'); }
   });
   addEventListener('keydown', e => {
+    // a key already used by a window (e.g. Esc that closed the slide editor) must not also blank the screens
+    if (e.defaultPrevented || document.activeElement?.isContentEditable) return;
     if ($('modal').classList.contains('show') || $('sedModal').classList.contains('show') || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); send({ type: 'next' }); }
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') send({ type: 'prev' });
@@ -3020,7 +3022,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('prDel').onclick = () => { send({ type: 'deleteProp', id: prMod.id }); $('propModal').classList.remove('show'); toast('Prop șters', () => send({ type: 'undo' })); };
   $('propModal').onkeydown = e => {
     if (!document.querySelector('.lye-menu') && PE.key(e)) { e.preventDefault(); return; }
-    if (e.key === 'Escape') { if (document.querySelector('.lye-menu')) return document.querySelector('.lye-menu').remove(); $('prCancel').click(); }
+    if (e.key === 'Escape') { e.preventDefault(); if (document.querySelector('.lye-menu')) return document.querySelector('.lye-menu').remove(); $('prCancel').click(); }
   };
   $('propList').addEventListener('click', e => { const b = e.target.closest('[data-pr]'); if (b) send({ type: 'toggleProp', id: b.dataset.pr }); });
   $('propList').addEventListener('dblclick', e => { const b = e.target.closest('[data-pr]'); if (b) { send({ type: 'toggleProp', id: b.dataset.pr }); prEdit(S.props.find(p => p.id === b.dataset.pr)); } });
@@ -4489,7 +4491,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   };
   $('sedModal').onkeydown = e => {
     if (!document.querySelector('.lye-menu') && LE.key(e)) { e.preventDefault(); return; }
-    if (e.key === 'Escape') { if (document.querySelector('.lye-menu')) return document.querySelector('.lye-menu').remove(); $('sedOk').click(); }   // Esc: saves and closes
+    if (e.key === 'Escape') { e.preventDefault(); if (document.querySelector('.lye-menu')) return document.querySelector('.lye-menu').remove(); $('sedOk').click(); }   // Esc: saves and closes
     if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); $('sedNext').click(); }
     if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); $('sedPrev').click(); }
   };

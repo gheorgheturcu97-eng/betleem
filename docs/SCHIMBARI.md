@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Reparat: Esc care închidea o fereastră golea și ecranele (2026.11.28.10)
+- **Esc (control.html).** Înainte: Esc care închidea editorul de slide (sau altă fereastră) pornea în același timp și
+  „Ecran gol”, așa că Sala și Scena rămâneau fără versuri. Acum: Esc închide doar fereastra; în Live, Esc e tot
+  „Ecran gol”, ca înainte.
+
 ## 2026-11-28 · Înapoi la așezarea de dinainte în Live (2026.11.28.9)
 - **Coloana din dreapta cu Sala, Scena și fundalurile (2026.11.28.6–8) a fost scoasă, la cererea proprietarului.** Acum:
   ca înainte, ecranele sus, slide-urile la mijloc, fundalurile jos. Rămân numele scurte ale butoanelor (＋ Adaugă,
