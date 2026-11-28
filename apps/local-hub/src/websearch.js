@@ -52,12 +52,13 @@ async function searchRC(q) {
   try { return rcLinks(await get('https://www.resursecrestine.ro/cauta/' + encodeURIComponent(q) + '/1/titlu')); } catch { return []; }
 }
 
-async function searchWeb(query) {
+async function searchWeb(query, lang = 'ro') {
+  const kl = lang === 'en' ? 'us-en' : 'ro-ro';
   try {
-    const r = parseDuckDuckGo(await get('https://html.duckduckgo.com/html/?kl=ro-ro&q=' + encodeURIComponent(query)));
+    const r = parseDuckDuckGo(await get(`https://html.duckduckgo.com/html/?kl=${kl}&q=` + encodeURIComponent(query)));
     if (r.length) return r;
   } catch {}
-  try { return parseBing(await get('https://www.bing.com/search?setlang=ro&q=' + encodeURIComponent(query))); }
+  try { return parseBing(await get(`https://www.bing.com/search?setlang=${lang}&q=` + encodeURIComponent(query))); }
   catch { return []; }
 }
 
@@ -92,16 +93,21 @@ export async function searchLyrics(q, { chords = false, normalize = t => t, limi
   for (const r of [...rc.filter(x => x.chords === chords).slice(0, 3), ...rc.filter(x => x.chords !== chords).slice(0, chords ? 1 : 2)]) {
     const key = r.url; if (seen.has(key)) continue; seen.add(key); links.push(r);
   }
-  for (const query of queries) {
-    for (const r of await searchWeb(query)) {
+  // deeper: more Romanian searches, then the English song with chords (Worship Together, WorshipChords, songs with
+  // an English title in brackets: „Apa vie (Living Water)” looks for „Living Water chords” too)
+  const en = (q.match(/\(([^)]+)\)/) || [])[1] || (/^[\x20-\x7e]+$/.test(q) ? q : '');
+  const deep = [...queries.map(x => [x, 'ro']),
+    ...(chords || en ? [[`site:worshiptogether.com ${en || q}`, 'en'], [`${en || q} chords lyrics`, 'en'], [`site:worshipchords.com ${en || q}`, 'en']] : [])];
+  for (const [query, lang] of deep) {
+    for (const r of await searchWeb(query, lang)) {
       const key = r.url.replace(/[#?].*$/, '');
       if (seen.has(key) || !goodUrl(r.url, chords)) continue;
       seen.add(key); links.push(r);
     }
-    if (links.length >= limit) break;
+    if (links.length >= limit * 2) break;
   }
 
-  const pages = await Promise.allSettled(links.slice(0, limit).map(async (l, i) => {
+  const pages = await Promise.allSettled(links.slice(0, limit * 2).map(async (l, i) => {
     const html = await get(l.url);
     const host = new URL(l.url).hostname.replace(/^www\./, '');
     const found = extractLyrics(html, host);
@@ -110,8 +116,8 @@ export async function searchLyrics(q, { chords = false, normalize = t => t, limi
     if (lines.length < 4) return null;
     const title = (found.title || l.title).replace(/\s[-|–]\s*Resurse Cre[sș]tine.*$/i, '').trim();
     const hasChords = /\[[A-G][^\]]*\]/.test(body);
-    const score = (host.endsWith('resursecrestine.ro') ? 3 : 0) + similarity(q, title) * 2 + (chords && hasChords ? 2 : 0) - i * 0.1;
+    const score = (host.endsWith('resursecrestine.ro') ? 3 : 0) + (host.endsWith('worshiptogether.com') ? 1.5 : 0) + similarity(en || q, title) * 2 + (chords && hasChords ? 2 : 0) - i * 0.1;
     return { title, url: l.url, site: host, body, hasChords, preview: lines.slice(0, 2).map(x => x.replace(/\[[^\]]*\]/g, '')).join(' / '), score };
   }));
-  return pages.map(p => p.status === 'fulfilled' ? p.value : null).filter(Boolean).sort((a, b) => b.score - a.score);
+  return pages.map(p => p.status === 'fulfilled' ? p.value : null).filter(Boolean).sort((a, b) => b.score - a.score).slice(0, limit + 2);
 }

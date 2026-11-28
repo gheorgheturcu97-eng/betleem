@@ -53,6 +53,17 @@ export function extractLyrics(html, host = '') {
   for (const m of html.matchAll(/<(div|section|article|p)[^>]+(?:class|id)=["'][^"']*(lyric|versuri|text-cantare|song|chord|acorduri|content)[^"']*["'][^>]*>([\s\S]*?)<\/\1>/gi)) {
     candidates.push(htmlToText(m[3]));
   }
+  // a chord chart anywhere on the page (Worship Together, WorshipChords…): from the first section name (Intro / Verse /
+  // Chorus / Strofa…) to the copyright or download links; chord lines above words are kept as they are
+  { const all = htmlToText(html.replace(/<(script|style|nav|header|footer)[\s\S]*?<\/\1>/gi, ' ')).split('\n');
+    const start = all.findIndex(l => /^\s*(intro|verse|chorus|pre-?chorus|bridge|strofa|refren|vers)\s*\d*\s*:?\s*$/i.test(l));
+    if (start >= 0) {
+      const rest = all.slice(start), stop = rest.findIndex((l, i) => i > 3 && /(©|copyright|ccli|writers?:|words and music|download|related songs|songselect|all rights reserved)/i.test(l));
+      const chart = rest.slice(0, stop > 0 ? stop : 160).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      const chordLines = chart.split('\n').filter(l => /^\s*([A-G][#b]?(m|maj|min|sus|dim|aug|add)?\d*(\/[A-G][#b]?)?\s*)+$/.test(l)).length;
+      if (chordLines >= 3) return { title: title(html), body: chart };   // a real chord chart wins over everything else
+    }
+  }
   // fallback: every run of <br>-separated lines
   for (const m of html.matchAll(/((?:[^<]{1,120}<br\s*\/?>\s*){3,}[^<]{0,120})/gi)) candidates.push(htmlToText(m[1]));
   candidates.sort((a, b) => score(b) - score(a));

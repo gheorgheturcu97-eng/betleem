@@ -1084,7 +1084,7 @@
             <div class="lineup" id="structBox">
               <div class="line"><small title="Secțiunile cântării, câte o dată (ca Groups în ProPresenter): clic sau trage în ordinea de dedesubt">Secțiuni</small><div class="arr groups" id="arrGroups"></div></div>
               <div class="line"><select id="arrPick" title="Aranjamentul: ordinea secțiunilor, salvată pe cântare cu un nume (ca în ProPresenter)"></select><div class="arr" id="arrChips" title="Ordinea secțiunilor în acest program: trage ca s-o schimbi; ✕ scoate o secțiune. Etichetele le pui din ✎ pe slide."></div>
-                <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋</option></select><button id="arrReset" class="icon" title="Ordinea din cântare">↺</button></div>
+                <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋</option></select><button id="arrBi" class="mini" hidden title="Arată engleza sub versurile în română, pe ecranul din sală (doar la această cântare din program)">🌐 Bilingv</button><button id="arrReset" class="icon" title="Ordinea din cântare">↺</button></div>
             </div>
           </div>
           <div class="mediabar" id="mediaBar" hidden>
@@ -4377,7 +4377,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       + `<option value="+">＋ Salvează ordinea ca…</option>` + (cur ? `<option value="-">🗑 Șterge „${esc(cur)}”</option>` : '') + (it.arrangement?.length ? `<option value="o">↺ Original (ordinea din cântare)</option>` : '');
     $('arrPick').value = cur ? 'n:' + cur : '';
     arr.song = song;
+    $('arrBi').hidden = !song.en; $('arrBi').classList.toggle('on', !!it.bilingual);
   }
+  $('arrBi').onclick = () => { const it = S.setlist[sel]; if (!it) return; send({ type: 'itemBilingual', item: sel, on: !it.bilingual }); toast(!it.bilingual ? '🌐 Engleza apare sub versuri' : 'Doar în română'); };
   // drop a group from „Secțiuni” on the order: before the chip you drop it on, or at the end
   $('arrChips').addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/x-group')) e.preventDefault(); });
   $('arrChips').addEventListener('drop', e => {
@@ -4651,7 +4653,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     loadTagFilter();
     $('results').innerHTML = list.map(s => `<div class="lib" data-id="${s.id}" title="Apasă ca s-o adaugi în program">
         <span class="t">${esc(s.title)}${s.chords ? ' <span class="ch" title="are acorduri">♪</span>' : ''}${(s.tags || []).map(t => `<span class="tg">#${esc(t)}</span>`).join('')}</span>${s.key ? `<span class="chip">${esc(s.key)}</span>` : ''}
-        <span class="acts"><button data-a="edit" title="Editează">✎</button><button data-a="add" title="Adaugă în program">＋</button><button data-a="del" class="del" title="Șterge din bibliotecă">🗑</button></span></div>`).join('')
+        ${s.en ? '<span class="tg en" title="Are și varianta în engleză (folderul Bilingv)">🌐</span>' : ''}<span class="acts"><button data-a="en" title="Varianta în engleză: caut-o pe internet sau lipește-o">🇬🇧</button><button data-a="edit" title="Editează">✎</button><button data-a="add" title="Adaugă în program">＋</button><button data-a="del" class="del" title="Șterge din bibliotecă">🗑</button></span></div>`).join('')
       || '<p class="hint" id="noHit">Nu e în bibliotecă.</p>';
     clearTimeout(webTimer);
     const q = $('q').value.trim();
@@ -4663,6 +4665,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       if (e.target.dataset.a === 'del') { e.stopPropagation(); return A.song.del({ id: el.dataset.id }); }
       const song = await fetch('/api/songs/' + el.dataset.id).then(r => r.json());
       if (e.target.dataset.a === 'edit') { fillEditor(song); showTab('edit'); return; }
+      if (e.target.dataset.a === 'en') { e.stopPropagation(); return openEnglish(song); }
       addSongToProgram(song);
     });
   }
@@ -4696,6 +4699,36 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     });
   }
 
+  // 🇬🇧 the English version of a Romanian song: found on the internet (Worship Together, chord sites…) or pasted
+  function openEnglish(song) {
+    document.getElementById('enPop')?.remove();
+    const guess = (song.title.match(/\(([^)]+)\)/) || [])[1] || song.enTitle || song.title;
+    const pop = Object.assign(document.createElement('div'), { id: 'enPop', className: 'modal show' });
+    pop.innerHTML = `<div class="card glass" style="max-width:720px;width:92vw">
+      <h3>🇬🇧 Varianta în engleză · ${esc(song.title)}</h3>
+      <p class="hint">Biblioteca rămâne în română. Engleza stă lângă cântare: cântarea intră în folderul „Bilingv” și, în program, 🌐 Bilingv o arată sub versurile în română (Verse 1 sub Verse 1, Chorus sub Chorus).</p>
+      <div class="row"><input id="enQ" value="${esc(guess)}" placeholder="Titlul în engleză" style="flex:1"><button id="enGo" class="acc">Caută pe internet</button></div>
+      <div id="enRes" class="scroll" style="max-height:30vh;margin:8px 0"></div>
+      <label class="hint">Sau lipește textul în engleză (cu Verse 1 / Chorus / Bridge, acordurile pot rămâne)<textarea id="enText" spellcheck="false" style="min-height:140px">${esc(song.en || '')}</textarea></label>
+      <div class="btns">${song.en ? '<button id="enDel" class="ghost">Scoate engleza</button>' : ''}<span class="grow"></span><button id="enNo">Închide</button><button id="enOk" class="acc">Salvează engleza</button></div></div>`;
+    document.body.append(pop);
+    const close = () => pop.remove();
+    pop.onclick = e => { if (e.target === pop) close(); };
+    $('enNo').onclick = close;
+    $('enDel') && ($('enDel').onclick = () => { send({ type: 'setEnglish', songId: song.id, body: '' }); toast('Am scos engleza', () => send({ type: 'undo' })); close(); setTimeout(search, 400); });
+    $('enOk').onclick = () => { const body = $('enText').value.trim(); if (!body) return toast('Lipește textul sau alege un rezultat');
+      send({ type: 'setEnglish', songId: song.id, body, title: $('enQ').value.trim(), source: pop.dataset.src || '' }); songCache.delete(song.id);
+      toast('Engleza e salvată · „' + song.title + '” e acum în folderul Bilingv'); close(); setTimeout(search, 400); };
+    const go = async () => {
+      $('enRes').innerHTML = '<p class="hint">Caut pe Worship Together și pe site-urile cu acorduri…</p>';
+      const list = await fetch('/api/search-lyrics?chords=1&q=' + encodeURIComponent($('enQ').value), { headers: { 'x-pin': hub.pin() } }).then(r => r.json()).catch(() => []);
+      $('enRes').innerHTML = (Array.isArray(list) ? list : []).map((r, i) => `<div class="lib web" data-i="${i}"><span class="t">${esc(r.title)} <small class="hint">· ${esc(r.site)}${r.hasChords ? ' · ♪ acorduri' : ''}</small><br><small class="hint">${esc(r.preview || '')}</small></span></div>`).join('')
+        || '<p class="hint">Nu am găsit. Lipește textul de mai jos.</p>';
+      document.querySelectorAll('#enRes .lib').forEach(el => el.onclick = () => { const r = list[+el.dataset.i]; $('enText').value = r.body; pop.dataset.src = r.url; toast('Am pus textul de pe ' + r.site + '. Verifică-l și apasă Salvează.'); });
+    };
+    $('enGo').onclick = go; $('enQ').onkeydown = e => { if (e.key === 'Enter') go(); };
+    if (!song.en) go();
+  }
   $('bClean').onclick = async () => {
     const ok = await ask('Curăț toate cântările: semnele de pe site-uri (1., Str2, R:, Ref, Bridge) devin etichete și nu se mai văd pe ecran, dispar „/:” și „:/”, secțiunile fără nume primesc nume, iar refrenul scris o singură dată se cântă după fiecare strofă. Fac întâi o copie de siguranță; poți anula cu Ctrl+Z.', [], 'Curăță');
     if (ok) send({ type: 'cleanLibrary' });

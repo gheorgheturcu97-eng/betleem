@@ -315,7 +315,27 @@ function slidesFor(index) {
   const orig = core.originalKey(song.key, song.body);       // songs without a saved key still change key
   const steps = it.key && orig ? core.keyDistance(orig, it.key) : 0;
   const body = core.transpose(song.body, steps, core.prefersFlats(it.key || orig || 'C'));
-  return core.toSlides(core.arrange(core.parseSong(body), it.arrangement || song.arrangement), it.maxLines || 4);
+  const sections = core.arrange(core.parseSong(body), it.arrangement || song.arrangement), max = it.maxLines || 4;
+  const slides = core.toSlides(sections, max);
+  return it.bilingual && song.en ? withEnglish(slides, sections, max, song.en) : slides;
+}
+
+/** 🌐 Bilingual: under each slide, the English lines of the same section (Verse 1 under Verse 1, Chorus under Chorus);
+ *  when a section is cut in several slides, the same share of the English goes on each. */
+function withEnglish(slides, sections, max, enBody) {
+  const key = l => core.standardLabel(l || '').toLowerCase();
+  const en = new Map(); for (const sec of core.parseSong(enBody)) if (sec.label && !en.has(key(sec.label))) en.set(key(sec.label), sec);
+  const out = []; let n = 0;
+  for (const sec of sections) {
+    const parts = Math.max(1, Math.ceil(sec.lines.length / max)), e = sec.label && en.get(key(sec.label));
+    for (let p = 0; p < parts; p++, n++) {
+      const sl = slides[n]; if (!sl) break;
+      if (!e) { out.push(sl); continue; }
+      const L = e.lines.length, lines = e.lines.slice(Math.round(p * L / parts), Math.round((p + 1) * L / parts)).map(l => l.replace(/\[[^\]]*\]/g, '').trim()).filter(Boolean);
+      out.push(lines.length ? { ...sl, second: { lines, label: '', bible: '' } } : sl);
+    }
+  }
+  return out.concat(slides.slice(n));
 }
 
 /** Which section of the song (and which lines of it) a slide comes from — same split as toSlides. */
@@ -475,7 +495,7 @@ wss.on('connection', (ws, req) => {
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 let lastMd = null;                                     // the last MD&TRACK state, for a phone that just opened
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'pasteSlides', 'breakSlide', 'moveSlide', 'standardLabels', 'saveArrangement', 'deleteArrangement', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'pasteSlides', 'breakSlide', 'moveSlide', 'setEnglish', 'itemBilingual', 'standardLabels', 'saveArrangement', 'deleteArrangement', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
@@ -493,7 +513,7 @@ function restoreSnapshot(sn) {
 }
 const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', pasteSlides: 'lipirea slide-urilor', breakSlide: 'ruperea slide-ului', moveSlide: 'mutarea slide-ului', standardLabels: 'etichetele standard', saveArrangement: 'salvarea aranjamentului', deleteArrangement: 'ștergerea aranjamentului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', pasteSlides: 'lipirea slide-urilor', breakSlide: 'ruperea slide-ului', moveSlide: 'mutarea slide-ului', setEnglish: 'varianta în engleză', itemBilingual: 'afișarea bilingvă', standardLabels: 'etichetele standard', saveArrangement: 'salvarea aranjamentului', deleteArrangement: 'ștergerea aranjamentului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -781,6 +801,18 @@ function handleMessage(ws, m) {
         save();
         reply({ type: 'autoLabeled', named: before, title: song.title });
         break;
+      }
+      case 'setEnglish': {                           // 🇬🇧 the English version of a Romanian song (the library stays Romanian)
+        const song = db.songs.find(x => x.id === m.songId); if (!song) break;
+        const text = String(m.body || '').slice(0, 20000);
+        if (text.trim()) { song.en = stdBody(core.normalizeImported(text)); song.enTitle = String(m.title || '').slice(0, 120); song.enSource = String(m.source || '').slice(0, 300); }
+        else { delete song.en; delete song.enTitle; delete song.enSource; }
+        song.updatedAt = new Date().toISOString(); save(); reply({ type: 'englishSet', songId: song.id, on: !!song.en }); break;
+      }
+      case 'itemBilingual': {                        // 🌐 this song in the program: Romanian with English under it
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        if (m.on) it.bilingual = true; else delete it.bilingual;
+        save(); break;
       }
       case 'standardLabels': {                       // 🏷 every song: Verse 1 / Chorus / Verse 2 / Bridge…, order V1 C V2 C… where none
         if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba toată biblioteca.' });
@@ -1087,7 +1119,7 @@ function handleMessage(ws, m) {
         if (m.type === 'addItem') {
           const kind = ['song', 'sermon', 'prayer', 'announcement', 'other', 'media', 'bible'].includes(m.kind) ? m.kind : 'other';
           const item = m.item && typeof m.item === 'object'                                 // undo of a removal
-            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'layers', 'slideLayers', 'notes', 'slides', 'ref', 'versions', 'autoAdvance', 'loop']), id: m.item.id || crypto.randomUUID() }
+            ? { notes: [], ...pick(m.item, ['id', 'kind', 'songId', 'title', 'key', 'minutes', 'leader', 'arrangement', 'maxLines', 'background', 'display', 'slideStyles', 'layers', 'slideLayers', 'notes', 'slides', 'ref', 'versions', 'autoAdvance', 'loop', 'bilingual']), id: m.item.id || crypto.randomUUID() }
             : { id: crypto.randomUUID(), kind, songId: m.songId, title: m.title || '', key: m.key || '', minutes: Number(m.minutes) || 5, notes: [],
                 ...(kind === 'media' ? { slides: mediaSlides(m.slides), ...cleanFx(m) } : {}),
                 ...(kind === 'bible' ? { ref: cleanRef(m.ref), versions: cleanVersions(m.versions) } : {}) };
@@ -1180,6 +1212,7 @@ function tagMatch(tag) {
   const t = nrm(tag); if (!t) return null;
   const syn = { adorare: 'inchinare', worship: 'inchinare', praise: 'lauda', rapide: 'lauda', lente: 'inchinare' };
   const want = [t, syn[t]].filter(Boolean);
+  if (t === 'bilingv' || t === 'bilingual') return s => !!s.en;          // 🌐 the songs that have an English version too
   return s => (s.tags || []).some(x => { const n = nrm(x); return want.some(w => n === w || n.startsWith(w) || w.startsWith(n)); });
 }
 function searchSongs(query, tag, loose = false) {
@@ -1194,7 +1227,7 @@ function searchSongs(query, tag, loose = false) {
     if (tagWord && !tm) return searchSongs(words.filter(w => w !== tagWord).join(' '), tagWord, true);
     ranked = list.map(s => ({ s, n: words.filter(w => nrm(s.title).includes(w)).length })).filter(x => x.n).sort((a, b) => b.n - a.n).map(x => x.s);
   }
-  return ranked.map(({ id, title, key, author, tags, body }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body) })).slice(0, 300);
+  return ranked.map(({ id, title, key, author, tags, body, en }) => ({ id, title, key, author, tags: tags || [], chords: /\[[A-G]/.test(body), ...(en ? { en: true } : {}) })).slice(0, 300);
 }
 const mediaList = () => fs.readdirSync(MEDIA_DIR).filter(f => /^(image|video)\//.test(TYPES[path.extname(f).toLowerCase()] || '') && !f.startsWith('.') && f !== 'logo.png');
 
@@ -1707,7 +1740,7 @@ async function handle(req, res) {
     }
     if (p === '/api/tags' && req.method === 'GET') {
       const count = {};
-      for (const s of db.songs) for (const t of s.tags || []) count[t] = (count[t] || 0) + 1;
+      for (const s of db.songs) for (const t of [...(s.tags || []), ...(s.en ? ['Bilingv'] : [])]) count[t] = (count[t] || 0) + 1;
       return json(res, 200, Object.entries(count).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n })));
     }
     if (p.startsWith('/api/songs/') && req.method === 'GET') {

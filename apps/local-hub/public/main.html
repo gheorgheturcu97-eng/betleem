@@ -15,6 +15,7 @@
   .txt.hide{opacity:0}
   .txt.ghost{pointer-events:none;z-index:1}          /* the old words while they leave (fade / crossfade / dissolve) */
   /* Bible: the verse, its reference, and a second language under it */
+  .txt .v2.en{font-style:italic;font-size:.7em}
   .txt .v2{font-size:.74em;font-weight:500;opacity:.88;margin-top:.9em;padding-top:.7em;border-top:1px solid rgba(255,255,255,.35)}
   .txt .ref{font-size:.42em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.75;margin-top:.5em}
   #pic{position:fixed;inset:0;background:#000;display:none}
@@ -158,7 +159,7 @@
     const html = !slide ? '' : slide.bible
       ? `<div class="v1">${lines(slide)}<div class="ref">${esc(slide.label)} · ${esc(slide.bible)}</div></div>`
         + (slide.second ? `<div class="v2">${lines(slide.second)}<div class="ref">${esc(slide.second.label)} · ${esc(slide.second.bible)}</div></div>` : '')
-      : lines(slide);
+      : lines(slide) + (slide.second ? `<div class="v2 en">${lines(slide.second)}</div>` : '');   // 🌐 a song with its English under it
     video(L);
     $('text').classList.toggle('hide', L.blank || L.noText || !html);
     if (!L.blank && !L.noText) { if (html !== lastHtml) swapText(html, dd); else fit(); }

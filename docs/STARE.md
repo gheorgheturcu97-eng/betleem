@@ -114,6 +114,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   cântări (biblioteca rețelei citită de bisericile ei), programul ca document, telefoane separat, linkuri (doar amprenta).
   Reguli RLS testate (`supabase/tests/cine-vede-ce.sql`). Încă nelegată de aplicație. Detalii: docs/PLANIFICARE-ONLINE.md.
 
+- **Engleza lângă cântare (2026.11.28.16, verificat în browser):** 🇬🇧 în Bibliotecă (caută pe web / lipești) → `song.en`
+  (`setEnglish` în server.js); folder virtual „Bilingv” (`/api/tags`, `tagMatch`); 🌐 Bilingv lângă aranjament
+  (`itemBilingual`, `withEnglish()` în server.js pune `slide.second` pe secțiunea cu același nume; main.html `.v2.en`).
+  Căutare web RO+EN (`websearch.js`), acorduri din chord charts (`extract.js`, netestat pe pagina reală: proxy-ul blochează).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

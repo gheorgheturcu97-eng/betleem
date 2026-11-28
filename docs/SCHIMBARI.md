@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Engleza lângă cântare + căutare mai adâncă (2026.11.28.16)
+- **🇬🇧 Varianta în engleză (control.html → Bibliotecă, `setEnglish`).** Nou: lângă fiecare cântare, butonul 🇬🇧 caută
+  varianta în engleză (Worship Together, site-uri cu acorduri) sau primește textul lipit. Biblioteca rămâne în română;
+  engleza stă în `song.en`. Cântările cu engleză primesc 🌐 și apar în folderul virtual „Bilingv”.
+- **🌐 Bilingv (Proiectez, lângă aranjament, `itemBilingual`).** Nou, oprit implicit, per cântare din program: ecranul din
+  sală arată engleza mai mică, cursiv, sub versurile în română (Verse 1 sub Verse 1, Chorus sub Chorus).
+- **Căutarea pe internet (`src/websearch.js`, `src/extract.js`).** Înainte: căuta doar în română, primele câteva pagini.
+  Acum: caută și în engleză (Worship Together, WorshipChords), mai multe pagini, și scoate acordurile din paginile
+  „chord chart” (Intro / Verse / Chorus…).
+
 ## 2026-11-28 · PowerPoint: nu mai desenează în tăcere altfel (2026.11.28.15)
 - **Import PowerPoint / Keynote (control.html, planning.html, `/api/convert`).** Înainte: dacă Keynote / PowerPoint nu
   puteau copia prezentarea exact (lipsă, fără voie, eroare), Betleem trecea în tăcere la desenul propriu (alte fonturi,
