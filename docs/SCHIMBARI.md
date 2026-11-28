@@ -1,6 +1,17 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Clic = scenă, dublu-clic = sală; slide „Gol”; miniaturi ca ecranul (2026.11.28.17)
+- **Clic pe slide (control.html, op `cue`).** Înainte: un clic trimitea slide-ul pe ambele ecrane. Acum: un clic îl pune
+  doar pe ecranul de scenă (portocaliu, „PE SCENĂ”; pe scenă scrie „Doar pe scenă”), dublu-clic îl trimite și în sală.
+  Săgețile / Space merg ca înainte (pe ambele).
+- **Slide „Gol” la începutul fiecărei cântări (`live.pre`).** Nou: sala nu vede nimic (fundalul rămâne), scena arată titlul
+  și „Urmează” primul vers. Cu → de pe ultimul slide al unei cântări, următoarea cântare începe pe „Gol”.
+- **Dublu-clic pe previzualizarea ecranului.** Înainte: pornea proiectorul / ecranul de scenă. Acum: ecranele pornesc singure
+  (în aplicație, când e un al doilea monitor) când pui ceva pe ele; rămân și Ecrane → Proiector / Scenă.
+- **Miniaturile slide-urilor.** Înainte: font, mărime și rânduri aproximative (rândurile goale apăreau). Acum: desenate exact
+  ca ecranul din sală (același font, mărime la scară, aliniere, umbră, întunecare, micșorare la versuri lungi, engleza 🌐).
+
 ## 2026-11-28 · Engleza lângă cântare + căutare mai adâncă (2026.11.28.16)
 - **🇬🇧 Varianta în engleză (control.html → Bibliotecă, `setEnglish`).** Nou: lângă fiecare cântare, butonul 🇬🇧 caută
   varianta în engleză (Worship Together, site-uri cu acorduri) sau primește textul lipit. Biblioteca rămâne în română;

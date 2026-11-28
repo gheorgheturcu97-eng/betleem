@@ -779,6 +779,35 @@ test('📥 songs from another Betleem: only songs are taken, the ones already he
   assert.equal((await fetch('http://localhost:4599/api/import/betleem', { method: 'POST', body: '{}' })).status, 403);
 });
 
+test('one click shows a slide only on the stage; the double-click (go) takes it to the hall; a song starts on its empty slide', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'saveSong', song: { title: 'Gol test', body: 'Verse 1:\nUnu\nDoi\n\nChorus:\nTrei\nPatru' } });
+  await a.next(m => m.type === 'state');
+  const id = (await fetch('http://localhost:4599/api/songs?q=gol test').then(r => r.json()))[0].id;
+  a.send({ type: 'addItem', kind: 'song', songId: id });
+  let st = await a.next(m => m.type === 'state' && m.state.setlist.some(i => i.songId === id));
+  const item = st.state.setlist.findIndex(i => i.songId === id);
+  a.send({ type: 'go', item, slide: 0 }); await a.next(m => m.type === 'state');
+  a.send({ type: 'cue', item, slide: 1 });
+  st = await a.next(m => m.type === 'state' && m.state.live.cue);
+  assert.equal(st.state.live.slide, 0); assert.equal(st.state.live.cue.slide, 1); assert.equal(st.state.live.cueSlides.length, 2);
+  a.send({ type: 'go', item, slide: 1 });
+  st = await a.next(m => m.type === 'state' && !m.state.live.cue);
+  assert.equal(st.state.live.slide, 1);
+  a.send({ type: 'go', item, slide: 0, pre: true });
+  st = await a.next(m => m.type === 'state' && m.state.live.pre);
+  a.send({ type: 'next' });
+  st = await a.next(m => m.type === 'state' && !m.state.live.pre);
+  assert.equal(st.state.live.slide, 0);
+  a.send({ type: 'prev' });
+  st = await a.next(m => m.type === 'state' && m.state.live.pre);
+  const sl = await fetch('http://localhost:4599/api/slides/' + item).then(r => r.json());
+  assert.equal(sl.length, 2);
+  a.ws.close();
+});
+
+
 test('🔒 the public door shows only the volunteer pages, and PIN guessing gets locked out', async () => {
   const L = { 'x-pin': '2222', 'content-type': 'application/json' };
   const sec = await fetch('http://localhost:4599/api/security', { method: 'POST', headers: L, body: JSON.stringify({ door: true, publicUrl: 'https://betleem.tail1.ts.net' }) }).then(r => r.json());

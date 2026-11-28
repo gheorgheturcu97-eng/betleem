@@ -132,12 +132,14 @@
   const outHub = connect(s => {
     S = s; if (s.now) skew = s.now - Date.now();
     style(s.display?.stage);
-    const L = s.live, item = s.setlist[L.item];
+    // 👆 a slide chosen with one click shows here first (the hall keeps what it has until the double-click)
+    const L = s.live.cue ? { ...s.live, item: s.live.cue.item, slide: s.live.cue.slide, pre: s.live.cue.pre, slides: s.live.cueSlides || [], blank: false } : s.live, item = s.setlist[L.item];
+    document.body.classList.toggle('cued', !!s.live.cue);
     $('head').innerHTML = L.item === -2 ? `<b>${esc(L.title || 'Biblia')}</b>` : item ? `<b>${esc(item.title || KIND[item.kind] || '')}</b>${item.key ? ' · ton ' + esc(item.key) : ''}${item.leader ? ' · ' + esc(item.leader) : ''}` : '';
-    $('pos').textContent = L.slides.length > 1 ? `${L.slide + 1} / ${L.slides.length}` : '';
-    $('now').innerHTML = render(L.slides[L.slide]);
-    // what comes next: the next slide of this item; if it is the last one, the next item
-    const n = L.slides[L.slide + 1], nextItem = s.setlist[L.item + 1];
+    $('pos').textContent = (s.live.cue ? 'Doar pe scenă · ' : '') + (L.pre ? 'Gol' : L.slides.length > 1 ? `${L.slide + 1} / ${L.slides.length}` : '');
+    $('now').innerHTML = L.pre ? `<div class="label"><span class="up">Gol</span></div><div class="line" style="opacity:.55">${esc(item?.title || '')}</div>` : render(L.slides[L.slide]);
+    // what comes next: the next slide of this item (after the empty slide: the first verse); if it is the last one, the next item
+    const n = L.slides[L.pre ? 0 : L.slide + 1], nextItem = s.setlist[L.item + 1];
     $('next').innerHTML = D.next === false ? '' : n
       ? (n.image ? `<div class="label"><span class="up">Urmează</span></div>${isVideo(n.image) ? '▶ video' : `<img src="${esc(n.image)}" alt="">`}`
         : `<div class="label" style="--lc:${sectionColor(n.label || '')}"><span class="up">Urmează</span>${esc(n.label || '')}</div>${n.bible ? `<div class="verse">${n.lines.map(esc).join('<br>')}</div>` : n.lines.map(l => `<div class="line">${chordLineToHtml(l, esc)}</div>`).join('')}`)

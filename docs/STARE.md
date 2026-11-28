@@ -119,6 +119,11 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   (`itemBilingual`, `withEnglish()` în server.js pune `slide.second` pe secțiunea cu același nume; main.html `.v2.en`).
   Căutare web RO+EN (`websearch.js`), acorduri din chord charts (`extract.js`, netestat pe pagina reală: proxy-ul blochează).
 
+- **Clic / dublu-clic + „Gol” (2026.11.28.17, verificat în browser, test în hub.test.js):** op `cue` (`live.cue`, `cueSlides`)
+  = doar scena (stage.html îl arată cu „Doar pe scenă”); `go` = sala; `live.pre` = slide-ul Gol (main.html fără text,
+  stage arată „Urmează” primul slide); `screensUp()` în control.html deschide ecranele singure. Miniaturile (`own()`,
+  `.txt.scr`) copiază stilul din main.html; `/api/slides/:i` dă slide-urile ca pe ecran (cu engleza).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

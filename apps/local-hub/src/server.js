@@ -244,7 +244,8 @@ function shiftSlides(obj, slide, d) {
 }
 
 // --- Live state (what is on the screens right now) ---------------------------
-const live = { item: -1, slide: 0, blank: false, logo: false, background: '', message: '', since: 0, bible: null,
+const live = { item: -1, slide: 0, blank: false, pre: false, cue: null,   // pre: the empty slide before a song · cue: only on the stage
+  logo: false, background: '', message: '', since: 0, bible: null,
   noText: false,             // "Fără text": the words go away, the background stays
   messageTo: 'both',         // the message bar: on the audience screen, the stage, or both
   countdown: null,           // { to: ms, label, screens, bg } — "Începem în 4:59" on the screens, on its own background
@@ -427,7 +428,7 @@ function snapshot() {
       origKey: it.kind === 'song' ? (s => s ? core.originalKey(s.key, s.body) : '')(db.songs.find(s => s.id === it.songId)) : undefined,
       slideCount: slidesFor(i).length,
     })),
-    live: { ...live, slides: slidesFor(live.item), title: live.item === -2 ? live.bible?.title || '' : undefined, preachers: preacherCount(), sermon: sermonIndex() },
+    live: { ...live, slides: slidesFor(live.item), cue: live.cue && db.setlist[live.cue.item] ? live.cue : null, cueSlides: live.cue && db.setlist[live.cue.item] ? slidesFor(live.cue.item) : null, title: live.item === -2 ? live.bible?.title || '' : undefined, preachers: preacherCount(), sermon: sermonIndex() },
     now: Date.now(),                                 // screens on other devices correct their clock with this
     // the planned programs of this church (titles and dates only — teams and phone numbers stay out)
     inbox: inboxList().length,                       // files waiting in 📥 Primite
@@ -588,17 +589,27 @@ function handleMessage(ws, m) {
           const lk = db.setlist[item]?.look; if (lk && lk !== db.lookOn) { applyLook(lk); if (db.setlist[item].background) live.background = db.setlist[item].background; } }
         live.item = item;
         live.slide = clamp(m.slide ?? 0, 0, Math.max(0, slidesFor(item).length - 1));
+        live.pre = !!m.pre && db.setlist[item]?.kind === 'song'; live.cue = null;
         live.blank = false; live.logo = false;
+        break;
+      }
+      case 'cue': {                                  // 👆 one click: the slide only on the stage screen; the hall stays as it is
+        const item = Number(m.item);
+        live.cue = db.setlist[item] ? { item, slide: clamp(Number(m.slide) || 0, 0, Math.max(0, slidesFor(item).length - 1)), pre: !!m.pre } : null;
         break;
       }
       case 'next': case 'prev': {
         const dir = m.type === 'next' ? 1 : -1;
         const n = slidesFor(live.item).length;
-        const s = live.slide + dir;
-        if (s >= 0 && s < n) live.slide = s;
+        const s = live.slide + dir, isSong = i => db.setlist[i]?.kind === 'song';
+        live.cue = null;
+        if (live.pre && dir > 0) live.pre = false;                                   // from the empty slide to the first verse
+        else if (!live.pre && s < 0 && isSong(live.item)) live.pre = true;            // back to the empty slide of the song
+        else if (!live.pre && s >= 0 && s < n) live.slide = s;
         else if (live.item !== -2) {                 // jump to neighbouring item (a passage from the Bible tab stays alone)
           const item = clamp(live.item + dir, 0, db.setlist.length - 1);
-          if (item !== live.item) { applyItemBackground(item); live.item = item; live.slide = dir > 0 ? 0 : Math.max(0, slidesFor(item).length - 1); }
+          if (item !== live.item) { applyItemBackground(item); live.item = item; live.slide = dir > 0 ? 0 : Math.max(0, slidesFor(item).length - 1);
+            live.pre = dir > 0 && isSong(item); }                                    // a new song starts on its empty slide
         }
         live.blank = false; live.logo = false;
         break;
@@ -606,6 +617,7 @@ function handleMessage(ws, m) {
       case 'bible': {                                // show a passage now, without putting it in the program
         const ref = cleanRef(m.ref), versions = cleanVersions(m.versions);
         if (!ref || !versions.length) return reply({ type: 'error', error: 'Alege o traducere și un pasaj' });
+        live.cue = null; live.pre = false;
         live.bible = { ref, versions, title: formatRef(ref, bible(versions[0]).lang) + ' · ' + versions.map(v => bible(v).short).join(' / ') };
         live.item = -2; live.slide = clamp(Number(m.slide) || 0, 0, Math.max(0, slidesFor(-2).length - 1));
         live.blank = false; live.logo = false;
@@ -1742,6 +1754,10 @@ async function handle(req, res) {
       const count = {};
       for (const s of db.songs) for (const t of [...(s.tags || []), ...(s.en ? ['Bilingv'] : [])]) count[t] = (count[t] || 0) + 1;
       return json(res, 200, Object.entries(count).sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n })));
+    }
+    if (p.startsWith('/api/slides/') && req.method === 'GET') {   // the slides of a program item, exactly as the screens get them
+      const i = Number(p.split('/')[3]);
+      return Number.isInteger(i) && db.setlist[i] ? json(res, 200, slidesFor(i)) : json(res, 404, { error: 'not found' });
     }
     if (p.startsWith('/api/songs/') && req.method === 'GET') {
       const s = db.songs.find(x => x.id === p.split('/')[3]);

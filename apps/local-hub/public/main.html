@@ -147,7 +147,7 @@
     const dd = s.display ? { ...s.display.main, ...(item?.display || {}), ...(item?.slideStyles?.[L.slide] || {}) } : {};
     if (s.display) style(dd);
     tick();
-    const slide = L.slides[L.slide];
+    const slide = L.pre ? null : L.slides[L.slide];     // ▢ the empty slide before a song: nothing for the hall
     // a page of a presentation, a picture or a video: whole screen, nothing on top
     const src = !L.blank && slide?.image || '';
     if ($('pic').dataset.src !== src) {
@@ -165,7 +165,7 @@
     if (!L.blank && !L.noText) { if (html !== lastHtml) swapText(html, dd); else fit(); }
     $('black').classList.toggle('on', !!L.blank);
     // 🧱 the slide's own layers (a slide's, else the whole song's) and 🏷 the Props that are switched on
-    const lys = L.blank || L.item < 0 ? [] : item?.slideLayers?.[L.slide] ?? item?.layers ?? [];
+    const lys = L.blank || L.pre || L.item < 0 ? [] : item?.slideLayers?.[L.slide] ?? item?.layers ?? [];
     renderLayers($('lyUnder'), lys.filter(l => l.under), { animate: true });
     renderLayers($('lyOver'), lys.filter(l => !l.under), { animate: true });
     renderLayers($('props'), (s.props || []).filter(p => p.on).flatMap(p => p.layers.map(l => ({ ...l, id: p.id + '-' + l.id }))), { animate: true });
