@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · Structura cântării pe program, ca în ProPresenter (Reverb online)
+- **„Structură” în vederea cântării.** Înainte: o cântare deschisă din program arăta ordinea din bibliotecă și tonul original;
+  ordinea se schimba doar din Proiectez → Pregătește de acasă, ca listă de nume. Acum: cântarea deschisă din program are tonul și
+  ordinea programului; butonul **Structură** (lideri și Închinare) deschide ordinea ca blocuri colorate (V1, PC, C, B…):
+  le tragi cu degetul, ✕ scoate, grupurile cântării se adaugă cu o atingere, „↺ Ca în cântare” revine la standard. Se salvează
+  doar la acel program; biblioteca rămâne neschimbată.
+
 ## 2026-11-28 (seara) · Arhiva programelor și propunerile de cântări (Reverb online)
 - **🗄 Arhivă.** Înainte: un program rămânea în listă până a doua zi. Acum: după ora de început + durata lui (cel puțin
   1 h 30) dispare din Planific, Proiectez, MD & Track și „Ești programat”; îl găsești jos, în „🗄 Arhivă”.
