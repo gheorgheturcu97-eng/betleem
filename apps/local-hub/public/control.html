@@ -2583,7 +2583,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   function onPcoEvent(e) {
     if (!pcoPop.classList.contains('show')) { if (e.finished && e.opened) toast('„' + e.opened + '” e în Live'); return; }
     if (e.running) $('pcoPopState').textContent = e.step === 'programe' ? 'Iau programul…' : `Cântări: ${e.done} din ${e.total}`;
-    if (e.finished) { if (e.error) $('pcoPopState').textContent = 'Eroare: ' + e.error; else { pcoPop.classList.remove('show'); toast(e.opened ? '„' + e.opened + '” e în Live' : 'Gata'); } }
+    if (e.finished) { if (e.error) $('pcoPopState').textContent = 'Eroare: ' + e.error; else { pcoPop.classList.remove('show'); toast(e.opened ? '„' + e.opened + '” e în Live' : ['Gata', e.added && `${e.added} cântări noi`, e.replaced && `${e.replaced} înlocuite`, e.merged && `${e.merged} dubluri unite`].filter(Boolean).join(' · ')); } }
   }
   $('progSel').onchange = async e => {
     const v = e.target.value;

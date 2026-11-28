@@ -183,6 +183,16 @@ test('Planning Center songs and plans go into the library and the programs', asy
   const m3 = await fetch('http://localhost:4599/api/songs/' + mare.id).then(x => x.json());
   assert.match(m3.body, /cel corect/);
   assert.equal((await fetch('http://localhost:4599/api/songs?q=doar in contul doi').then(x => x.json())).length, 1);
+  // the same song in the library under a numbered / longer title, and twice: replaced once, the copy joins it
+  const { sameSongs } = await import('../src/server.js');
+  mergePcoSongs([{ title: '1. Este-un vânt ce-adie', body: 'Strofa 1\nEste-un vânt ce-adie lin peste noi\nDuhul Sfânt coboară' }]);
+  const again = mergePcoSongs([{ title: 'Este-un vânt ce adie (live)', body: 'Este-un vânt ce-adie lin peste noi\nDuhul Sfânt coboară\nAltă linie' }]);
+  assert.equal(again.added, 0, 'the same song under a slightly different title is not added twice');
+  const r3 = mergePcoSongs([{ pcoId: 'v1', title: 'Este-un vânt ce-adie', key: 'D', body: 'VERSE 1\n[D]Este-un vânt ce-adie lin peste noi\n[G]Duhul Sfânt coboară' }], { prefer: true });
+  assert.equal(r3.replaced, 1);
+  const vant = await fetch('http://localhost:4599/api/songs?q=este-un vant').then(x => x.json());
+  assert.equal(vant.length, 1); assert.equal(vant[0].title, 'Este-un vânt ce-adie');
+  assert.equal(sameSongs({ title: 'Psalmul 23' }, 'Domnul este Păstorul meu').length, 0, 'no loose match without the same words');
   const p = mergePcoPlans([{ pcoId: 'p1', title: 'Crăciun PCO', date: '2027-12-25T10:00:00Z',
     items: [{ type: 'song', songId: 's1', key: 'A', seconds: 300, title: '' }, { type: 'item', title: 'Predică', seconds: 2100 }] }]);
   assert.deepEqual(p, { added: 1, updated: 0 });

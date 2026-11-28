@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Planning Center: cântările înlocuiesc cântările identice din bibliotecă (2026.11.28.4)
+- **Importul din Planning Center (`mergePcoSongs`, `sameSongs` în src/server.js).** Înainte: o cântare din PCO se
+  potrivea cu biblioteca doar după id sau după exact același titlu, așa că „1. Este-un vânt ce-adie” sau „10000 motive
+  (Cântă suflete)” rămâneau în plus, ca dubluri; iar varianta din PCO fără acorduri nu înlocuia nimic. Acum: se
+  recunoaște aceeași cântare și cu număr în față, cu paranteze, fără diacritice sau după primele versuri. Cu bifa
+  „Cântările din Planning Center sunt cele corecte”: versurile, acordurile, tonul, ordinea și titlul vin din PCO (varianta
+  veche rămâne salvată în cântare), iar dacă aceeași cântare era de mai multe ori în bibliotecă, copiile se unesc într-una
+  (programele care foloseau o copie folosesc cântarea înlocuită; înainte se face o copie a bibliotecii). Cântările aduse
+  din contul altei biserici rămân neatinse. La final scrie câte au fost înlocuite și câte dubluri s-au unit.
+
 ## 2026-11-28 · Mai mult loc în Live (2026.11.28.3)
 - **Programul și Cântările cât ești pe ecran.** Înainte: stăteau mereu deschise, iar slide-urile aveau loc puțin.
   Acum: cât timp e ceva pe ecran (nu „Ecran gol”), se retrag în câte o bară subțire („Program ›”, „‹ Cântări · Biblia”);

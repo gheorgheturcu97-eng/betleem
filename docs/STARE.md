@@ -14,6 +14,8 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - La predică poți atașa o prezentare: PowerPoint, PDF, imagini sau Canva.
 - Echipe și roluri (grilă lunară), „Duminica e gata?” (ce lipsește), mai multe biserici, cu un program pentru fiecare.
 - Import din **Planning Center**, câte un cont pe biserică (2 conturi). Versiunea din PCO poate înlocui cântarea din bibliotecă.
+  Potrivirea (2026-11-28, `sameSongs`): id PCO, titlu, titlu cu număr/paranteze + aceleași versuri, sau aceleași prime versuri;
+  cu „PCO e corect” dublurile se unesc (programele sunt mutate pe cântarea păstrată).
 - Cântări: de câte ori s-a cântat fiecare în ultima perioadă, categorii cu etichete și etichetare în bloc.
 - Asistent: scris sau vorbit, plus fișiere și poze. Face programul și pune **cântările reale din bibliotecă**
   (add_songs și pick_songs, cu căutare iertătoare, ex. „adorare” găsește „Închinare”). Are și modul „💡 Părere”,

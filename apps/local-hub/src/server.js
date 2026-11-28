@@ -1248,18 +1248,48 @@ function pcoEvent(o) {
 }
 const foldTitle = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
-/** Put Planning Center songs into the library: new ones are added, existing ones only get chords if they had none. */
+// a looser title: without a number in front ("1. Este-un vânt"), without what is in brackets ("(Cântă suflete)") and "live"…
+const looseTitle = t => foldTitle(String(t || '').replace(/[([{].*?[)\]}]/g, ' ')).replace(/^\d+\s+/, '').replace(/\b(live|acoustic|official|version|varianta|v\d)\b/g, ' ').replace(/\s+/g, ' ').trim();
+// the first words that are sung (no chords, no section names), to recognise the same song under another title
+const firstWords = body => foldTitle(core.parseSong(String(body || '')).flatMap(sec => sec.lines).map(l => core.stripChords(l)).filter(l => l.trim()).slice(0, 2).join(' ')).slice(0, 40);
+/** The songs of the library that are this Planning Center song: its own id, the same title, the same title written
+ *  a little differently with the same first words, or the same first words. The best match comes first. */
+export function sameSongs(x, body) {
+  const ft = foldTitle(x.title), lt = looseTitle(x.title), fw = firstWords(body);
+  const score = s => s.pcoId && s.pcoId === x.pcoId ? 4 : foldTitle(s.title) === ft ? 3
+    : lt && looseTitle(s.title) === lt && (fw.length < 12 || firstWords(s.body) === fw || !firstWords(s.body)) ? 2
+    : fw.length >= 20 && firstWords(s.body) === fw ? 1 : 0;
+  return db.songs.map(s => [s, score(s)]).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).map(([s]) => s);
+}
+/** Every program (all churches, Live and planned) that used `from` now uses `to`. */
+function repointSong(from, to) {
+  const fix = items => { for (const it of items || []) if (it.songId === from) it.songId = to; };
+  fix(db.setlist); for (const s of db.plan?.services || []) fix(s.items);
+  for (const c of Object.values(db.churchData || {})) { fix(c.setlist); for (const s of c.plan?.services || []) fix(s.items); }
+}
+
+/** Put Planning Center songs into the library: new ones are added, existing ones only get chords if they had none.
+ *  With `prefer` ("Planning Center has the right version") the same song in the library is replaced, and copies of it
+ *  (the same song twice) become one: the programs that used a copy use the replaced song. */
 export function mergePcoSongs(list, { prefer = false, account = '' } = {}) {
-  let added = 0, chords = 0, skipped = 0, replaced = 0;
+  let added = 0, chords = 0, skipped = 0, replaced = 0, merged = 0, backedUp = false;
   for (const x of list) {
     const body = core.normalizeImported(x.body || '');
     if (!x.title || !body.trim()) { skipped++; continue; }
-    const have = db.songs.find(s => s.pcoId === x.pcoId) || db.songs.find(s => foldTitle(s.title) === foldTitle(x.title));
+    const hits = sameSongs(x, body), have = hits[0];
     if (have) {
+      if (prefer) {                                  // the same song more than once in the library: keep one
+        for (const dup of hits.slice(1)) {
+          if (dup.pcoAccount && account && dup.pcoAccount !== account) continue;          // another church's version stays
+          if (dup.pcoId && x.pcoId && dup.pcoId !== x.pcoId && dup.pcoId !== have.pcoId) continue;   // another Planning Center song
+          if (!backedUp) { try { libraryBackup(); } catch {} backedUp = true; }
+          repointSong(dup.id, have.id); db.songs = db.songs.filter(s => s !== dup); merged++;
+        }
+      }
       const other = have.pcoAccount && account && have.pcoAccount !== account;     // the same song, already brought from another account
       if (!other) { have.pcoId = x.pcoId; if (account) have.pcoAccount = account; }
       // "Planning Center has the right version": its words, chords, key and order replace ours (ours stays in song.before)
-      if (prefer && !other && core.hasChords(body) && body.trim() !== have.body.trim()) {
+      if (prefer && !other && (core.hasChords(body) || !core.hasChords(have.body)) && body.trim() !== have.body.trim()) {
         have.before = { body: have.body, key: have.key || '', arrangement: have.arrangement, savedAt: new Date().toISOString() };
         have.body = body; have.key = x.key || core.readMeta(body).key || have.key || '';
         if (x.bpm >= 30 && x.bpm <= 300) have.bpm = Math.round(x.bpm);
@@ -1267,6 +1297,7 @@ export function mergePcoSongs(list, { prefer = false, account = '' } = {}) {
         const order = (x.sequence || []).map(l => String(l)).filter(l => labels.includes(l.toLowerCase()));
         const arr = order.length >= 2 ? order : core.autoArrangement(body);
         if (arr) have.arrangement = arr; else delete have.arrangement;
+        have.title = x.title.slice(0, 120);                       // the Planning Center title too (no „1.” in front, diacritics)
         have.source = 'planningcenter'; have.updatedAt = new Date().toISOString(); replaced++;
         continue;
       }
@@ -1284,7 +1315,7 @@ export function mergePcoSongs(list, { prefer = false, account = '' } = {}) {
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     added++;
   }
-  return { added, chords, skipped, replaced };
+  return { added, chords, skipped, replaced, ...(merged ? { merged } : {}) };
 }
 
 /** Planning Center plans become programs of the selected church (the teams stay as they are in Betleem). */

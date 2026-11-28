@@ -549,7 +549,7 @@
     if (e.running) { if (el) el.textContent = e.step === 'programe' ? 'Iau programele…' : `Cântări: ${e.done} din ${e.total}${e.current ? ' · ' + e.current : ''}`; return; }
     if (!e.finished) return;
     const t = e.error ? 'Eroare: ' + e.error
-      : [e.added != null && `${e.added} cântări noi`, e.chords && `acorduri la ${e.chords} cântări`, e.plans && `${e.plans.added} programe noi, ${e.plans.updated} actualizate`].filter(Boolean).join(' · ') || 'Gata, nimic nou.';
+      : [e.added != null && `${e.added} cântări noi`, e.chords && `acorduri la ${e.chords} cântări`, e.replaced && `${e.replaced} înlocuite cu varianta din Planning Center`, e.merged && `${e.merged} dubluri unite`, e.plans && `${e.plans.added} programe noi, ${e.plans.updated} actualizate`].filter(Boolean).join(' · ') || 'Gata, nimic nou.';
     if (el) el.textContent = 'Gata: ' + t; toast(t);
     if (e.opened) { toast(`„${e.opened}” e acum în Live`); setTimeout(() => { location.href = /Mobi|iPhone|Android/.test(navigator.userAgent) ? '/live.html' : '/control.html'; }, 1200); }
   }
