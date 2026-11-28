@@ -946,6 +946,8 @@
   #slides .slide.pp.live{box-shadow:0 0 0 3px var(--acc),0 10px 30px rgba(255,160,30,.25);background:#0b0c10}
   #slides .slide.pp.live .foot::after{content:"PE ECRAN";margin-left:auto;font-size:10px;letter-spacing:.08em;padding:1px 6px;border-radius:4px;background:rgba(0,0,0,.75);color:#fff}
   #slides .slide.pp.picked:not(.live){box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+  #slides .slide.pp.dragging{opacity:.4}
+  #slides .slide.pp.drop-before{box-shadow:-6px 0 0 0 var(--acc)} #slides .slide.pp.drop-after{box-shadow:6px 0 0 0 var(--acc)}
   #slides .slide.pp .pic{margin:0;border-radius:0}
   .slides-panel{padding:14px 16px 16px}
 </style>
@@ -2412,6 +2414,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     else if (k === 'f') { e.preventDefault(); showTab('lib'); $('q').focus(); $('q').select(); }
     else if (k === 'n') { e.preventDefault(); $('bNew2').click(); }
     else if (k === 'e' && S.live.item >= 0 && S.live.slides.length) { e.preventDefault(); sel = S.live.item; openSlideEditor(S.live.slide, S.live.slides); }
+    else if (k === 'd' && S.setlist[sel]?.kind === 'song' && (pickedSlide >= 0 || pickedMany.size)) {   // the slide(s) you chose
+      e.preventDefault(); const list = (pickedMany.size ? [...pickedMany] : [pickedSlide]).sort((a, b) => b - a);   // from the last one, so numbers stay right
+      list.forEach(i => send({ type: 'duplicateSlide', item: sel, slide: i })); toast(list.length > 1 ? `${list.length} slide-uri repetate` : 'Slide-ul ' + (list[0] + 1) + ' se repetă', () => send({ type: 'undo' }));
+    }
     else if (k === 'd' && S.live.item >= 0 && S.live.slides.length) { e.preventDefault(); send({ type: 'duplicateSlide', item: S.live.item, slide: S.live.slide }); toast('Slide-ul se repetă'); }
     else if (k === 'c' && e.shiftKey && S.live.slides[S.live.slide]) { e.preventDefault(); copyText(S.live.slides[S.live.slide].lines.map(l => stripChords(l)).join('\n')); toast('Text copiat'); }
   });
@@ -2698,12 +2704,32 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       const look = { ...(S.display?.main || {}), ...(it.display || {}) };
       $('slides').style.setProperty('--slideFont', look.font ? `'${String(look.font).replace(/'/g, '')}', system-ui, sans-serif` : 'inherit');
       $('slides').style.setProperty('--dim', bgImg === 'none' ? 0 : Math.min(0.8, (Number(look.dim) || 35) / 100));
+      const own = i => { const o = { ...look, ...(it.slideStyles?.[i] || {}) }; return [o.upper ? 'text-transform:uppercase' : '', o.italic ? 'font-style:italic' : '', o.weight ? 'font-weight:' + o.weight : '',
+        o.color ? 'color:' + o.color : '', o.align ? 'text-align:' + o.align : '', it.slideStyles?.[i]?.font ? `font-family:'${String(o.font).replace(/'/g, '')}',system-ui` : ''].filter(Boolean).join(';'); };
       $('slides').innerHTML = slides.map((sl, i) => `<div class="slide pp ${sel === S.live.item && i === S.live.slide ? 'live' : ''} ${i === pickedSlide ? 'picked' : ''}" data-s="${i}" style="--sc:${sl.label ? sectionColor(sl.label) : '#2a2d34'}">
         ${it.kind === 'song' ? `<span class="tools">
           <button data-t="copy" title="Copiază textul slide-ului">📋</button><button data-t="dup" title="Repetă slide-ul (doar în acest program)">⧉</button><button data-t="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button><button data-t="del" title="Șterge slide-ul din acest program (Delete)">🗑</button></span>` : ''}${sl.image ? `<div class="pic">${/\.(mp4|webm|mov)$/i.test(sl.image) ? `<video src="${esc(sl.image)}" muted preload="metadata"></video>` : `<img src="${esc(sl.image)}" alt="" loading="lazy">`}</div>`
-          : `<div class="thumb" style="--bgimg:${bgImg}"><div class="txt ${sl.lines.some(l => stripChords(l).trim()) ? '' : 'empty'}">${sl.lines.some(l => stripChords(l).trim()) ? sl.lines.map(l => esc(stripChords(l))).join('<br>') : 'slide gol'}</div></div>`}
+          : `<div class="thumb" style="--bgimg:${bgImg}"><div class="txt ${sl.lines.some(l => stripChords(l).trim()) ? '' : 'empty'}" style="${own(i)}">${sl.lines.some(l => stripChords(l).trim()) ? sl.lines.map(l => esc(stripChords(l))).join('<br>') : 'slide gol'}</div></div>`}
         <div class="foot"><span class="n">${i + 1}</span><span class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || (sl.image ? '' : 'fără secțiune'))}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${(it.slideLayers?.[i] ?? it.layers)?.length ? '<span class="styled" title="Slide cu straturi (dublu-clic ca să le editezi)">🧱</span>' : ''}</div></div>`).join('');
     }
+    // ✥ drag a slide onto another one: it moves there (only in this program; ⌘Z undoes)
+    if (it.kind === 'song') document.querySelectorAll('#slides .slide').forEach(el => {
+      el.draggable = true;
+      el.ondragstart = e => { e.dataTransfer.setData('text/x-slide', el.dataset.s); e.dataTransfer.effectAllowed = 'move'; el.classList.add('dragging'); };
+      el.ondragend = () => { el.classList.remove('dragging'); document.querySelectorAll('#slides .drop-before,#slides .drop-after').forEach(x => x.classList.remove('drop-before', 'drop-after')); };
+      el.ondragover = e => { if (!e.dataTransfer.types.includes('text/x-slide')) return; e.preventDefault();
+        const r = el.getBoundingClientRect(), after = e.clientX > r.left + r.width / 2;
+        el.classList.toggle('drop-after', after); el.classList.toggle('drop-before', !after); };
+      el.ondragleave = () => el.classList.remove('drop-before', 'drop-after');
+      el.ondrop = e => {
+        const from = e.dataTransfer.getData('text/x-slide'); if (from === '') return; e.preventDefault();
+        const after = el.classList.contains('drop-after'); el.classList.remove('drop-before', 'drop-after');
+        let to = +el.dataset.s + (after ? 1 : 0); const f = +from; if (to > f) to--;
+        if (to === f) return;
+        send({ type: 'moveSlide', item: sel, from: f, to }); pickedSlide = to; pickedMany.clear();
+        toast('Slide-ul ' + (f + 1) + ' e acum al ' + (to + 1) + '-lea', () => send({ type: 'undo' }));
+      };
+    });
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
       const t = e.target.closest('button')?.dataset.t, i = +el.dataset.s;
       if (it.kind === 'song' && e.target.closest('.lb') && slides[i]) return secPick(e.target.closest('.lb'), i, slides[i].label || '');

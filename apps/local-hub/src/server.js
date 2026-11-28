@@ -475,7 +475,7 @@ wss.on('connection', (ws, req) => {
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 let lastMd = null;                                     // the last MD&TRACK state, for a phone that just opened
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'pasteSlides', 'breakSlide', 'standardLabels', 'saveArrangement', 'deleteArrangement', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'pasteSlides', 'breakSlide', 'moveSlide', 'standardLabels', 'saveArrangement', 'deleteArrangement', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
@@ -493,7 +493,7 @@ function restoreSnapshot(sn) {
 }
 const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', pasteSlides: 'lipirea slide-urilor', breakSlide: 'ruperea slide-ului', standardLabels: 'etichetele standard', saveArrangement: 'salvarea aranjamentului', deleteArrangement: 'ștergerea aranjamentului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', pasteSlides: 'lipirea slide-urilor', breakSlide: 'ruperea slide-ului', moveSlide: 'mutarea slide-ului', standardLabels: 'etichetele standard', saveArrangement: 'salvarea aranjamentului', deleteArrangement: 'ștergerea aranjamentului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -899,6 +899,24 @@ function handleMessage(ws, m) {
         if (it.slideStyles) it.slideStyles = shiftSlides(it.slideStyles, m.slide, -1);
         if (it.slideLayers) it.slideLayers = shiftSlides(it.slideLayers, m.slide, -1);
         if (live.item === m.item && live.slide >= slidesFor(m.item).length) live.slide = Math.max(0, slidesFor(m.item).length - 1);
+        save(); break;
+      }
+      case 'moveSlide': {                            // drag a slide somewhere else in the song (only in this program)
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const from = Number(m.from), to = Number(m.to); if (!Number.isInteger(from) || !Number.isInteger(to) || from === to) break;
+        // the slide and the one it goes next to become sections of their own, so exactly that slide moves
+        for (const n of [from, to]) { const h = slideSource(it, song, n); if (h && !(h.from === 0 && h.to === h.sec.lines.length)) splitAtSlide(song, h, h.sec.label); }
+        const a = slideSource(it, song, from), b = slideSource(it, song, to); if (!a || !b) break;
+        const order = core.arrangementIndexes(core.parseSong(song.body), it.arrangement || song.arrangement);
+        const [tok] = order.splice(a.pos, 1);
+        const at = b.pos > a.pos ? b.pos : b.pos;    // after removing, the target moved up by one when it was below
+        order.splice(to > from ? at : b.pos, 0, tok);
+        it.arrangement = order;
+        const move = map => { if (!map) return map; const arr = []; const n = Math.max(from, to) + 1;
+          for (let i = 0; i < n; i++) arr.push(map[i]); const [x] = arr.splice(from, 1); arr.splice(to, 0, x);
+          const out = { ...map }; for (let i = 0; i < n; i++) { if (arr[i] === undefined) delete out[i]; else out[i] = arr[i]; } return out; };
+        it.slideStyles = move(it.slideStyles); it.slideLayers = move(it.slideLayers);
         save(); break;
       }
       case 'duplicateSlide': {                       // play this slide once more, right after itself (only in this program)

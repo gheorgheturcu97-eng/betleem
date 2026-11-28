@@ -1,6 +1,14 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Muți slide-uri trăgându-le; ⌘D repetă slide-ul ales; miniaturile arată MAJ (2026.11.28.12)
+- **Mutare de slide-uri (`moveSlide`).** Nou: tragi un slide peste altul (linia portocalie arată unde intră) și se mută
+  acolo, doar în acest program; ⌘Z anulează. Dacă slide-ul e o bucată dintr-o secțiune mai lungă, se mută doar bucata.
+- **⌘D.** Înainte: repeta slide-ul de pe ecran, nu pe cel ales. Acum: repetă slide-ul (sau slide-urile ⇧/⌘-clic) alese
+  în listă; dacă nu e ales nimic, tot pe cel de pe ecran.
+- **Miniaturile.** Înainte: MAJ, fontul, culoarea sau alinierea puse pe un singur slide nu se vedeau în listă (doar pe
+  ecran). Acum: miniatura arată la fel ca ecranul.
+
 ## 2026-11-28 · PowerPoint: exact ca în PowerPoint, sau spune de ce nu (2026.11.28.12)
 - **Importul de prezentări pe Mac (`nativePdf` în server.js).** Înainte: încerca doar Keynote; dacă macOS nu-i dădea voie
   (Automatizare), trecea în tăcere la desenul propriu (alte fonturi, texte suprapuse). Acum: încearcă Keynote, apoi
