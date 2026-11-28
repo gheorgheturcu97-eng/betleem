@@ -3,7 +3,7 @@ Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de 
 
 ## 2026-11-28 (seara) · Când pot sluji, locuri libere, ieșirea doar cu acordul liderului (Reverb online + 2026.11.28.19)
 - **🗓 Când pot sluji (Planific).** Nou: fiecare om alege pe fiecare duminică / program de azi până la sfârșitul lunii viitoare
-  posturile lui pe care le poate lua sau „Nu pot” (`reverb_plan_offer`, `v.offer`, `offerFrom/To`). La început de lună cardul
+  departamentul în care poate sluji (postul îl alege liderul de departament) sau „Nu pot” (`reverb_plan_offer`, `v.offer`, `offerFrom/To`). La început de lună cardul
   pulsează. Liderii îl văd primul în listă cu „✓ s-a oferit”; ✦ Completează echipa îi ia întâi pe ei și nu-i pune pe cei care au zis
   că nu pot (`offerFor` în src/plan.js, cu test).
 - **⚠ Locuri libere în curând (lideri).** Nou: un card sus cu programele din următoarele 7 zile care au locuri goale, cu aceleași

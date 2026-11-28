@@ -60,17 +60,17 @@ test('✕ / ＋ posts per service: the standard stays, one service needs only so
   assert.equal(timeLevel(100, 600), 0); assert.equal(timeLevel(460, 600), 1); assert.equal(timeLevel(550, 600), 2); assert.equal(timeLevel(610, 600), 3);
 });
 
-test('🗓 "Când pot sluji": autofill takes who offered for that day and post, never who left the day out', () => {
+test('🗓 "Când pot sluji": autofill takes who offered that day for the department, never who left the day out', () => {
   const plan = defaultPlan();
   applyPlanOp(plan, { op: 'addService', date: '2030-01-06T08:00:00Z', title: 'Duminică' });
   const s = plan.services[0], tobe = plan.departments[0].positions.find(p => p.name === 'Tobe');
   for (const n of ['Ana', 'Bogdan', 'Cristi']) applyPlanOp(plan, { op: 'saveVolunteer', volunteer: { name: n, positions: [tobe.id] } });
   const [ana, bog, cri] = plan.volunteers;
   Object.assign(ana, { offerFrom: '2030-01-01', offerTo: '2030-02-28', offer: {} });                       // filled, did not offer the 6th
-  Object.assign(cri, { offerFrom: '2030-01-01', offerTo: '2030-02-28', offer: { '2030-01-06': [tobe.id] } });   // offered drums that day
+  Object.assign(cri, { offerFrom: '2030-01-01', offerTo: '2030-02-28', offer: { '2030-01-06': [plan.departments[0].id] } });   // offered Închinare that day
   applyPlanOp(plan, { op: 'autoAssign', id: s.id, department: plan.departments[0].id });
   assert.equal(s.assignments[`${tobe.id}#0`].volunteer, cri.id);
-  assert.equal(offerFor(ana, '2030-01-06', tobe.id), 'no'); assert.equal(offerFor(bog, '2030-01-06', tobe.id), '');
+  assert.equal(offerFor(ana, '2030-01-06', plan.departments[0].id), 'no'); assert.equal(offerFor(bog, '2030-01-06', plan.departments[0].id), '');
   s.assignments[`${tobe.id}#0`].status = 'leave';
   assert.ok(serviceWarnings(plan, s).some(w => /cere să fie scos/.test(w)));
 });
