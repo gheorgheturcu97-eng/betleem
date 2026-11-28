@@ -111,6 +111,9 @@
   .svc #svcTitle{font-size:18px;font-weight:650}
   .svc input:hover,.svc input:focus{border-color:var(--stroke);background:rgba(0,0,0,.2)}
   .svc #svcStart{font-size:13px;color:var(--mute);color-scheme:dark}
+  #setlist .item .tmr{order:3;margin-left:auto;font:600 12px ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;padding:2px 7px;border-radius:7px;background:rgba(255,255,255,.08);align-self:center}
+  #setlist .item .tmr:empty{display:none} #setlist .item .tmr.t1{background:#f5d90a;color:#111} #setlist .item .tmr.t2{background:#ff8c1a;color:#111}
+  #setlist .item .tmr.t3{background:#e5243b;color:#fff;animation:tmrBlink 1s steps(2,jump-none) infinite} @keyframes tmrBlink{50%{opacity:.55}}
   #setlist{display:flex;flex-direction:column;gap:6px;margin:12px 0 0;flex:1}
   .item{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 10px;border-radius:var(--r-sm);cursor:pointer;
         background:rgba(255,255,255,.045);border:1px solid transparent;transition:background .15s,border-color .15s}
@@ -2290,6 +2293,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   document.querySelectorAll('#countPop [data-min]').forEach(b => b.onclick = () => { countSend({ minutes: +b.dataset.min }); toast('Numărătoarea a pornit'); });
   $('cAtGo').onclick = () => { if ($('cAt').value) { countSend({ at: $('cAt').value }); toast('Numărătoare până la ' + $('cAt').value); } };
   $('cStop').onclick = () => { send({ type: 'countdown', off: true }); toast('Numărătoarea s-a oprit'); };
+  // ⏱ the moment on Live: its own minutes counting down in the program, the same colours as the stage screen
+  setInterval(() => {
+    const el = document.querySelector('#setlist .item.live .tmr'), it = S?.setlist[S.live.item]; if (!el || !it?.minutes || !S.live.since) { if (el) el.textContent = ''; return; }
+    const plan = it.minutes * 60, left = plan - (Date.now() - S.live.since) / 1000, a = Math.abs(Math.round(left));
+    el.textContent = (left < 0 ? '+' : '') + Math.floor(a / 60) + ':' + String(a % 60).padStart(2, '0');
+    el.className = 'tmr ' + (left < 0 ? 't3' : left <= plan * 0.1 ? 't2' : left <= plan * 0.25 ? 't1' : '');
+  }, 500);
   setInterval(() => {                                // the countdown, in the button too
     const t = svcTotal(), on = S?.live.serviceStart, sl = on ? t - (Date.now() - on) / 1000 : t, f = v => { v = Math.abs(Math.round(v)); return Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0'); };
     $('svcState').textContent = !t ? '' : on ? (sl < 0 ? 'depășit cu ' + f(sl) : 'mai sunt ' + f(sl)) : 'așteaptă prima cântare · ' + f(t);
@@ -2671,7 +2681,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     renderMediaBar();
     const slHtml = S.setlist.map((it, i) => `<div class="item ${i === sel ? 'sel' : ''} ${i === S.live.item ? 'live' : ''}" data-i="${i}" draggable="true" ${it.kind !== 'song' ? `data-k="${esc(it.kind)}"` : ''}>
       <span class="num">${i + 1}</span>
-      <span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${it.kind === 'song' && S.setlist.filter(x => x.songId === it.songId).length > 1 ? '<span class="rep" title="Cântarea apare de mai multe ori în program">repetată</span> ' : ''}${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}${it.incoming && !it.slideCount ? ` <span class="rep" title="Predicatorul a trimis-o: o găsești în 📥 Primite">📎 prezentare de la ${esc(it.incoming.from)}</span>` : ''}</small></span>
+      ${i === S.live.item && it.minutes ? '<span class="tmr" title="Timpul acestui moment: galben la 75 %, portocaliu la 90 %, roșu când trece peste"></span>' : ''}<span class="t"><b>${esc(it.title || KIND[it.kind])}</b><small>${it.kind === 'song' && S.setlist.filter(x => x.songId === it.songId).length > 1 ? '<span class="rep" title="Cântarea apare de mai multe ori în program">repetată</span> ' : ''}${esc([it.kind === 'song' ? (it.key ? 'ton ' + it.key : 'cântare') : KIND[it.kind], it.minutes + ' min', it.slideCount ? it.slideCount + ' slide-uri' : ''].filter(Boolean).join(' · '))}${it.incoming && !it.slideCount ? ` <span class="rep" title="Predicatorul a trimis-o: o găsești în 📥 Primite">📎 prezentare de la ${esc(it.incoming.from)}</span>` : ''}</small></span>
       <span class="acts">${it.kind === 'song' ? '<button data-a="key" title="Schimbă tonul">♯</button>' : ''}${it.kind !== 'song' && it.kind !== 'bible' ? '<button data-a="att" title="Adaugă / schimbă prezentarea acestui moment (PowerPoint, Keynote, PDF, poze)">📎</button><button data-a="cva" title="Prezentarea acestui moment din Canva">🎨</button>' : ''}<button data-a="del" title="Scoate din program">✕</button></span></div>`).join('')
       || '<div class="empty">Programul e gol.<br>Alege cântări din Bibliotecă →</div>';
     if ($('setlist').dataset.html !== slHtml) { $('setlist').innerHTML = slHtml; $('setlist').dataset.html = slHtml; }

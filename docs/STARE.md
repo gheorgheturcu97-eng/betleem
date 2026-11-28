@@ -130,6 +130,12 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   „opțional”. Reverb online (`apps/web/index.html`, gh-pages): același lucru + `.mineCard.u1/u2/u3`, `nag()`, „📲 Amintește-i”,
   migrarea `doc.posV = 2` (Camera 1/2, Chitară 2…). Verificat cu o copie falsă a Supabase (fără date reale).
 
+- **Seara 28.11 (Reverb online publicat; hub 2026.11.28.19 nepublicat până se reconectează MacBook-ul):** `apps/web/index.html`
+  `.tabs` fix sus sub 980px; `songSheet()` (#songPick); `lyricsOk()` + `#pinSet` (op `setLyricsPin`, `doc.lyricsPin` = sare +
+  SHA-256; e o încuietoare, nu securitate: drepturile reale rămân rolurile); `setViewOnly` / `doc.viewOnly` (user_id) +
+  `viewOnly()`. Hub: `.tmr` pe momentul de pe Live (control.html), `#drift` și `time.t0–t3` în planning.html, `#pTime.t1/t2`
+  în live.html. Verificat cu Playwright (Supabase fals pentru Reverb online).
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

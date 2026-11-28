@@ -106,6 +106,11 @@
   /* team for a service */
   .dept{border-radius:var(--r-sm);padding:10px 12px;background:rgba(0,0,0,.2);border:1px solid var(--stroke)}
   .dept h3{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:8px} .dept h3 i{width:10px;height:10px;border-radius:50%}
+  #items .it.done{opacity:.45} #items .it.now{box-shadow:inset 3px 0 0 #4d7cff}
+  #items .it time.t0,#items .it time.t1,#items .it time.t2,#items .it time.t3,#drift{font-variant-numeric:tabular-nums;border-radius:7px;padding:1px 6px;font-weight:600}
+  #items .it time.t0{background:rgba(77,124,255,.2)} .t1{background:#f5d90a!important;color:#111!important} .t2{background:#ff8c1a!important;color:#111!important}
+  .t3{background:#e5243b!important;color:#fff!important;animation:tBlink 1s steps(2,jump-none) infinite} @keyframes tBlink{50%{opacity:.55}}
+  #drift{margin-left:8px;font-size:12.5px} #drift.t0{background:rgba(50,208,116,.18);color:#7ee3a6}
   .slot{display:grid;grid-template-columns:110px 1fr 44px;gap:6px;align-items:center;margin-bottom:6px}
   .slot span{font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .slot select{padding:5px 8px;font-size:13px} .slot .st{padding:5px 2px;text-align:center}
@@ -464,7 +469,8 @@
     $('lpOk').onclick = () => { hub.send({ type: 'churchProfile', vision: $('lpVision').value, logo }); $('modal').classList.remove('show'); toast('Salvat'); };
   }
   $('tEdit').onclick = editTeam; $('tLogo').onclick = editTeam;
-  const hub = connect(s => { backdrop(s.live?.background); const c = s.church; if (c) { $('church').innerHTML = esc(c.name) + '<small class="pw">powered by <i class="rv" aria-label="Reverb"></i></small>'; document.title = c.name + ' · Planificare'; renderTeam(c); } },
+  let LIVE = null;
+  const hub = connect(s => { LIVE = s.live; backdrop(s.live?.background); const c = s.church; if (c) { $('church').innerHTML = esc(c.name) + '<small class="pw">powered by <i class="rv" aria-label="Reverb"></i></small>'; document.title = c.name + ' · Planificare'; renderTeam(c); } },
     e => {
       if (e.role) { $('signin').classList.toggle('show', e.role !== 'leader'); if (e.role === 'leader' && !P) load(); }
       if (e.type === 'login') { if (e.ok && e.role === 'leader') { load(); toast('Bine ai venit!'); } else toast(e.ok ? 'PIN-ul acesta e de operator. Pentru planificare trebuie PIN-ul de lider.' : 'PIN greșit'); }
@@ -716,6 +722,25 @@
       if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.animate([{ outline: '2px solid #f5b301' }, { outline: '2px solid transparent' }], { duration: 1600 }); }
     });
   }
+  // ⏱ the program on Live, while the service runs: the moment on screen counts down its minutes (yellow 75 %, orange 90 %,
+  // red over), the ones before it are done, and the total says how far we are from the planned clock (+4 min = late)
+  setInterval(() => {
+    const s = P?.services?.find(x => x.id === selId); const on = s && s.id === P.currentPlanId && LIVE?.item >= 0 && LIVE.since;
+    document.querySelectorAll('#items .it').forEach(el => { const i = +el.dataset.i, tm = el.querySelector('time');
+      el.classList.toggle('done', !!on && i < LIVE.item); el.classList.toggle('now', !!on && i === LIVE.item);
+      if (!tm.dataset.at) tm.dataset.at = tm.textContent;
+      if (!on || i !== LIVE.item || !s.items[i]?.minutes) { tm.textContent = tm.dataset.at; tm.className = ''; return; }
+      const plan = s.items[i].minutes * 60, left = plan - (Date.now() - LIVE.since) / 1000, a = Math.abs(Math.round(left));
+      tm.textContent = (left < 0 ? '+' : '') + Math.floor(a / 60) + ':' + String(a % 60).padStart(2, '0');
+      tm.className = left < 0 ? 't3' : left <= plan * 0.1 ? 't2' : left <= plan * 0.25 ? 't1' : 't0'; });
+    let d = $('drift'); if (!d) { d = Object.assign(document.createElement('span'), { id: 'drift' }); $('total').after(d); }
+    if (!on) { d.textContent = ''; d.className = ''; return; }
+    const startPlan = new Date(s.date).getTime() + s.items.slice(0, LIVE.item).reduce((t, x) => t + (x.minutes || 0) * 60000, 0);
+    const late = Math.round((LIVE.since - startPlan) / 60000);           // this moment started late (+) or early (-) against the plan
+    if (Math.abs(late) > 180) { d.textContent = ''; d.className = ''; return; }   // not today's service (a rehearsal, an old program): no drift
+    d.textContent = late > 0 ? `+${late} min față de program` : late < 0 ? `${late} min (înainte de program)` : 'exact pe program';
+    d.className = late > 5 ? 't3' : late > 2 ? 't2' : late > 0 ? 't1' : 't0';
+  }, 1000);
   function renderItems(s) {
     renderReady(s);
     let t = new Date(s.date), total = 0;

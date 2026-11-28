@@ -1,6 +1,20 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · Telefon: bara de sus, cântări ușor, cod pentru versuri, „Doar vede”; culorile timpului (2026.11.28.19 + Reverb online)
+- **Bara cu zonele pe telefon (Reverb online).** Înainte: Planific / Proiectez / MD & Track stăteau în pagină și plecau la
+  derulare. Acum: stau mereu sus, îngust; dispar doar când deschizi acordurile pe tot ecranul.
+- **＋ Cântări în program (Proiectez, telefon).** Înainte: alegeai felul, scriai titlul exact și apăsai Adaugă. Acum: un buton
+  mare deschide lista cu căutare (titlu, autor); ＋ adaugă imediat, „✓ în program” arată ce e deja; rămâne deschisă pentru
+  următoarea. Rândul vechi (moment, verset) a rămas dedesubt.
+- **🔒 Codul pentru versuri (Oameni → Codul pentru versuri).** Nou, oprit implicit: când coordonatorul pune un cod, muzicienii îl
+  scriu o dată (până închid aplicația) înainte să schimbe versuri, acorduri, ordinea strofelor sau tonul. Liderii nu au nevoie.
+- **👁 Doar vede (Oameni → la fiecare om).** Nou: omul vede programul și răspunde la locul lui, dar nu mai are Proiectez,
+  MD & Track și nu poate schimba nimic. Pornit pentru Cristi Vâșcea la cererea proprietarului (îl pornește coordonatorul).
+- **⏱ Culorile timpului (Live, Planificare, telefonul predicatorului).** Înainte: doar ecranul de scenă colora timpul. Acum: și
+  momentul de pe Live din program (control.html), și desfășurătorul din Planificare (numără invers, cele trecute estompate,
+  „+4 min față de program”), și telefonul predicatorului: galben la 75 %, portocaliu la 90 %, roșu care clipește peste timp.
+
 ## 2026-11-28 · Posturi pe fiecare program + insistența până la răspuns (2026.11.28.18 + Reverb online)
 - **Echipa unui program (Planificare și Reverb online, op `setNeed`, `s.need`).** Înainte: fiecare program primea toate
   posturile tuturor departamentelor și nu se putea scoate niciunul. Acum: ✕ pe un post sau „✕ tot” pe un departament îl

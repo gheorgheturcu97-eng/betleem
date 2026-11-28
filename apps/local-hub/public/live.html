@@ -66,7 +66,7 @@
   .pv .tag{position:absolute;left:8px;top:8px;font:700 11px system-ui;letter-spacing:.08em;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.6)}
   .pv.now{border:2px solid var(--acc)} .pv.nx{width:55%;opacity:.8} .prow{display:flex;gap:12px;align-items:flex-start}
   .pinfo{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
-  #pTime{font:700 38px/1 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums} #pTime.over{color:#ff5a5a} #pTime small{display:block;font:500 12px system-ui;color:var(--mute);margin-top:4px}
+  #pTime{font:700 38px/1 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums} #pTime.over{color:#ff5a5a;animation:tblink 1s steps(2,jump-none) infinite} #pTime.t1{color:#f5d90a} #pTime.t2{color:#ff8c1a} @keyframes tblink{50%{opacity:.45}} #pTime small{display:block;font:500 12px system-ui;color:var(--mute);margin-top:4px}
   #pCount{color:var(--mute);font-size:14px} #pState{padding:10px 12px;border-radius:10px;background:var(--card);font-size:15px} #pState.off{background:#5a1d1d}
   #pNotes{white-space:pre-wrap;background:var(--card);border-radius:10px;padding:12px;font-size:17px;line-height:1.45} #pNotes:empty{display:none}
   #pBtns{position:fixed;left:0;right:0;bottom:0;display:none;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)} body.pred #pBtns{display:flex}
@@ -180,7 +180,7 @@
     const mins = it?.minutes || 0, drift = S.now ? S.now - (S._at || Date.now()) : 0;
     if (on && mins && L.since) {
       const left = Math.round(mins * 60 - (Date.now() + drift - L.since) / 1000), a = Math.abs(left);
-      $('pTime').className = left < 0 ? 'over' : ''; $('pTime').innerHTML = `${left < 0 ? '+' : ''}${Math.floor(a / 60)}:${String(a % 60).padStart(2, '0')}<small>${left < 0 ? 'peste timp' : 'rămase din ' + mins + ' min'}</small>`;
+      $('pTime').className = left < 0 ? 'over' : left <= mins * 6 ? 't2' : left <= mins * 15 ? 't1' : '';   // ⏱ yellow at 75 %, orange at 90 %, red over $('pTime').innerHTML = `${left < 0 ? '+' : ''}${Math.floor(a / 60)}:${String(a % 60).padStart(2, '0')}<small>${left < 0 ? 'peste timp' : 'rămase din ' + mins + ' min'}</small>`;
     } else $('pTime').innerHTML = mins ? `${mins}:00<small>timpul predicii</small>` : '';
     $('pGo').textContent = on ? 'Înainte ▶' : '▶ Pornește'; $('pGo').disabled = $('pPrev').disabled = !ctl || si < 0 || !!L.preacherOff;
     $('pPrev').disabled ||= !on || cur <= 0;

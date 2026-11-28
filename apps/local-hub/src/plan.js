@@ -161,6 +161,19 @@ export function applyPlanOp(plan, op) {
       op.position = p.id;
       break;
     }
+    // 🔒 the lyrics code (Reverb online): only its fingerprint is kept; musicians type it before changing words / slides
+    case 'setLyricsPin': {
+      const k = op.pin;
+      if (k && /^[0-9a-f-]{36}$/.test(k.salt) && /^[0-9a-f]{64}$/.test(k.hash)) plan.lyricsPin = { salt: k.salt, hash: k.hash }; else delete plan.lyricsPin;
+      break;
+    }
+    // 👁 someone who only looks (Reverb online): sees the program, answers his own place; no Proiectez / MD & Track, no editing
+    case 'setViewOnly': {
+      const u = str(op.user, 40); if (!u) return 'Lipsește omul';
+      const set = new Set(plan.viewOnly || []); op.on ? set.add(u) : set.delete(u);
+      if (set.size) plan.viewOnly = [...set]; else delete plan.viewOnly;
+      break;
+    }
     case 'deleteDepartment': plan.departments = plan.departments.filter(d => d.id !== op.id); break;
     case 'saveVolunteer': {
       const v = op.volunteer || {};
