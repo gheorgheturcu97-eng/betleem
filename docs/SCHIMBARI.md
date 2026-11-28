@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Live fără spații goale (2026.11.28.6)
+- **Așezarea din mijloc în Live (control.html, stilul `#pp-side`).** Înainte: sus o bandă cu cele două previzualizări mici
+  în mijloc și gol în stânga și în dreapta; jos fundalurile pe un rând cu loc gol în capăt. Acum: slide-urile stau în
+  stânga, pe toată înălțimea; în dreapta e o coloană cu Sala și Scena una sub alta, iar sub ele fundalurile, într-o grilă
+  care umple tot locul (🔍 le face mai mari / mai mici). Butoanele fundalurilor au nume scurte: ＋ Adaugă, ⇩ Din rețea,
+  📌 Fixează. Ctrl/⌘+2 (sau 🖥) ascunde previzualizările și fundalurile urcă în locul lor.
+
 ## 2026-11-28 · Ecranul de scenă ca în ProPresenter (2026.11.28.5)
 - **Scena (`public/stage.html`).** Înainte: jos, „Urmează” era o coloană mică în stânga și „În program” o coloană în
   dreapta, iar slide-ul următor ieșea mic. Acum: slide-ul următor stă pe toată lățimea, chiar sub versurile de acum

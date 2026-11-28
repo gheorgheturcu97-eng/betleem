@@ -51,6 +51,7 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
 - Bara de sus: **⏻ Ecran gol** (merge și cu Esc), **🖥** (arată sau ascunde previzualizarea ecranelor), **⏱**
   (numărătoare cu fundal) și **mesaj** pe sală, pe scenă sau peste tot.
   Slide-urile se schimbă cu Spațiu / → / ← și cu clic.
+- Live (2026-11-28): slide-urile în stânga pe toată înălțimea; în dreapta Sala + Scena una sub alta și fundalurile dedesubt.
 - Ecran de scenă ca în ProPresenter (2026-11-28): slide-ul următor pe toată lățimea sub versuri, „În program” pe un rând lung jos.
 - Ecran de scenă cu **timerul slujbei**: suma minutelor din plan, pornește la prima cântare, galben la 5 min,
   portocaliu la 3 min, roșu care pulsează când trece de timp.

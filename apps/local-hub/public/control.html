@@ -972,6 +972,28 @@
   .main.auto>#pLeft:not(:hover):not(:focus-within)::after{content:"Program ›"}
   .main.auto>#pRight:not(:hover):not(:focus-within)::after{content:"‹ Cântări · Biblia"}
 </style>
+
+<style id="pp-side">
+  /* 🧩 Live fără spații moarte (ca în ProPresenter): slide-urile în stânga, pe toată înălțimea; în dreapta o coloană cu
+     previzualizarea Sălii și a Scenei una sub alta, iar sub ele fundalurile, care umplu tot ce rămâne. */
+  .center{display:grid!important;grid-template-columns:minmax(0,1fr) var(--sideW,clamp(260px,21vw,430px));
+          grid-template-rows:auto minmax(0,1fr);grid-template-areas:"slides screens" "slides bgs";gap:8px}
+  .center>.gut[data-g=scrH],.center>.gut[data-g=bgH]{display:none}
+  .center>.slides-panel{grid-area:slides;min-height:0}
+  .center>#screens{grid-area:screens;display:flex!important;flex-direction:column;gap:8px;padding:8px}
+  .center>#screens .screen{width:100%;max-height:none}
+  .center>#bgPanel{grid-area:bgs;height:auto!important;min-height:0;padding:10px}
+  .center:has(#screens[data-vis=none])>#bgPanel{grid-row:1 / span 2}
+  .center:has(#screens[data-vis=none])>#screens{display:none!important}
+  #bgPanel .bg-head{flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  #bgPanel .bg-head .grow{display:none}
+  #bgPanel .bg-head .zoom{margin-left:auto}
+  #bgPanel .bg-head .btn{padding:4px 10px;font-size:12px}
+  #gallery{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(var(--bgW,104px),1fr));gap:8px;
+           overflow-x:hidden!important;overflow-y:auto!important;align-content:start;grid-auto-rows:max-content;flex:1;min-height:0}
+  #gallery .bg{width:auto!important}
+  .screen .mon{right:8px!important;max-width:60%}
+</style>
 </head>
 <body>
 <div class="rv-mark" aria-hidden="true"></div>
@@ -1096,9 +1118,9 @@
       <div class="bg-panel glass" id="bgPanel">
         <div class="bg-head">
           <div class="seg bgtabs"><button data-bt="bg" class="sel">Fundaluri</button><button data-bt="light" data-mod="lumini" title="💡 Scenele de lumini (MIDI), legate de program și de secțiuni">💡 Lumini</button><button data-bt="props" title="🏷 Props: logo, bandă, text fix, anunț. Stau pe ecran peste orice slide, până le oprești">🏷 Props</button></div><label class="zoom" title="Mărimea fundalurilor">🔍<input type="range" id="bgZoom" min="90" max="300" step="10"></label><span class="grow"></span>
-          <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează pe cântare</button>
-          <label class="btn">＋ Imagine / video<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
-          <button id="bPull" class="btn" title="Ia fundalurile de pe alt Reverb din rețeaua bisericii (de ex. calculatorul principal); doar cele care lipsesc">⇩ De la alt calculator</button>
+          <button id="bPin" class="btn" title="Fundalul ales apare automat la această cântare">📌 Fixează</button>
+          <label class="btn" title="Adaugă fundaluri: imagini sau video">＋ Adaugă<input type="file" id="upload" accept="image/*,video/*" multiple hidden></label>
+          <button id="bPull" class="btn" title="Ia fundalurile de pe alt Reverb din rețeaua bisericii (de ex. calculatorul principal); doar cele care lipsesc">⇩ Din rețea</button>
         </div>
         <div id="gallery"></div>
         <div id="propPanel" hidden>
