@@ -914,6 +914,37 @@
 </style>
 <link rel="stylesheet" href="/glass.css">
 <link rel="stylesheet" href="/calm.css">
+
+<style id="pp-slides">
+  /* 🖼 Slide-urile ca în ProPresenter: fiecare slide e un ecran mic 16:9 cu textul centrat (cum iese pe proiector),
+     dedesubt o bandă cu numărul și secțiunea în culoarea ei. Mărimea: 🔍 din capul listei. */
+  #slides{gap:14px;grid-template-columns:repeat(auto-fill,minmax(var(--slideW,240px),1fr));padding:2px 2px 10px}
+  #slides .slide.pp{padding:0;min-height:0;border:0;border-radius:8px;background:#0b0c10;overflow:hidden;
+    box-shadow:0 0 0 1px rgba(255,255,255,.09),0 6px 18px rgba(0,0,0,.35);transition:transform .12s,box-shadow .15s;font-size:inherit;line-height:1.25}
+  #slides .slide.pp:hover{transform:translateY(-2px);background:#0b0c10;box-shadow:0 0 0 1px rgba(255,255,255,.28),0 10px 24px rgba(0,0,0,.45)}
+  #slides .slide.pp .thumb{position:relative;aspect-ratio:16/9;container-type:inline-size;display:grid;place-items:center;
+    background:#000 center/cover no-repeat;background-image:var(--bgimg,none)}
+  #slides .slide.pp .thumb::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,var(--dim,.35));pointer-events:none}
+  #slides .slide.pp .txt{position:relative;z-index:1;width:88%;text-align:center;color:#fff;font-family:var(--slideFont,inherit);
+    font-weight:700;font-size:clamp(8px,4.5cqw,24px);line-height:1.25;text-shadow:0 1px 3px rgba(0,0,0,.8);overflow:hidden;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6}
+  #slides .slide.pp .txt.empty{color:rgba(255,255,255,.35);font-weight:500;font-style:italic}
+  #slides .slide.pp .foot{display:flex;align-items:center;gap:8px;height:24px;padding:0 8px;background:var(--sc,#4b505a);color:#111;
+    font-size:11.5px;font-weight:700}
+  #slides .slide.pp .foot .n{position:static;color:inherit;opacity:.75;font-size:11.5px;font-variant-numeric:tabular-nums;background:none;padding:0}
+  #slides .slide.pp .foot .lb{display:block;flex:1;min-width:0;margin:0;padding:0;background:none;color:#111!important;font-size:11.5px;
+    letter-spacing:.02em;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:0}
+  #slides .slide.pp .foot .lb.none{color:rgba(255,255,255,.55)!important;font-weight:500}
+  #slides .slide.pp:not([style*="--sc:#"]) .foot{background:#2a2d34}
+  #slides .slide.pp .styled{position:static;font-size:11px;color:#111;opacity:.8}
+  #slides .slide.pp .tools{top:6px;right:6px;z-index:2}
+  #slides .slide.pp .tools button{background:rgba(0,0,0,.6);border-color:rgba(255,255,255,.2);backdrop-filter:blur(6px)}
+  #slides .slide.pp.live{box-shadow:0 0 0 3px var(--acc),0 10px 30px rgba(255,160,30,.25);background:#0b0c10}
+  #slides .slide.pp.live .foot::after{content:"PE ECRAN";margin-left:auto;font-size:10px;letter-spacing:.08em;padding:1px 6px;border-radius:4px;background:rgba(0,0,0,.75);color:#fff}
+  #slides .slide.pp.picked:not(.live){box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+  #slides .slide.pp .pic{margin:0;border-radius:0}
+  .slides-panel{padding:14px 16px 16px}
+</style>
 </head>
 <body>
 <div class="rv-mark" aria-hidden="true"></div>
@@ -2601,12 +2632,18 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     let slides = sel === S.live.item ? S.live.slides : null;
     if (!slides) slides = await previewSlides(it);
     if (!slides.length) {
-      $('slides').innerHTML = `<div class="slide ${sel === S.live.item ? 'live' : ''}" data-s="0"><div class="lb">${esc(KIND[it.kind])}</div>${esc(it.title)}</div>`;
+      $('slides').innerHTML = `<div class="slide pp ${sel === S.live.item ? 'live' : ''}" data-s="0" style="--sc:#8c929a"><div class="thumb"><div class="txt">${esc(it.title || KIND[it.kind])}</div></div><div class="foot"><span class="n">1</span><span class="lb">${esc(KIND[it.kind])}</span></div></div>`;
     } else {
-      $('slides').innerHTML = slides.map((sl, i) => `<div class="slide ${sel === S.live.item && i === S.live.slide ? 'live' : ''} ${i === pickedSlide ? 'picked' : ''}" data-s="${i}" style="--sc:${sectionColor(sl.label || '')}">
-        <span class="n">${i + 1}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${(it.slideLayers?.[i] ?? it.layers)?.length ? '<span class="styled" title="Slide cu straturi (dublu-clic ca să le editezi)">🧱</span>' : ''}${it.kind === 'song' ? `<span class="tools">
+      // 🖼 like ProPresenter: a small 16:9 screen (the song's background, the projector's font), a coloured band below
+      const bgName = it.background || S.live.background || '', bgImg = bgName && !/\.(mp4|webm|mov)$/i.test(bgName) ? `url('/media/${encodeURIComponent(bgName)}')` : 'none';
+      const look = { ...(S.display?.main || {}), ...(it.display || {}) };
+      $('slides').style.setProperty('--slideFont', look.font ? `'${String(look.font).replace(/'/g, '')}', system-ui, sans-serif` : 'inherit');
+      $('slides').style.setProperty('--dim', bgImg === 'none' ? 0 : Math.min(0.8, (Number(look.dim) || 35) / 100));
+      $('slides').innerHTML = slides.map((sl, i) => `<div class="slide pp ${sel === S.live.item && i === S.live.slide ? 'live' : ''} ${i === pickedSlide ? 'picked' : ''}" data-s="${i}" style="--sc:${sl.label ? sectionColor(sl.label) : '#2a2d34'}">
+        ${it.kind === 'song' ? `<span class="tools">
           <button data-t="copy" title="Copiază textul slide-ului">📋</button><button data-t="dup" title="Repetă slide-ul (doar în acest program)">⧉</button><button data-t="edit" title="Editează slide-ul: text, secțiune, font, poziție">✎</button><button data-t="del" title="Șterge slide-ul din acest program (Delete)">🗑</button></span>` : ''}${sl.image ? `<div class="pic">${/\.(mp4|webm|mov)$/i.test(sl.image) ? `<video src="${esc(sl.image)}" muted preload="metadata"></video>` : `<img src="${esc(sl.image)}" alt="" loading="lazy">`}</div>`
-          : `<div class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || 'fără secțiune')}</div><div>${sl.lines.map(l => esc(stripChords(l))).join('<br>')}</div>`}</div>`).join('');
+          : `<div class="thumb" style="--bgimg:${bgImg}"><div class="txt ${sl.lines.some(l => stripChords(l).trim()) ? '' : 'empty'}">${sl.lines.some(l => stripChords(l).trim()) ? sl.lines.map(l => esc(stripChords(l))).join('<br>') : 'slide gol'}</div></div>`}
+        <div class="foot"><span class="n">${i + 1}</span><span class="lb ${sl.label ? '' : 'none'}">${esc(sl.label || (sl.image ? '' : 'fără secțiune'))}</span>${it.slideStyles?.[i] ? '<span class="styled" title="Slide cu aspect propriu">Aa</span>' : ''}${(it.slideLayers?.[i] ?? it.layers)?.length ? '<span class="styled" title="Slide cu straturi (dublu-clic ca să le editezi)">🧱</span>' : ''}</div></div>`).join('');
     }
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
       const t = e.target.closest('button')?.dataset.t, i = +el.dataset.s;
@@ -4390,7 +4427,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
 
   // ---- layout: drag the dividers between panels; zoom slides and backgrounds (remembered on this computer)
   const LAYOUT_KEY = 'betleem.layout';
-  const DEF = { colL: 300, colR: 390, scrH: 32, bgH: 0, slideW: 210, bgW: 128 };
+  const DEF = { colL: 300, colR: 390, scrH: 32, bgH: 0, slideW: 220, bgW: 128 };
   let lay = { ...DEF };
   try { Object.assign(lay, JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}')); } catch {}
   function applyLayout() {

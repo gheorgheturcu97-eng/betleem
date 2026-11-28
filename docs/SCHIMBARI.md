@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Slide-urile din Proiectez arată ca în ProPresenter (2026.11.28.2)
+- **Lista de slide-uri (control.html, `#slides`).** Înainte: carduri mici cu text înghesuit, eticheta secțiunii sus și
+  o margine colorată. Acum: fiecare slide e un ecran mic 16:9, cu fundalul cântării și fontul de pe proiector, textul
+  centrat ca pe ecran, iar dedesubt o bandă în culoarea secțiunii cu numărul și numele (Strofa 1, Refren…). Slide-ul de
+  pe ecran are chenar și scrie „PE ECRAN”. Clic pe nume tot schimbă secțiunea; butoanele 📋 ⧉ ✎ 🗑 apar tot la trecerea
+  cu mouse-ul. Mărimea se schimbă tot din 🔍.
+
 ## 2026-11-28 · Reparat: programele noi și cântările nu mai dispar după sincronizarea cu Reverb online
 - **Sincronizarea cu Reverb online (`src/reverb-sync.js`).** Înainte: pe un calculator legat de Reverb online (ex. Mac
   mini), un program nou făcut aici sau cântările adăugate într-un program dispăreau după câteva secunde, pentru că copia

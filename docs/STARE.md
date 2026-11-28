@@ -38,6 +38,8 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   până la Pasul 3.
 
 ## Proiectez (`public/control.html`, `main.html`, `stage.html`)
+- Slide-urile în listă arată ca în ProPresenter (2026-11-28): ecrane mici 16:9 cu fundalul și fontul de pe proiector,
+  bandă colorată dedesubt cu numărul și secțiunea, „PE ECRAN” pe cel live (stilul `#pp-slides`).
 - Versuri, Biblie, PowerPoint și PDF (pe Mac prin Keynote, pe Windows prin PowerPoint, altfel prin randarea proprie),
   ProPresenter și FreeShow (import), Canva (neverificat cu cont real).
 - Fundaluri: 15 imagini și 4 video incluse, ale tale și ștergere în coș cu anulare.
