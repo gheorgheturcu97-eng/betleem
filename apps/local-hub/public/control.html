@@ -877,7 +877,7 @@
 
   /* ---------- Proiectez: only what a volunteer needs on Sunday, big and calm */
   body.mode-proiectez .menubar,body.mode-proiectez .navtabs,
-  body.mode-proiectez #bUndo,body.mode-proiectez #bRedo,body.mode-proiectez #layoutT,
+  body.mode-proiectez #layoutT,
   body.mode-proiectez #bKeys,body.mode-proiectez #aiBtn,body.mode-proiectez #addKind,body.mode-proiectez #bAddItem,
   body.mode-proiectez #setlist .acts,body.mode-proiectez #tabs [data-t=web],body.mode-proiectez #tabs [data-t=edit],body.mode-proiectez #arrRow>.tool,
   body.mode-proiectez .slides-panel [data-t=dup],body.mode-proiectez .slides-panel [data-t=del],body.mode-proiectez .slides-panel [data-t=edit],
@@ -1550,7 +1550,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     </div>
   </div>
   <div class="btns"><button id="sedReset" class="ghost" title="Slide-ul arată din nou ca restul cântării">↺ Ca restul</button>
-    <button id="sedCopy" class="ghost" title="Ține minte aspectul și straturile acestui slide">📋 Copiază aspectul</button><button id="sedPaste" class="ghost" title="Pune aici aspectul copiat (alege apoi: doar slide / toată cântarea / toate)">📥 Lipește aspectul</button><span class="grow"></span>
+    <button id="sedCopy" class="ghost" title="Ține minte aspectul și straturile acestui slide">📋 Copiază aspectul</button><button id="sedPaste" class="ghost" title="Pune aspectul copiat pe toată cântarea (toate slide-urile ei)">📥 Lipește pe toată cântarea</button><span class="grow"></span>
     <button id="sedCancel" title="Închide fără să păstrezi schimbările">Renunță</button><button id="sedOk" class="acc" title="Salvează și închide (la fel: Esc sau clic în afară)">Gata</button></div>
 </div></div>
 <div class="modal" id="propModal"><div class="glass sed">
@@ -4487,7 +4487,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('sedPaste').onclick = () => {
     if (!lookClip) return toast('Copiază întâi aspectul unui slide (📋)');
     LE.record(); ed.st = { ...ed.st, ...structuredClone(lookClip.st) }; LE.layers = structuredClone(lookClip.layers); LE.render(); fillSlideEditor();
-    toast('Aspect lipit. Alege mai sus: doar acest slide, toată cântarea sau toate, apoi Salvează.');
+    // the copied look goes on the whole song at once (every slide), then the editor closes; ⌘Z / ↶ undoes it
+    ed.scope = 'song'; document.querySelectorAll('#sedScope button').forEach(b => b.classList.toggle('sel', b.dataset.s === 'song'));
+    $('sedOk').click(); toast('Aspectul e pus pe toată cântarea', () => send({ type: 'undo' }));
   };
   $('sedModal').onkeydown = e => {
     if (!document.querySelector('.lye-menu') && LE.key(e)) { e.preventDefault(); return; }

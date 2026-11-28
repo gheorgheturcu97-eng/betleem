@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · ↶ ↷ în Proiectez; aspectul copiat se pune pe toată cântarea (2026.11.28.12)
+- **Anulează / Refă.** Înainte: în Proiectez butoanele ↶ ↷ erau ascunse (mergea doar ⌘Z). Acum: se văd sus, lângă
+  telefon; ⌘Z / ⌘⇧Z merg ca înainte.
+- **Editorul de slide: 📥 Lipește aspectul.** Înainte: punea aspectul copiat doar pe slide-ul deschis și trebuia ales apoi
+  „toată cântarea” și Salvează. Acum: butonul se numește „📥 Lipește pe toată cântarea”: pune aspectul (font, mărime,
+  culori, poziție, straturi) pe toate slide-urile cântării și închide editorul; ↶ sau ⌘Z îl anulează.
+
 ## 2026-11-28 · Siguranță: proiectorul nu se mai închide din greșeală (2026.11.28.11)
 - **Fereastra proiectorului / scenei.** Înainte (2026.11.28.3–10): Esc apăsat când fereastra proiectorului avea focusul
   o închidea, iar dublu-clic pe previzualizare o închidea dacă era deschisă. Acum: Esc pe proiector nu face nimic;
