@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · ✂ Rupe aici taie doar slide-ul ales (2026.11.28.13)
+- **Ruperea slide-ului (`breakSlide`).** Înainte: tăia secțiunea de la cursor până la capăt, iar restul se rearanja (de
+  ex. „trei+patru | cinci+șase” devenea „trei | patru+cinci | șase”), părea că dispare un slide. Acum: doar slide-ul ales
+  se rupe în două („trei | patru”), celelalte rămân exact cum erau. Test nou în hub.test.js.
+
 ## 2026-11-28 · Muți slide-uri trăgându-le; ⌘D repetă slide-ul ales; miniaturile arată MAJ (2026.11.28.12)
 - **Mutare de slide-uri (`moveSlide`).** Nou: tragi un slide peste altul (linia portocalie arată unde intră) și se mută
   acolo, doar în acest program; ⌘Z anulează. Dacă slide-ul e o bucată dintr-o secțiune mai lungă, se mută doar bucata.

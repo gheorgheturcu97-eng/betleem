@@ -941,11 +941,16 @@ function handleMessage(ws, m) {
       case 'breakSlide': {                           // ✂ like Reflow in ProPresenter: a new slide starts at this line
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const song = db.songs.find(x => x.id === it.songId); if (!song) break;
-        const hit = slideSource(it, song, m.slide); if (!hit) break;
-        const at = hit.from + Math.round(Number(m.line) || 0);
-        if (at <= 0 || at >= hit.sec.lines.length) return reply({ type: 'error', error: 'Pune cursorul între două rânduri ca să rupi slide-ul acolo.' });
-        // the section is cut in two with the same name: arrangements by name keep both halves, numbered ones are renumbered
-        if (splitAtSlide(song, { ...hit, from: at, to: hit.sec.lines.length }, hit.sec.label || 'Verse') === null) return reply({ type: 'error', error: 'Nu am putut rupe slide-ul.' });
+        let hit = slideSource(it, song, m.slide); if (!hit) break;
+        const line = Math.round(Number(m.line) || 0);
+        if (line <= 0 || line >= hit.to - hit.from) return reply({ type: 'error', error: 'Pune cursorul între două rânduri ca să rupi slide-ul acolo.' });
+        // only this slide is cut: first it becomes a section of its own (the slides around it stay exactly as they were),
+        // then it is cut at the cursor; the parts keep the same name, so arrangements by name keep them, numbered ones are renumbered
+        if (!(hit.from === 0 && hit.to === hit.sec.lines.length)) {
+          if (splitAtSlide(song, hit, hit.sec.label || 'Verse') === null) return reply({ type: 'error', error: 'Nu am putut rupe slide-ul.' });
+          hit = slideSource(it, song, m.slide); if (!hit) break;
+        }
+        if (splitAtSlide(song, { ...hit, from: line, to: hit.sec.lines.length }, hit.sec.label || 'Verse') === null) return reply({ type: 'error', error: 'Nu am putut rupe slide-ul.' });
         save(); reply({ type: 'broken', slide: Number(m.slide) }); break;
       }
       case 'pasteSlides': {                          // ⌘V: copied slides (from this song or another one) go after a slide

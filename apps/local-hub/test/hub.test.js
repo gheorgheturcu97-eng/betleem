@@ -118,6 +118,24 @@ test('editSlide fixes words and keeps chords on them', async () => {
   a.ws.close();
 });
 
+test('breakSlide: only the chosen slide is cut in two; the slides around it stay as they were', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'saveSong', song: { title: 'Rupere test', body: 'Verse 1:\nUnu unu\nDoi doi\nTrei trei\nPatru patru\nCinci cinci\nSase sase' } });
+  await a.next(m => m.type === 'state');
+  const id = (await fetch('http://localhost:4599/api/songs?q=rupere test').then(r => r.json()))[0].id;
+  a.send({ type: 'addItem', kind: 'song', songId: id });
+  const st = await a.next(m => m.type === 'state' && m.state.setlist.some(i => i.songId === id));
+  const item = st.state.setlist.findIndex(i => i.songId === id);
+  a.send({ type: 'arrangement', item, value: null, maxLines: 2 }); await a.next(m => m.type === 'state');
+  a.send({ type: 'breakSlide', item, slide: 1, line: 1 });
+  await a.next(m => m.type === 'broken');
+  const slides = await fetch('http://localhost:4599/api/slides/' + item).then(r => r.ok ? r.json() : null).catch(() => null);
+  const song = await fetch('http://localhost:4599/api/songs/' + id).then(r => r.json());
+  assert.match(song.body, /Unu unu\nDoi doi\n\nVerse 1:\nTrei trei\n\nVerse 1:\nPatru patru\n\nVerse 1:\nCinci cinci\nSase sase/);
+  a.ws.close();
+});
+
 test('pasteSlides: a slide copied from one song goes after a slide of another; the library order stays', async () => {
   const a = client(); await a.open; await a.next(m => m.type === 'hello');
   a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
