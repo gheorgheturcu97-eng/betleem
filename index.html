@@ -278,7 +278,11 @@
   .fl{display:block;margin:0 0 var(--sp-3)} .fl>span,.fl label>span{display:block;font-size:12px;color:var(--text-3);margin:0 0 5px;letter-spacing:.02em}
   .fl2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)} .fl3{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--sp-2)}
   @media (max-width:480px){.fl3{grid-template-columns:1fr 1fr 1fr}.fl3 label:first-child{grid-column:1/-1}}
-  .arr{display:flex;flex-wrap:wrap;gap:6px;min-height:36px;padding:6px;border-radius:var(--r-m);background:rgba(0,0,0,.3)}
+  .arr{display:flex;flex-wrap:wrap;gap:6px;min-height:48px;padding:8px;border-radius:var(--r-m);background:rgba(0,0,0,.3)}
+  .blk{position:relative;display:inline-flex;flex-direction:column;align-items:flex-start;min-width:54px;padding:6px 26px 6px 10px;border-radius:9px;background:var(--fill-2);box-shadow:inset 0 -3px 0 var(--lc);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+  .blk b{font-size:15px;font-weight:700;color:var(--lc)} .blk small{font-size:11px;color:var(--text-3);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .blk button{position:absolute;top:2px;right:2px;padding:2px 6px;font-size:12px;background:none;color:var(--text-3)}
+  .secs .blk.g{padding:6px 10px;background:none;box-shadow:inset 0 0 0 1px var(--line-2),inset 0 -3px 0 var(--lc);cursor:pointer} .blk.drag{z-index:5;opacity:.9;box-shadow:inset 0 -3px 0 var(--lc),0 10px 24px rgba(0,0,0,.5);cursor:grabbing} .blk.target{outline:2px dashed var(--accent)}
   .arr button{padding:5px 8px 5px 10px;font-size:13px;border-radius:8px;gap:6px} .arr button i{font-style:normal;color:var(--text-3)}
   .secs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px} .secs button{padding:5px 10px;font-size:13px;background:none;box-shadow:inset 0 0 0 1px var(--line-2)}
   .bgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
@@ -416,7 +420,7 @@
   </section>
   <section id="vSong" hidden>
     <div class="stop"><button id="sBack">←</button><span class="t" id="sTitle"></span>
-      <select id="sKey" title="Tonul"></select><button id="sChords" class="on" title="Acorduri da/nu">Acorduri</button><button id="sFit" class="on" title="Toată piesa pe ecran / derulez">⤢</button><button id="sEdit" title="Corectează textul și acordurile" hidden>✎</button></div>
+      <select id="sKey" title="Tonul"></select><button id="sChords" class="on" title="Acorduri da/nu">Acorduri</button><button id="sFit" class="on" title="Toată piesa pe ecran / derulez">⤢</button><button id="sArr" title="Structura cântării la acest program (ordinea grupurilor)" hidden>Structură</button><button id="sEdit" title="Corectează textul și acordurile" hidden>✎</button></div>
     <div class="chart" id="sChart"></div>
     <nav class="smap" id="sMap" aria-label="Secțiunile cântării"></nav>
   </section>
@@ -776,7 +780,7 @@ Refren:
   let I = null;
   async function openItem(s, i) {
     const it = structuredClone(s.items[i]), lead = canPlan(), md = canMd() && it.kind === 'song';
-    if (!lead && !md) { if (it.kind === 'song') openSong(it.songId, it.title); return; }
+    if (!lead && !md) { if (it.kind === 'song') openSong(it.songId, it.title, null, { svc: s.id, i }); return; }
     I = { svc: s.id, i, it, lead, song: null, secs: [], orig: '' };
     $('iHead').textContent = `${KNAME[it.kind] || ''} · ${it.title || ''}`;
     if (it.kind === 'song') {
@@ -793,8 +797,9 @@ Refren:
         <label><span>Până la</span><input id="iTo" type="number" min="0" max="176" value="${r.to || ''}"></label></div>`); }
     if (it.kind === 'song') {
       f.push(I.song ? `<label class="fl"><span>Tonul${I.orig ? ` (în cântare: ${esc(I.orig)})` : ''}</span><select id="iKey"><option value="">Ca în cântare</option>${(I.orig ? KEYS.filter(k => k.endsWith('m') === I.orig.endsWith('m')) : KEYS).map(k => `<option${k === it.key ? ' selected' : ''}>${k}</option>`).join('')}</select></label>
-        <div class="fl"><span>Ordinea pe ecran (atinge o parte ca s-o scoți)</span><div class="arr" id="iArr"></div>
-        <div class="secs" id="iSecs"></div><div class="row" style="margin-top:8px"><button id="iArrReset" class="ghost" style="flex:0 0 auto">Ca în cântare</button></div></div>`
+        <div class="fl"><span>Structura la acest program <small class="mute">(trage blocurile ca să schimbi ordinea · ✕ scoate)</small></span><div class="arr" id="iArr"></div>
+        <span style="margin-top:12px">Grupurile cântării <small class="mute">(atinge ca să-l pui la sfârșit)</small></span><div class="secs" id="iSecs"></div>
+        <div class="row" style="margin-top:10px"><button id="iArrReset" class="ghost" style="flex:0 0 auto">↺ Ca în cântare</button><span class="mute" id="iArrNote" style="font-size:12.5px;align-self:center"></span></div></div>`
         : '<p class="mute">Cântarea nu e în biblioteca online, așa că tonul și ordinea se aleg la biserică.</p>');
     }
     if (lead) f.push(`<div class="fl2"><label class="fl"><span>Cine conduce</span><input id="iLead" maxlength="60" value="${esc(it.leader || '')}"></label>
@@ -810,9 +815,30 @@ Refren:
   const secName = k => I.secs[k]?.label || `Partea ${k + 1}`;
   function drawArr() {
     if (!$('iArr')) return;
-    $('iArr').innerHTML = I.arr.map((t, k) => `<button data-x="${k}" style="box-shadow:inset 3px 0 0 ${sectionColor(secName(+t.slice(1)))}">${esc(secName(+t.slice(1)))}<i>✕</i></button>`).join('') || '<span class="mute" style="font-size:13px;padding:4px">Nicio parte. Adaugă de mai jos.</span>';
-    $('iSecs').innerHTML = I.secs.map((x, k) => `<button data-add="${k}">+ ${esc(secName(k))}</button>`).join('');
+    const blk = k => `<b>${esc(ABBR(secName(k)) || k + 1)}</b><small>${esc(secName(k))}</small>`;
+    $('iArr').innerHTML = I.arr.map((t, k) => `<div class="blk" data-k="${k}" style="--lc:${sectionColor(secName(+t.slice(1)))}">${blk(+t.slice(1))}<button data-x="${k}" title="Scoate">✕</button></div>`).join('') || '<span class="mute" style="font-size:13px;padding:4px">Nicio parte. Adaugă de mai jos.</span>';
+    $('iSecs').innerHTML = I.secs.map((x, k) => `<button data-add="${k}" class="blk g" style="--lc:${sectionColor(secName(k))}">${blk(k)}</button>`).join('');
+    $('iArrNote').textContent = I.custom ? 'Structură doar pentru acest program' : 'Structura standard a cântării';
   }
+  // drag a block of the structure to another place (finger or mouse); the nearest gap is where it lands
+  $('iForm').addEventListener('pointerdown', e => {
+    const bl = e.target.closest('#iArr .blk'); if (!bl || e.target.closest('button')) return;
+    e.preventDefault(); bl.setPointerCapture(e.pointerId);
+    const from = +bl.dataset.k, x0 = e.clientX, y0 = e.clientY; let to = from, moved = false;
+    const blocks = [...$('iArr').querySelectorAll('.blk')], rects = blocks.map(b => b.getBoundingClientRect());
+    bl.classList.add('drag');
+    const move = ev => {
+      const dx = ev.clientX - x0, dy = ev.clientY - y0; if (!moved && Math.hypot(dx, dy) < 5) return; moved = true;
+      bl.style.transform = `translate(${dx}px,${dy}px)`;
+      let best = from, dist = Infinity;
+      rects.forEach((r, i) => { const d = Math.hypot(r.left + r.width / 2 - ev.clientX, r.top + r.height / 2 - ev.clientY); if (d < dist) { dist = d; best = i; } });
+      to = best; blocks.forEach((b, i) => b.classList.toggle('target', moved && i === to && i !== from));
+    };
+    const up = () => { bl.removeEventListener('pointermove', move); bl.removeEventListener('pointerup', up); bl.removeEventListener('pointercancel', up);
+      bl.style.transform = ''; bl.classList.remove('drag'); blocks.forEach(b => b.classList.remove('target'));
+      if (moved && to !== from) { const [x] = I.arr.splice(from, 1); I.arr.splice(to, 0, x); I.custom = true; drawArr(); itemPrev(); } };
+    bl.addEventListener('pointermove', move); bl.addEventListener('pointerup', up); bl.addEventListener('pointercancel', up);
+  });
   function itemPrev() {
     const el = $('iPrev'), it = I.it; unfit(el);
     if (it.kind === 'song' && I.song) {
@@ -837,7 +863,7 @@ Refren:
     else if (b.dataset.bg !== undefined) { I.it.background = b.dataset.bg; for (const x of $('iBg').children) x.classList.toggle('on', x === b); itemPrev(); }
   });
   $('iForm').addEventListener('input', () => itemPrev());
-  const closeItem = () => { $('vItem').hidden = true; document.body.style.overflow = ''; I = null; };
+  const closeItem = () => { $('vItem').hidden = true; I = null; if (!$('vSong').hidden && cur_) drawSong(); else document.body.style.overflow = ''; };
   $('iBack').onclick = closeItem;
   $('iSave').onclick = async () => {
     if (!I?.lead && !(await lyricsOk())) return;
@@ -1106,7 +1132,7 @@ Refren:
     let at = d.getHours() * 60 + d.getMinutes();     // ⏱ the run sheet with the clock: when each moment starts
     const clock = m => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
     const prog = items.map((it, i) => { const t0 = clock(at); at += it.minutes || 0; return `<div class="it${it.kind === 'song' ? ' song' : ''}${mins ? ' timed' : ''}"><span class="n">${mins ? `<span class="t0">${t0}</span>` : i + 1}</span>
-      <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}
+      <div class="x"><b${it.kind === 'song' ? ` data-song="${esc(it.songId || '')}" data-title="${esc(it.title)}" data-i="${i}" data-s="${s.id}"` : ''}>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}
         <small><span class="kind">${esc(KNAME[it.kind] || '')}</span>${it.leader ? ' · ' + esc(it.leader) : ''}</small></div>
       ${edit ? `<span class="ed" data-s="${s.id}"><button data-rm="${i}" data-s="${s.id}" title="Scoate">✕</button></span>` : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
       || '<p class="mute" style="margin:6px 0;font-size:14px">Programul nu e scris încă.</p>';
@@ -1224,7 +1250,7 @@ Refren:
   $('gList').addEventListener('click', async e => {
     const b = e.target.closest('button,[data-song]'); if (!b) return;
     const s = G.doc.services.find(x => [b.dataset.s, b.dataset.additem, b.dataset.rename, b.dataset.del].includes(x.id));
-    if (b.dataset.song !== undefined) return openSong(b.dataset.song, b.dataset.title);
+    if (b.dataset.song !== undefined) return openSong(b.dataset.song, b.dataset.title, null, b.dataset.s ? { svc: b.dataset.s, i: +b.dataset.i } : null);
     if (b.dataset.edit) { G.edit.has(b.dataset.edit) ? G.edit.delete(b.dataset.edit) : G.edit.add(b.dataset.edit); G.open.add(b.dataset.edit); return drawProgram(); }
     if (b.dataset.mv && s) { const it = s.items.slice(), i = +b.dataset.i, j = i + +b.dataset.mv; if (j < 0 || j >= it.length) return; [it[i], it[j]] = [it[j], it[i]]; return change({ op: 'setItems', id: s.id, items: it }); }
     if (b.dataset.rm && s) { const it = s.items.slice(); it.splice(+b.dataset.rm, 1); return change({ op: 'setItems', id: s.id, items: it }); }
@@ -1307,13 +1333,17 @@ Refren:
   $('sFind').oninput = listSongs;
   $('sList').onclick = e => { const r = e.target.closest('.srow'); if (r) openSong(null, null, r.dataset.id); };
   // a song by its row, or by the program's song id (the id in the desktop library), or by its title
-  async function openSong(localId, title, rowId) {
+  let ctx_ = null;                                     // the program item the song was opened from (its key and structure)
+  const ctxItem = () => ctx_ && (G.doc?.services || []).find(x => x.id === ctx_.svc)?.items?.[ctx_.i];
+  async function openSong(localId, title, rowId, ctx = null) {
+    ctx_ = ctx;
     let q = sb.from('songs').select('id, church_id, local_id, title, author, key, bpm, body, arrangement');
     const hit = rowId ? { id: rowId } : lib.find(x => localId && x.local_id === localId) || lib.find(x => title && x.title.toLowerCase() === String(title).toLowerCase());
     if (!hit) return alert('Cântarea nu e în biblioteca online.');
     const { data, error } = await q.eq('id', hit.id).single();
     if (error || !data) return alert('Nu pot deschide cântarea. Verifică internetul.');
-    cur_ = data; want = originalKey(cur_.key, cur_.body) || '';
+    cur_ = data; want = ctxItem()?.key || originalKey(cur_.key, cur_.body) || '';
+    $('sArr').hidden = !(ctx_ && (canPlan() || canMd()));
     $('sKey').innerHTML = want ? KEYS.filter(k => k.endsWith('m') === want.endsWith('m')).map(k => `<option${k === want ? ' selected' : ''}>${k}</option>`).join('') : '<option>—</option>';
     $('sEdit').hidden = !canEditSongs(cur_.church_id);
     $('sKey').disabled = !want; $('sTitle').textContent = cur_.title; $('vSong').hidden = false; document.body.style.overflow = 'hidden';
@@ -1327,7 +1357,7 @@ Refren:
   function drawSong() {
     const orig = originalKey(cur_.key, cur_.body), steps = want && orig ? keyDistance(orig, want) : 0;
     const body = transpose(cur_.body, steps, prefersFlats(want || 'C'));
-    const secs = arrange(parseSong(body), cur_.arrangement);
+    const own = ctxItem()?.arrangement, secs = arrange(parseSong(body), own?.length ? own : cur_.arrangement);
     const line = l => /\[/.test(l) && !stripChords(l).trim()
       ? (withChords ? `<div class="only">${esc(l.match(/\[([^\]]*)\]/g).map(x => x.slice(1, -1)).join('   '))}</div>` : '')
       : `<div class="ln">${withChords ? chordLineToHtml(l, esc) : esc(stripChords(l))}</div>`;
@@ -1354,6 +1384,7 @@ Refren:
   $('sMap').onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; const t = $('sec' + b.dataset.go); if (!t) return;
     if (whole) { t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash'); }     // the whole song is on screen: show where
     else $('sChart').scrollTo({ top: t.offsetTop - 8, behavior: 'smooth' }); };
+  $('sArr').onclick = () => { const s = (G.doc?.services || []).find(x => x.id === ctx_?.svc); if (s) openItem(s, ctx_.i); };
   const closeSong = () => { $('vSong').hidden = true; document.body.style.overflow = ''; cur_ = null; };
   $('sBack').onclick = () => history.back();
   addEventListener('popstate', () => { if (!$('vSong').hidden) closeSong(); });
