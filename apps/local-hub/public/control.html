@@ -2513,7 +2513,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const convert = async f => {
       const r = await fetch('/api/convert?name=' + encodeURIComponent(f.name), { method: 'POST', body: f, headers: { 'x-pin': hub.pin() } });
       if ((r.headers.get('content-type') || '').includes('pdf')) return await r.blob();
-      const j = await r.json(); if (j.denied) await ask(j.error, [], 'Am înțeles'); else if (j.error) toast(j.error); return null;
+      const j = await r.json().catch(() => ({}));
+      if (!/\.(pptx?|ppsx?|key|odp)$/i.test(f.name)) { if (j.error) toast(j.error); return null; }
+      const why = (j.error || 'Nu am putut deschide prezentarea cu Keynote / PowerPoint.') + (j.detail ? '\n\nDetaliu: ' + j.detail : '');
+      const go = await ask(why + '\n\nCel mai sigur: în PowerPoint, Fișier → Exportă → PDF, apoi importă PDF-ul — arată exact ca în PowerPoint (fonturi, poze, poziții). Sau continui acum, iar Betleem desenează slide-urile singur (pot arăta altfel).', [], 'Continuă oricum');
+      if (!go) throw new Error('Import oprit. Exportă prezentarea ca PDF din PowerPoint și import-o.');
+      return null;
     };
     try {
       const fonts = families => api('/api/fonts', { method: 'POST', body: JSON.stringify({ families }) });

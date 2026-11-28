@@ -1,6 +1,13 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · PowerPoint: nu mai desenează în tăcere altfel (2026.11.28.15)
+- **Import PowerPoint / Keynote (control.html, planning.html, `/api/convert`).** Înainte: dacă Keynote / PowerPoint nu
+  puteau copia prezentarea exact (lipsă, fără voie, eroare), Betleem trecea în tăcere la desenul propriu (alte fonturi,
+  texte suprapuse). Acum: importul se oprește și spune de ce (inclusiv dacă nu găsește Keynote sau PowerPoint în
+  Aplicații și eroarea exactă), cu varianta sigură: în PowerPoint Fișier → Exportă → PDF și importă PDF-ul (identic).
+  „Continuă oricum” păstrează desenul Betleem ca rezervă.
+
 ## 2026-11-28 · Bara de deasupra slide-urilor se poate ascunde (2026.11.28.14)
 - **„⌃ Ascunde bara” (control.html).** Nou: un buton în capul listei de slide-uri ascunde bara cu Secțiunile, ordinea,
   Rândurile, Textul, fontul și tranziția; slide-urile primesc tot locul. „⌄ Arată bara” o aduce înapoi. Calculatorul ține

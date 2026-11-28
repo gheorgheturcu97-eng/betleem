@@ -2263,7 +2263,8 @@ async function handle(req, res) {
       const name = path.basename(url.searchParams.get('name') || '').replace(/[^\w.\- ]/g, '_');
       if (!SHOW_EXT.includes(path.extname(name).toLowerCase())) return json(res, 400, { error: 'Tip de fișier nepermis' });
       const native = (process.platform === 'darwin' && (fs.existsSync('/Applications/Keynote.app') || fs.existsSync('/Applications/Microsoft PowerPoint.app'))) || process.platform === 'win32';
-      if (!findOffice() && !native) return json(res, 200, { office: false });
+      const apps = { keynote: fs.existsSync('/Applications/Keynote.app'), powerpoint: fs.existsSync('/Applications/Microsoft PowerPoint.app') };
+      if (!findOffice() && !native) return json(res, 200, { office: false, apps, error: 'Pe acest calculator nu am găsit Keynote sau Microsoft PowerPoint (în Aplicații), deci nu pot copia prezentarea exact.' });
       const buf = await body(req, 300 * 1024 * 1024, true);
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'betleem-show-')), src = path.join(dir, name);
       fs.writeFileSync(src, buf);
@@ -2272,7 +2273,7 @@ async function handle(req, res) {
         if (!pdf) {
           // macOS refused: Betleem may not control Keynote / PowerPoint yet (Privacy & Security → Automation)
           const denied = /-1743|not authori[sz]ed|nu este autorizat|not allowed/i.test(lastNativeError);
-          return json(res, 200, { office: false, denied, error: denied
+          return json(res, 200, { office: false, denied, apps, detail: String(lastNativeError || '').slice(-240), error: denied
             ? 'macOS nu-i dă voie lui Betleem să deschidă Keynote / PowerPoint. Deschide Setări sistem → Confidențialitate și securitate → Automatizare → Betleem și bifează Keynote și Microsoft PowerPoint, apoi importă din nou. Până atunci, slide-urile sunt desenate de Betleem și pot arăta altfel decât în PowerPoint.'
             : 'Nu am putut deschide prezentarea cu Keynote / PowerPoint, așa că slide-urile sunt desenate de Betleem și pot arăta altfel decât în PowerPoint.' });
         }
