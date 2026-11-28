@@ -136,6 +136,10 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   `viewOnly()`. Hub: `.tmr` pe momentul de pe Live (control.html), `#drift` și `time.t0–t3` în planning.html, `#pTime.t1/t2`
   în live.html. Verificat cu Playwright (Supabase fals pentru Reverb online).
 
+- **Prezentarea predicatorului din Reverb online:** `preachBox()` / `attach()` în apps/web/index.html, RPC `reverb_plan_attach`
+  + bucket `prezentari` (migrarea 20261128210000, testată pe un Postgres local cu tabele de probă; **neaplicată încă în
+  Supabase**). Hub: `cloudFiles()` în server.js (după sincronizare, în 📥 Primite; **neverificat cap-coadă**), badge 🎨 în control.html.
+
 ## MD&TRACK (`public/control.html`, `public/music.js`, `public/pitch-worklet.js`, `public/voice.js`)
 - Bara de sus: ton, titlu, play/pauză, secțiunea anterioară și următoare, măsura, BPM, click.
 - Mixer digital: fadere cu numele dedesubt, mute, solo, pan, **rutare pe ieșirile plăcii de sunet**, track nou,

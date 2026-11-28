@@ -1,6 +1,14 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 (seara) · Predicatorul își pune prezentarea din aplicație (Reverb online + 2026.11.28.19)
+- **📎 / 🎨 la „Ești programat” (Reverb online).** Înainte: predicatorul putea trimite prezentarea doar din linkul către
+  calculatorul bisericii. Acum: la locul lui de Predicator / Pastor / Vorbitor are „📎 Pune prezentarea” (PowerPoint,
+  Keynote, PDF, poze, video, până la 200 MB) și „🎨 Link Canva”, le poate schimba sau scoate până în ultimul minut.
+  Fișierul merge în Supabase (`prezentari`, cale cu parte aleatorie), apoi calculatorul îl aduce în 📥 Primite la
+  următoarea sincronizare și Predica arată „📎 de la …”; linkul Canva apare în Live ca „🎨 Canva de la …”.
+  Cere o dată migrarea `supabase/migrations/20261128210000_reverb_preacher_files.sql` (lipită în SQL Editor).
+
 ## 2026-11-28 (seara) · Cântarea ca la un stand de muzician (Reverb online)
 - **Ecranul cu acordurile (`#vSong`, `drawSong`).** Înainte: secțiunile tăiate în slide-uri de 4 rânduri, numele secțiunii
   deasupra, font monospațiat, acorduri portocalii. Acum (după exemplul trimis de proprietar): titlul și autorul sus, tonul și

@@ -2625,12 +2625,34 @@ const peers = new Map();                              // id → { name, church, 
 const lanIPs = () => Object.values(os.networkInterfaces()).flat().filter(i => i && i.family === 'IPv4' && !i.internal);
 
 // 🔗 Reverb online ⇄ Planificarea (src/reverb-sync.js): linked once with a key from the web page; only the program travels
+// 📎 a presentation the preacher put from Reverb online: brought into 📥 Primite once, next to the sermon ("📎 de la …")
+const CLOUD_FILE = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/prezentari\//;
+const cloudBusy = new Set();
+async function cloudFiles(churchId) {
+  const plan = (activeChurch().id === churchId ? db.plan : db.churchData?.[churchId]?.plan); if (!plan) return;
+  for (const sv of plan.services || []) for (const it of sv.items || []) {
+    const inc = it.incoming; if (!inc?.url || !CLOUD_FILE.test(inc.url) || inc.got === inc.url || cloudBusy.has(inc.url)) continue;
+    cloudBusy.add(inc.url);
+    try {
+      const r = await fetch(inc.url); if (!r.ok) throw new Error('HTTP ' + r.status);
+      const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 200 * 1024 * 1024) throw new Error('prea mare');
+      const name = inboxName(inc.name || decodeURIComponent(inc.url.split('/').pop()).replace(/^[0-9a-f-]{36}-/, '')) || 'prezentare';
+      if (!INBOX_EXT.includes(path.extname(name).toLowerCase())) throw new Error('tip nepermis');
+      const final = freeName(INBOX_DIR, name); fs.writeFileSync(path.join(INBOX_DIR, final), buf);
+      inc.file = final; inc.got = inc.url;
+      if (activeChurch().id === churchId && db.service.planId === sv.id) planToLive();
+      save(); broadcast(); inboxEvent({ added: final, via: 'predicator · ' + (inc.from || 'Reverb online') });
+    } catch (e) { console.log('📎 prezentarea din Reverb online nu a venit:', e.message); }
+    finally { cloudBusy.delete(inc.url); }
+  }
+}
 var reverb = createReverbSync({
   file: path.join(DATA_DIR, 'reverb-online.json'), fs,
   getPlan: id => (activeChurch().id === id ? db.plan : db.churchData?.[id]?.plan) || null,
   liveId: id => (activeChurch().id === id ? db.service?.planId : db.churchData?.[id]?.service?.planId) || null,
   applied: (changed, id) => {
     if (!changed) return;
+    cloudFiles(id).catch(() => {});
     if (activeChurch().id === id) planToLive();
     reverbQuiet = true; save(); reverbQuiet = false; broadcast();
     const msg = JSON.stringify({ type: 'planChanged' }); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(msg);

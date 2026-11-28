@@ -108,6 +108,8 @@
   @keyframes ring2{50%{box-shadow:inset 0 0 0 2px rgba(255,140,40,.3),0 0 0 8px rgba(255,140,40,.18)}}
   @keyframes blink3{50%{box-shadow:inset 0 0 0 2px rgba(255,59,48,.2),0 0 0 10px rgba(255,59,48,.25)}}
   .mineCard.u1 .pulse{background:#f5c518} .mineCard.u2 .pulse{background:#ff8c28} .mineCard.u3 .pulse{background:#ff3b30}
+  .preach{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px} .preach .got{color:#7ee3a6;font-size:13px;width:100%} .preach .mute{font-size:12.5px;width:100%}
+  .pbtn{display:inline-flex;align-items:center;padding:7px 11px;font-size:13px;border-radius:9px;background:var(--fill);color:var(--text);cursor:pointer}
   .mine .due{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600}
   .mine .due.u1{background:rgba(245,197,24,.18);color:#f5c518} .mine .due.u2{background:rgba(255,140,40,.2);color:#ff9d4a} .mine .due.u3{background:#ff3b30;color:#fff}
   @media (prefers-reduced-motion:reduce){.mineCard.u1,.mineCard.u2,.mineCard.u3{animation:none}}
@@ -1007,7 +1009,7 @@ Refren:
     $('gMineCard').className = 'card mineCard' + (loud ? ' u' + loud : '');
     nag(loud, mine.filter(x => x.a.status === 'pending'));
     $('gMineN').textContent = open ? `${open} de confirmat` : `${mine.length} ${mine.length === 1 ? 'loc' : 'locuri'} · confirmat`;
-    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine${a.status === 'pending' ? ' new' : ''}"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small>${a.status === 'pending' && urgency(s.date) ? `<span class="due u${urgency(s.date)}">${DUE[urgency(s.date)]}</span>` : ''}</div>
+    $('gMine').innerHTML = mine.map(({ s, k, a, what }) => `<div class="mine${a.status === 'pending' ? ' new' : ''}"><div class="x"><b>${esc(what)}</b><small>${esc(day(s.date).toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtTime(s.date)} · ${esc(s.title)}</small>${a.status === 'pending' && urgency(s.date) ? `<span class="due u${urgency(s.date)}">${DUE[urgency(s.date)]}</span>` : ''}${PREACH.test(what) ? preachBox(s) : ''}</div>
       <div class="act">${a.status === 'pending' ? '' : stat(a)}<button class="yes" data-ans="confirmed" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'confirmed' ? ' hidden' : ''}>Pot</button><button class="no" data-ans="declined" data-s="${s.id}" data-k="${esc(k)}"${a.status === 'declined' ? ' hidden' : ''}>Nu pot</button></div></div>`).join('');
     // the services
     $('gCount').textContent = list.length ? `${list.length} ${list.length === 1 ? 'serviciu' : 'servicii'}` : '';
@@ -1073,6 +1075,39 @@ Refren:
         ${slotsAll.length > filled ? `<button data-auto="${s.id}" title="Pune oamenii pe locurile libere">✦ Completează echipa</button>` : ''}<button data-edit="${s.id}" class="${edit ? 'acc' : ''}">${edit ? 'Gata' : 'Editează'}</button></div>` : ''}</div></details>`;
   }
   const stat = (a, u = 0) => `<span class="st ${a.status}${u ? ' u' + u : ''}">${a.status === 'confirmed' ? 'Confirmat' : a.status === 'declined' ? 'Nu poate' : u === 3 ? 'N-a răspuns!' : 'În așteptare'}</span>`;
+  // 📎 the preacher's presentation: PowerPoint, Keynote, PDF or pictures (they go to the church computer, 📥 Primite), or a Canva link
+  const PREACH = /predic|pastor|vorbitor|mesaj/i;
+  function preachBox(s) {
+    const inc = (s.items || []).find(x => x.kind === 'sermon')?.incoming;
+    return `<div class="preach">${inc ? `<span class="got">✓ ${esc([inc.name, inc.canva && 'Canva'].filter(Boolean).join(' + '))}</span>` : '<span class="mute">Prezentarea pentru predică (o poți schimba până în ultimul minut)</span>'}
+      <label class="pbtn">📎 ${inc?.url ? 'Schimbă fișierul' : 'Pune prezentarea'}<input type="file" data-preach="${s.id}" accept=".pptx,.ppt,.key,.pdf,.odp,image/*,video/mp4,video/quicktime" hidden></label>
+      <button class="pbtn" data-canva="${s.id}">🎨 ${inc?.canva ? 'Alt link Canva' : 'Link Canva'}</button>${inc ? `<button class="pbtn ghost" data-unattach="${s.id}">Scoate</button>` : ''}</div>`;
+  }
+  async function attach(sid, fields) {
+    const inc = G.doc.services.find(x => x.id === sid)?.items?.find(x => x.kind === 'sermon')?.incoming || {};
+    const v = { url: inc.url || '', name: inc.name || '', canva: inc.canva || '', ...fields };
+    const { data, error } = await sb.rpc('reverb_plan_attach', { c: cur().church_id, service: sid, url: v.url, name: v.name, canva: v.canva });
+    if (error) alert(/reverb_plan_attach/.test(error.message || '') ? 'Funcția nu e pornită încă pe server (pasul din Supabase).' : 'N-a mers. Verifică internetul.'); else if (data) alert(data);
+    program();
+  }
+  $('gMine').addEventListener('change', async e => {
+    const inp = e.target.closest('[data-preach]'); if (!inp?.files?.[0]) return;
+    const f = inp.files[0], sid = inp.dataset.preach; inp.value = '';
+    if (f.size > 200 * 1024 * 1024) return alert('Fișierul e mai mare de 200 MB. Exportă-l ca PDF sau trimite-l pe Wi-Fi-ul bisericii.');
+    const lab = inp.parentElement; lab.firstChild.textContent = '⏳ Se trimite… ';
+    const safe = f.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.\-]+/g, '_').slice(-80);
+    const path = `${cur().church_id}/${sid}/${crypto.randomUUID()}-${safe}`;
+    const { error } = await sb.storage.from('prezentari').upload(path, f, { contentType: f.type || 'application/octet-stream' });
+    if (error) { lab.firstChild.textContent = '📎 Pune prezentarea'; return alert(/not found|bucket/i.test(error.message || '') ? 'Locul pentru fișiere nu e pornit încă pe server (pasul din Supabase).' : 'Nu s-a trimis: ' + error.message); }
+    const url = sb.storage.from('prezentari').getPublicUrl(path).data.publicUrl;
+    await attach(sid, { url, name: f.name });
+  });
+  $('gMine').addEventListener('click', e => {
+    const c = e.target.closest('[data-canva]'), u = e.target.closest('[data-unattach]');
+    if (c) { const link = (prompt('Lipește linkul Canva al prezentării (în Canva: Distribuie → Copiază linkul).\nSfat: dacă poți, descarcă din Canva ca PDF și pune-l cu 📎; așa arată exact la fel pe ecran.') || '').trim();
+      if (link) attach(c.dataset.canva, { canva: link }); }
+    if (u && confirm('Scoți prezentarea de la predică?')) attach(u.dataset.unattach, { url: '', name: '', canva: '' });
+  });
   const DUE = { 1: 'Mai ai 3 zile să răspunzi', 2: 'Mai sunt 2 zile: răspunde azi', 3: 'Ultima zi: răspunde acum' };
   // 🔔 red (the day before): a reminder on the phone at most 3 times a day (morning, noon, evening), while it's still unanswered
   function nag(level, open) {
