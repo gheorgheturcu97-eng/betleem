@@ -301,10 +301,25 @@ export function applyPlanOp(plan, op) {
 /** 🗓 What someone said for a day in "Când pot sluji" (he picks departments; the department's leader picks the post):
  *  'yes' (that department), 'other' (he offered another department that day), 'no' (inside the period he filled, not that day),
  *  '' (he said nothing about it). */
-export function offerFor(v, day, departmentId) {
+export function offerFor(v, day, departmentId, serviceId = '') {
   if (!v?.offerFrom || day < v.offerFrom || day > v.offerTo) return '';
-  const o = v.offer?.[day];
-  return !o?.length ? 'no' : o.includes(departmentId) ? 'yes' : 'other';
+  // one Sunday can hold several programs (10:00, 18:00…): his answer for that program first, else for the day
+  const o = serviceId && v.offer?.['s:' + serviceId] !== undefined ? v.offer['s:' + serviceId] : v.offer?.[day];
+  if (o === undefined) return '';                       // a program added after he answered: he said nothing about it
+  return !o.length ? 'no' : o.includes(departmentId) ? 'yes' : 'other';
+}
+
+/** 🔋 Who serves on every Sunday of a month (no Sunday to just sit and be filled): [{ id, name, sundays }] for "YYYY-MM". */
+export function noBreak(plan, ym) {
+  const sundays = [...new Set(plan.services.filter(s => s.date.slice(0, 7) === ym && new Date(s.date).getDay() === 0).map(s => s.date.slice(0, 10)))];
+  if (sundays.length < 3) return [];
+  const on = {};
+  for (const s of plan.services) {
+    const d = s.date.slice(0, 10); if (!sundays.includes(d)) continue;
+    for (const a of Object.values(s.assignments || {})) if (a.status !== 'declined' && a.status !== 'leave') (on[a.volunteer] ||= new Set()).add(d);
+  }
+  return Object.entries(on).filter(([, days]) => days.size === sundays.length)
+    .map(([id]) => ({ id, name: plan.volunteers.find(v => v.id === id)?.name || '', sundays: sundays.length }));
 }
 
 /** ✦ Fill the empty places of a service fairly: people who can serve there, didn't block the day, are under their
@@ -321,8 +336,8 @@ export function autoAssign(plan, s, onlyDept = '') {
       const key = `${p.id}#${slot}`; if (s.assignments[key]) continue;
       const inHere = new Set(Object.values(s.assignments).map(a => a.volunteer));
       // 🗓 who offered himself for this day in this department first; who said this day is not his, never; then the one who served least
-      const day = s.date.slice(0, 10), rank = v => ({ yes: 0, '': 1, other: 2 }[offerFor(v, day, d.id)]);
-      const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key) && offerFor(v, day, d.id) !== 'no')
+      const day = s.date.slice(0, 10), rank = v => ({ yes: 0, '': 1, other: 2 }[offerFor(v, day, d.id, s.id)]);
+      const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key) && offerFor(v, day, d.id, s.id) !== 'no')
         .sort((a, b) => rank(a) - rank(b) || (load[a.id] || 0) - (load[b.id] || 0) || a.name.localeCompare(b.name, 'ro'))[0];
       if (!pick) continue;
       s.assignments[key] = { volunteer: pick.id, status: 'pending', auto: true }; load[pick.id] = (load[pick.id] || 0) + 1; n++;
