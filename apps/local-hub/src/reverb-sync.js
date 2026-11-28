@@ -13,8 +13,9 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const byId = a => new Map((a || []).filter(x => x?.id).map(x => [x.id, x]));
 export const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
-/** Three-way merge of one list (by id). prefer(id) says who wins when both sides changed the same thing. */
-export function merge3(local, base, cloud, prefer = () => 'cloud') {
+/** Three-way merge of one list (by id). prefer(id) says who wins when both sides changed the same thing;
+ *  combine(l, b, c, id), when given, merges the two changed copies instead of picking one. */
+export function merge3(local, base, cloud, prefer = () => 'cloud', combine = null) {
   const L = byId(local), B = byId(base), C = byId(cloud), out = [];
   const order = [...new Set([...C.keys(), ...L.keys(), ...B.keys()])];
   for (const id of order) {
@@ -23,8 +24,35 @@ export function merge3(local, base, cloud, prefer = () => 'cloud') {
     if (!l && !c) continue;                                       // deleted on both sides
     if (!l) { if (!same(c, b)) out.push(c); continue; }           // deleted here: gone, unless changed meanwhile in the cloud
     if (!c) { if (!same(l, b)) out.push(l); continue; }           // deleted online: gone, unless changed meanwhile here
-    out.push(same(l, b) ? c : same(c, b) ? l : prefer(id) === 'local' ? l : c);
+    out.push(same(l, b) ? c : same(c, b) ? l : combine ? combine(l, b, c, id) : prefer(id) === 'local' ? l : c);
   }
+  return out;
+}
+
+/** One value changed on one side only: that change; changed on both: the preferred side. */
+const pick3 = (l, b, c, local) => (same(l, b) ? c : same(c, b) ? l : local ? l : c);
+const byKey = (o, k) => (o && Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+/** A service changed on both sides (e.g. songs added here, the team placed on a phone): merge it field by field,
+ *  the moments one by one (by id) and the places in the team one by one, so both changes survive. */
+export function mergeService(l, b, c, local = false) {
+  const out = {};
+  for (const k of new Set([...Object.keys(c), ...Object.keys(l)])) {
+    if (k === 'items' || k === 'assignments') continue;
+    const v = pick3(byKey(l, k), byKey(b, k), byKey(c, k), local);
+    if (v !== undefined) out[k] = v;
+  }
+  const li = l.items || [], bi = b.items || [], ci = c.items || [];
+  if (same(li, bi)) out.items = ci; else if (same(ci, bi)) out.items = li;
+  else {
+    const merged = byId(merge3(li, bi, ci, () => (local ? 'local' : 'cloud'))), first = local ? li : ci, second = local ? ci : li;
+    out.items = [...first, ...second].map(x => x?.id && merged.get(x.id)).filter((x, i, a) => x && a.indexOf(x) === i);
+  }
+  const la = l.assignments || {}, ba = b.assignments || {}, ca = c.assignments || {}, a = {};
+  for (const k of new Set([...Object.keys(ca), ...Object.keys(la)])) {
+    const v = pick3(byKey(la, k), byKey(ba, k), byKey(ca, k), local);
+    if (v !== undefined) a[k] = v;
+  }
+  out.assignments = a;
   return out;
 }
 
@@ -70,7 +98,7 @@ export function alignDepartments(plan, cloud) {
 /** Merge the cloud's program into the local plan (in place). Returns the shared copy both sides now agree on. */
 export function mergePlan(plan, base, cloud, { liveId, newToken }) {
   const prefer = id => (id === liveId ? 'local' : 'cloud');       // the program on the screens: this computer wins
-  plan.services = merge3(plan.services, base?.services, cloud?.services, prefer).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  plan.services = merge3(plan.services, base?.services, cloud?.services, prefer, (l, b, c, id) => mergeService(l, b, c, prefer(id) === 'local')).sort((a, b) => String(a.date).localeCompare(String(b.date)));
   plan.departments = merge3(plan.departments, base?.departments, cloud?.departments);
   const mine = byId(plan.volunteers);
   const vols = merge3(plan.volunteers.map(pub), base?.volunteers, cloud?.volunteers);
@@ -113,10 +141,12 @@ export function createReverbSync({ file, fs, getPlan, applied, liveId, newToken,
         const peopleChanged = adoptPeople(plan, r.people, newToken);
         const agreed = mergePlan(plan, st.base, r.doc || { services: [], departments: [], volunteers: [] }, { liveId: liveId(st.local), newToken });
         applied(peopleChanged || !same(agreed, st.base), st.local);
-        if (r.doc && same(agreed, { services: r.doc.services, departments: r.doc.departments, volunteers: r.doc.volunteers })) { st.base = agreed; st.version = r.version; break; }
+        // the agreed copy is kept as a snapshot: sharing objects with the live program would make every change made
+        // here look already agreed, and the next sync would put the online copy back over it
+        if (r.doc && same(agreed, { services: r.doc.services, departments: r.doc.departments, volunteers: r.doc.volunteers })) { st.base = structuredClone(agreed); st.version = r.version; break; }
         const p = await call('push', { doc: agreed, version: r.version });
         if (p.conflict) continue;                                 // someone saved online meanwhile: once more, on the newest
-        st.base = agreed; st.version = p.version; break;
+        st.base = structuredClone(agreed); st.version = p.version; break;
       }
       if (songs) await syncSongs();
       st.lastSync = new Date().toISOString(); Object.assign(status, { state: 'linked', lastSync: st.lastSync, error: '' });

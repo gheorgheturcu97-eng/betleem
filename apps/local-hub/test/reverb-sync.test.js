@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { merge3, adoptPeople, mergePlan, alignDepartments, shared, createReverbSync } from '../src/reverb-sync.js';
+import { merge3, mergeService, adoptPeople, mergePlan, alignDepartments, shared, createReverbSync } from '../src/reverb-sync.js';
 import { defaultPlan, applyPlanOp, newToken } from '../src/plan.js';
 
 const svc = (id, title, extra = {}) => ({ id, date: '2026-12-06T08:00:00.000Z', title, status: 'draft', items: [], assignments: {}, ...extra });
@@ -109,4 +109,39 @@ test('songs: a chord fixed on a phone comes into the library; a song written her
   pushed.length = 0; await r.syncNow();
   assert.ok(!pushed.length, 'nothing new: nothing sent again');
   r.unlink();
+});
+
+test('after a sync, a program made here and songs added here are kept and go up (no shared copy aliasing)', async () => {
+  const files = {}, fsx = { readFileSync: f => { if (!(f in files)) throw new Error('none'); return files[f]; }, writeFileSync: (f, d) => { files[f] = d; } };
+  let cloud = null, version = 0;
+  const fetchImpl = async (url, o) => {
+    const m = JSON.parse(o.body);
+    const res = (status, body) => ({ status, ok: status < 300, json: async () => body });
+    if (m.action === 'hello') return res(200, { ok: true });
+    if (m.action === 'pull') return res(200, { church: { id: 'c', name: 'Betleem' }, doc: cloud && structuredClone(cloud), version, people: [] });
+    if (m.action === 'push') { if (m.version !== version) return res(409, { conflict: true }); cloud = m.doc; version++; return res(200, { version }); }
+  };
+  const plan = defaultPlan(); applyPlanOp(plan, { op: 'addService', date: '2026-12-06T08:00:00Z', title: 'Duminică' });
+  const r = createReverbSync({ file: '/x', fs: fsx, getPlan: () => plan, liveId: () => null, applied: () => {}, newToken,
+    hubUrl: () => '', fetchImpl, every: 1e9 });
+  await r.link('K'.repeat(30), 'local');
+  await r.syncNow();                                             // a quiet sync, like the one every minute
+  const sunday = plan.services[0];
+  applyPlanOp(plan, { op: 'setItems', id: sunday.id, items: [{ kind: 'song', songId: 's1', minutes: 5 }, { kind: 'song', songId: 's2', minutes: 5 }] });
+  applyPlanOp(plan, { op: 'addService', date: '2026-12-24T17:00:00Z', title: 'Crăciun' });
+  await r.syncNow();
+  assert.equal(plan.services.find(s => s.id === sunday.id).items.length, 2, 'the songs added here stay');
+  assert.ok(plan.services.some(s => s.title === 'Crăciun'), 'the new program stays');
+  assert.equal(cloud.services.find(s => s.id === sunday.id).items.length, 2);
+  assert.ok(cloud.services.some(s => s.title === 'Crăciun'));
+  r.unlink();
+});
+
+test('a service changed on both sides keeps both: songs added here and the team placed on a phone', () => {
+  const base = [svc('a', 'Duminică', { items: [{ id: 'i1', kind: 'song', songId: 's1' }], assignments: {} })];
+  const local = [svc('a', 'Duminică', { items: [{ id: 'i1', kind: 'song', songId: 's1' }, { id: 'i2', kind: 'song', songId: 's2' }], assignments: {} })];
+  const cloud = [svc('a', 'Duminică', { items: [{ id: 'i1', kind: 'song', songId: 's1' }], assignments: { 'p1#0': { volunteer: 'v1', status: 'pending' } } })];
+  const [m] = merge3(local, base, cloud, () => 'cloud', (l, b, c) => mergeService(l, b, c, false));
+  assert.deepEqual(m.items.map(x => x.id), ['i1', 'i2']);
+  assert.equal(m.assignments['p1#0'].volunteer, 'v1');
 });

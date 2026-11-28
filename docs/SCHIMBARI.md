@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Reparat: programele noi și cântările nu mai dispar după sincronizarea cu Reverb online
+- **Sincronizarea cu Reverb online (`src/reverb-sync.js`).** Înainte: pe un calculator legat de Reverb online (ex. Mac
+  mini), un program nou făcut aici sau cântările adăugate într-un program dispăreau după câteva secunde, pentru că copia
+  „convenită” cu internetul era legată de programul real și sincronizarea punea înapoi varianta de pe internet. Acum:
+  copia convenită e separată, așa că ce faci aici rămâne și urcă online.
+- **Același serviciu schimbat în două locuri.** Înainte: dacă un serviciu era schimbat și aici (cântări), și pe telefon
+  (echipa), câștiga varianta de pe internet întreagă. Acum: se îmbină pe bucăți (momentele una câte una, locurile din
+  echipă unul câte unul), deci rămân ambele schimbări. Programul de pe ecrane are întâietate tot aici.
+  Teste noi în `test/reverb-sync.test.js`.
+
 ## 2026-11-26 · Reverb pentru Linux + click-ul în motorul nou (E3)
 - **Linux (nou).** Reverb-Linux.tar.gz (x86_64): Electron 42.3.0 + hub-ul semnat 2026.11.25.8; `instaleaza.sh` (o dată,
   fără parolă) pune Reverb în meniu și pe Desktop; `reverb.sh` pornește cu `--no-sandbox`. Datele în Documente/Betleem,
