@@ -141,8 +141,10 @@
   @media (max-width:979px){
     .tabs{position:fixed;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 6px);margin:0;padding:3px;z-index:5;border-radius:12px;
       background:rgba(28,28,32,.82);box-shadow:0 4px 18px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.06)}
-    .tabs button{flex-direction:row !important;gap:6px !important;padding:7px 4px !important;font-size:12.5px !important;border-radius:9px}
-    .tabs button svg{width:16px;height:16px} .tabs button span{flex-direction:row;gap:4px}
+    .tabs button{flex-direction:row !important;gap:5px !important;padding:8px 2px !important;font-size:12.5px !important;border-radius:9px;white-space:nowrap;min-width:0}
+    .tabs button svg{width:15px;height:15px;flex:none} .tabs button span{flex-direction:row;gap:4px}
+    @media (max-width:430px){.tabs button{flex-direction:column !important;gap:2px !important;padding:5px 2px !important;font-size:11px !important} .tabs button svg{width:16px;height:16px}
+      main{padding-top:calc(env(safe-area-inset-top) + 60px)}}
     main{padding-top:calc(env(safe-area-inset-top) + 52px)}
     body.full .tabs{display:none}
   }
@@ -193,6 +195,7 @@
   .warn{grid-column:1/-1;color:var(--warn);font-size:12.5px;margin:var(--sp-2) 0 0}
   body.viewonly #sEdit,body.viewonly #sNew,body.viewonly #gTools,body.viewonly .svcbar{display:none!important}
   .person button[data-do="view"].on{background:rgba(255,140,40,.2);color:#ffb070}
+  body[data-tab]:not([data-tab="vProg"]) #gMineCard,body[data-tab]:not([data-tab="vProg"]) #bell,body[data-tab]:not([data-tab="vProg"]) #inst,body[data-tab="vProj"] #myChurches,body[data-tab="vMd"] #myChurches,body[data-tab="vProj"] #logoSet,body[data-tab="vMd"] #logoSet{display:none!important}
   .bigadd{width:100%;padding:14px;font-size:16px;margin-top:var(--sp-2);border-radius:var(--r-m)}
   #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
   #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
@@ -573,6 +576,7 @@ Refren:
   function tabTo(t) {
     for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.tab === t);
     for (const v of ['vProg', 'vProj', 'vMd', 'vPeople']) $(v).hidden = v !== t;
+    document.body.dataset.tab = t;                    // „Ești programat” and the notification cards belong to Planific only
   }
   $('tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; tabTo(b.dataset.tab); if (innerWidth < 980 && $('tabs').getBoundingClientRect().top < 0) $('tabs').scrollIntoView(); };
   function launcher(c) {           // Proiectez / MD&TRACK live on the church computer: only on the church Wi-Fi
