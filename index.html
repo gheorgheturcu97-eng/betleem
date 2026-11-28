@@ -1264,15 +1264,15 @@ Refren:
   }
   function drawOffer() {
     const box = $('gOffer'), meP = G.people.find(p => p.person_id === G.me); if (!G.me || !meP) { box.hidden = true; return; }
-    const mine = G.doc.departments.filter(d => (meP.departments || []).includes(d.name)).flatMap(d => d.positions.filter(p => !p.optional || true).map(p => ({ ...p, dep: d.name, color: d.color })));
+    const mine = G.doc.departments.filter(d => (meP.departments || []).includes(d.name));            // he picks departments; the leader picks the post
     if (!mine.length) { box.hidden = true; return; }
     const v = G.doc.volunteers.find(x => x.id === G.me) || {}, per = offerDays(), done = v.offerTo && v.offerTo >= per.to;
     const ask = !done && (new Date().getDate() <= 10 || !v.offerTo || v.offerTo < ymd(new Date()));
     G.offer ||= structuredClone(v.offer || {});
     box.hidden = false; box.className = 'card offerCard' + (ask ? ' ask' : '');
     const months = [...new Set(per.days.map(([d]) => new Date(d + 'T12:00').toLocaleDateString('ro-RO', { month: 'long' })))].join(' – ');
-    if (!G.offerOpen) { box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji</b><small>${done ? `✓ Completat până pe ${esc(new Date(v.offerTo + 'T12:00').toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }))}` : `Spune liderilor în ce duminici și unde poți sluji (${esc(months)})`}</small></div><button data-offer="open" class="${ask ? 'acc' : ''}">${done ? 'Schimbă' : 'Completează'}</button></div>`; return; }
-    box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji · ${esc(months)}</b><small>Atinge unde poți sluji în fiecare duminică, sau „Nu pot”. Liderii te pun după asta.</small></div></div>`
+    if (!G.offerOpen) { box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji</b><small>${done ? `✓ Completat până pe ${esc(new Date(v.offerTo + 'T12:00').toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' }))}` : `Spune liderilor în ce duminici și în ce departament poți sluji (${esc(months)})`}</small></div><button data-offer="open" class="${ask ? 'acc' : ''}">${done ? 'Schimbă' : 'Completează'}</button></div>`; return; }
+    box.innerHTML = `<div class="oh"><div><b>🗓 Când pot sluji · ${esc(months)}</b><small>Atinge departamentul în care poți sluji în fiecare duminică, sau „Nu pot”. Postul ți-l alege liderul departamentului.</small></div></div>`
       + per.days.map(([d, titles]) => { const o = G.offer[d], no = Array.isArray(o) && !o.length;
         return `<div class="orow"><div class="od"><b>${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))}</b><small>${esc(titles.join(', ') || 'duminică')}</small></div>
           <div class="ochips">${mine.map(p => `<button data-od="${d}" data-op="${p.id}" class="${(o || []).includes(p.id) ? 'on' : ''}" style="--lc:${esc(p.color)}">${esc(p.name)}</button>`).join('')}<button data-od="${d}" data-op="" class="nop${no ? ' on' : ''}">Nu pot</button></div></div>`; }).join('')
@@ -1323,7 +1323,7 @@ Refren:
         const a = asg[k], u = a?.status === 'pending' ? urgency(s.date) : 0;
         if (!edit) return a ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w">${esc(pname(a.volunteer))}${lead && a.status === 'pending' && u ? `<br><button class="wa" data-wa="${esc(a.volunteer)}" data-s="${s.id}" data-pos="${esc(p.name)}" title="Trimite-i pe WhatsApp un mesaj că n-a răspuns">📲 Amintește-i</button>` : ''}</span>${stat(a, u)}</div>`
           : lead ? `<div class="slot"><span class="p">${esc(p.name)}</span><span class="w mute">liber</span><span></span></div>` : '';
-        const day0 = s.date.slice(0, 10), off = x => offerFor(doc.volunteers.find(v => v.id === x.person_id), day0, p.id), rk = x => ({ yes: 0, '': 1, other: 2, no: 3 }[off(x)]);
+        const day0 = s.date.slice(0, 10), off = x => offerFor(doc.volunteers.find(v => v.id === x.person_id), day0, dep.id), rk = x => ({ yes: 0, '': 1, other: 2, no: 3 }[off(x)]);
         const ppl = G.people.slice().sort((x, y) => rk(x) - rk(y) || ((y.departments || []).includes(dep.name) - (x.departments || []).includes(dep.name)) || (x.name || '').localeCompare(y.name || '', 'ro'));
         return `<div class="slot edit"><span class="p">${esc(p.name)}</span><select data-assign="${s.id}" data-k="${esc(k)}" aria-label="${esc(p.name)}"><option value="">Liber</option>${ppl.map(x =>
           `<option value="${esc(x.person_id)}"${a?.volunteer === x.person_id ? ' selected' : ''}>${off(x) === 'yes' ? '✓ ' : ''}${esc(x.name)}${off(x) === 'yes' ? ' · s-a oferit' : off(x) === 'no' ? ' · a zis că nu poate' : (x.departments || []).includes(dep.name) ? '' : ' (alt dep.)'}</option>`).join('')}</select>${a ? stat(a, u) : '<span></span>'}${last ? `<button class="x" data-unneed="${p.id}" data-s="${s.id}" title="Nu e nevoie de ${esc(p.name)} la acest program">✕</button>` : '<span></span>'}</div>`;

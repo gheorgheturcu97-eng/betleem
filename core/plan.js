@@ -298,12 +298,13 @@ export function applyPlanOp(plan, op) {
   return null;
 }
 
-/** 🗓 What someone said for a day in "Când pot sluji": 'yes' (that post), 'other' (he offered other posts that day),
- *  'no' (inside the period he filled, he did not offer that day), '' (he said nothing about it). */
-export function offerFor(v, day, positionId) {
+/** 🗓 What someone said for a day in "Când pot sluji" (he picks departments; the department's leader picks the post):
+ *  'yes' (that department), 'other' (he offered another department that day), 'no' (inside the period he filled, not that day),
+ *  '' (he said nothing about it). */
+export function offerFor(v, day, departmentId) {
   if (!v?.offerFrom || day < v.offerFrom || day > v.offerTo) return '';
   const o = v.offer?.[day];
-  return !o?.length ? 'no' : o.includes(positionId) ? 'yes' : 'other';
+  return !o?.length ? 'no' : o.includes(departmentId) ? 'yes' : 'other';
 }
 
 /** ✦ Fill the empty places of a service fairly: people who can serve there, didn't block the day, are under their
@@ -319,9 +320,9 @@ export function autoAssign(plan, s, onlyDept = '') {
     for (const p of d.positions) for (let slot = 0; slot < needFor(s, p); slot++) {
       const key = `${p.id}#${slot}`; if (s.assignments[key]) continue;
       const inHere = new Set(Object.values(s.assignments).map(a => a.volunteer));
-      // 🗓 who offered himself for this day and post first; who said this day is not his, never; then the one who served least
-      const day = s.date.slice(0, 10), rank = v => ({ yes: 0, '': 1, other: 2 }[offerFor(v, day, p.id)]);
-      const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key) && offerFor(v, day, p.id) !== 'no')
+      // 🗓 who offered himself for this day in this department first; who said this day is not his, never; then the one who served least
+      const day = s.date.slice(0, 10), rank = v => ({ yes: 0, '': 1, other: 2 }[offerFor(v, day, d.id)]);
+      const pick = plan.volunteers.filter(v => v.positions.includes(p.id) && !inHere.has(v.id) && !cannotServe(plan, s, v.id, key) && offerFor(v, day, d.id) !== 'no')
         .sort((a, b) => rank(a) - rank(b) || (load[a.id] || 0) - (load[b.id] || 0) || a.name.localeCompare(b.name, 'ro'))[0];
       if (!pick) continue;
       s.assignments[key] = { volunteer: pick.id, status: 'pending', auto: true }; load[pick.id] = (load[pick.id] || 0) + 1; n++;
