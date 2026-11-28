@@ -118,6 +118,7 @@
   .dep .off{margin-left:6px;padding:2px 8px;font-size:12px;color:var(--text-3);background:none} .dep.zero{opacity:.55}
   .st.pending.u1{color:#f5c518} .st.pending.u2{color:#ff9d4a} .st.pending.u3{color:#ff3b30;font-weight:600}
   .wa{padding:3px 8px;font-size:12px;background:rgba(37,211,102,.16);color:#5fe08f;border-radius:7px;margin-left:4px}
+  .pinrow{padding:10px 0 14px;margin-bottom:10px;border-bottom:1px solid var(--line)} .pinrow small{display:block;color:var(--text-3);font-size:13px;margin:2px 0 8px}
   .it .t0{color:var(--text-3);font-size:12px;font-variant-numeric:tabular-nums} .it.timed{grid-template-columns:42px 1fr auto}
   .slot .w .wa{margin:4px 0 0}
   .mine.new .x b:after{content:"nou";margin-left:8px;padding:1px 6px;border-radius:6px;background:var(--accent);color:#fff;font-size:10.5px;font-weight:600;vertical-align:1px}
@@ -134,6 +135,15 @@
   /* the three zones: a segmented control on a phone, a sidebar list on a laptop */
   .tabs{display:flex;gap:2px;padding:3px;margin:var(--sp-2) 0 var(--sp-4);border-radius:var(--r-m);background:rgba(36,36,40,.72);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
     position:sticky;top:max(8px,env(safe-area-inset-top));z-index:4;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+  /* 📱 on a phone the zones stay on top all the time, thin; the full-screen chords (#vSong) cover them */
+  @media (max-width:979px){
+    .tabs{position:fixed;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 6px);margin:0;padding:3px;z-index:5;border-radius:12px;
+      background:rgba(28,28,32,.82);box-shadow:0 4px 18px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.06)}
+    .tabs button{flex-direction:row !important;gap:6px !important;padding:7px 4px !important;font-size:12.5px !important;border-radius:9px}
+    .tabs button svg{width:16px;height:16px} .tabs button span{flex-direction:row;gap:4px}
+    main{padding-top:calc(env(safe-area-inset-top) + 52px)}
+    body.full .tabs{display:none}
+  }
   .tabs button{flex:1;flex-direction:column;gap:3px;padding:8px 4px;background:none;border-radius:9px;color:var(--text-2);font-size:12px;font-weight:500}
   .tabs button:hover{color:var(--text);background:var(--fill)}
   .tabs button.on{background:var(--fill-2);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.3)}
@@ -179,6 +189,16 @@
   .svcbar{grid-column:1/-1;display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-top:var(--sp-3)}
   .svcbar .sp{flex:1} .svcbar button{padding:7px 12px;font-size:13px}
   .warn{grid-column:1/-1;color:var(--warn);font-size:12.5px;margin:var(--sp-2) 0 0}
+  body.viewonly #sEdit,body.viewonly #sNew,body.viewonly #gTools,body.viewonly .svcbar{display:none!important}
+  .person button[data-do="view"].on{background:rgba(255,140,40,.2);color:#ffb070}
+  .bigadd{width:100%;padding:14px;font-size:16px;margin-top:var(--sp-2);border-radius:var(--r-m)}
+  #songPick{position:fixed;inset:0;z-index:7;background:var(--bg);display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  #songPick .spq{padding:10px 12px} #songPick .spq input{width:100%;font-size:17px;padding:12px 14px}
+  #songPick .spl{flex:1;overflow:auto;padding:0 12px 20px;-webkit-overflow-scrolling:touch}
+  #songPick .sp{display:flex;width:100%;align-items:center;gap:10px;text-align:left;padding:12px 4px;background:none;border-radius:0;border-bottom:1px solid var(--line)}
+  #songPick .sp span{flex:1;min-width:0;display:flex;flex-direction:column} #songPick .sp b{font-weight:500;font-size:16px} #songPick .sp small{color:var(--text-3);font-size:13px}
+  #songPick .sp i{font-style:normal;min-width:44px;text-align:center;padding:6px 10px;border-radius:10px;background:var(--accent);color:#fff;font-weight:600}
+  #songPick .sp.in i{background:rgba(50,208,116,.18);color:#7ee3a6;font-size:13px;font-weight:500}
   .addit{display:grid;grid-template-columns:auto 1fr auto;gap:6px;margin-top:var(--sp-2)} .addit select{width:auto}
   .toolbar{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center} .toolbar>*{flex:0 1 auto} .toolbar input{width:auto;flex:1 1 150px}
   .composer{padding:var(--sp-3);border-radius:var(--r-l);background:var(--fill);margin-bottom:var(--sp-2)}
@@ -343,6 +363,8 @@
       <p class="mute" style="margin:0 0 12px;font-size:14px">Fiecare om primește un link personal. „Link nou” oprește linkul vechi și îl scoate de pe toate dispozitivele (telefon pierdut). „Scoate” îl scoate din biserică.</p>
       <div class="card">
       <div class="row" style="margin-bottom:10px"><select id="pChurch"></select></div>
+      <div class="pinrow"><b>🔒 Codul pentru versuri</b><small id="pinState"></small>
+        <div class="row"><input id="pinNew" type="password" inputmode="numeric" maxlength="12" placeholder="Cod nou (ex. 2580)" autocomplete="new-password"><button id="pinSet">Salvează codul</button></div></div>
       <div class="row">
         <input id="nName" placeholder="Numele (ex. Andrei Popescu)" maxlength="80">
         <select id="nRole"><option value="member">Membru</option><option value="leader">Lider</option><option value="coordinator">Coordonator</option></select>
@@ -458,7 +480,7 @@ Refren:
     $('nLeads').hidden = $('nRole').value !== 'leader';
     const { data: inv } = await sb.from('invites').select('id, display_name, role, departments, leads, expires_at, revoked_at, last_used_at, user_id, created_at')
       .eq('church_id', church).is('revoked_at', null).order('display_name');
-    invList = inv || [];
+    invList = inv || []; await viewOnlyLoad();
     // people of this church whose link was made in another church (they serve in both): shown, managed from there
     const { data: mem } = await sb.from('members').select('user_id, display_name, role').eq('church_id', church);
     const mine = new Set(invList.map(i => i.user_id).filter(Boolean));
@@ -471,11 +493,19 @@ Refren:
     $('people').innerHTML = shown.map(i => `<div class="person" data-id="${i.id}" style="flex-wrap:wrap"><div class="who"><b>${esc(i.display_name || 'Fără nume')}</b>
       <small>${ROLE[i.role]}${(i.leads || []).length ? ' ' + esc(i.leads.join(', ')) : ''} · ${i.last_used_at ? '<span class="ok">✓ conectat</span>' : 'n-a intrat încă'}</small>
       <div>${(i.leads || []).map(d => `<span class="tag l">★ ${esc(d)}</span>`).join('')}${(i.departments || []).filter(d => !(i.leads || []).includes(d)).map(d => `<span class="tag">${esc(d)}</span>`).join('')}</div></div>
-      <button data-do="edit" title="Rolul și departamentele">✎</button><button data-do="renew" title="Linkul vechi nu mai merge; omul iese de pe toate dispozitivele">↻ Link nou</button><button data-do="remove" class="ghost">Scoate</button></div>`).join('')
+      ${i.user_id ? `<button data-do="view" data-u="${esc(i.user_id)}" class="${VIEW.has(i.user_id) ? 'on' : ''}" title="Doar vede programul: fără Proiectez, MD & Track și fără să schimbe ceva">👁 ${VIEW.has(i.user_id) ? 'Doar vede ✓' : 'Doar vede'}</button>` : ''}<button data-do="edit" title="Rolul și departamentele">✎</button><button data-do="renew" title="Linkul vechi nu mai merge; omul iese de pe toate dispozitivele">↻ Link nou</button><button data-do="remove" class="ghost">Scoate</button></div>`).join('')
       || '<p class="mute">Nimeni aici încă.</p>';
     if (!filterDep && guests.length) $('people').insertAdjacentHTML('beforeend', '<p class="mute" style="margin:14px 0 4px">Slujesc și în altă biserică (linkul lor e acolo):</p>'
       + guests.map(g => `<div class="person"><div class="who"><b>${esc(g.display_name || 'Fără nume')}</b><small>${ROLE[g.role]} · ✓ conectat</small></div></div>`).join(''));
   }
+  let VIEW = new Set();                               // the people who only look (from the church's program document)
+  async function viewOnlyLoad() { const { data } = await sb.from('plans').select('doc').eq('church_id', $('pChurch').value).maybeSingle(); VIEW = new Set(data?.doc?.viewOnly || []); }
+  $('people').addEventListener('click', async e => {
+    const b = e.target.closest('[data-do="view"]'); if (!b) return; e.stopImmediatePropagation();
+    const on = !VIEW.has(b.dataset.u), was = $('gChurch').value; $('gChurch').value = $('pChurch').value;
+    if (await change({ op: 'setViewOnly', user: b.dataset.u, on })) { on ? VIEW.add(b.dataset.u) : VIEW.delete(b.dataset.u); people(); }
+    if ($('gChurch').value !== was) { $('gChurch').value = was; program(); }
+  }, true);
   $('filter').onclick = e => { const c = e.target.closest('[data-f]'); if (!c) return; filterDep = c.dataset.f; people(); };
   $('nRole').onchange = () => { $('nLeads').hidden = $('nRole').value !== 'leader'; };
   function editor(row) {
@@ -603,7 +633,7 @@ Refren:
       <div class="x"><b>${esc(it.title || KNAME[it.kind] || '')}</b>${it.key ? `<span class="key">${esc(it.key)}</span>` : ''}<small>${itemMeta(it)}</small></div>
       ${lead ? `<span class="ed"><button data-mv="-1" data-i="${i}" title="Mai sus">↑</button><button data-mv="1" data-i="${i}" title="Mai jos">↓</button><button data-rm="${i}" title="Scoate">✕</button></span>` : tap ? CHEV : `<span class="m">${it.minutes ? it.minutes + ' min' : ''}</span>`}</div>`; }).join('')
       : `<p class="empty">${s ? 'Programul nu e scris încă.' : 'Niciun serviciu planificat.'}</p>`;
-    $('pjAdd').innerHTML = lead && s ? `<div class="addit"><select id="pjK" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
+    $('pjAdd').innerHTML = lead && s ? `<button class="acc bigadd" id="pjSongs">＋ Cântări în program</button><div class="addit"><select id="pjK" aria-label="Ce fel">${Object.entries(KNAME).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select>
       <input id="pjT" list="songTitles" placeholder="Titlul cântării, „Ioan 3:16-18” sau momentul"><button id="pjGo">Adaugă</button></div>` : '';
     const songs = items.map((it, i) => [it, i]).filter(([it]) => it.kind === 'song');
     $('mdList').innerHTML = songs.length ? songs.map(([it, i], k) => `<div class="it tap" data-i="${i}"><span class="n">${k + 1}</span>
@@ -620,6 +650,7 @@ Refren:
   }
   $('pjList').onclick = prepClick; $('mdList').onclick = prepClick;
   $('pjAdd').onclick = async e => {
+    if (e.target.closest('#pjSongs')) return songSheet();
     if (!e.target.closest('#pjGo')) return;
     const s = prepSvc(), kind = $('pjK').value, title = $('pjT').value.trim(); if (!s) return;
     if (!title && kind === 'song') return $('pjT').focus();
@@ -629,6 +660,33 @@ Refren:
     if (await change({ op: 'setItems', id: s.id, items: [...s.items, it] })) { const n = prepSvc(); if (kind === 'bible' || kind === 'song') openItem(n, n.items.length - 1); }
   };
   $('pjAdd').onkeydown = e => { if (e.key === 'Enter' && e.target.id === 'pjT') $('pjGo').click(); };
+
+  // 🎵 the song picker for a phone: search by title or words of the title, tap ＋ to add; it stays open for the next one
+  function songSheet() {
+    const s = prepSvc(); if (!s) return;
+    $('songPick')?.remove();
+    const box = Object.assign(document.createElement('section'), { id: 'songPick' });
+    box.innerHTML = `<div class="stop"><button id="spX" title="Închide">✕</button><span class="t">Cântări în program</span><button id="spOk" class="on">Gata</button></div>
+      <div class="spq"><input id="spQ" type="search" placeholder="Caută: titlu, autor…" autocomplete="off" enterkeyhint="search"></div><div id="spL" class="spl"></div>`;
+    document.body.append(box); document.body.style.overflow = 'hidden';
+    const close = () => { box.remove(); document.body.style.overflow = ''; };
+    $('spX').onclick = $('spOk').onclick = close;
+    const draw = () => {
+      const q = fold($('spQ').value).trim(), sv = prepSvc(), have = new Set((sv?.items || []).filter(x => x.kind === 'song').map(x => x.songId));
+      const hits = (q ? lib.filter(x => fold(x.title + ' ' + (x.author || '')).includes(q)) : lib).slice(0, 80);
+      $('spL').innerHTML = hits.map(x => `<button class="sp${have.has(x.local_id) ? ' in' : ''}" data-add="${esc(x.local_id)}"><span><b>${esc(x.title)}</b><small>${esc([x.key && 'ton ' + x.key, x.author].filter(Boolean).join(' · '))}</small></span><i>${have.has(x.local_id) ? '✓ în program' : '＋'}</i></button>`).join('')
+        || '<p class="empty">Nu am găsit. Încearcă alt cuvânt din titlu.</p>';
+    };
+    $('spQ').oninput = draw; draw(); setTimeout(() => $('spQ').focus(), 50);
+    $('spL').onclick = async e => {
+      const b = e.target.closest('[data-add]'); if (!b || b.disabled) return;
+      const song = lib.find(x => x.local_id === b.dataset.add), sv = prepSvc(); if (!song || !sv) return;
+      if (b.classList.contains('in') && !confirm(`„${song.title}” e deja în program. O mai pun o dată?`)) return;
+      b.disabled = true; b.querySelector('i').textContent = '…';
+      if (await change({ op: 'setItems', id: sv.id, items: [...sv.items, { kind: 'song', title: song.title, songId: song.local_id, key: song.key || '', minutes: 5 }] })) draw();
+      else b.disabled = false;
+    };
+  }
 
   // the sheet for one moment
   let I = null;
@@ -698,6 +756,7 @@ Refren:
   const closeItem = () => { $('vItem').hidden = true; document.body.style.overflow = ''; I = null; };
   $('iBack').onclick = closeItem;
   $('iSave').onclick = async () => {
+    if (!I?.lead && !(await lyricsOk())) return;
     const s = (G.doc?.services || []).find(x => x.id === I.svc), it = I.it; if (!s) return closeItem();
     const arrangement = it.kind === 'song' && I.song ? (I.custom ? I.arr.slice() : []) : null;
     const key = $('iKey') ? $('iKey').value : null;
@@ -776,7 +835,7 @@ Refren:
 
   // ✎ writing and correcting songs: leaders, coordinators and the worship team (Închinare) of the song's church.
   //    Every change keeps the previous text online (it can be put back), and reaches the church computer's library.
-  const canEditSongs = c => churches.some(x => x.church_id === c && (['leader', 'coordinator'].includes(x.role) || (x.departments || []).includes('Închinare')));
+  const canEditSongs = c => !((G.doc?.viewOnly || []).includes(me?.id) && c === cur()?.church_id) && churches.some(x => x.church_id === c && (['leader', 'coordinator'].includes(x.role) || (x.departments || []).includes('Închinare')));
   const editChurch = () => (canEditSongs(cur()?.church_id) ? cur().church_id : churches.find(x => canEditSongs(x.church_id))?.church_id);
   let edit_ = null;
   function preview() {
@@ -797,8 +856,30 @@ Refren:
     }
   }
   $('eBody').oninput = () => preview();
-  $('sEdit').onclick = () => openEditor(cur_);
-  $('sNew').onclick = () => openEditor(null);
+  // 🔒 the lyrics PIN: when the coordinator sets one, a musician types it once (on this phone, until he closes the app)
+  // before changing words, chords, the order of the verses or the key. Leaders and coordinators don't need it.
+  const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(x => x.toString(16).padStart(2, '0')).join('');
+  async function lyricsOk() {
+    const c = cur(), lock = G.doc?.lyricsPin;
+    if (!lock?.hash || ['leader', 'coordinator'].includes(c?.role)) return true;
+    const key = 'rv-pin-' + c.church_id + '-' + lock.hash.slice(0, 8);
+    try { if (sessionStorage.getItem(key)) return true; } catch {}
+    const pin = prompt('🔒 Codul pentru versuri (îl știu cei care pot schimba slide-urile):'); if (pin === null) return false;
+    if (await sha(lock.salt + pin.trim()) !== lock.hash) { alert('Codul nu e bun. Întreabă coordonatorul.'); return false; }
+    try { sessionStorage.setItem(key, '1'); } catch {}
+    return true;
+  }
+  $('sEdit').onclick = async () => { if (await lyricsOk()) openEditor(cur_); };
+  $('sNew').onclick = async () => { if (await lyricsOk()) openEditor(null); };
+  $('pinSet').onclick = async () => {
+    const pin = $('pinNew').value.trim();
+    if (pin && pin.length < 4) return alert('Codul trebuie să aibă cel puțin 4 cifre sau litere.');
+    const salt = crypto.randomUUID(), lock = pin ? { salt, hash: await sha(salt + pin) } : null;
+    const was = $('gChurch').value; $('gChurch').value = $('pChurch').value;
+    if (await change({ op: 'setLyricsPin', pin: lock })) { $('pinNew').value = ''; pinShow(); alert(pin ? 'Gata. Muzicienii vor cere codul înainte să schimbe versurile.' : 'Codul e scos: oricine din Închinare poate schimba versurile.'); }
+    if ($('gChurch').value !== was) { $('gChurch').value = was; program(); }
+  };
+  function pinShow() { $('pinState').textContent = G.doc?.lyricsPin?.hash ? '🔒 Pornit. Scrie alt cod ca să-l schimbi, sau lasă gol și apasă ca să-l scoți.' : 'Oprit: oricine din Închinare poate schimba versurile și slide-urile.'; }
   $('eBack').onclick = () => { if ($('eBody').value !== (edit_?.body || '') && !confirm('Renunți la schimbări?')) return; $('vEdit').hidden = true; if ($('vSong').hidden) document.body.style.overflow = ''; };
   $('eSave').onclick = async () => {
     const title = $('eTitle').value.trim(), body = $('eBody').value.replace(/\r/g, '').trim();
@@ -919,7 +1000,14 @@ Refren:
     const v = doc.volunteers.find(x => x.id === G.me), away = (v?.away || []).filter(d => d >= today.slice(0, 10));
     $('gAway').innerHTML = away.map(d => `<span class="chip">${esc(new Date(d + 'T12:00').toLocaleDateString('ro-RO', { weekday: 'short', day: 'numeric', month: 'short' }))} <a href="#" data-unaway="${d}" style="color:var(--no);text-decoration:none">✕</a></span>`).join('') || '<span class="mute">Nicio zi blocată.</span>';
     $('gAwayBox').hidden = !G.me;
-    drawToday();
+    drawToday(); pinShow(); viewOnly();
+  }
+  // 👁 on the phone of someone who only looks: the program and his own Pot / Nu pot stay; Proiectez, MD & Track and editing go
+  function viewOnly() {
+    const only = (G.doc?.viewOnly || []).includes(me?.id) && !['leader', 'coordinator'].includes(cur()?.role);
+    for (const t of ['vProj', 'vMd']) $('tabs').querySelector(`[data-tab="${t}"]`).hidden = only;
+    if (only && !$('vProj').hidden || only && !$('vMd').hidden) tabTo('vProg');
+    document.body.classList.toggle('viewonly', only);
   }
   function serviceCard(s, lead) {
     const doc = G.doc, d = day(s.date), open = G.open.has(s.id), edit = lead && G.edit.has(s.id);
