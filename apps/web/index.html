@@ -205,6 +205,7 @@
   body[data-tab]:not([data-tab="vProg"]) #gPropose{display:none!important}
   .archbtn{width:100%;margin-top:16px;color:var(--text-3)} .arch{opacity:.75}
   .props{margin-top:10px} .props .key{font-size:12px;padding:0 5px;border-radius:5px;background:var(--fill)}
+  #songPick .photo{display:block;margin:8px 12px 0;padding:10px 12px;border-radius:12px;background:var(--fill);font-weight:600;cursor:pointer} #songPick .photo small{display:block;font-weight:400;color:var(--text-3);font-size:12.5px;margin-top:2px}
   .voice{display:flex;gap:6px;margin:8px 0 0} .voice input{flex:1;min-width:0;font-size:15px} .voice button{flex:none;padding:8px 12px}
   #songPick .voice{padding:10px 12px 0;margin:0} #songPick .vmsg{padding:0 14px}
   .voice button.rec{background:#e5243b;color:#fff;animation:recp 1s ease-in-out infinite} @keyframes recp{50%{opacity:.6}}
@@ -454,7 +455,7 @@ Refren:
 <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
   import { SUPABASE_URL, SUPABASE_KEY } from './reverb-config.js';
-  import { spokenSongs, spokenStructure, standardLabel, parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
+  import { listedSongs, spokenSongs, spokenStructure, standardLabel, parseSong, arrange, toSlides, transpose, keyDistance, prefersFlats, originalKey, chordLineToHtml, stripChords, sectionColor, KEYS, arrangementIndexes } from './core/song.js';
   import { fitWhole, unfit } from './core/fit.js';
   import { applyPlanOp, serviceWarnings, needFor, placesOf, urgency } from './core/plan.js';
   import { BOOKS, parseRef, formatRef } from './core/bibleref.js';
@@ -757,13 +758,46 @@ Refren:
     try { r.start(); } catch { btn.classList.remove('rec'); input.focus(); }
   }
 
+  // 📷 the text of a list: a PDF's own text (or its pages read as pictures), or the letters in a photo (Tesseract, Romanian,
+  // downloaded the first time, then kept by the browser)
+  const CDN = 'https://cdn.jsdelivr.net/npm/';
+  async function ocr(img, msg) {
+    msg('Citesc poza… (prima dată descarc cititorul, ~3 MB)');
+    const T = await import(CDN + 'tesseract.js@5.1.1/dist/tesseract.esm.min.js');
+    const w = await (T.createWorker || T.default.createWorker)('ron', 1, { workerPath: CDN + 'tesseract.js@5.1.1/dist/worker.min.js', corePath: CDN + 'tesseract.js-core@5.1.1',
+      langPath: CDN + '@tesseract.js-data/ron/4.0.0_best_int', logger: m => { if (m.status === 'recognizing text') msg(`Citesc poza… ${Math.round(m.progress * 100)}%`); } });
+    try { return (await w.recognize(img)).data.text; } finally { await w.terminate(); }
+  }
+  async function readList(f, msg) {
+    if (/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) {
+      msg('Deschid PDF-ul…');
+      const pdfjs = await import(CDN + 'pdfjs-dist@4.10.38/build/pdf.min.mjs');
+      pdfjs.GlobalWorkerOptions.workerSrc = CDN + 'pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+      let text = '';
+      for (let n = 1; n <= Math.min(doc.numPages, 6); n++) {
+        const page = await doc.getPage(n), c = await page.getTextContent();
+        let t = '', y = null;
+        for (const it of c.items) { const yy = Math.round(it.transform?.[5] ?? 0); if (y !== null && Math.abs(yy - y) > 3) t += '\n'; else if (t && !t.endsWith(' ')) t += ' '; t += it.str; y = yy; }
+        if (t.replace(/\s/g, '').length < 10) {                      // a scanned page: read it as a picture
+          const vp = page.getViewport({ scale: 2 }), cv = Object.assign(document.createElement('canvas'), { width: vp.width, height: vp.height });
+          await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise; t = await ocr(cv, msg);
+        }
+        text += t + '\n';
+      }
+      return text;
+    }
+    return ocr(f, msg);
+  }
+
   // 🎵 the song picker for a phone: search by title or words of the title, tap ＋ to add; it stays open for the next one
   function songSheet(opt = {}) {
     const s = prepSvc(); if (!s && !opt.pick) return;
     $('songPick')?.remove();
     const box = Object.assign(document.createElement('section'), { id: 'songPick' });
     box.innerHTML = `<div class="stop"><button id="spX" title="Închide">✕</button><span class="t">${esc(opt.title || 'Cântări în program')}</span><button id="spOk" class="on">Gata</button></div>
-      ${opt.pick ? '' : `<div class="voice"><input id="spV" placeholder="🎤 Spune: Mii de laude în G, apoi Psalmul 8 în re" autocomplete="off" enterkeyhint="go"><button id="spMic" title="Vorbește">🎤</button><button id="spGo" class="acc">Pune</button></div><p class="vmsg" id="spMsg" hidden></p>`}
+      ${opt.pick ? '' : `<div class="voice"><input id="spV" placeholder="🎤 Spune: Mii de laude în G, apoi Psalmul 8 în re" autocomplete="off" enterkeyhint="go"><button id="spMic" title="Vorbește">🎤</button><button id="spGo" class="acc">Pune</button></div>
+      <label class="photo">📷 Din poză sau PDF<small>lista de cântări (poză, captură, PDF): le pun în ordine, cu tonul scris lângă ele</small><input type="file" id="spFile" accept="image/*,application/pdf" hidden></label><p class="vmsg" id="spMsg" hidden></p>`}
       <div class="spq"><input id="spQ" type="search" placeholder="Caută: titlu, autor…" autocomplete="off" enterkeyhint="search"></div><div id="spL" class="spl"></div>`;
     document.body.append(box); document.body.style.overflow = 'hidden';
     const close = () => { box.remove(); document.body.style.overflow = ''; };
@@ -791,6 +825,21 @@ Refren:
       if (!ok) return;
       $('spMsg').innerHTML = `✓ Am pus: ${add.map(a => `<b>${esc(a.title)}</b>${a.key ? ' (' + esc(a.key) + ')' : ''}`).join(', ')}${r.missed.length ? `<br>⚠ N-am găsit: ${r.missed.map(esc).join(', ')}` : ''}`;
       $('spV').value = ''; draw();
+    };
+    // 📷 a photo / screenshot / PDF of the list: read on the phone (the PDF's text, or the letters in the picture), then matched
+    if ($('spFile')) $('spFile').onchange = async () => {
+      const f = $('spFile').files[0], sv = prepSvc(); $('spFile').value = ''; if (!f || !sv) return;
+      const msg = t => { $('spMsg').hidden = false; $('spMsg').textContent = t; };
+      try {
+        const text = await readList(f, msg);
+        const r = listedSongs(text, lib.map(x => x.title));
+        const add = r.picks.map(p => { const x = lib[p.index]; return { kind: 'song', title: x.title, songId: x.local_id, key: p.key || x.key || '', minutes: 5 }; });
+        if (!add.length) return msg('N-am recunoscut nicio cântare din bibliotecă în ' + (/pdf/i.test(f.type) ? 'PDF.' : 'poză. Încearcă o poză mai clară, de aproape, dreaptă.'));
+        if (!confirm(`Am găsit ${add.length} ${add.length === 1 ? 'cântare' : 'cântări'}:\n\n${add.map((a, k) => `${k + 1}. ${a.title}${a.key ? ' (' + a.key + ')' : ''}`).join('\n')}${r.missed.length ? `\n\nNu le-am găsit în bibliotecă:\n${r.missed.slice(0, 8).join('\n')}` : ''}\n\nLe pun în program?`)) return msg('Nu am pus nimic.');
+        if (await change({ op: 'setItems', id: sv.id, items: [...sv.items, ...add] }))
+          $('spMsg').innerHTML = `✓ Am pus din ${esc(f.name)}: ${add.map(a => `<b>${esc(a.title)}</b>${a.key ? ' (' + esc(a.key) + ')' : ''}`).join(', ')}${r.missed.length ? `<br>⚠ N-am găsit: ${r.missed.slice(0, 8).map(esc).join(', ')}` : ''}`;
+        draw();
+      } catch (e) { msg('Nu am putut citi fișierul: ' + (e.message || e)); }
     };
     if ($('spV')) { $('spGo').onclick = say; $('spV').onkeydown = e => { if (e.key === 'Enter') say(); }; $('spMic').onclick = () => voice($('spV'), $('spMic'), say); }
     $('spL').onclick = async e => {

@@ -7,6 +7,9 @@ Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de 
 - **Structură → 🎤 Spune.** Nou: „strofa 1, refren, strofa 2, refren de două ori, bridge, final” așază blocurile; apoi Salvează.
 - Înțelegerea e în `packages/core/src/song.ts` (`spokenKey`, `spokenParts`, `spokenSongs`, `spokenStructure`, cu test), fără AI și
   fără internet în plus; microfonul = recunoașterea vocală a telefonului (ro-RO), altfel dictarea de pe tastatură.
+- **📷 Din poză sau PDF** (în „＋ Cântări în program”). Nou: poza / captura / PDF-ul cu lista de cântări e citit pe telefon (textul
+  PDF-ului cu pdf.js, poza cu Tesseract în română, descărcat la prima folosire), cântările găsite în bibliotecă (`listedSongs`, cu
+  numerele și tonul scris lângă titlu) sunt arătate pentru confirmare și puse în program în ordine.
 
 ## 2026-11-28 (seara) · Structura cântării pe program, ca în ProPresenter (Reverb online)
 - **„Structură” în vederea cântării.** Înainte: o cântare deschisă din program arăta ordinea din bibliotecă și tonul original;

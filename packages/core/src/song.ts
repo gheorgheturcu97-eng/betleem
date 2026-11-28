@@ -885,11 +885,11 @@ export function spokenParts(text: string): string[] {
 
 /** 🎤 "Mii de laude în G, apoi Psalmul 8 în re" → which titles (by index) and their keys. Titles are matched on their words,
  *  without diacritics, so "mii de laude" finds "Mii de laude (Lauda Celui ce a biruit)". Parts it cannot match come back in `missed`. */
-export function spokenSongs(text: string, titles: string[]): { picks: { index: number; key: string; said: string }[]; missed: string[] } {
+export function spokenSongs(text: string, titles: string[], parts: string[] | null = null): { picks: { index: number; key: string; said: string }[]; missed: string[] } {
   const words = (t: string) => foldRo(t).replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 1);
   const tw = titles.map(t => words(t));
   const picks: { index: number; key: string; said: string }[] = [], missed: string[] = [];
-  for (const part of spokenParts(text)) {
+  for (const part of parts || spokenParts(text)) {
     const { key, rest } = spokenKey(part), q = words(rest).filter(w => !['de', 'si', 'in', 'la', 'cu', 'pe'].includes(w) || words(rest).length < 3);
     if (!q.length) continue;
     let best = -1, score = 0;
@@ -925,4 +925,18 @@ export function spokenStructure(text: string, sections: Section[]): { order: str
     for (let r = 0; r < Math.min(times, 6); r++) order.push('#' + i);
   }
   return { order, missed };
+}
+
+/** 📷 A song list read from a photo or a PDF: one song per line, with or without numbers, the key written next to it
+ *  ("Psalmul 8 (D)", "Aleluia - Em", "3. Mii de laude G"); headings, dates and empty lines are skipped. */
+export function listedSongs(text: string, titles: string[]) {
+  const parts: string[] = [];
+  for (let line of String(text || '').split(/\r?\n/)) {
+    line = line.replace(/^\s*(?:\d{1,2}\s*[.,)\-:]|[•·\-–*]|\(\d{1,2}\))\s*/, '').replace(/\s+/g, ' ').trim();
+    if (line.length < 3 || /^(program(ul)?|lista|cantari|cântări|data|duminica|duminică|serviciu)\b/i.test(line) || /^\d{1,2}[./]\d{1,2}([./]\d{2,4})?$/.test(line)) continue;
+    const k = line.match(/\s*(?:\(([A-G][#b]?m?)\)|[-–—|:]\s*([A-G][#b]?m?)|\s([A-G][#b]?m))\s*$/);   // the key at the end of the line
+    if (k) line = line.slice(0, k.index) + ' în ' + (k[1] || k[2] || k[3]);
+    parts.push(line);
+  }
+  return spokenSongs('', titles, parts);
 }

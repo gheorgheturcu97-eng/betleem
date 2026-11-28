@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseSong, stripChords, transpose, transposeChord, keyDistance, toSlides, arrange,
-  isChordLine, chordsOverToChordPro, normalizeImported, readMeta, standardizeLabels, standardLabel, spokenKey, spokenSongs, spokenStructure,
+  isChordLine, chordsOverToChordPro, normalizeImported, readMeta, standardizeLabels, standardLabel, spokenKey, spokenSongs, spokenStructure, listedSongs,
 } from '../src/song.ts';
 
 const SONG = `{title: Mare e Domnul}
@@ -305,4 +305,10 @@ test('🎤 a spoken structure: verse 1, chorus, verse 2, chorus twice, bridge, e
   const r = spokenStructure('strofa unu, refren, a doua strofă, pre refren, refrenul de două ori, bridge și apoi final', secs);
   assert.deepEqual(r.order, ['#0', '#3', '#1', '#2', '#3', '#3', '#4', '#5']);
   assert.deepEqual(spokenStructure('strofa, refren, strofa, refren', secs).order, ['#0', '#3', '#1', '#3']);
+});
+
+test('📷 a song list read from a photo: numbers, keys next to the titles, headings skipped', () => {
+  const titles = ['Mii de laude (Lauda Celui ce a biruit)', 'Psalmul 8', 'Aleluia', 'Numele lui e Isus'];
+  const r = listedSongs('Program duminică\n29.11\n1. Mii de laude - G\n2) Psalmul 8 (D)\n• Numele lui e Isus Em\nAleluia\n', titles);
+  assert.deepEqual(r.picks.map(p => [titles[p.index], p.key]), [['Mii de laude (Lauda Celui ce a biruit)', 'G'], ['Psalmul 8', 'D'], ['Numele lui e Isus', 'Em'], ['Aleluia', '']]);
 });
