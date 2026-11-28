@@ -72,3 +72,27 @@ export function pdfPageCount(buf) {
   if (counts.length) return Math.max(...counts);
   return (s.match(/\/Type\s*\/Page\b(?!s)/g) || []).length;
 }
+
+/** The family name written inside a .ttf / .otf (its "name" table), e.g. "Calibri"; '' if it cannot be read. */
+export function fontFamilyName(buf) {
+  try {
+    let off = 0;
+    if (buf.toString('latin1', 0, 4) === 'ttcf') off = buf.readUInt32BE(12);       // a collection: the first font
+    const n = buf.readUInt16BE(off + 4);
+    for (let i = 0; i < n; i++) {
+      const r = off + 12 + i * 16;
+      if (buf.toString('latin1', r, r + 4) !== 'name') continue;
+      const t = buf.readUInt32BE(r + 8), count = buf.readUInt16BE(t + 2), strings = t + buf.readUInt16BE(t + 4);
+      let best = '';
+      for (let k = 0; k < count; k++) {
+        const e = t + 6 + k * 12, pid = buf.readUInt16BE(e), nid = buf.readUInt16BE(e + 6), len = buf.readUInt16BE(e + 8), at = strings + buf.readUInt16BE(e + 10);
+        if (nid !== 16 && nid !== 1) continue;                                          // 16 = typographic family, 1 = family
+        const raw = buf.subarray(at, at + len);
+        const s = pid === 1 ? raw.toString('latin1') : Buffer.from(raw).swap16().toString('utf16le');
+        if (nid === 16) return s.trim(); if (!best) best = s.trim();
+      }
+      return best;
+    }
+  } catch {}
+  return '';
+}

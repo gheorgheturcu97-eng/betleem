@@ -12,6 +12,9 @@ Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de 
   cine a desenat, fonturi găsite / instalate / înlocuite, video și linkuri care lipsesc, și **tranzițiile**: păstrate la
   fel (cu durată și direcție), cele care nu există aici (ex. Morph → estompare) și slide-urile care trec singure.
 - Calitatea paginilor: JPEG 0,94 (înainte 0,9).
+- **🔤 Documente/Betleem/Fonturi.** Nou: fonturile pentru care biserica are licență (Calibri etc. din Office, fonturi cumpărate)
+  puse acolo sunt instalate singure pentru utilizator (Keynote / PowerPoint / LibreOffice) și folosite în aplicație. Rămân
+  doar pe acel calculator (nu intră în actualizări, pachete sau online).
 
 ## 2026-11-28 (seara) · Predicatorul își pune prezentarea din aplicație (Reverb online + 2026.11.28.19)
 - **📎 / 🎨 la „Ești programat” (Reverb online).** Înainte: predicatorul putea trimite prezentarea doar din linkul către

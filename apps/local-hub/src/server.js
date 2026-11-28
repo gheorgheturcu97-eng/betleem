@@ -5,7 +5,7 @@
 //
 //   PIN=1234 PORT=4545 npm start
 
-import { analyzePptx, pdfPageCount } from './showcheck.js';
+import { analyzePptx, pdfPageCount, fontFamilyName } from './showcheck.js';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1736,10 +1736,10 @@ async function systemFonts() {
   return sysFontCache.set;
 }
 /** Puts downloaded fonts where the system (and so Keynote / PowerPoint) finds them: only for this user, nothing needs a password. */
-async function installUserFonts(families) {
+async function installUserFonts(families, mine = false) {
   const idx = fontIndex(), done = [];
   for (const fam of families) {
-    const f = idx[fam]; if (!f?.files?.length || (f.source && f.source.toLowerCase() !== fam.toLowerCase())) continue;   // a look-alike has another name: no use to PowerPoint
+    const f = idx[fam]; if (!f?.files?.length || (!mine && f.source && f.source !== 'Fonturi' && f.source.toLowerCase() !== fam.toLowerCase())) continue;   // a look-alike has another name: no use to PowerPoint
     for (const x of f.files) {
       const src = path.join(FONTS_DIR, x.file);
       try {
@@ -1757,9 +1757,38 @@ async function installUserFonts(families) {
   if (done.length) sysFontCache.at = 0;
   return done;
 }
+// 🔤 Documente/Betleem/Fonturi: fonts the church has a licence for (e.g. Calibri from Microsoft Office) or bought.
+// Whatever is put there is installed for this user (Keynote, PowerPoint and LibreOffice see it) and drawn in the browser.
+// They stay on this computer: never in updates, packages or the online copy.
+const MY_FONTS = path.join(DATA_DIR, 'Fonturi');
+let myFontsSeen = '';
+async function myFonts() {
+  try { fs.mkdirSync(MY_FONTS, { recursive: true }); } catch { return []; }
+  const files = fs.readdirSync(MY_FONTS).filter(f => /\.(ttf|otf|ttc)$/i.test(f)).sort();
+  const sig = files.map(f => f + ':' + fs.statSync(path.join(MY_FONTS, f)).size).join('|');
+  if (sig === myFontsSeen) return files;
+  const idx = fontIndex(), added = [];
+  fs.mkdirSync(FONTS_DIR, { recursive: true });
+  for (const f of files) {
+    const buf = fs.readFileSync(path.join(MY_FONTS, f)), fam = fontFamilyName(buf) || f.replace(/\.[^.]+$/, '').replace(/[-_ ](regular|bold|italic|light|medium|semibold|black).*$/i, '');
+    const style = /italic|oblique/i.test(f) ? 'italic' : 'normal', weight = /bold|black|heavy/i.test(f) ? '700' : /light|thin/i.test(f) ? '300' : /semi|demi|medium/i.test(f) ? '600' : '400';
+    const file = 'mine-' + fontSlug(f.replace(/\.[^.]+$/, '')) + path.extname(f).toLowerCase();
+    fs.copyFileSync(path.join(MY_FONTS, f), path.join(FONTS_DIR, file));
+    const e = idx[fam] && idx[fam].source === 'Fonturi' ? idx[fam] : (idx[fam] = { source: 'Fonturi', files: [] });
+    if (!e.files.some(x => x.file === file)) e.files.push({ file, weight, style });
+    added.push(fam);
+  }
+  writeFontCss(idx);
+  for (const fam of [...new Set(added)]) await installUserFonts([fam], true);
+  myFontsSeen = sig;
+  return files;
+}
+setTimeout(() => myFonts().catch(e => logError('Fonturi', e)), 4000);
+
 /** 🔎 Before the import: what the presentation needs; the fonts it lacks are downloaded and installed. Returns the report. */
 async function prepareShow(file) {
   const rep = { engine: '', fonts: { ok: [], installed: [], embedded: [], lookalike: [], missing: [] }, warnings: [] };
+  await myFonts().catch(() => {});
   if (!/\.(pptx|ppsx)$/i.test(file)) return rep;
   let a; try { a = analyzePptx(fs.readFileSync(file)); } catch (e) { rep.warnings.push(e.message); return rep; }
   Object.assign(rep, { slides: a.slides, visible: a.visible, hiddenAt: a.hiddenAt, ratio: a.size.ratio, videos: a.videos, external: a.external });
@@ -1782,8 +1811,8 @@ async function prepareShow(file) {
   }
   if (a.videos.length) rep.warnings.push(`Prezentarea are ${a.videos.length === 1 ? 'un video' : a.videos.length + ' video'} (${a.videos.slice(0, 3).join(', ')}): pe ecran apare doar prima imagine. Pune video-ul separat în program.`);
   if (a.external.length) rep.warnings.push(`${a.external.length} ${a.external.length === 1 ? 'fișier e legat' : 'fișiere sunt legate'} din calculatorul autorului (nu sunt în prezentare): ${a.external.slice(0, 2).map(x => path.basename(decodeURIComponent(x))).join(', ')}. Cere-i prezentarea cu ele incluse sau PDF.`);
-  if (rep.fonts.lookalike.length) rep.warnings.push(`Fonturi Microsoft care nu sunt pe acest calculator, înlocuite cu unele la fel de late: ${rep.fonts.lookalike.join(', ')}. Cu PowerPoint instalat arată exact.`);
-  if (rep.fonts.missing.length) rep.warnings.push(`Fonturi pe care nu le am și nu le-am putut descărca: ${rep.fonts.missing.join(', ')}. Verifică internetul și importă din nou; dacă tot lipsesc, cere-i predicatorului PDF-ul sau fontul.`);
+  if (rep.fonts.lookalike.length) rep.warnings.push(`Fonturi Microsoft care nu sunt pe acest calculator, înlocuite cu unele la fel de late: ${rep.fonts.lookalike.join(', ')}. Cu PowerPoint instalat arată exact, sau pune fonturile tale (licența Office) în Documente/Betleem/Fonturi.`);
+  if (rep.fonts.missing.length) rep.warnings.push(`Fonturi pe care nu le am și nu le-am putut descărca: ${rep.fonts.missing.join(', ')}. Verifică internetul și importă din nou; dacă tot lipsesc, pune fontul în Documente/Betleem/Fonturi sau cere-i predicatorului PDF-ul.`);
   return rep;
 }
 
