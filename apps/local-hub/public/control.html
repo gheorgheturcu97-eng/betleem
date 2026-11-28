@@ -242,6 +242,9 @@
   .lineup .line>small{width:52px;flex:none;font-size:11px;color:var(--mute)}
   .lineup .tagbar,.lineup .arr{flex:1;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;order:0;flex-basis:auto}
   .lineup .arr::before,.tagbar>span:first-child{display:none}
+  .lineup .arr.groups .chip{cursor:pointer;opacity:.95} .lineup .arr.groups .chip:hover{opacity:1;filter:brightness(1.15)}
+  .lineup #arrPick{max-width:150px;font-weight:600}
+  #arrChips.dropzone{outline:2px dashed var(--acc);outline-offset:2px;border-radius:999px}
   .lineup select{width:auto;border-radius:999px;padding:4px 8px} .lineup .icon{width:28px;height:28px;padding:0}
   .libbar{display:flex;align-items:center;gap:6px} .libbar .icon{width:36px;height:36px;padding:0;font-size:15px}
   .ai-top{width:36px;height:36px;padding:0;border-radius:50%;background:var(--acc);color:var(--acc-ink);border:0;font-size:16px}
@@ -1075,7 +1078,8 @@
               <select id="maxLines"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option><option value="8">8</option></select>
               <button id="bArr" class="mini" title="Aplică din nou ordinea și rândurile">Aplică</button></span>
             <div class="lineup" id="structBox">
-              <div class="line"><div class="arr" id="arrChips" title="Ordinea secțiunilor în acest program: trage ca s-o schimbi; ✕ scoate o secțiune. Etichetele le pui din ✎ pe slide."></div>
+              <div class="line"><small title="Secțiunile cântării, câte o dată (ca Groups în ProPresenter): clic sau trage în ordinea de dedesubt">Secțiuni</small><div class="arr groups" id="arrGroups"></div></div>
+              <div class="line"><select id="arrPick" title="Aranjamentul: ordinea secțiunilor, salvată pe cântare cu un nume (ca în ProPresenter)"></select><div class="arr" id="arrChips" title="Ordinea secțiunilor în acest program: trage ca s-o schimbi; ✕ scoate o secțiune. Etichetele le pui din ✎ pe slide."></div>
                 <select id="arrAdd" title="Mai pune o secțiune"><option value="">＋</option></select><button id="arrReset" class="icon" title="Ordinea din cântare">↺</button></div>
             </div>
           </div>
@@ -1141,7 +1145,7 @@
           <button id="bChordsAll" class="icon" title="Acorduri pentru toată biblioteca: caută pe net cântările fără acorduri și pune acordurile pe fiecare strofă, refren și bridge">♪</button>
           <button id="bBetleemLib" class="icon" title="📥 Adaugă cântările altui Reverb (library.json, o copie de siguranță sau pachetul liderilor); cele care există deja nu se dublează">📥</button><input type="file" id="betleemLibFile" accept=".json,application/json" hidden>
           <button id="bPro" class="icon" title="⇪ Importă cântările din ProPresenter de pe acest calculator (cele care există deja nu se dublează)">⇪</button>
-          <button id="bClean" class="icon" title="Curăță biblioteca: etichete din semnele site-urilor (1., R:, Str2), fără /: :/, refrenul după fiecare strofă">🧹</button></div>
+          <button id="bClean" class="icon" title="Curăță biblioteca: etichete din semnele site-urilor (1., R:, Str2), fără /: :/, refrenul după fiecare strofă">🧹</button><button id="bStd" class="icon" title="Nume standard pentru toate cântările: Verse 1, Chorus, Verse 2, Bridge… (ca în ProPresenter)">🏷</button></div>
       </div>
 
       <div class="tab" id="tab-bible">
@@ -1527,7 +1531,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   <div class="sed-body">
     <div class="sed-left">
       <div class="pv" id="pv"><div id="pvBg"></div><div id="pvShade"></div><div id="pvUnder" class="ly-box"></div><div id="pvBox"><div id="pvText" contenteditable="plaintext-only" spellcheck="false" title="Scrie direct aici"></div><i class="mv" title="Trage ca să muți caseta">✥</i><i class="h" title="Trage ca să mărești caseta"></i></div><div id="pvOver" class="ly-box"></div></div>
-      <div class="row" style="align-items:center"><span class="hint grow">Scrie direct pe slide. ✥ mută caseta, colțul o mărește. Se salvează singur când închizi.</span><button id="sedBoxReset" class="ghost">↺ Caseta pe tot ecranul</button></div>
+      <div class="row" style="align-items:center"><span class="hint grow">Scrie direct pe slide. ✥ mută caseta, colțul o mărește. Se salvează singur când închizi.</span><button id="sedBreak" class="ghost" title="Pune cursorul la capătul unui rând și apasă (sau ⌘/Ctrl+Enter): de acolo începe un slide nou, ca Reflow în ProPresenter">✂ Rupe aici</button><button id="sedBoxReset" class="ghost">↺ Caseta pe tot ecranul</button></div>
       <textarea id="sedText" spellcheck="false" hidden></textarea>
     </div>
     <div class="sed-right">
@@ -1605,6 +1609,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (e.type === 'chords') chordsProgress(e);
     if (e.type === 'md') mdRemote(e);
     if (e.type === 'displays') { monitors(); if (e.added) toast('🖥 A apărut „' + e.added + '”. Îl alegi la Sală sau Scenă din listă.'); else if (e.removed) toast('🖥 S-a deconectat „' + e.removed + '”.'); }
+    if (e.type === 'standardized') { songCache.clear(); search(); render(); toast(`Gata: ${e.changed} din ${e.total} cântări au acum Verse / Chorus / Bridge; la ${e.ordered} am pus ordinea Verse 1 · Chorus · Verse 2 · Chorus…`); }
     if (e.type === 'cleaned') { songCache.clear(); search(); render(); toast(`Am curățat ${e.changed} din ${e.total} cântări; la ${e.ordered} am pus refrenul după fiecare strofă.`); }
     if (e.type === 'autoLabeled') { clearTimeout(autoWait); toast(e.named ? `Am pus etichete la ${e.named} secțiuni din „${e.title}”. Ce nu e bine, corectezi trăgând etichete (sau Ctrl+Z).` : `„${e.title}” avea deja toate etichetele.`); }
     if (e.type === 'inbox') onInbox(e);
@@ -4315,7 +4320,50 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       });
     }
     $('arrAdd').innerHTML = '<option value="">＋</option>' + parsed.map((sec, i) => `<option value="#${i}">${esc(name(sec))}</option>`).join('');
+    // 🎼 Groups like ProPresenter: each section once (the same name only once); clic = at the end, drag = where you drop it
+    const groups = parsed.map((sec, i) => ({ sec, i })).filter(({ sec, i }) => !sec.label || parsed.findIndex(x => x.label.toLowerCase() === sec.label.toLowerCase()) === i);
+    const gh = groups.map(({ sec, i }) => `<span class="chip" draggable="true" data-g="#${i}" style="--sc:${sectionColor(sec.label || '')}" title="Clic: pune la sfârșit · trage: pune unde vrei">${esc(name(sec))}</span>`).join('');
+    if ($('arrGroups').dataset.html !== gh) {
+      $('arrGroups').innerHTML = gh; $('arrGroups').dataset.html = gh;
+      document.querySelectorAll('#arrGroups .chip').forEach(ch => {
+        ch.onclick = () => setOrder([...arr.tokens, ch.dataset.g]);
+        ch.ondragstart = e => { e.dataTransfer.setData('text/x-group', ch.dataset.g); e.dataTransfer.effectAllowed = 'copy'; $('arrChips').classList.add('dropzone'); };
+        ch.ondragend = () => $('arrChips').classList.remove('dropzone');
+      });
+    }
+    // the saved arrangements of this song
+    const saved = Object.keys(song.arrangements || {}), cur = it.arrangementName && saved.includes(it.arrangementName) ? it.arrangementName : '';
+    $('arrPick').innerHTML = `<option value="">${it.arrangement?.length && !cur ? 'Al programului' : 'Original'}</option>`
+      + saved.map(n => `<option value="n:${esc(n)}" ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')
+      + `<option value="+">＋ Salvează ordinea ca…</option>` + (cur ? `<option value="-">🗑 Șterge „${esc(cur)}”</option>` : '') + (it.arrangement?.length ? `<option value="o">↺ Original (ordinea din cântare)</option>` : '');
+    $('arrPick').value = cur ? 'n:' + cur : '';
+    arr.song = song;
   }
+  // drop a group from „Secțiuni” on the order: before the chip you drop it on, or at the end
+  $('arrChips').addEventListener('dragover', e => { if (e.dataTransfer.types.includes('text/x-group')) e.preventDefault(); });
+  $('arrChips').addEventListener('drop', e => {
+    const g = e.dataTransfer.getData('text/x-group'); if (!g || !arr) return;
+    e.preventDefault(); e.stopPropagation(); $('arrChips').classList.remove('dropzone');
+    const on = e.target.closest('#arrChips .chip'), t = [...arr.tokens];
+    t.splice(on ? +on.dataset.p : t.length, 0, g); setOrder(t);
+  }, true);
+  $('arrPick').onchange = async e => {
+    const v = e.target.value, it = S.setlist[sel]; if (!it || !arr) return;
+    const song = arr.song, ml = +$('maxLines').value;
+    if (v.startsWith('n:')) { const n = v.slice(2); send({ type: 'arrangement', item: sel, value: song.arrangements[n], name: n, maxLines: ml }); toast('Aranjamentul „' + n + '”'); }
+    else if (v === 'o' || v === '') { send({ type: 'arrangement', item: sel, value: null, maxLines: ml }); toast('Ordinea din cântare'); }
+    else if (v === '+') {
+      const r = await ask('Numele aranjamentului (de ex. „Duminică”, „Scurt”, „Concert”)', [{ label: 'Nume', value: '' }], 'Salvează');
+      const n = r?.[0]?.trim(); if (!n) { renderArrangement(it); return; }
+      send({ type: 'saveArrangement', songId: it.songId, name: n, value: arr.tokens });
+      send({ type: 'arrangement', item: sel, value: arr.tokens, name: n, maxLines: ml });
+      songCache.delete(it.songId); toast('Aranjament salvat pe cântare: „' + n + '”. Îl alegi oricând din listă.');
+    }
+    else if (v === '-' && it.arrangementName) {
+      send({ type: 'deleteArrangement', songId: it.songId, name: it.arrangementName }); songCache.delete(it.songId);
+      toast('Aranjament șters', () => send({ type: 'undo' }));
+    }
+  };
   $('arrAdd').onchange = e => { if (e.target.value && arr) setOrder([...arr.tokens, e.target.value]); e.target.value = ''; };
   $('arrReset').onclick = () => { send({ type: 'arrangement', item: sel, value: null, maxLines: +$('maxLines').value }); toast('Ordinea din cântare'); };
   const applyLines = () => { if (S.setlist[sel]) send({ type: 'arrangement', item: sel, value: S.setlist[sel].arrangement || null, maxLines: +$('maxLines').value }); };
@@ -4346,7 +4394,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       toast('Slide-ul ' + (i + 1) + ' e acum: ' + label, () => send({ type: 'undo' }));
     };
   }
-  const SECS = ['Strofa 1', 'Strofa 2', 'Strofa 3', 'Strofa 4', 'Pre-refren', 'Refren', 'Refren 2', 'Bridge', 'Intro', 'Final', 'Tag'];
+  const SECS_RO = ['Strofa 1', 'Strofa 2', 'Strofa 3', 'Strofa 4', 'Pre-refren', 'Refren', 'Refren 2', 'Bridge', 'Intro', 'Final', 'Tag'];
+  const SECS_EN = ['Verse 1', 'Verse 2', 'Verse 3', 'Verse 4', 'Pre-Chorus', 'Chorus', 'Chorus 2', 'Bridge', 'Intro', 'Ending', 'Tag'];
+  const SECS = new Proxy([], { get: (t, k) => { const a = S?.labelStd === 'en' ? SECS_EN : SECS_RO; const v = a[k]; return typeof v === 'function' ? v.bind(a) : v; } });
   const FULL_BOX = { x: 6, y: 6, w: 88, h: 88 };
   $('sFont').innerHTML = $('lFont').innerHTML;
   $('secList').innerHTML = SECS.map(x => `<option value="${x}">`).join('');
@@ -4410,7 +4460,28 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   };
   $('sedText').oninput = paintPreview;
   $('pvText').oninput = () => { $('sedText').value = $('pvText').innerText.replace(/\n{3,}/g, '\n\n'); };
-  $('pvText').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); $('pvText').blur(); $('sedOk').click(); } };
+  $('pvText').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); $('pvText').blur(); $('sedOk').click(); }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $('sedBreak').click(); } };
+  // ✂ break the slide at the cursor (like Reflow in ProPresenter): the rows after the cursor become the next slide
+  let lastCaret = -1;
+  const caretLine = () => {
+    const t = $('pvText'), sel = getSelection();
+    if (!sel.rangeCount || !t.contains(sel.anchorNode)) return lastCaret;
+    const r = document.createRange(); r.selectNodeContents(t); r.setEnd(sel.anchorNode, sel.anchorOffset);
+    const before = r.toString(), all = t.innerText, n = (before.match(/\n/g) || []).length;
+    const atLineStart = before === '' || before.endsWith('\n');
+    return atLineStart ? n : (all.slice(before.length).startsWith('\n') || before.length >= all.replace(/\n+$/, '').length ? n + 1 : n + 1);
+  };
+  $('pvText').addEventListener('keyup', () => { lastCaret = caretLine(); }); $('pvText').addEventListener('mouseup', () => { lastCaret = caretLine(); });
+  $('sedBreak').onmousedown = e => { lastCaret = caretLine(); e.preventDefault(); };
+  $('sedBreak').onclick = () => {
+    if (!ed) return;
+    const line = $('pvText').contains(getSelection().anchorNode) ? caretLine() : lastCaret, n = $('sedText').value.split('\n').filter(l => l.trim()).length;
+    if (line <= 0 || line >= n) return toast('Pune cursorul la capătul unui rând din mijloc (nu după ultimul) și apasă din nou ✂');
+    const { i } = ed; saveSlideEdit(); send({ type: 'breakSlide', item: sel, slide: i, line });
+    $('sedModal').classList.remove('show'); keepPlace(); ed = null; songCache.delete(S.setlist[sel]?.songId);
+    toast('Slide-ul s-a rupt în două', () => send({ type: 'undo' }));
+  };
   $('sFont').onchange = e => setSt({ font: e.target.value });
   $('sSize').oninput = e => setSt({ size: +e.target.value });
   $('sWeight').onchange = e => setSt({ weight: +e.target.value });
@@ -4590,6 +4661,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     const ok = await ask('Curăț toate cântările: semnele de pe site-uri (1., Str2, R:, Ref, Bridge) devin etichete și nu se mai văd pe ecran, dispar „/:” și „:/”, secțiunile fără nume primesc nume, iar refrenul scris o singură dată se cântă după fiecare strofă. Fac întâi o copie de siguranță; poți anula cu Ctrl+Z.', [], 'Curăță');
     if (ok) send({ type: 'cleanLibrary' });
   };
+  // 🏷 the standard names for every song, like ProPresenter (asked once, by the leader; a copy of the library is kept first)
+  $('bStd') && ($('bStd').onclick = () => standardizeLibrary());
+  async function standardizeLibrary() {
+    const ok = await ask('Toate cântările primesc numele standard, ca în ProPresenter: Verse 1, Chorus, Verse 2, Pre-Chorus, Bridge, Intro, Ending, Tag (în loc de Strofa, Refren, Final). Secțiunile fără nume primesc nume, iar unde nu e o ordine, se pune Verse 1 · Chorus · Verse 2 · Chorus… Cântările noi și cele din Planning Center vor folosi tot aceste nume. Versurile și acordurile nu se schimbă; fac întâi o copie de siguranță a bibliotecii.', [], 'Pune numele standard');
+    if (ok) { send({ type: 'standardLabels' }); songCache.clear(); }
+  }
 
   // ---- tags (Laudă, Adorare…): filter the library, set them in the editor
   const PRESET_TAGS = ['Laudă', 'Adorare', 'Rugăciune', 'Mulțumire', 'Crăciun', 'Paști', 'Cina Domnului', 'Botez', 'Copii', 'Tineret', 'Evanghelizare', 'Închidere'];

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseSong, stripChords, transpose, transposeChord, keyDistance, toSlides, arrange,
-  isChordLine, chordsOverToChordPro, normalizeImported, readMeta,
+  isChordLine, chordsOverToChordPro, normalizeImported, readMeta, standardizeLabels, standardLabel,
 } from '../src/song.ts';
 
 const SONG = `{title: Mare e Domnul}
@@ -281,4 +281,12 @@ test('half-converted chord lines, bars and "B:" leave the words alone', () => {
   assert.match(out, /\[\|G\] \[-\] \[-\] \[-\|C\] \[-\] \[G\] \[-\|\]/, 'the bars stay for the stage');
   assert.match(out, /Bridge:\n\[G\]Sfânt, Sfânt/);
   assert.equal(chordName('b'), 'Bm');
+});
+
+test('standard names like ProPresenter: Strofa → Verse, Refren → Chorus, Final → Ending; words stay', () => {
+  const body = 'Strofa 1:\nA [G]b\n\nRefren:\nC d\n\nPre-refren:\nE\n\nFinal:\nF';
+  const out = standardizeLabels(body);
+  assert.equal(out, 'Verse 1:\nA [G]b\n\nChorus:\nC d\n\nPre-Chorus:\nE\n\nEnding:\nF');
+  assert.equal(standardLabel('Refren 2'), 'Chorus 2'); assert.equal(standardLabel('Strofa'), 'Verse 1'); assert.equal(standardLabel('Tag'), 'Tag');
+  assert.deepEqual(parseSong(out).map(s => s.label), ['Verse 1', 'Chorus', 'Pre-Chorus', 'Ending']);
 });

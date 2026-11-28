@@ -1,6 +1,21 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Aranjamente ca în ProPresenter, nume standard Verse / Chorus, ✂ Rupe slide-ul (2026.11.28.12)
+- **Aranjamente (control.html, `saveArrangement`/`deleteArrangement`).** Înainte: un singur rând „Ordine” și ＋ dintr-o
+  listă. Acum: deasupra stă rândul „Secțiuni” (fiecare secțiune o dată, colorată, ca Groups în ProPresenter): clic o pune
+  la sfârșit, tragi o pui unde vrei. În stânga ordinii e lista de aranjamente: „＋ Salvează ordinea ca…” o păstrează pe
+  cântare cu un nume (Duminică, Scurt, Concert), o alegi oricând din listă, „🗑 Șterge” o scoate, „↺ Original” = ordinea
+  din cântare.
+- **Nume standard (🏷 în Cântări, `standardLabels`; `standardizeLabels` în song.ts).** Înainte: Strofa / Refren / Final
+  amestecate cu VERSE / CHORUS din Planning Center. Acum, după un clic pe 🏷 (liderul, o singură dată, cu copie de
+  siguranță): toate cântările au Verse 1, Chorus, Verse 2, Pre-Chorus, Bridge, Intro, Ending, Tag; secțiunile fără nume
+  primesc nume; unde nu era ordine se pune Verse 1 · Chorus · Verse 2 · Chorus…; cântările noi și cele din PCO vin tot
+  așa; butoanele de secțiune din editor arată aceleași nume.
+- **✂ Rupe aici (editorul de slide).** Nou: pui cursorul la capătul unui rând și apeși ✂ (sau ⌘/Ctrl+Enter): de acolo
+  începe un slide nou, ca Reflow în ProPresenter. Secțiunea e tăiată în două cu același nume, așa că ordinea din programe
+  rămâne. ⌘Z anulează.
+
 ## 2026-11-28 · ↶ ↷ în Proiectez; aspectul copiat se pune pe toată cântarea (2026.11.28.12)
 - **Anulează / Refă.** Înainte: în Proiectez butoanele ↶ ↷ erau ascunse (mergea doar ⌘Z). Acum: se văd sus, lângă
   telefon; ⌘Z / ⌘⇧Z merg ca înainte.

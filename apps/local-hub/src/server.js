@@ -373,10 +373,15 @@ export function addSongs(list) {
 
 export { core, extractLyrics };
 
+/** With the standard names on (Verse / Chorus / Bridge, like ProPresenter), every song that comes in is written with them. */
+const stdBody = b => (db.labelStd === 'en' ? core.standardizeLabels(b) : b);
+const stdOrder = a => (db.labelStd === 'en' && Array.isArray(a) ? a.map(x => (/^#\d+$/.test(x) ? x : core.standardLabel(x))) : a);
+
 function snapshot() {
   const open = k => [...sessions.values()].some(s => s.screen === k);
   return {
-    screensOpen: { main: open('main'), stage: open('stage') },     // 🖥 is the projector / stage window open right now
+    screensOpen: { main: open('main'), stage: open('stage') },
+    labelStd: db.labelStd || '',                                   // 'en' = Verse / Chorus / Bridge     // 🖥 is the projector / stage window open right now
     service: db.service,
     display: db.display,
     lights: db.lights || { scenes: [] },
@@ -470,7 +475,7 @@ wss.on('connection', (ws, req) => {
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 let lastMd = null;                                     // the last MD&TRACK state, for a phone that just opened
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'pasteSlides', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'pasteSlides', 'breakSlide', 'standardLabels', 'saveArrangement', 'deleteArrangement', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
@@ -488,7 +493,7 @@ function restoreSnapshot(sn) {
 }
 const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', pasteSlides: 'lipirea slide-urilor', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', pasteSlides: 'lipirea slide-urilor', breakSlide: 'ruperea slide-ului', standardLabels: 'etichetele standard', saveArrangement: 'salvarea aranjamentului', deleteArrangement: 'ștergerea aranjamentului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -655,6 +660,7 @@ function handleMessage(ws, m) {
       case 'arrangement': {                          // operators may change slide layout only
         const it = db.setlist[m.item]; if (!it) break;
         it.arrangement = Array.isArray(m.value) ? m.value.map(v => String(v).slice(0, 40)).slice(0, 60) : undefined;
+        if ('name' in m || !it.arrangement) it.arrangementName = it.arrangement && m.name ? String(m.name).slice(0, 40) : undefined;   // 🎼 which saved arrangement is used
         if (m.maxLines) it.maxLines = clamp(Number(m.maxLines), 1, 8);
         if ('background' in m) it.background = String(m.background || '');
         save(); break;
@@ -769,19 +775,50 @@ function handleMessage(ws, m) {
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
         const song = db.songs.find(x => x.id === it.songId); if (!song) break;
         const before = core.parseSong(song.body).filter(sec => !sec.label).length;
-        const body = core.stripRepeatMarks(core.autoLabel(core.labelStanzas(song.body)));   // site marks ("1.", "R:", "/: :/") become tags
+        const body = stdBody(core.stripRepeatMarks(core.autoLabel(core.labelStanzas(song.body))));   // site marks ("1.", "R:", "/: :/") become tags
         if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); }
         if (!song.arrangement?.length) { const order = core.autoArrangement(song.body); if (order) song.arrangement = order; }
         save();
         reply({ type: 'autoLabeled', named: before, title: song.title });
         break;
       }
+      case 'standardLabels': {                       // 🏷 every song: Verse 1 / Chorus / Verse 2 / Bridge…, order V1 C V2 C… where none
+        if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate schimba toată biblioteca.' });
+        try { fs.writeFileSync(path.join(DATA_DIR, `library.backup-${Date.now()}.json`), JSON.stringify(db)); } catch {}
+        db.labelStd = 'en';
+        let changed = 0, ordered = 0;
+        for (const song of db.songs) {
+          // names for unnamed blocks too, but only when the blocks stay the same (programs point at blocks by number)
+          const n0 = core.parseSong(song.body).length, same = b => core.parseSong(b).length === n0;
+          const full = stdBody(core.stripRepeatMarks(core.autoLabel(core.labelStanzas(core.normalizeImported(song.body)))));
+          const named = stdBody(core.autoLabel(song.body));
+          const body = same(full) ? full : same(named) ? named : stdBody(song.body);
+          if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); changed++; }
+          if (song.arrangement?.length) song.arrangement = stdOrder(song.arrangement);
+          else { const order = core.autoArrangement(song.body); if (order) { song.arrangement = order; ordered++; } }
+          if (song.arrangements) for (const k of Object.keys(song.arrangements)) song.arrangements[k] = stdOrder(song.arrangements[k]);
+        }
+        const fixItems = items => { for (const it of items || []) if (it.arrangement?.length) it.arrangement = stdOrder(it.arrangement); };
+        fixItems(db.setlist); for (const sv of db.plan?.services || []) fixItems(sv.items);
+        for (const c of Object.values(db.churchData || {})) { fixItems(c.setlist); for (const sv of c.plan?.services || []) fixItems(sv.items); }
+        save(); reply({ type: 'standardized', changed, ordered, total: db.songs.length });
+        break;
+      }
+      case 'saveArrangement': case 'deleteArrangement': {   // 🎼 named arrangements of a song, like ProPresenter
+        const song = db.songs.find(x => x.id === m.songId); if (!song) break;
+        const name = String(m.name || '').trim().slice(0, 40); if (!name) break;
+        song.arrangements ||= {};
+        if (m.type === 'deleteArrangement') delete song.arrangements[name];
+        else song.arrangements[name] = (Array.isArray(m.value) ? m.value : []).map(v => String(v).slice(0, 40)).slice(0, 60);
+        if (!Object.keys(song.arrangements).length) delete song.arrangements;
+        song.updatedAt = new Date().toISOString(); save(); break;
+      }
       case 'cleanLibrary': {                         // every song: site marks -> tags, no "/: :/", names for blocks, chorus after each verse
         if (!need(ws, 'leader')) return reply({ type: 'error', error: 'Doar liderul poate curăța toată biblioteca.' });
         try { fs.writeFileSync(path.join(DATA_DIR, `library.backup-${Date.now()}.json`), JSON.stringify(db)); } catch {}
         let changed = 0, ordered = 0;
         for (const song of db.songs) {
-          const body = core.normalizeImported(song.body);
+          const body = stdBody(core.normalizeImported(song.body));
           if (body !== song.body) { song.body = body; song.updatedAt = new Date().toISOString(); changed++; }
           if (!song.arrangement?.length) { const order = core.autoArrangement(song.body); if (order) { song.arrangement = order; ordered++; } }
         }
@@ -883,6 +920,16 @@ function handleMessage(ws, m) {
         if (it.slideLayers) it.slideLayers = shiftSlides(it.slideLayers, m.slide, 1);
         save(); break;
       }
+      case 'breakSlide': {                           // ✂ like Reflow in ProPresenter: a new slide starts at this line
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const hit = slideSource(it, song, m.slide); if (!hit) break;
+        const at = hit.from + Math.round(Number(m.line) || 0);
+        if (at <= 0 || at >= hit.sec.lines.length) return reply({ type: 'error', error: 'Pune cursorul între două rânduri ca să rupi slide-ul acolo.' });
+        // the section is cut in two with the same name: arrangements by name keep both halves, numbered ones are renumbered
+        if (splitAtSlide(song, { ...hit, from: at, to: hit.sec.lines.length }, hit.sec.label || 'Verse') === null) return reply({ type: 'error', error: 'Nu am putut rupe slide-ul.' });
+        save(); reply({ type: 'broken', slide: Number(m.slide) }); break;
+      }
       case 'pasteSlides': {                          // ⌘V: copied slides (from this song or another one) go after a slide
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') return reply({ type: 'error', error: 'Slide-urile se lipesc într-o cântare din program.' });
         const song = db.songs.find(x => x.id === it.songId); if (!song) break;
@@ -928,7 +975,7 @@ function handleMessage(ws, m) {
       case 'saveSong': {                             // operators fix lyrics
         const s = m.song || {};
         if (!s.title || !s.body) return reply({ type: 'error', error: 'Titlu și versuri obligatorii' });
-        const body = core.normalizeImported(String(s.body));
+        const body = stdBody(core.normalizeImported(String(s.body)));
         const meta = core.readMeta(body);
         const existing = s.id && db.songs.find(x => x.id === s.id);
         const tags = Array.isArray(s.tags) ? [...new Set(s.tags.map(t => String(t).trim()).filter(Boolean))].slice(0, 12) : undefined;
@@ -1300,7 +1347,7 @@ function repointSong(from, to) {
 export function mergePcoSongs(list, { prefer = false, account = '' } = {}) {
   let added = 0, chords = 0, skipped = 0, replaced = 0, merged = 0, backedUp = false;
   for (const x of list) {
-    const body = core.normalizeImported(x.body || '');
+    const body = stdBody(core.normalizeImported(x.body || ''));
     if (!x.title || !body.trim()) { skipped++; continue; }
     const hits = sameSongs(x, body), have = hits[0];
     if (have) {
