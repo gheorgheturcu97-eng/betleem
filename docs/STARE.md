@@ -53,6 +53,7 @@ Asistentul ✦ e mereu în bara de sus, în toate zonele.
   Slide-urile se schimbă cu Spațiu / → / ← și cu clic.
 - Live (2026-11-28): slide-urile în stânga pe toată înălțimea; în dreapta Sala + Scena una sub alta și fundalurile dedesubt.
 - Ecran de scenă ca în ProPresenter (2026-11-28): slide-ul următor pe toată lățimea sub versuri, „În program” pe un rând lung jos.
+- ⌘C / ⌘V pe slide-uri (mai multe cu ⇧/⌘-clic), și între cântări (`pasteSlides`). Editorul ✎: scrii direct pe slide, se salvează la închidere.
 - Ecran de scenă cu **timerul slujbei**: suma minutelor din plan, pornește la prima cântare, galben la 5 min,
   portocaliu la 3 min, roșu care pulsează când trece de timp.
 - Selector de program cu **+** pentru import rapid din PCO. Lista de servicii se strânge când începe slujba.

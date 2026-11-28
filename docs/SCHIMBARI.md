@@ -1,6 +1,16 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Copiezi slide-uri cu ⌘C / ⌘V; scrii direct pe slide (2026.11.28.8)
+- **Copiere de slide-uri (control.html + `pasteSlides` în server.js).** Înainte: ⌘C pe un slide copia doar textul, iar
+  ⌘V îl repeta numai în aceeași cântare. Acum: alegi unul sau mai multe slide-uri (⇧-clic = de la până la, ⌘-clic = încă
+  unul; nimic nu pleacă pe ecran), ⌘C, apoi clic pe slide-ul după care vrei și ⌘V — merge și în altă cântare. Slide-ul
+  adus din altă cântare se adaugă la cântarea respectivă, dar ordinea ei din bibliotecă rămâne aceeași; în program apare
+  unde l-ai lipit. ⌘Z anulează.
+- **Editorul de slide (✎).** Înainte: textul se scria într-o căsuță sub slide și trebuia apăsat „Salvează”. Acum: scrii
+  direct pe slide (căsuța a dispărut); ✥ mută caseta, colțul o mărește. La închidere (Esc, „Gata” sau clic în afară) se
+  salvează singur, iar în listă rămâi pe slide-ul la care ai lucrat. „Renunță” închide fără să păstreze.
+
 ## 2026-11-28 · Panourile se ascund doar când vrei tu + mod zi clar (2026.11.28.7)
 - **Modul zi (☀, glass.css).** Înainte: totul alb pe alb, text gri foarte deschis, butoane și tonuri (G, A) aproape
   invizibile. Acum: fundal gri deschis, panouri albe curate cu chenar și umbră, text gri mai închis, butoane și câmpuri

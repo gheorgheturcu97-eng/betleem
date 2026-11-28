@@ -118,6 +118,25 @@ test('editSlide fixes words and keeps chords on them', async () => {
   a.ws.close();
 });
 
+test('pasteSlides: a slide copied from one song goes after a slide of another; the library order stays', async () => {
+  const a = client(); await a.open; await a.next(m => m.type === 'hello');
+  a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');
+  a.send({ type: 'saveSong', song: { title: 'Lipire țintă', body: 'Strofa 1:\nUnu unu\n\nRefren:\nDoi doi' } });
+  await a.next(m => m.type === 'state');
+  const id = (await fetch('http://localhost:4599/api/songs?q=lipire tinta').then(r => r.json()))[0].id;
+  a.send({ type: 'addItem', kind: 'song', songId: id });
+  const st = await a.next(m => m.type === 'state' && m.state.setlist.some(i => i.songId === id));
+  const item = st.state.setlist.findIndex(i => i.songId === id);
+  a.send({ type: 'pasteSlides', item, after: 0, slides: [{ label: 'Bridge', lines: ['[G]Din altă cântare'] }, { label: 'Refren', lines: ['Doi doi'] }] });
+  await a.next(m => m.type === 'pasted');
+  const song = await fetch('http://localhost:4599/api/songs/' + id).then(r => r.json());
+  assert.match(song.body, /Bridge:\n\[G\]Din altă cântare/);
+  assert.deepEqual(song.arrangement, ['Strofa 1', 'Refren'], 'the library order does not change');
+  const s2 = await a.next(m => m.type === 'state');
+  assert.deepEqual(s2.state.setlist[item].arrangement, ['#0', '#2', '#1', '#1'], 'in this program: after slide 1, the new one and the chorus again');
+  a.ws.close();
+});
+
 test('programs: several in Live, synced with Planning; undo removal; search without diacritics', async () => {
   const a = client(); await a.open; await a.next(m => m.type === 'hello');
   a.send({ type: 'login', pin: '2222' }); await a.next(m => m.type === 'login');

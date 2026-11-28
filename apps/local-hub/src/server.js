@@ -470,7 +470,7 @@ wss.on('connection', (ws, req) => {
 // --- Undo / redo (Ctrl+Z / ⌘Z): a copy of what can change, before each change ----------------
 let lastMd = null;                                     // the last MD&TRACK state, for a phone that just opened
 const UNDOABLE = new Set(['setStems', 'setCues', 'setTrack', 'setBpm', 'setKey', 'addItem', 'removeItem', 'moveItem', 'updateItem', 'deleteSong', 'service', 'saveSong', 'editSlide', 'slideSection',
-  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
+  'tagSlides', 'autoLabel', 'cleanLibrary', 'duplicateSlide', 'pasteSlides', 'removeSlide', 'slideStyle', 'slideLayers', 'trackBase', 'saveProp', 'deleteProp', 'saveLook', 'deleteLook', 'applyLook', 'itemLook', 'itemDisplay', 'itemBackground', 'arrangement', 'display', 'openProgram', 'newProgram']);
 const history = { undo: [], redo: [], church: null, last: { key: '', at: 0 } };
 function takeSnapshot() {
   return {
@@ -488,7 +488,7 @@ function restoreSnapshot(sn) {
 }
 const UNDO_NAMES = { setStems: 'track-urile', setCues: 'cue-urile', setTrack: 'track-ul', setBpm: 'tempo-ul', setKey: 'schimbarea tonului', addItem: 'adăugarea în program', removeItem: 'scoaterea din program', moveItem: 'mutarea în program', updateItem: 'modificarea din program',
   deleteSong: 'ștergerea cântării', service: 'schimbarea serviciului', saveSong: 'salvarea cântării', editSlide: 'textul slide-ului', slideSection: 'eticheta',
-  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
+  tagSlides: 'eticheta', autoLabel: 'etichetele automate', cleanLibrary: 'curățarea bibliotecii', duplicateSlide: 'repetarea slide-ului', pasteSlides: 'lipirea slide-urilor', removeSlide: 'ștergerea slide-ului', slideStyle: 'aspectul slide-ului', slideLayers: 'straturile slide-ului', trackBase: 'tonul și tempo-ul track-urilor', saveProp: 'prop-ul', saveLook: 'Look-ul salvat', deleteLook: 'ștergerea Look-ului', applyLook: 'schimbarea Look-ului', itemLook: 'Look-ul momentului', deleteProp: 'ștergerea prop-ului', itemDisplay: 'aspectul cântării',
   itemBackground: 'fundalul cântării', arrangement: 'ordinea', display: 'aspectul', openProgram: 'schimbarea programului', newProgram: 'programul nou' };
 
 function handleMessage(ws, m) {
@@ -882,6 +882,32 @@ function handleMessage(ws, m) {
         if (it.slideStyles) it.slideStyles = shiftSlides(it.slideStyles, m.slide, 1);
         if (it.slideLayers) it.slideLayers = shiftSlides(it.slideLayers, m.slide, 1);
         save(); break;
+      }
+      case 'pasteSlides': {                          // ⌘V: copied slides (from this song or another one) go after a slide
+        const it = db.setlist[m.item]; if (!it || it.kind !== 'song') return reply({ type: 'error', error: 'Slide-urile se lipesc într-o cântare din program.' });
+        const song = db.songs.find(x => x.id === it.songId); if (!song) break;
+        const list = (Array.isArray(m.slides) ? m.slides : []).slice(0, 40)
+          .map(x => ({ label: String(x?.label || '').replace(/[:\n]/g, ' ').trim().slice(0, 40), lines: (Array.isArray(x?.lines) ? x.lines : []).map(l => String(l).replace(/\r|\n/g, ' ').slice(0, 300)).filter(l => l.trim()).slice(0, 20) }))
+          .filter(x => x.lines.length);
+        if (!list.length) break;
+        let parsed = core.parseSong(song.body);
+        const order = core.arrangementIndexes(parsed, it.arrangement || song.arrangement);
+        if (!song.arrangement?.length) song.arrangement = core.arrangementIndexes(parsed, null).map(t => parsed[+t.slice(1)]?.label || t);   // the library order stays as it was
+        const tokens = [];
+        for (const x of list) {
+          const same = parsed.findIndex(sec => sec.lines.join('\n') === x.lines.join('\n'));                      // already in this song: play it again
+          if (same >= 0) { tokens.push('#' + same); continue; }
+          song.body = song.body.replace(/\s+$/, '') + '\n\n' + (x.label ? x.label + ':\n' : '') + x.lines.join('\n') + '\n';   // from another song: added to this one
+          parsed = core.parseSong(song.body); tokens.push('#' + (parsed.length - 1));
+        }
+        song.updatedAt = new Date().toISOString();
+        const after = Number.isInteger(m.after) && m.after >= 0 ? slideSource(it, song, m.after) : null;
+        const at = after ? after.pos + 1 : order.length;
+        order.splice(at, 0, ...tokens);
+        it.arrangement = order;
+        const n0 = after ? m.after : slidesFor(m.item).length;
+        for (let j = 0; j < tokens.length; j++) { if (it.slideStyles) it.slideStyles = shiftSlides(it.slideStyles, n0 + j, 1); if (it.slideLayers) it.slideLayers = shiftSlides(it.slideLayers, n0 + j, 1); }
+        save(); reply({ type: 'pasted', count: tokens.length }); break;
       }
       case 'editSlide': {                            // fix the words of one slide; chords stay on their words
         const it = db.setlist[m.item]; if (!it || it.kind !== 'song') break;

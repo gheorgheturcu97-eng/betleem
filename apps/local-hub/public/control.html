@@ -448,7 +448,8 @@
   .pv #pvBg,.pv #pvBg>*{position:absolute;inset:0;width:100%;height:100%;object-fit:cover} .pv #pvShade{position:absolute;inset:0}
   #pvBox{position:absolute;display:flex;flex-direction:column;outline:1.5px dashed rgba(77,124,255,.85);cursor:move;touch-action:none}
   #pvBox .h{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;border-radius:4px;background:var(--acc);cursor:nwse-resize}
-  #pvText{white-space:pre-wrap;pointer-events:none}
+  #pvText{white-space:pre-wrap;pointer-events:auto;outline:none;cursor:text;min-height:1em}
+  #pvBox .mv{position:absolute;left:-9px;top:-9px;width:20px;height:20px;border-radius:6px;background:var(--acc);color:#111;font-style:normal;font-size:12px;display:grid;place-items:center;cursor:move}
   .sed-ly{border-top:1px solid var(--stroke);padding-top:10px;display:flex;flex-direction:column;gap:8px} .sed-ly h4{margin:0;font-size:13px}
   #propList{display:flex;flex-wrap:wrap;gap:10px}
   .prop{width:150px;border-radius:14px;padding:6px;background:rgba(255,255,255,.05);border:1px solid var(--stroke);display:flex;flex-direction:column;gap:5px;text-align:left;cursor:pointer}
@@ -1546,9 +1547,9 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     <div class="seg mini" id="sedScope"><button data-s="slide" class="sel">Doar acest slide</button><button data-s="song">Toată cântarea</button><button data-s="all">Toate cântările</button></div></div>
   <div class="sed-body">
     <div class="sed-left">
-      <div class="pv" id="pv"><div id="pvBg"></div><div id="pvShade"></div><div id="pvUnder" class="ly-box"></div><div id="pvBox"><div id="pvText"></div><i class="h" title="Trage ca să mărești caseta"></i></div><div id="pvOver" class="ly-box"></div></div>
-      <div class="row" style="align-items:center"><span class="hint grow">Trage caseta ca s-o muți; colțul galben o mărește.</span><button id="sedBoxReset" class="ghost">↺ Caseta pe tot ecranul</button></div>
-      <label class="hint">Textul slide-ului (acordurile rămân pe cuvintele lor)<textarea id="sedText" spellcheck="false"></textarea></label>
+      <div class="pv" id="pv"><div id="pvBg"></div><div id="pvShade"></div><div id="pvUnder" class="ly-box"></div><div id="pvBox"><div id="pvText" contenteditable="plaintext-only" spellcheck="false" title="Scrie direct aici"></div><i class="mv" title="Trage ca să muți caseta">✥</i><i class="h" title="Trage ca să mărești caseta"></i></div><div id="pvOver" class="ly-box"></div></div>
+      <div class="row" style="align-items:center"><span class="hint grow">Scrie direct pe slide. ✥ mută caseta, colțul o mărește. Se salvează singur când închizi.</span><button id="sedBoxReset" class="ghost">↺ Caseta pe tot ecranul</button></div>
+      <textarea id="sedText" spellcheck="false" hidden></textarea>
     </div>
     <div class="sed-right">
       <div class="lf"><span>Secțiune</span><input id="sedSec" list="secList" placeholder="ex. Refren" style="flex:1"></div>
@@ -1571,7 +1572,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   </div>
   <div class="btns"><button id="sedReset" class="ghost" title="Slide-ul arată din nou ca restul cântării">↺ Ca restul</button>
     <button id="sedCopy" class="ghost" title="Ține minte aspectul și straturile acestui slide">📋 Copiază aspectul</button><button id="sedPaste" class="ghost" title="Pune aici aspectul copiat (alege apoi: doar slide / toată cântarea / toate)">📥 Lipește aspectul</button><span class="grow"></span>
-    <button id="sedCancel">Renunță</button><button id="sedOk" class="acc">Salvează</button></div>
+    <button id="sedCancel" title="Închide fără să păstrezi schimbările">Renunță</button><button id="sedOk" class="acc" title="Salvează și închide (la fel: Esc sau clic în afară)">Gata</button></div>
 </div></div>
 <div class="modal" id="propModal"><div class="glass sed">
   <div class="sed-head"><h3>🏷 Prop</h3><input id="prName" placeholder="Numele (ex. Logo în colț, Bandă anunț)" style="flex:1;max-width:340px"><span class="grow"></span>
@@ -2415,6 +2416,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('bKeys').onclick = showKeys;
   addEventListener('keydown', e => {
     const mod = MAC ? e.metaKey : e.ctrlKey;
+    if (e.key === 'Escape' && $('sedModal').classList.contains('show') && !$('sedModal').contains(document.activeElement) && !document.querySelector('.lye-menu')) { e.preventDefault(); $('sedOk').click(); return; }   // Esc: saves the slide and closes
     if (!mod) return;
     const k = e.key.toLowerCase(), typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     const sedOpen = $('sedModal').classList.contains('show');
@@ -2671,7 +2673,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
         if (a === 'key') { sel = i; render(); setTimeout(() => $('keySel').focus(), 200); return; }
         if (a === 'att') { attachTo(i); return; }
         if (a === 'cva') { openCanva(i); return; }
-        sel = i; pickedSlide = -1; render(); loadSongInEditor(S.setlist[i]);
+        sel = i; pickedSlide = -1; pickedMany.clear(); render(); loadSongInEditor(S.setlist[i]);
       };
       el.ondragstart = () => { dragFrom = i; el.classList.add('drag'); };
       el.ondragend = () => el.classList.remove('drag');
@@ -2719,6 +2721,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     document.querySelectorAll('#slides .slide').forEach(el => el.onclick = async e => {
       const t = e.target.closest('button')?.dataset.t, i = +el.dataset.s;
       if (it.kind === 'song' && e.target.closest('.lb') && slides[i]) return secPick(e.target.closest('.lb'), i, slides[i].label || '');
+      if (!t && (e.shiftKey || e.metaKey || e.ctrlKey)) {          // ⇧ / ⌘-clic: choose more slides, nothing goes on screen
+        if (e.shiftKey && pickedSlide >= 0) { const [a, b] = [Math.min(pickedSlide, i), Math.max(pickedSlide, i)]; for (let j = a; j <= b; j++) pickedMany.add(j); }
+        else { if (!pickedMany.size && pickedSlide >= 0) pickedMany.add(pickedSlide); pickedMany.has(i) ? pickedMany.delete(i) : pickedMany.add(i); }
+        pickedSlide = i; pick = { kind: 'slide', i, el };
+        document.querySelectorAll('#slides .slide').forEach(x => x.classList.toggle('picked', pickedMany.has(+x.dataset.s)));
+        return;
+      }
+      pickedMany.clear();
       pickedSlide = i; document.querySelectorAll('#slides .slide').forEach(x => x.classList.toggle('picked', x === el));
       if (t === 'del') return removeSlide(i);
       if (!t) return send({ type: 'go', item: sel, slide: i });
@@ -4360,7 +4370,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('sFont').innerHTML = $('lFont').innerHTML;
   $('secList').innerHTML = SECS.map(x => `<option value="${x}">`).join('');
   let ed = null;                                     // { i, it, st, base, text, label, scope }
-  let lastSlides = [], pickedSlide = -1;               // the slide clicked last: Delete removes it
+  let lastSlides = [], pickedSlide = -1; const pickedMany = new Set();   // ⇧/⌘-clic: more slides chosen (to copy)               // the slide clicked last: Delete removes it
   function removeSlide(i) {
     const it = S.setlist[sel]; if (!it || it.kind !== 'song' || !lastSlides[i]) return;
     send({ type: 'removeSlide', item: sel, slide: i }); pickedSlide = -1;
@@ -4409,7 +4419,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     Object.assign(t, { fontFamily: `"${d.font}", "Segoe UI", Arial, sans-serif`, fontSize: d.size + 'cqh', color: d.color, fontWeight: d.weight,
       fontStyle: d.italic ? 'italic' : 'normal', textTransform: d.upper ? 'uppercase' : 'none', textAlign: d.align, lineHeight: d.lineHeight || 1.3,
       textShadow: d.shadow !== false ? '0 .3cqh 1.2cqh rgba(0,0,0,.85)' : 'none' });
-    $('pvText').textContent = $('sedText').value;
+    if (document.activeElement !== $('pvText')) $('pvText').textContent = $('sedText').value;
     $('pvShade').style.background = `rgba(0,0,0,${(d.dim ?? 35) / 100})`;
   }
   let stLast = { k: '', at: 0 };
@@ -4418,6 +4428,8 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     ed.st = { ...ed.st, ...patch }; fillSlideEditor();
   };
   $('sedText').oninput = paintPreview;
+  $('pvText').oninput = () => { $('sedText').value = $('pvText').innerText.replace(/\n{3,}/g, '\n\n'); };
+  $('pvText').onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); $('pvText').blur(); $('sedOk').click(); } };
   $('sFont').onchange = e => setSt({ font: e.target.value });
   $('sSize').oninput = e => setSt({ size: +e.target.value });
   $('sWeight').onchange = e => setSt({ weight: +e.target.value });
@@ -4437,6 +4449,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('sedBoxReset').onclick = () => setSt({ box: null });
   // move / resize the text box with the mouse (or finger)
   $('pvBox').onpointerdown = e => {
+    if (e.target.closest('#pvText')) return;           // on the words: write, do not move
     e.preventDefault();
     LE.record(); ed.st = { ...ed.st };
     const pv = $('pv').getBoundingClientRect(), start = { ...(ed.st.box || FULL_BOX) }, x0 = e.clientX, y0 = e.clientY;
@@ -4468,6 +4481,10 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (sent) songCache.delete(it.songId);
     return sent;
   }
+  function keepPlace() {                             // back in the list on the slide you were editing
+    if (!ed) return; pickedSlide = ed.i;
+    setTimeout(() => { const el = document.querySelector(`#slides .slide[data-s="${pickedSlide}"]`); if (el) { document.querySelectorAll('#slides .slide').forEach(x => x.classList.toggle('picked', x === el)); el.scrollIntoView({ block: 'nearest' }); } }, 300);
+  }
   function gotoSlide(i) {                            // save this slide and open the next one right away (slide numbers stay the same)
     const scope = ed.scope; saveSlideEdit();
     openSlideEditor(Math.min(i, lastSlides.length - 1), lastSlides, scope);
@@ -4475,12 +4492,14 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   $('sedPrev').onclick = () => ed && ed.i > 0 && gotoSlide(ed.i - 1);
   $('sedNext').onclick = () => ed && ed.i < ed.total - 1 && gotoSlide(ed.i + 1);
   $('sedOk').onclick = () => {
-    const scope = ed.scope; saveSlideEdit();
-    $('sedModal').classList.remove('show'); ed = null;
-    toast({ slide: 'Slide salvat', song: 'Aspect pus pe toată cântarea', all: 'Aspect pus pe toate cântările' }[scope]);
+    if (!ed) return;
+    const scope = ed.scope, sent = saveSlideEdit();
+    $('sedModal').classList.remove('show'); keepPlace(); ed = null;
+    if (sent) toast({ slide: 'Slide salvat', song: 'Aspect pus pe toată cântarea', all: 'Aspect pus pe toate cântările' }[scope]);
   };
   $('sedReset').onclick = () => { send({ type: 'slideStyle', item: sel, slide: ed.i, patch: null }); if (S.setlist[sel]?.slideLayers?.[ed.i]) send({ type: 'slideLayers', item: sel, slide: ed.i, layers: null }); $('sedModal').classList.remove('show'); ed = null; toast('Slide-ul arată ca restul cântării'); };
-  $('sedCancel').onclick = () => { $('sedModal').classList.remove('show'); ed = null; };
+  $('sedCancel').onclick = () => { $('sedModal').classList.remove('show'); keepPlace(); ed = null; };
+  $('sedModal').addEventListener('pointerdown', e => { if (e.target === $('sedModal') && ed) $('sedOk').click(); });   // clic în afară = salvează și închide
   // 📋 copy the look (lyrics + layers) of one slide, paste it on another (then: this slide / the song / all)
   let lookClip = null;
   $('sedCopy').onclick = () => { lookClip = { st: diff(ed.st, ed.base), layers: LE.get() }; toast('Aspect copiat. Deschide alt slide și apasă 📥 Lipește aspectul.'); };
@@ -4491,7 +4510,7 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   };
   $('sedModal').onkeydown = e => {
     if (!document.querySelector('.lye-menu') && LE.key(e)) { e.preventDefault(); return; }
-    if (e.key === 'Escape') { if (document.querySelector('.lye-menu')) return document.querySelector('.lye-menu').remove(); $('sedCancel').click(); }
+    if (e.key === 'Escape') { if (document.querySelector('.lye-menu')) return document.querySelector('.lye-menu').remove(); $('sedOk').click(); }   // Esc: saves and closes
     if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); $('sedNext').click(); }
     if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); $('sedPrev').click(); }
   };
@@ -4878,7 +4897,13 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
       open: p => { sel = p.i; pickedSlide = -1; render(); },
     },
     slide: {
-      copy: p => { const sl = lastSlides[p.i]; if (!sl) return; clip = { kind: 'slide', data: sl }; copyText(sl.lines.map(l => stripChords(l)).join('\n')); toast('Textul slide-ului e copiat'); },
+      copy: p => {                                   // ⌘C: the chosen slides (⇧/⌘-clic chooses more), with chords and section
+        const idx = (pickedMany.size && pickedMany.has(p.i) ? [...pickedMany].sort((a, b) => a - b) : [p.i]).filter(i => lastSlides[i] && !lastSlides[i].image);
+        if (!idx.length) return;
+        clip = { kind: 'slide', data: idx.map(i => ({ label: lastSlides[i].label || '', lines: [...lastSlides[i].lines] })) };
+        copyText(idx.map(i => lastSlides[i].lines.map(l => stripChords(l)).join('\n')).join('\n\n'));
+        toast(idx.length > 1 ? `${idx.length} slide-uri copiate · ${MK}V le lipește după slide-ul ales (și în altă cântare)` : `Slide copiat · ${MK}V îl lipește după slide-ul ales (și în altă cântare)`);
+      },
       cut: p => { A.slide.copy(p); removeSlide(p.i); },
       del: p => removeSlide(p.i),
       dup: p => { send({ type: 'duplicateSlide', item: sel, slide: p.i }); toast('Slide-ul se repetă'); },
@@ -4919,7 +4944,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
     if (clip.kind === 'item') { send({ type: 'addItem', item: { ...structuredClone(clip.data), id: undefined }, at }); toast('Lipit în program'); }
     else if (clip.kind === 'song') { const s = await fetch('/api/songs/' + clip.data).then(r => r.json()); send({ type: 'addItem', kind: 'song', songId: s.id, key: s.key, minutes: 5, at }); toast('„' + s.title + '” e în program'); }
     else if (clip.kind === 'bg') { const i = p?.kind === 'item' ? p.i : sel; if (S.setlist[i]) { send({ type: 'itemBackground', item: i, value: clip.data }); toast('Fundal pus pe „' + (S.setlist[i].title || '') + '”'); } else send({ type: 'background', value: clip.data }); }
-    else if (clip.kind === 'slide') { if (S.setlist[sel]?.kind === 'song') { send({ type: 'duplicateSlide', item: sel, slide: lastSlides.indexOf(clip.data) >= 0 ? lastSlides.indexOf(clip.data) : 0 }); toast('Slide lipit'); } }
+    else if (clip.kind === 'slide') {
+      const item = p?.kind === 'item' ? p.i : sel, after = p?.kind === 'slide' ? p.i : p?.kind === 'item' ? -1 : (pickedSlide >= 0 ? pickedSlide : -1);
+      if (S.setlist[item]?.kind !== 'song') return toast('Alege întâi cântarea (și slide-ul) după care lipești');
+      send({ type: 'pasteSlides', item, after, slides: clip.data });
+      toast(clip.data.length > 1 ? `${clip.data.length} slide-uri lipite` : 'Slide lipit');
+    }
     else toast('Aici nu se poate lipi asta');
   }
   // the right-click menus
