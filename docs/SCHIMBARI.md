@@ -1,6 +1,11 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Bara de deasupra slide-urilor se poate ascunde (2026.11.28.14)
+- **„⌃ Ascunde bara” (control.html).** Nou: un buton în capul listei de slide-uri ascunde bara cu Secțiunile, ordinea,
+  Rândurile, Textul, fontul și tranziția; slide-urile primesc tot locul. „⌄ Arată bara” o aduce înapoi. Calculatorul ține
+  minte alegerea.
+
 ## 2026-11-28 · ✂ Rupe aici taie doar slide-ul ales (2026.11.28.13)
 - **Ruperea slide-ului (`breakSlide`).** Înainte: tăia secțiunea de la cursor până la capăt, iar restul se rearanja (de
   ex. „trei+patru | cinci+șase” devenea „trei | patru+cinci | șase”), părea că dispare un slide. Acum: doar slide-ul ales

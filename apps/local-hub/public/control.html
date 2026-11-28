@@ -947,6 +947,8 @@
   #slides .slide.pp.live .foot::after{content:"PE ECRAN";margin-left:auto;font-size:10px;letter-spacing:.08em;padding:1px 6px;border-radius:4px;background:rgba(0,0,0,.75);color:#fff}
   #slides .slide.pp.picked:not(.live){box-shadow:0 0 0 2px rgba(255,255,255,.7)}
   #slides .slide.pp.dragging{opacity:.4}
+  .tools-t{margin-left:auto;font-size:11px;padding:3px 10px;opacity:.75} .tools-t:hover{opacity:1}
+  .slides-panel.tools-off #arrRow,.slides-panel.tools-off #qLook,.slides-panel.tools-off #mediaBar{display:none!important}
   #slides .slide.pp.drop-before{box-shadow:-6px 0 0 0 var(--acc)} #slides .slide.pp.drop-after{box-shadow:6px 0 0 0 var(--acc)}
   #slides .slide.pp .pic{margin:0;border-radius:0}
   .slides-panel{padding:14px 16px 16px}
@@ -1072,7 +1074,7 @@
 
       <div class="slides-panel glass scroll">
         <div class="slides-head">
-          <h3 id="slidesTitle">Alege ceva din program</h3>
+          <h3 id="slidesTitle">Alege ceva din program</h3><button id="toolsT" class="mini ghost tools-t" title="Ascunde / arată bara cu secțiunile, ordinea și aspectul textului (rămâne așa până o schimbi)">⌃ Ascunde bara</button>
           <div class="row" id="arrRow" style="display:none">
             <span class="tool keyctl" title="Tonul pentru acest program; acordurile de pe scenă se schimbă singure"><small>Ton</small>
               <button id="keyDown" class="icon" title="Un semiton mai jos">−</button><select id="keySel"></select><button id="keyUp" class="icon" title="Un semiton mai sus">＋</button></span>
@@ -2384,6 +2386,12 @@ Poți lipi și acorduri deasupra versurilor."></textarea>
   const MOD = MAC ? '⌘' : 'Ctrl';
   const undo = () => send({ type: 'undo' }), redo = () => send({ type: 'redo' });
   $('bUndo').onclick = undo; $('bRedo').onclick = redo;
+  // ⌃ the bar above the slides (sections, order, text look) hides when you want; remembered on this computer
+  { const panel = document.querySelector('.slides-panel'), btn = $('toolsT');
+    const apply = off => { panel.classList.toggle('tools-off', off); btn.textContent = off ? '⌄ Arată bara' : '⌃ Ascunde bara'; };
+    let off = false; try { off = localStorage.getItem('bnc-slide-tools') === 'off'; } catch {}
+    apply(off);
+    btn.onclick = () => { off = !off; apply(off); try { localStorage.setItem('bnc-slide-tools', off ? 'off' : 'on'); } catch {} }; }
   $('bUndo').title = `Anulează (${MOD}+Z)`; $('bRedo').title = `Refă (${MOD}+Shift+Z)`;
   const KEYS = [
     [`${MOD}+Z`, 'Anulează ultima schimbare'], [`${MOD}+Shift+Z  sau  ${MOD}+Y`, 'Refă'],
