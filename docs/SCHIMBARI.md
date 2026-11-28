@@ -1,6 +1,12 @@
 # Schimbări: ce funcționa înainte și cum funcționează acum
 Cele mai noi sunt sus. Claude Code adaugă aici o linie la fiecare schimbare de comportament (regula de aur din CLAUDE.md).
 
+## 2026-11-28 · Ecranul de scenă ca în ProPresenter (2026.11.28.5)
+- **Scena (`public/stage.html`).** Înainte: jos, „Urmează” era o coloană mică în stânga și „În program” o coloană în
+  dreapta, iar slide-ul următor ieșea mic. Acum: slide-ul următor stă pe toată lățimea, chiar sub versurile de acum
+  (cu acorduri, cel puțin ~70% din mărimea lor; versurile de acum rămân cele mai mari), iar „În program” e un singur rând
+  lung jos (titlu · ton · minute › următorul…). Setările rămân aceleași: „Urmează · mărime / loc / culoare”.
+
 ## 2026-11-28 · Planning Center: cântările înlocuiesc cântările identice din bibliotecă (2026.11.28.4)
 - **Importul din Planning Center (`mergePcoSongs`, `sameSongs` în src/server.js).** Înainte: o cântare din PCO se
   potrivea cu biblioteca doar după id sau după exact același titlu, așa că „1. Este-un vânt ce-adie” sau „10000 motive

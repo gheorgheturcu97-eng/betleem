@@ -28,15 +28,20 @@
   main{flex:1;min-height:0;display:flex;flex-direction:column}
   #now{flex:1;min-height:0;padding:3vh 3vw;font-size:5.4vh;line-height:1.15;overflow:hidden}
   #now img,#now video{width:100%;height:100%;object-fit:contain;display:block}
-  footer{display:flex;border-top:1px solid #222;flex:none;max-height:30vh;overflow:hidden}
-  #next{flex:1;min-width:0;padding:2vh 3vw;font-size:3.4vh;color:#8a8f95;line-height:1.15;overflow:hidden;max-height:inherit;box-sizing:border-box}
-  #next img{height:18vh;border-radius:.6vh}
-  #prog{flex:none;width:30vw;padding:2vh 2vw;border-left:1px solid #222;font-size:3vh;color:#c9ced6;overflow:hidden}
+  /* like ProPresenter: the next slide right under the lyrics, as wide as them; the program ahead on one long row below */
+  #next{flex:0 1 auto;min-height:0;max-height:var(--ns,40vh);padding:1.4vh 3vw 1.6vh;font-size:3.4vh;color:#8a8f95;line-height:1.15;
+        overflow:hidden;box-sizing:border-box;border-top:.35vh solid #2a2d33}
+  #next .label{font-size:2.2vh;margin-bottom:.6vh}
+  #next img{height:14vh;border-radius:.6vh}
+  #prog{flex:none;display:flex;align-items:center;gap:2.4vw;padding:1.1vh 3vw;border-top:1px solid #222;background:#111215;
+        font-size:2.6vh;color:#c9ced6;white-space:nowrap;overflow:hidden}
   #prog:empty,#next:empty{display:none}
-  #prog .it{display:flex;gap:1vw;align-items:baseline;padding:.5vh 0;white-space:nowrap}
-  #prog .it b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-  #prog .it small{color:#8a8f95;font-size:.8em}
+  #prog .up{flex:none;font-size:.8em;color:#8a8f95;text-transform:uppercase;letter-spacing:.08em}
+  #prog .it{display:flex;gap:.8vw;align-items:baseline;min-width:0;flex:0 1 auto}
+  #prog .it b{min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  #prog .it small{color:#8a8f95;font-size:.8em;flex:none}
   #prog .it:first-of-type b{color:#fff}
+  #prog .it+.it::before{content:"›";color:#555;margin-right:1.6vw}
   .label{font-size:2.6vh;color:var(--lc,#f5b301);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1vh}
   .label .up{color:#8a8f95;margin-right:1.2vw}
   body.nolabels #now .label{display:none}
@@ -55,8 +60,8 @@
 <body>
 <header><span id="head"></span><span id="pos"></span><span id="svc" title="Timpul slujbei: minutele din program, pornește la prima cântare"></span><span id="timer" title="Timpul rămas pentru ce e acum în program"></span><span id="clock"></span></header>
 <div id="msg"></div>
-<main><div id="now"></div></main>
-<footer><div id="next"></div><div id="prog"></div></footer>
+<main><div id="now"></div><div id="next"></div></main>
+<footer id="prog"></footer>
 <div id="blank">ECRAN NEGRU</div>
 <script type="module">
   import { connect, esc, stayAwake, outputEvents } from '/client.js';
@@ -113,7 +118,7 @@
     document.documentElement.style.setProperty('--hs', (D.headSize || 3.2) + 'vh');
     const n = $('next').style;                       // the "Urmează" part: its own size, color and share of the screen
     n.fontSize = (D.nextSize || 3.4) + 'vh'; n.color = D.nextColor || '#8a8f95';
-    document.querySelector('footer').style.maxHeight = Math.min(55, D.nextShare || 30) + 'vh';
+    document.documentElement.style.setProperty('--ns', Math.min(55, Math.max(20, D.nextShare || 35)) + 'vh');   // how much of the screen the next slide may take
     n.fontFamily = document.body.style.fontFamily;
     document.body.classList.toggle('nolabels', D.labels === false);
     $('clock').style.display = D.clock === false ? 'none' : '';
@@ -139,9 +144,12 @@
       : nextItem ? `<div class="label"><span class="up">Urmează</span></div>${esc(nextItem.title || KIND[nextItem.kind] || '')}` : '';
     // the program ahead, for the band: title, key, minutes
     const ahead = s.setlist.slice(L.item + 1, L.item + 1 + (D.upNext ?? 2));
-    $('prog').innerHTML = ahead.length ? `<div class="label"><span class="up">În program</span></div>` + ahead.map(x =>
+    $('prog').innerHTML = ahead.length ? `<span class="up">În program</span>` + ahead.map(x =>
       `<div class="it"><b>${esc(x.title || KIND[x.kind] || '')}</b><small>${[x.key ? 'ton ' + x.key : '', x.minutes ? x.minutes + ' min' : ''].filter(Boolean).map(esc).join(' · ')}</small></div>`).join('') : '';
-    fit($('now'), D.size || 5.4); fit($('next'), D.nextSize || 3.4); svcTick();
+    // the next slide is big enough to read from the stage (at least ¾ of the lyrics), then the lyrics fill what is left
+    $('next').style.fontSize = '2vh'; fit($('now'), D.size || 5.4);                       // the lyrics first, they stay the biggest
+    const nowV = parseFloat($('now').style.fontSize) || D.size || 5.4;
+    fit($('next'), Math.min(Math.max(D.nextSize || 3.4, nowV * 0.7), nowV * 0.8)); fit($('now'), nowV); svcTick();
     $('blank').style.display = L.blank ? 'block' : 'none';
     $('msg').style.display = L.message && L.messageTo !== 'main' ? 'block' : 'none'; $('msg').textContent = L.message;
     tick();
